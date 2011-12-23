@@ -5,6 +5,7 @@
 #include <cassert>
 #include <map>
 #include <set>
+#include <algorithm>
 
 #include <iostream>
 #include <inttypes.h>
@@ -144,6 +145,7 @@ typedef vector3 location;
 vector3 project_onto_cardinal_direction(vector3 src, one_tile_direction_vector dir) {
   return vector3(src.x * std::abs(dir.x), src.y * std::abs(dir.y), src.z * std::abs(dir.z));
 }
+scalar_type dot_product(vector3 const& v1, vector3 const& v2) { return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z; }
 
 #define MAX_X 20
 #define MAX_Y 20
@@ -211,10 +213,27 @@ enum tile_contents {
   AIR
 };
 
+struct water_movement_info {
+  vector3 velocity;
+  scalar_type progress[3][3][3];
+  water_movement_info(){
+    for(int x=0;x<3;++x){for(int y=0;y<3;++y){for(int z=0;z<3;++z){
+      progress[x][y][z] = 0;
+    }}}
+  }
+  water_movement_info& operator=(water_movement_info const& other){
+    velocity = other.velocity;
+    for(int x=0;x<3;++x){for(int y=0;y<3;++y){for(int z=0;z<3;++z){
+      progress[x][y][z] = other.progress[x][y][z];
+    }}}
+  }
+};
+const scalar_type progress_necessary = 5000;
+
 struct tile
 {
   tile_contents contents;
-  vector3 water_velocity;
+  water_movement_info water_movement;
   int water_group_number; // a temporary variable during the computation
 };
 
@@ -248,6 +267,7 @@ struct water_group {
   int max_tile_z;
   int max_exit_tile_z;
   std::set<location> tiles;
+  std::set<location> exit_tiles;
   set<pair<location, one_tile_direction_vector> > exit_surfaces;
   water_group():max_tile_z(0),max_exit_tile_z(0){}
 };
@@ -265,7 +285,7 @@ void mark_water_group_that_includes(location loc, int group_number, map<int, wat
     groups[group_number].tiles.insert(next_loc);
     if (next_loc.z > groups[group_number].max_tile_z) groups[group_number].max_tile_z = next_loc.z;
     
-    //bool is_exit_tile = false;
+    bool is_exit_tile = false;
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const location adj_loc = next_loc + dir;
       if (!out_of_bounds(adj_loc)) {
@@ -276,11 +296,44 @@ void mark_water_group_that_includes(location loc, int group_number, map<int, wat
         if (can_be_exit_tile(next_loc) && (adj_tile.contents == AIR || (adj_tile.contents == WATER && !can_be_exit_tile(adj_loc)))) {
           groups[group_number].exit_surfaces.insert(std::make_pair(next_loc, dir));
           if (next_loc.z > groups[group_number].max_exit_tile_z) groups[group_number].max_exit_tile_z = next_loc.z;
-          //is_exit_tile = true;
+          is_exit_tile = true;
         }
       }
     }
-    //if (is_exit_tile && can_be_exit_tile(next_loc)) exit_tiles_by_group[group_number].insert(next_loc);
+    if (is_exit_tile) groups[group_number].exit_tiles.insert(next_loc);
+  }
+}
+
+struct wanted_move {
+  location src;
+  one_tile_direction_vector dir;
+  int group_number_or_zero_for_velocity_movement;
+  wanted_move(location src,one_tile_direction_vector dir,int g):src(src),dir(dir),group_number_or_zero_for_velocity_movement(g){}
+};
+
+void check_progress(location loc, int group_number_or_zero_for_velocity_movement, vector<wanted_move> &wanted_moves){
+  // If the tile has been pushed sufficient to move in more than one direction, make a "wanted move" in only one direction, chosen at random.
+  scalar_type greatest_want = 0;
+  int num_greatest = 0;
+  one_tile_direction_vector chosen_move;
+  for (EACH_CARDINAL_DIRECTION(dir)) {
+    scalar_type want = tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z];
+    if (want > progress_necessary) {
+      if (want > greatest_want) {
+        greatest_want = want;
+        num_greatest = 1;
+        chosen_move = dir;
+      }
+      else if (want == greatest_want) {
+        ++num_greatest;
+        if (rand()%num_greatest == 0) {
+          chosen_move = dir;
+        }
+      }
+    }
+  }
+  if (num_greatest > 0) {
+    wanted_moves.push_back(wanted_move(loc, chosen_move, group_number_or_zero_for_velocity_movement));
   }
 }
 
@@ -289,54 +342,44 @@ void update_water() {
     tiles[loc].water_group_number = 0;
   }
   int next_group_number = 1;
-  map<int, water_group > groups;
+  map<int, water_group> groups;
   for (EACH_LOCATION(loc)) {
     if(can_group(loc) && tiles[loc].water_group_number == 0) {
       mark_water_group_that_includes(loc, ++next_group_number, groups);
     }
   }
+
+  vector<wanted_move> wanted_moves;
   for (auto i = groups.begin(); i != groups.end(); ++i) {
     const int group_number = i->first;
     water_group const& group = i->second;
-    vector<location> top_tiles;
-    set<pair<location, one_tile_direction_vector> > non_top_surfaces;
-    for (auto j = group.tiles.begin(); j != group.tiles.end(); ++j) {
-      if (j->z == group.max_tile_z) top_tiles.push_back(*j);
-    }
     
     for(auto surface = group.exit_surfaces.begin(); surface != group.exit_surfaces.end(); ++surface) {
       const double pressure = group.max_exit_tile_z + 0.5 - ((double)surface->first.z + 0.5*surface->second.z); // proportional to depth, assuming side surfaces are at the middle of the side
-      tile &surface_target_tile = tiles[surface->first + surface->second];
-      if (surface_target_tile.contents == AIR) {
-        if (rand()%5000 < 10 * std::sqrt(pressure)) {
-          tiles[top_tiles[rand()%top_tiles.size()]].contents = AIR;
-          surface_target_tile.contents = WATER;
-          surface_target_tile.water_velocity = vector3(0,0,0);
-        }
-      }
-      else if (surface_target_tile.contents == WATER) {
-        surface_target_tile.water_velocity += surface->second * (int)(10 * std::sqrt(pressure));
-      }
-      else assert(false);
+      tile &surface_source_tile = tiles[surface->first];
+      //tile &surface_target_tile = tiles[surface->first + surface->second];
+      surface_source_tile.water_movement.progress[1+surface->second.x][1+surface->second.y][1+surface->second.z] += (int)(100 * std::sqrt(pressure));
     }
-  }
-  
-  for (EACH_LOCATION(loc)) {
-    if (can_be_exit_tile(loc)) {
-      tiles[loc].water_velocity = vector3(0,0,0);
+    
+    for (const location loc : group.exit_tiles) {
+      check_progress(loc, tiles[loc].water_group_number, wanted_moves);
     }
   }
   
   for (EACH_LOCATION(loc)) {
     if (tiles[loc].contents == WATER && !can_be_exit_tile(loc)) {
-      tiles[loc].water_velocity.z -= 5;
-      one_tile_direction_vector travel_dir(0,0,0);
-      int randvalue = rand()%145600;
-      if (randvalue < std::abs(tiles[loc].water_velocity.x)) travel_dir = one_tile_direction_vector(1,0,0) * sign(tiles[loc].water_velocity.x);
-      else if (randvalue < std::abs(tiles[loc].water_velocity.x) + std::abs(tiles[loc].water_velocity.y)) travel_dir = one_tile_direction_vector(0,1,0) * sign(tiles[loc].water_velocity.y);
-      else if (randvalue < std::abs(tiles[loc].water_velocity.x) + std::abs(tiles[loc].water_velocity.y) + std::abs(tiles[loc].water_velocity.z)) travel_dir = one_tile_direction_vector(0,0,1) * sign(tiles[loc].water_velocity.z);
+      tiles[loc].water_movement.velocity.z -= 5;
+      for (EACH_CARDINAL_DIRECTION(dir)) {
+        const scalar_type dp = dot_product(tiles[loc].water_movement.velocity, dir);
+        if (dp > 0) {
+          tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z] += dp;
+          assert(tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z] > 0);
+          //assert(tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z] < 50000);
+        }
+      }
+      check_progress(loc, 0, wanted_moves);
       
-      if (loc + travel_dir != loc) {
+      /*if (loc + travel_dir != loc) {
         if (out_of_bounds(loc + travel_dir) || tiles[loc + travel_dir].contents == ROCK) {
           tiles[loc].water_velocity -= project_onto_cardinal_direction(tiles[loc].water_velocity, travel_dir);
         }
@@ -358,8 +401,99 @@ void update_water() {
           }
         }
         else assert(false);
+      }*/
+    }
+  }
+  
+  std::random_shuffle(wanted_moves.begin(), wanted_moves.end());
+  
+  for (const wanted_move move : wanted_moves) {
+    const location dst = move.src + move.dir;
+    tile &src_tile = tiles[move.src];
+    // if the water has been yanked away somehow, don't pretend it can still move
+    if (src_tile.contents != WATER) continue;
+    
+    scalar_type& progress_ref = src_tile.water_movement.progress[1+move.dir.x][1+move.dir.y][1+move.dir.z];
+    
+    if (out_of_bounds(dst)) {
+      // TODO remove this duplicate code: we behave the same as going to rock
+      // TODO figure out what to actually do about the fact that water can change to exit-tile-capable while having lots of progress.
+      //assert(move.group_number_or_zero_for_velocity_movement == 0);
+      src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
+      progress_ref = 0;
+      continue;
+    }
+    
+    tile &dst_tile = tiles[dst];
+    
+    if (dst_tile.contents == AIR) {
+      if (move.group_number_or_zero_for_velocity_movement == 0) {
+        progress_ref -= progress_necessary;
+        src_tile.contents = AIR;
+        dst_tile.contents = WATER;
+        dst_tile.water_movement = src_tile.water_movement;
+      }
+      else {
+        progress_ref -= progress_necessary;
+        dst_tile.contents = WATER;
+        dst_tile.water_movement = water_movement_info(); // the teleported tile starts with zero everything
+        
+        // HACK - pick a random top tile in an inefficient way. (We have to recompute stuff in case a lot of tiles were yanked from the top at once.)
+        location chosen_top_tile = location(-1,-1,-1);
+        int num_top_tiles = 0;
+        for (const location loc : groups[move.group_number_or_zero_for_velocity_movement].tiles) {
+          if (tiles[loc].contents != WATER) continue;
+          if (loc.z > chosen_top_tile.z) {
+            chosen_top_tile = loc;
+            num_top_tiles = 1;
+          }
+          else if (loc.z == chosen_top_tile.z) {
+            ++num_top_tiles;
+            if (rand()%num_top_tiles == 0) {
+              chosen_top_tile = loc;
+            }
+          }
+        }
+        // Since the source tile is still water, there always must be a real tile to choose
+        assert(num_top_tiles > 0);
+        
+        tiles[chosen_top_tile].contents = AIR;
       }
     }
+    else if (dst_tile.contents == WATER) {
+      if (move.group_number_or_zero_for_velocity_movement == 0) {
+        if (can_be_exit_tile(dst)) {
+          //TODO... right now, same as rock
+          src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
+          progress_ref = 0;
+        }
+        else {
+          const vector3 vel_diff = src_tile.water_movement.velocity - dst_tile.water_movement.velocity;
+          const vector3 exchanged_velocity = project_onto_cardinal_direction(vel_diff, move.dir) / 2;
+          src_tile.water_movement.velocity -= exchanged_velocity;
+          dst_tile.water_movement.velocity += exchanged_velocity;
+          // hmm... since we *don't* move the 'progress' back then they will keep colliding... that might be a good thing? Well, only if we don't let the progress build up extra.
+          // TODO: should the velocity-sharing be proportional to the excess progress?
+          progress_ref = progress_necessary;
+        }
+      }
+      else {
+        // we tried to move due to pressure, but bumped into free water! Turn our movement into velocity, at some conversion factor.
+        const scalar_type excess_progress = progress_ref - progress_necessary;
+        assert(excess_progress >= 0);
+        dst_tile.water_movement.velocity += (move.dir * excess_progress) / 10;
+        progress_ref -= excess_progress;
+        assert(progress_ref == progress_necessary);
+      }
+    }
+    else if (dst_tile.contents == ROCK) {
+      // TODO figure out what to actually do about the fact that water can change to exit-tile-capable while having lots of progress.
+      //assert(move.group_number_or_zero_for_velocity_movement == 0);
+      src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
+      progress_ref = 0;
+    }
+    assert(progress_ref > 0);
+    assert(progress_ref <= progress_necessary);
   }
 }
 

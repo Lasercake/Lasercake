@@ -154,11 +154,11 @@ srand(time(NULL));
 	{
 	tiles[loc].contents = AIR;
 	}
-	 build_midair_water_tower(1); wall_midair_water_tower(1); build_extra_ground_walls();
+	 //build_midair_water_tower(1); wall_midair_water_tower(1); build_extra_ground_walls();
 	 //build_water_sheet_and_shallow_slope();
 	 //build_water_mass_and_steep_slope();
 	 //build_punctured_tank();
-	 //build_annoying_twisty_passageways();
+	 build_annoying_twisty_passageways();
 	 //build_a_little_water_on_the_ground();
 
     
@@ -218,7 +218,8 @@ srand(time(NULL));
 		glColor4f(0.5,0.0,0.0,0.5);
 		}
 		else {
-		  glColor4f(0.0, 0.0, 1.0, 0.5);
+		  if(can_be_exit_tile(loc))glColor4f(0.0, 0.0, 1.0, 0.5);
+		  else glColor4f(1.0, 0.5, 0.0, 0.5);
 		}
 		glBegin(GL_POLYGON);
 			glVertex3f(loc.x, loc.y, (double)loc.z + 0.5);
@@ -226,6 +227,28 @@ srand(time(NULL));
 			glVertex3f(loc.x + 1, loc.y +1, (double)loc.z + 0.5);
 			glVertex3f(loc.x, loc.y+1, (double)loc.z + 0.5);
 		glEnd();
+		if (tiles[loc].contents == WATER) {
+		  if (!can_be_exit_tile(loc)){
+		  glColor4f(0.0, 1.0, 0.0, 0.5);
+		  glBegin(GL_LINES);
+			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
+			glVertex3f((double)loc.x+0.5+((double)tiles[loc].water_movement.velocity.x / 1000),
+			  (double)loc.y+0.5+((double)tiles[loc].water_movement.velocity.y / 1000),
+			  (double)loc.z + 0.5+((double)tiles[loc].water_movement.velocity.z / 1000));
+		  glEnd();
+		  }
+		  glColor4f(0.0, 0.0, 1.0, 0.5);
+		  for (EACH_CARDINAL_DIRECTION(dir)) {
+		    vector3 vect = (dir * tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z]);
+		    glBegin(GL_LINES);
+			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
+			glVertex3f((double)loc.x+0.5+((double)vect.x / progress_necessary),
+			  (double)loc.y+0.5+((double)vect.y / progress_necessary),
+			  (double)loc.z + 0.5+((double)vect.z / progress_necessary));
+		    glEnd();
+		  
+		  }
+		}
 		}
 		#if 0
 		if (local_amount < precision_scale / 100) continue;
