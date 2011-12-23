@@ -419,6 +419,8 @@ void update_water() {
     assert(src_tile.contents = WATER);
     
     scalar_type& progress_ref = src_tile.water_movement.progress[1+move.dir.x][1+move.dir.y][1+move.dir.z];
+    const scalar_type excess_progress = progress_ref - progress_necessary;
+    assert(excess_progress >= 0);
     
     if (out_of_bounds(dst)) {
       // TODO remove this duplicate code: we behave the same as going to rock
@@ -488,8 +490,6 @@ void update_water() {
       }
       else {
         // we tried to move due to pressure, but bumped into free water! Turn our movement into velocity, at some conversion factor.
-        const scalar_type excess_progress = progress_ref - progress_necessary;
-        assert(excess_progress >= 0);
         dst_tile.water_movement.velocity += (move.dir * excess_progress) / 10;
         progress_ref -= excess_progress;
         assert(progress_ref == progress_necessary);
@@ -505,6 +505,17 @@ void update_water() {
     }
     assert(progress_ref >= 0);
     assert(progress_ref <= progress_necessary);
+    
+    // Hack? TODO figure out where this should go (probably not just dangling at the end of the loop)
+    if (move.group_number_or_zero_for_velocity_movement == 0 && move.dir.z < 0 && src_tile.contents == WATER) {
+      for (EACH_CARDINAL_DIRECTION(d2)) {
+        if (d2.z != 0) continue;
+        const one_tile_direction_vector down(0, 0, -1);
+        if (!out_of_bounds(move.src + d2) && tiles[move.src + d2].contents == AIR && !out_of_bounds(move.src + d2 + down) && tiles[move.src + d2 + down].contents == AIR) {
+          src_tile.water_movement.progress[1+d2.x][1+d2.y][1+d2.z] += 500;
+        }
+      }
+    }
   }
 }
 
