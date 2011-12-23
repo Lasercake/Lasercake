@@ -143,23 +143,26 @@ void build_a_little_water_on_the_ground() {
   }}
 }
 
-static void mainLoop ()
+static void mainLoop (std::string scenario)
 {
     SDL_Event event;
     int done = 0;
     int frame = 0;
     int p_mode = 0;
 srand(time(NULL));
-	for (EACH_LOCATION(loc))
-	{
-	tiles[loc].contents = AIR;
-	}
-	 //build_midair_water_tower(1); wall_midair_water_tower(1); build_extra_ground_walls();
-	 //build_water_sheet_and_shallow_slope();
-	 //build_water_mass_and_steep_slope();
-	 //build_punctured_tank();
-	 build_annoying_twisty_passageways();
-	 //build_a_little_water_on_the_ground();
+  for (EACH_LOCATION(loc))
+  {
+    tiles[loc].contents = AIR;
+  }
+  if (scenario == "tower1") { build_midair_water_tower(1); }
+  else if (scenario == "tower2") { build_midair_water_tower(1); wall_midair_water_tower(1); }
+  else if (scenario == "tower3") { build_midair_water_tower(1); wall_midair_water_tower(1); build_extra_ground_walls(); }
+  else if (scenario == "shallow") { build_water_sheet_and_shallow_slope(); }
+  else if (scenario == "steep") { build_water_mass_and_steep_slope(); }
+  else if (scenario == "tank") { build_punctured_tank(); }
+  else if (scenario == "twisty") { build_annoying_twisty_passageways(); }
+  else build_a_little_water_on_the_ground();
+
 
     
     while ( !done ) {
@@ -335,7 +338,10 @@ int main(int argc, char *argv[])
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     
     // Draw, get events...
-    mainLoop ();
+    if (argc < 2) {
+      std::cerr << "You didn't give an argument saying which scenario to use!";
+    }
+    mainLoop (argv[1]);
     
     // Cleanup
 	SDL_Quit();
