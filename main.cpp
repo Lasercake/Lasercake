@@ -83,42 +83,84 @@ static void createSurface (int fullscreen)
 	}
 }
 
+// Hack - situation building functions
+void build_midair_water_tower(int midairness) {
+  for (int x = 4; x <= 6; ++x) { for (int y = 4; y <= 6; ++y) { for(int z = midairness; z < MAX_Z; ++z) {
+    tiles[location(x, y, z)].contents = WATER;
+  }}}
+}
+void wall_midair_water_tower(int midairness) {
+  for (int x = 3; x <= 7; ++x) { for (int y = 3; y <= 7; ++y) { for(int z = midairness; z < MAX_Z; ++z) {
+    if (x == 3 || x == 7 || y == 3 || y == 7) tiles[location(x, y, z)].contents = ROCK;
+  }}}
+}
+void build_extra_ground_walls() {
+  for (int x = 0; x < MAX_X; ++x) { for(int z = 0; z < 3; ++z) {
+    tiles[location(x, 1, z)].contents = ROCK;
+    tiles[location(x, 9, z)].contents = ROCK;
+  }}
+  for (int y = 0; y < MAX_Y; ++y) { for(int z = 0; z < 3; ++z) {
+    tiles[location(1, y, z)].contents = ROCK;
+    tiles[location(9, y, z)].contents = ROCK;
+  }}
+}
+void build_water_sheet_and_shallow_slope() {
+  for (EACH_LOCATION(loc)) {
+    if (loc.z == 0 && loc.x >= 5) tiles[loc].contents = ROCK;
+    else if (loc.z == 1 && loc.x >= 10) tiles[loc].contents = ROCK;
+    else if (loc.z == 2 && loc.x >= 15) tiles[loc].contents = ROCK;
+    else if (loc.x == 19)tiles[loc].contents = WATER;
+  }
+}
+void build_water_mass_and_steep_slope() {
+  for (EACH_LOCATION(loc)) {
+    if (loc.z < 20 - loc.x) tiles[loc].contents = ROCK;
+    else if (loc.z >= 15 && (20 - loc.x) >= 15) tiles[loc].contents = WATER;
+  }
+}
+void build_punctured_tank() {
+  for (EACH_LOCATION(loc)) {
+    if (loc.z < 8 && loc.x > 10) tiles[loc].contents = ROCK;
+    else if (loc.x >= 12 && loc.y <= 13 && loc.y >= 7) { tiles[loc].contents = WATER; }
+    else if (loc.y != 10 && loc.x > 10) tiles[loc].contents = ROCK;
+    else if (loc.z > 8 && loc.x > 10 && loc.x < 18) tiles[loc].contents = ROCK;
+    else if (loc.x > 10) { tiles[loc].contents = WATER; }
+  }
+}
+void build_annoying_twisty_passageways() {
+  for (EACH_LOCATION(loc)) {
+    if (loc.x == 0)tiles[loc].contents = WATER;
+    else if (loc.x == 1 && loc.z > 0) tiles[loc].contents = ROCK;
+    else if (loc.x == 5) tiles[loc].contents = ROCK;
+    else if (loc.x == 2 && (loc.z % 4) == 1) tiles[loc].contents = ROCK;
+    else if (loc.x == 3 && (loc.z % 2) == 1) tiles[loc].contents = ROCK;
+    else if (loc.x == 4 && (loc.z % 4) == 3) tiles[loc].contents = ROCK;
+  }
+}
+void build_a_little_water_on_the_ground() {
+  for (int x = 5; x <= 11; ++x) { for (int y = 5; y <= 11; ++y) {
+    tiles[location(x, y, 0)].contents = WATER;
+  }}
+}
+
 static void mainLoop ()
 {
     SDL_Event event;
     int done = 0;
     int frame = 0;
     int p_mode = 0;
-
+srand(time(NULL));
 	for (EACH_LOCATION(loc))
 	{
 	tiles[loc].contents = AIR;
 	}
-	for (EACH_LOCATION(loc))
-	{
-		if (loc.x >= 4 && loc.x <= 6 && loc.y >= 4 && loc.y <= 6 && loc.z >= 1/* && loc.z <= 6*/ )tiles[loc].contents = WATER; //* 4 / 5;
-		//else if (loc.x == 5 && loc.y >= 5 && loc.z == 0) ;
-		else if (loc.x >= 3 && loc.x <= 7 && loc.y >= 3 && loc.y <= 7 && loc.z >= 1)tiles[loc].contents = ROCK;
-		else if ((loc.x == 1 || loc.x == 9 || loc.y == 1 || loc.y == 9) && loc.z < 3)tiles[loc].contents = ROCK;
-		//if (loc.x >= 5 && loc.x <= 11 && loc.y >= 5 && loc.y <= 11 && loc.z < 1)tiles[loc].water.amount = precision_scale * 4 / 5;
-		/*if (loc.z == 0 && loc.x >= 5) tiles[loc].is_solid_rock =true;
-		else if (loc.z == 1 && loc.x >= 10) tiles[loc].is_solid_rock =true;
-		else if (loc.z == 2 && loc.x >= 15) tiles[loc].is_solid_rock =true;
-		else if (loc.x == 19)tiles[loc].water.amount = precision_scale;*/
-		/*if (loc.z < 8 && loc.x > 10) tiles[loc].is_solid_rock =true;
-		else if (loc.x >= 12 && loc.y <= 13 && loc.y >= 7) { tiles[loc].water.amount = precision_scale; }
-		else if (loc.y != 10 && loc.x > 10) tiles[loc].is_solid_rock =true;
-		else if (loc.z > 8 && loc.x > 10 && loc.x < 18) tiles[loc].is_solid_rock =true;
-		else if (loc.x > 10) { tiles[loc].water.amount = precision_scale; }*/
-		/*if (loc.z < 20 - loc.x) tiles[loc].is_solid_rock = true;
-		else if (loc.z >= 15 && (20 - loc.x) >= 15) tiles[loc].water.amount = precision_scale;*/
-		/*if (loc.x == 0)tiles[loc].water.amount = precision_scale;
-		else if (loc.x == 1 && loc.z > 0) tiles[loc].is_solid_rock = true;
-		else if (loc.x == 5) tiles[loc].is_solid_rock = true;
-		else if (loc.x == 2 && (loc.z % 4) == 1) tiles[loc].is_solid_rock = true;
-		else if (loc.x == 3 && (loc.z % 2) == 1) tiles[loc].is_solid_rock = true;
-		else if (loc.x == 4 && (loc.z % 4) == 3) tiles[loc].is_solid_rock = true;*/
-	}
+	 build_midair_water_tower(1); wall_midair_water_tower(1); build_extra_ground_walls();
+	 //build_water_sheet_and_shallow_slope();
+	 //build_water_mass_and_steep_slope();
+	 //build_punctured_tank();
+	 //build_annoying_twisty_passageways();
+	 //build_a_little_water_on_the_ground();
+
     
     while ( !done ) {
 

@@ -36,3 +36,8 @@ Water that gets pushed sideways - what velocity does it end up with? i.e. if I s
 R6) There's a maximum velocity.
 
 OBSERVATION: Things that have to deal with an "entire lake", but really only care about the surfaces of the lake, can ignore tiles that are totally surrounded by water, because those tiles can't block off the path to any surface tile... unless there's something hovering in the middle of the lake for some reason (and there are hokey ways to handle that weird case without trouble)
+
+
+
+
+Current things missing: non-randomness; a 1x1 pillar of water has no exit surfaces

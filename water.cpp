@@ -141,6 +141,10 @@ public:
 typedef vector3 one_tile_direction_vector;
 typedef vector3 location;
 
+vector3 project_onto_cardinal_direction(vector3 src, one_tile_direction_vector dir) {
+  return vector3(src.x * std::abs(dir.x), src.y * std::abs(dir.y), src.z * std::abs(dir.z));
+}
+
 #define MAX_X 20
 #define MAX_Y 20
 #define MAX_Z 20
@@ -210,6 +214,7 @@ enum tile_contents {
 struct tile
 {
   tile_contents contents;
+  vector3 water_velocity;
   int water_group_number; // a temporary variable during the computation
 };
 
@@ -222,36 +227,60 @@ struct tiles_type {
 };
 tiles_type tiles;
 
-// 'velocity' in a diagonal direction is scaled up (i.e. velocity going to (1,1,1) is sqrt(3) times as gret as the same amount going in a cardinal direction)
-scalar_type outpushing_velocity[MAX_X][MAX_Y][MAX_Z][3][3][3];
-scalar_type outgoing_forces_from_pressure[MAX_X][MAX_Y][MAX_Z][3][3][3];
-scalar_type outgoing_water[MAX_X][MAX_Y][MAX_Z][3][3][3];
 
+bool can_group(location loc) {
+  if (out_of_bounds(loc)) return false;
+  if (tiles[loc].contents != WATER) return false;
+  return true;
+}
 
+bool can_be_exit_tile(location loc) {
+  if (!can_group(loc)) return false;
+  int airs = 0;
+  for (EACH_CARDINAL_DIRECTION(dir)) {
+    if (!out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR) ++airs;
+  }
+  if (airs > 1) return false;
+  return true;
+}
 
-void mark_water_group_that_includes(location loc, int group_number, map<int, set<location> >& edge_tiles_by_group) {
+struct water_group {
+  int max_tile_z;
+  int max_exit_tile_z;
+  std::set<location> tiles;
+  set<pair<location, one_tile_direction_vector> > exit_surfaces;
+  water_group():max_tile_z(0),max_exit_tile_z(0){}
+};
+
+void mark_water_group_that_includes(location loc, int group_number, map<int, water_group>& groups) {
   set<location> frontier;
   frontier.insert(loc);
-  edge_tiles_by_group.insert(make_pair(group_number, set<location>()));
+  groups.insert(make_pair(group_number, water_group()));
   while(!frontier.empty())
   {
     const location next_loc = *(frontier.begin());
     frontier.erase(frontier.begin());
+    
     tiles[next_loc].water_group_number = group_number;
-    bool is_edge_tile = false;
+    groups[group_number].tiles.insert(next_loc);
+    if (next_loc.z > groups[group_number].max_tile_z) groups[group_number].max_tile_z = next_loc.z;
+    
+    //bool is_exit_tile = false;
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const location adj_loc = next_loc + dir;
       if (!out_of_bounds(adj_loc)) {
         tile &adj_tile = tiles[adj_loc];
-        if (adj_tile.contents == WATER && adj_tile.water_group_number == 0) {
+        if (can_group(adj_loc) && adj_tile.water_group_number == 0) {
           frontier.insert(adj_loc);
         }
-        if (adj_tile.contents == AIR) {
-         is_edge_tile = true;
+        if (can_be_exit_tile(next_loc) && (adj_tile.contents == AIR || (adj_tile.contents == WATER && !can_be_exit_tile(adj_loc)))) {
+          groups[group_number].exit_surfaces.insert(std::make_pair(next_loc, dir));
+          if (next_loc.z > groups[group_number].max_exit_tile_z) groups[group_number].max_exit_tile_z = next_loc.z;
+          //is_exit_tile = true;
         }
       }
     }
-    if (is_edge_tile) edge_tiles_by_group[group_number].insert(next_loc);
+    //if (is_exit_tile && can_be_exit_tile(next_loc)) exit_tiles_by_group[group_number].insert(next_loc);
   }
 }
 
@@ -260,38 +289,75 @@ void update_water() {
     tiles[loc].water_group_number = 0;
   }
   int next_group_number = 1;
-  map<int, set<location> > edge_tiles_by_group;
+  map<int, water_group > groups;
   for (EACH_LOCATION(loc)) {
-    if(tiles[loc].contents == WATER && tiles[loc].water_group_number == 0) {
-      mark_water_group_that_includes(loc, ++next_group_number, edge_tiles_by_group);
+    if(can_group(loc) && tiles[loc].water_group_number == 0) {
+      mark_water_group_that_includes(loc, ++next_group_number, groups);
     }
   }
-  for (auto i = edge_tiles_by_group.begin(); i != edge_tiles_by_group.end(); ++i) {
+  for (auto i = groups.begin(); i != groups.end(); ++i) {
     const int group_number = i->first;
-    const set<location> edge_tiles = i->second;
-    int max_z = 0;
+    water_group const& group = i->second;
     vector<location> top_tiles;
-    for (auto j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
-      if (j->z > max_z) max_z = j->z;
-    }
     set<pair<location, one_tile_direction_vector> > non_top_surfaces;
-    for (auto j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
-      if (j->z == max_z) top_tiles.push_back(*j);
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        if (!(j->z == max_z && dir.z == 1)) {
-          const location adj_loc = *j + dir;
-          if (!out_of_bounds(adj_loc)) {
-            if (tiles[adj_loc].contents == AIR) non_top_surfaces.insert(make_pair(*j, dir));
-          }
-        }
-      }
+    for (auto j = group.tiles.begin(); j != group.tiles.end(); ++j) {
+      if (j->z == group.max_tile_z) top_tiles.push_back(*j);
     }
     
-    for(auto surface = non_top_surfaces.begin(); surface != non_top_surfaces.end(); ++surface) {
-      if (rand()%10000 < 10 * std::sqrt(max_z + 0.5 - ((double)surface->first.z + 0.5*surface->second.z))) {
-        tiles[top_tiles[rand()%top_tiles.size()]].contents = AIR;
-        tiles[surface->first + surface->second].contents = WATER;
-        break;
+    for(auto surface = group.exit_surfaces.begin(); surface != group.exit_surfaces.end(); ++surface) {
+      const double pressure = group.max_exit_tile_z + 0.5 - ((double)surface->first.z + 0.5*surface->second.z); // proportional to depth, assuming side surfaces are at the middle of the side
+      tile &surface_target_tile = tiles[surface->first + surface->second];
+      if (surface_target_tile.contents == AIR) {
+        if (rand()%5000 < 10 * std::sqrt(pressure)) {
+          tiles[top_tiles[rand()%top_tiles.size()]].contents = AIR;
+          surface_target_tile.contents = WATER;
+          surface_target_tile.water_velocity = vector3(0,0,0);
+        }
+      }
+      else if (surface_target_tile.contents == WATER) {
+        surface_target_tile.water_velocity += surface->second * (int)(10 * std::sqrt(pressure));
+      }
+      else assert(false);
+    }
+  }
+  
+  for (EACH_LOCATION(loc)) {
+    if (can_be_exit_tile(loc)) {
+      tiles[loc].water_velocity = vector3(0,0,0);
+    }
+  }
+  
+  for (EACH_LOCATION(loc)) {
+    if (tiles[loc].contents == WATER && !can_be_exit_tile(loc)) {
+      tiles[loc].water_velocity.z -= 5;
+      one_tile_direction_vector travel_dir(0,0,0);
+      int randvalue = rand()%145600;
+      if (randvalue < std::abs(tiles[loc].water_velocity.x)) travel_dir = one_tile_direction_vector(1,0,0) * sign(tiles[loc].water_velocity.x);
+      else if (randvalue < std::abs(tiles[loc].water_velocity.x) + std::abs(tiles[loc].water_velocity.y)) travel_dir = one_tile_direction_vector(0,1,0) * sign(tiles[loc].water_velocity.y);
+      else if (randvalue < std::abs(tiles[loc].water_velocity.x) + std::abs(tiles[loc].water_velocity.y) + std::abs(tiles[loc].water_velocity.z)) travel_dir = one_tile_direction_vector(0,0,1) * sign(tiles[loc].water_velocity.z);
+      
+      if (loc + travel_dir != loc) {
+        if (out_of_bounds(loc + travel_dir) || tiles[loc + travel_dir].contents == ROCK) {
+          tiles[loc].water_velocity -= project_onto_cardinal_direction(tiles[loc].water_velocity, travel_dir);
+        }
+        else if (tiles[loc + travel_dir].contents == AIR) {
+          tiles[loc].contents = AIR;
+          tiles[loc + travel_dir].contents = WATER;
+          tiles[loc + travel_dir].water_velocity = tiles[loc].water_velocity;
+        }
+        else if (tiles[loc + travel_dir].contents = WATER) {
+          if (can_be_exit_tile(loc + travel_dir)) {
+            //TODO... right now, same as rock
+            tiles[loc].water_velocity -= project_onto_cardinal_direction(tiles[loc].water_velocity, travel_dir);
+          }
+          else {
+            const vector3 vel_diff = tiles[loc].water_velocity - tiles[loc + travel_dir].water_velocity;
+            const vector3 exchanged_velocity = project_onto_cardinal_direction(vel_diff, travel_dir) / 2;
+            tiles[loc].water_velocity -= exchanged_velocity;
+            tiles[loc + travel_dir].water_velocity += exchanged_velocity;
+          }
+        }
+        else assert(false);
       }
     }
   }
