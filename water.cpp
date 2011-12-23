@@ -492,7 +492,7 @@ void update_water() {
       src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
       progress_ref = 0;
     }
-    assert(progress_ref > 0);
+    assert(progress_ref >= 0);
     assert(progress_ref <= progress_necessary);
   }
 }

@@ -219,7 +219,7 @@ srand(time(NULL));
 		}
 		else {
 		  if(can_be_exit_tile(loc))glColor4f(0.0, 0.0, 1.0, 0.5);
-		  else glColor4f(1.0, 0.5, 0.0, 0.5);
+		  else glColor4f(0.4, 0.4, 1.0, 0.5);
 		}
 		glBegin(GL_POLYGON);
 			glVertex3f(loc.x, loc.y, (double)loc.z + 0.5);
