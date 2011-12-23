@@ -9,6 +9,12 @@
 #include <iostream>
 #include <inttypes.h>
 
+using std::map;
+using std::pair;
+using std::make_pair;
+using std::set;
+using std::vector;
+
 class bounds_checked_int {
 public:
 	bounds_checked_int():value(0){}
@@ -223,10 +229,10 @@ scalar_type outgoing_water[MAX_X][MAX_Y][MAX_Z][3][3][3];
 
 
 
-void mark_water_group_that_includes(location loc, int group_number, std::map<int, std::set<location> >& edge_tiles_by_group) {
-  std::set<location> frontier;
+void mark_water_group_that_includes(location loc, int group_number, map<int, set<location> >& edge_tiles_by_group) {
+  set<location> frontier;
   frontier.insert(loc);
-  edge_tiles_by_group.insert(std::make_pair(group_number, std::set<location>()));
+  edge_tiles_by_group.insert(make_pair(group_number, set<location>()));
   while(!frontier.empty())
   {
     const location next_loc = *(frontier.begin());
@@ -254,34 +260,34 @@ void update_water() {
     tiles[loc].water_group_number = 0;
   }
   int next_group_number = 1;
-  std::map<int, std::set<location> > edge_tiles_by_group;
+  map<int, set<location> > edge_tiles_by_group;
   for (EACH_LOCATION(loc)) {
     if(tiles[loc].contents == WATER && tiles[loc].water_group_number == 0) {
       mark_water_group_that_includes(loc, ++next_group_number, edge_tiles_by_group);
     }
   }
-  for (std::map<int, std::set<location> >::const_iterator i = edge_tiles_by_group.begin(); i != edge_tiles_by_group.end(); ++i) {
+  for (map<int, set<location> >::const_iterator i = edge_tiles_by_group.begin(); i != edge_tiles_by_group.end(); ++i) {
     const int group_number = i->first;
-    const std::set<location> edge_tiles = i->second;
+    const set<location> edge_tiles = i->second;
     int max_z = 0;
-    std::vector<location> top_tiles;
-    for (std::set<location>::const_iterator j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
+    vector<location> top_tiles;
+    for (set<location>::const_iterator j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
       if (j->z > max_z) max_z = j->z;
     }
-    std::set<std::pair<location, one_tile_direction_vector> > non_top_surfaces;
-    for (std::set<location>::const_iterator j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
+    set<pair<location, one_tile_direction_vector> > non_top_surfaces;
+    for (set<location>::const_iterator j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
       if (j->z == max_z) top_tiles.push_back(*j);
       for (EACH_CARDINAL_DIRECTION(dir)) {
         if (!(j->z == max_z && dir.z == 1)) {
           const location adj_loc = *j + dir;
           if (!out_of_bounds(adj_loc)) {
-            if (tiles[adj_loc].contents == AIR) non_top_surfaces.insert(std::make_pair(*j, dir));
+            if (tiles[adj_loc].contents == AIR) non_top_surfaces.insert(make_pair(*j, dir));
           }
         }
       }
     }
     
-    for(std::set<std::pair<location, one_tile_direction_vector> >::const_iterator surface = non_top_surfaces.begin(); surface != non_top_surfaces.end(); ++surface) {
+    for(set<pair<location, one_tile_direction_vector> >::const_iterator surface = non_top_surfaces.begin(); surface != non_top_surfaces.end(); ++surface) {
       if (rand()%10000 < 10 * std::sqrt(max_z + 0.5 - ((double)surface->first.z + 0.5*surface->second.z))) {
         tiles[top_tiles[rand()%top_tiles.size()]].contents = AIR;
         tiles[surface->first + surface->second].contents = WATER;
