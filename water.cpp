@@ -313,13 +313,15 @@ struct wanted_move {
 
 void check_progress(location loc, int group_number_or_zero_for_velocity_movement, vector<wanted_move> &wanted_moves){
   // If the tile has been pushed sufficient to move in more than one direction, make a "wanted move" in only one direction, chosen at random.
-  scalar_type greatest_want = 0;
+  // Actually we can now want to go in all directions. The movement code handles it.
+  /*scalar_type greatest_want = 0;
   int num_greatest = 0;
-  one_tile_direction_vector chosen_move;
+  one_tile_direction_vector chosen_move;*/
   for (EACH_CARDINAL_DIRECTION(dir)) {
     scalar_type want = tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z];
     if (want > progress_necessary) {
-      if (want > greatest_want) {
+      wanted_moves.push_back(wanted_move(loc, dir, group_number_or_zero_for_velocity_movement));
+      /*if (want > greatest_want) {
         greatest_want = want;
         num_greatest = 1;
         chosen_move = dir;
@@ -329,12 +331,12 @@ void check_progress(location loc, int group_number_or_zero_for_velocity_movement
         if (rand()%num_greatest == 0) {
           chosen_move = dir;
         }
-      }
+      }*/
     }
   }
-  if (num_greatest > 0) {
+  /*if (num_greatest > 0) {
     wanted_moves.push_back(wanted_move(loc, chosen_move, group_number_or_zero_for_velocity_movement));
-  }
+  }*/
 }
 
 void update_water() {
@@ -406,12 +408,15 @@ void update_water() {
   }
   
   std::random_shuffle(wanted_moves.begin(), wanted_moves.end());
+  std::set<location> disturbed_tiles;
   
   for (const wanted_move move : wanted_moves) {
     const location dst = move.src + move.dir;
     tile &src_tile = tiles[move.src];
-    // if the water has been yanked away somehow, don't pretend it can still move
-    if (src_tile.contents != WATER) continue;
+    // in certain situations we shouldn't try to move water more than once
+    if (disturbed_tiles.find(move.src) != disturbed_tiles.end()) continue;
+    // anything where the water was yanked away should have been marked "disturbed"
+    assert(src_tile.contents = WATER);
     
     scalar_type& progress_ref = src_tile.water_movement.progress[1+move.dir.x][1+move.dir.y][1+move.dir.z];
     
@@ -419,8 +424,9 @@ void update_water() {
       // TODO remove this duplicate code: we behave the same as going to rock
       // TODO figure out what to actually do about the fact that water can change to exit-tile-capable while having lots of progress.
       //assert(move.group_number_or_zero_for_velocity_movement == 0);
-      src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
-      progress_ref = 0;
+      if (dot_product(src_tile.water_movement.velocity, move.dir) > 0)
+        src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
+      progress_ref = progress_necessary;
       continue;
     }
     
@@ -430,6 +436,7 @@ void update_water() {
       if (move.group_number_or_zero_for_velocity_movement == 0) {
         progress_ref -= progress_necessary;
         src_tile.contents = AIR;
+        disturbed_tiles.insert(move.src);
         dst_tile.contents = WATER;
         dst_tile.water_movement = src_tile.water_movement;
       }
@@ -458,14 +465,16 @@ void update_water() {
         assert(num_top_tiles > 0);
         
         tiles[chosen_top_tile].contents = AIR;
+        disturbed_tiles.insert(chosen_top_tile);
       }
     }
     else if (dst_tile.contents == WATER) {
       if (move.group_number_or_zero_for_velocity_movement == 0) {
         if (can_be_exit_tile(dst)) {
           //TODO... right now, same as rock
-          src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
-          progress_ref = 0;
+          if (dot_product(src_tile.water_movement.velocity, move.dir) > 0)
+            src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
+          progress_ref = progress_necessary;
         }
         else {
           const vector3 vel_diff = src_tile.water_movement.velocity - dst_tile.water_movement.velocity;
@@ -488,9 +497,11 @@ void update_water() {
     }
     else if (dst_tile.contents == ROCK) {
       // TODO figure out what to actually do about the fact that water can change to exit-tile-capable while having lots of progress.
+      // Also note that this code is currently duplicated in three places...
       //assert(move.group_number_or_zero_for_velocity_movement == 0);
-      src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
-      progress_ref = 0;
+      if (dot_product(src_tile.water_movement.velocity, move.dir) > 0)
+        src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
+      progress_ref = progress_necessary;
     }
     assert(progress_ref >= 0);
     assert(progress_ref <= progress_necessary);
