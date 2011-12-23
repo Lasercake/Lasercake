@@ -1,0 +1,38 @@
+Attempting the following requirements:
+R1) We have water that's remotely reasonable.
+R2) Water can fly through the air over time.
+R3) There are lakes of water on the ground.
+R4) The landscape (which includes lakes) requires no simulation time.
+
+We come to the following conclusions:
+C1) There's a list of 'active' objects; they are the (only) things that automatically get simulated each frame.
+C2) Whenever something happens in a tile, it might activate objects in any adjacent tile. It (usually) won't activate anything outside that range.
+C3) Water that is in the air for no reason falls down.
+C4) A bunch of water in an enclosed area without weird stimulation eventually becomes an inactive lake.
+C5) There is a special process (or a regular process, maybe?) by which water that's not quite a level lake tries to become one.
+C6) If there are rivers, they're a kludge; a "river" is a static thing that just acts like a river when you mess with it.
+
+We asked the following questions:
+Q1) What happens when two pieces of water flying through the air hit each other?
+Q2) What happens when flying water hits the surface of a lake?
+Q3) What happens when you cut a tunnel into the bottom of a lake?
+
+
+NEW REQUIREMENTS:
+R4) There's pressure.
+R5) Rock uses the exact same system as water. (Water has approximately zero resistance to collapsing under pressure; many kinds of rock have very high resistance. Sand has low resistance.)
+
+Questions:
+Q1) How do you compute a tile's pressure? What defines it?
+Q2) There's some sort of pressure-propagating system that is relatively slow?
+Q3) Can we make a system where a deep-underground collapse doesn't affect the billions of tiles above it, because it falls under some strong arch?
+
+Conclusions:
+C1) Rock mostly just falls down. Water also gets pushed sideways.
+
+Question:
+Water that gets pushed sideways - what velocity does it end up with? i.e. if I start with a giant pillar of rock on one tile of stationary water, what happens on the next frame?
+
+R6) There's a maximum velocity.
+
+OBSERVATION: Things that have to deal with an "entire lake", but really only care about the surfaces of the lake, can ignore tiles that are totally surrounded by water, because those tiles can't block off the path to any surface tile... unless there's something hovering in the middle of the lake for some reason (and there are hokey ways to handle that weird case without trouble)
