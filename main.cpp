@@ -127,6 +127,15 @@ void build_punctured_tank() {
     else if (loc.x > 10) { tiles[loc].contents = WATER; }
   }
 }
+void build_punctured_tank2() {
+  for (EACH_LOCATION(loc)) {
+    if (loc.z < 8 && loc.x > 10) tiles[loc].contents = ROCK;
+    else if (loc.x >= 12 && loc.y <= 13 && loc.y >= 7) { tiles[loc].contents = WATER; }
+    else if (loc.y != 9 && loc.y != 10 && loc.x > 10) tiles[loc].contents = ROCK;
+    else if (loc.z > 9 && loc.x > 10 && loc.x < 18) tiles[loc].contents = ROCK;
+    else if (loc.x > 10) { tiles[loc].contents = WATER; }
+  }
+}
 void build_annoying_twisty_passageways() {
   for (EACH_LOCATION(loc)) {
     if (loc.x == 0)tiles[loc].contents = WATER;
@@ -160,6 +169,7 @@ srand(time(NULL));
   else if (scenario == "shallow") { build_water_sheet_and_shallow_slope(); }
   else if (scenario == "steep") { build_water_mass_and_steep_slope(); }
   else if (scenario == "tank") { build_punctured_tank(); }
+  else if (scenario == "tank2") { build_punctured_tank2(); }
   else if (scenario == "twisty") { build_annoying_twisty_passageways(); }
   else build_a_little_water_on_the_ground();
 
