@@ -1,1 +1,1 @@
-g++ -o sim -ggdb -O0 -I/usr/include/SDL/ -lSDL -lGL -lGLU main.cpp
+g++ -std=c++0x -o sim -ggdb -O0 -I/usr/include/SDL/ -lSDL -lGL -lGLU main.cpp

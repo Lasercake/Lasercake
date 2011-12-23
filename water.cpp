@@ -266,16 +266,16 @@ void update_water() {
       mark_water_group_that_includes(loc, ++next_group_number, edge_tiles_by_group);
     }
   }
-  for (map<int, set<location> >::const_iterator i = edge_tiles_by_group.begin(); i != edge_tiles_by_group.end(); ++i) {
+  for (auto i = edge_tiles_by_group.begin(); i != edge_tiles_by_group.end(); ++i) {
     const int group_number = i->first;
     const set<location> edge_tiles = i->second;
     int max_z = 0;
     vector<location> top_tiles;
-    for (set<location>::const_iterator j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
+    for (auto j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
       if (j->z > max_z) max_z = j->z;
     }
     set<pair<location, one_tile_direction_vector> > non_top_surfaces;
-    for (set<location>::const_iterator j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
+    for (auto j = edge_tiles.begin(); j != edge_tiles.end(); ++j) {
       if (j->z == max_z) top_tiles.push_back(*j);
       for (EACH_CARDINAL_DIRECTION(dir)) {
         if (!(j->z == max_z && dir.z == 1)) {
@@ -287,7 +287,7 @@ void update_water() {
       }
     }
     
-    for(set<pair<location, one_tile_direction_vector> >::const_iterator surface = non_top_surfaces.begin(); surface != non_top_surfaces.end(); ++surface) {
+    for(auto surface = non_top_surfaces.begin(); surface != non_top_surfaces.end(); ++surface) {
       if (rand()%10000 < 10 * std::sqrt(max_z + 0.5 - ((double)surface->first.z + 0.5*surface->second.z))) {
         tiles[top_tiles[rand()%top_tiles.size()]].contents = AIR;
         tiles[surface->first + surface->second].contents = WATER;
