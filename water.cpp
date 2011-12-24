@@ -235,7 +235,11 @@ const scalar_type progress_necessary = 5000 * precision_factor; // loosely speak
 const scalar_type min_convincing_speed = 100 * precision_factor; // TODO maybe randomize the use of this so that it isn't so... mechanical-looking?
 const vector3 gravity_acceleration(0, 0, -5*precision_factor); // in mini-units per frame squared
 const scalar_type friction_amount = 3 * precision_factor;
-const scalar_type pressure_motion_factor = 100 * precision_factor;
+
+// as in 1 + d2 (except with the random based at zero, but who cares)
+const scalar_type pressure_motion_factor = 80 * precision_factor;
+const scalar_type pressure_motion_factor_random = 40 * precision_factor;
+
 const scalar_type air_resistance_constant = (200000 * precision_factor * precision_factor);
 const scalar_type idle_progress_reduction_rate = 100 * precision_factor;
 const scalar_type grouped_water_velocity_reduction_rate = 5*precision_factor;
@@ -379,7 +383,7 @@ void update_water() {
     for(auto surface = group.exit_surfaces.begin(); surface != group.exit_surfaces.end(); ++surface) {
       const double pressure = ((double)group.max_tile_z - 0.5) - ((double)surface->first.z + 0.5*surface->second.z); // proportional to depth, assuming side surfaces are at the middle of the side. HACK: This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
       if (pressure > 0) {
-        do_progress(wanted_moves, surface->first, surface->second, tiles[surface->first].water_group_number, (scalar_type)(pressure_motion_factor * std::sqrt(pressure)));
+        do_progress(wanted_moves, surface->first, surface->second, tiles[surface->first].water_group_number, (scalar_type)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure)));
       }
     }
   }
