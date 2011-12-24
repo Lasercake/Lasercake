@@ -302,6 +302,14 @@ void mark_water_group_that_includes(location loc, int group_number, map<int, wat
         if (can_group(adj_loc) && adj_tile.water_group_number == 0) {
           frontier.insert(adj_loc);
         }
+        // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
+        if (adj_tile.contents == AIR) {
+          for (EACH_CARDINAL_DIRECTION(d2)) {
+            if (d2.dot(dir) == 0 && can_group(adj_loc + d2) && tiles[adj_loc + d2].water_group_number == 0) {
+              frontier.insert(adj_loc + d2);
+            }
+          }
+        }
         if (can_be_exit_tile(next_loc) && (adj_tile.contents == AIR || (adj_tile.contents == WATER && !can_be_exit_tile(adj_loc)))) {
           groups[group_number].exit_surfaces.insert(std::make_pair(next_loc, dir));
           is_exit_tile = true;
