@@ -145,7 +145,6 @@ typedef vector3 location;
 vector3 project_onto_cardinal_direction(vector3 src, one_tile_direction_vector dir) {
   return vector3(src.x * std::abs(dir.x), src.y * std::abs(dir.y), src.z * std::abs(dir.z));
 }
-scalar_type dot_product(vector3 const& v1, vector3 const& v2) { return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z; }
 
 #define MAX_X 20
 #define MAX_Y 20
@@ -329,8 +328,12 @@ void update_water() {
       bool already_at_the_bottom = (tiles[loc].water_movement.progress[1+0][1+0][1-1] >= progress_necessary);
       
       tiles[loc].water_movement.velocity.z -= 5;
+      
+      // Slight air resistance proportional to the square of the velocity
+      
+      
       for (EACH_CARDINAL_DIRECTION(dir)) {
-        const scalar_type dp = dot_product(tiles[loc].water_movement.velocity, dir);
+        const scalar_type dp = tiles[loc].water_movement.velocity.dot(dir);
         scalar_type new_progress = 0;
         if (dp > 0) new_progress += dp;
 
@@ -362,7 +365,7 @@ void update_water() {
       // TODO remove this duplicate code: we behave the same as going to rock
       // TODO figure out what to actually do about the fact that water can change to exit-tile-capable while having lots of progress.
       //assert(move.group_number_or_zero_for_velocity_movement == 0);
-      if (dot_product(src_tile.water_movement.velocity, move.dir) > 0)
+      if (src_tile.water_movement.velocity.dot(move.dir) > 0)
         src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
       progress_ref = progress_necessary;
       continue;
@@ -409,7 +412,7 @@ void update_water() {
       }
       
       // If a tile moves, we're now content to assume that it was moving because it had a realistic velocity in that direction, so we should continue with that assumption.
-      const scalar_type amount_of_new_vel_in_movement_dir = dot_product(dst_tile.water_movement.velocity, move.dir);
+      const scalar_type amount_of_new_vel_in_movement_dir = dst_tile.water_movement.velocity.dot(move.dir);
       const scalar_type deficiency_of_new_vel_in_movement_dir = move.amount_of_the_push_that_sent_us_over_the_threshold - amount_of_new_vel_in_movement_dir;
       if (deficiency_of_new_vel_in_movement_dir > 0) {
         dst_tile.water_movement.velocity += move.dir * deficiency_of_new_vel_in_movement_dir;
@@ -419,7 +422,7 @@ void update_water() {
       if (move.group_number_or_zero_for_velocity_movement == 0) {
         if (can_be_exit_tile(dst)) {
           //TODO... right now, same as rock
-          if (dot_product(src_tile.water_movement.velocity, move.dir) > 0)
+          if (src_tile.water_movement.velocity.dot(move.dir) > 0)
             src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
           progress_ref = progress_necessary;
         }
@@ -444,7 +447,7 @@ void update_water() {
       // TODO figure out what to actually do about the fact that water can change to exit-tile-capable while having lots of progress.
       // Also note that this code is currently duplicated in three places...
       //assert(move.group_number_or_zero_for_velocity_movement == 0);
-      if (dot_product(src_tile.water_movement.velocity, move.dir) > 0)
+      if (src_tile.water_movement.velocity.dot(move.dir) > 0)
         src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
       progress_ref = progress_necessary;
     }
