@@ -263,49 +263,6 @@ srand(time(NULL));
 		  }
 		}
 		}
-		#if 0
-		if (local_amount < precision_scale / 100) continue;
-//std::cerr << local_amount << "\n";
-
-//std::cerr << tiles[loc].water.velocity_delay.x << " " << tiles[loc].water.velocity_delay.y << " " << tiles[loc].water.velocity_delay.z << " " << "\n";
-		glColor4f(0.0,0.0,1.0,(double)local_amount / (double)(precision_scale*2));
-		glBegin(GL_POLYGON);
-			glVertex3f(loc.x, loc.y, (double)loc.z + 0.5);
-			glVertex3f(loc.x + 1, loc.y, (double)loc.z + 0.5);
-			glVertex3f(loc.x + 1, loc.y +1, (double)loc.z + 0.5);
-			glVertex3f(loc.x, loc.y+1, (double)loc.z + 0.5);
-		glEnd();
-		glColor4f(0.0,0.0,1.0,((double)local_amount + (double)precision_scale) / (double)(precision_scale*2));
-		glBegin(GL_LINES);
-			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-			glVertex3f((double)loc.x+0.5+((double)tiles[loc].water.velocity_delay.x/(double)precision_scale), (double)loc.y+0.5+((double)tiles[loc].water.velocity_delay.y/(double)precision_scale), (double)loc.z + 0.5+((double)tiles[loc].water.velocity_delay.z/(double)precision_scale));
-		glEnd();
-		glColor4f(0.0,1.0,0.0,((double)local_amount + (double)precision_scale) / (double)(precision_scale*2));
-		glBegin(GL_LINES);
-			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-			glVertex3f((double)loc.x+0.5+((double)tiles[loc].water.velocity.x/(double)precision_scale), (double)loc.y+0.5+((double)tiles[loc].water.velocity.y/(double)precision_scale), (double)loc.z + 0.5+((double)tiles[loc].water.velocity.z/(double)precision_scale));
-		glEnd();
-		glBegin(GL_LINES);
-		glColor4f(0.8,0.8,0.0,((double)local_amount + (double)precision_scale) / (double)(precision_scale*2));
-			for(EACH_DIRECTION(d))
-			{
-				const scalar_type force_we = (outpushing_velocity[loc.x][loc.y][loc.z][1+d.x][1+d.y][1+d.z]);
-				//std::cerr<<force_we;
-				glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-				glVertex3f((double)loc.x+0.5+((double)force_we*d.x/(double)precision_scale), (double)loc.y+0.5+((double)force_we*d.y/(double)precision_scale), (double)loc.z + 0.5+((double)force_we*d.z/(double)precision_scale));
-			}
-		glEnd();
-		glColor4f(1.0,0.0,0.0,((double)local_amount + (double)precision_scale) / (double)(precision_scale*2));
-		glBegin(GL_LINES);
-			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-			glVertex3f((double)loc.x+0.5+((double)tiles[loc].water.pressure/(double)precision_scale), (double)loc.y+0.5, (double)loc.z + 0.5+((double)tiles[loc].water.pressure/(double)precision_scale));
-		glEnd();
-		max_pressure = std::max(max_pressure, (int)tiles[loc].water.pressure);
-		max_velmgsq = std::max(max_velmgsq, (int)(tiles[loc].water.velocity.dot(tiles[loc].water.velocity)));
-		total_force += tiles[loc].water.total_force;
-
-	#endif
-//std::cerr << total_amount << "---"<<max_pressure << "---"<<total_force << "\n";
 	}
 		glFinish();	
         SDL_GL_SwapBuffers();

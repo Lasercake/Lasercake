@@ -384,7 +384,7 @@ void update_water() {
         const scalar_type dp = vel_ref.dot(dir);
         if (dp > 0) new_progress += dp;
 
-        // Hack: Water sitting on pillars falls off
+        // Water that's blocked, but can go around in a diagonal direction, makes "progress" towards all those possible directions (so it'll go in a random direction if it could go around in several different diagonals, without having to 'choose' one right away and gain velocity only in that direction). The main purpose of this is to make it so that water doesn't stack nicely in pillars, or sit still on steep slopes.
         for (EACH_CARDINAL_DIRECTION(d2)) {
           if (t.water_movement.being_blocked[d2] && d2.dot(dir) == 0 && !out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR && !out_of_bounds(loc + d2 + dir) && tiles[loc + d2 + dir].contents == AIR) {
             new_progress += min_convincing_speed;
