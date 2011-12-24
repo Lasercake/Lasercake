@@ -40,4 +40,4 @@ OBSERVATION: Things that have to deal with an "entire lake", but really only car
 
 
 
-Current things missing: water is a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); the "water falls off stuff" rule should be non-direction-based (just naturally much more likely to apply in the normal direction because of gravity); get rid of the hacky definition of "already_at_the_bottom"; progress should disappear (very slowly?) over time
+Current things missing: water is a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); the "water falls off stuff" rule should be non-direction-based (just naturally much more likely to apply in the normal direction because of gravity); get rid of the hacky definition of "already_at_the_bottom"; progress should disappear (very slowly?) over time; we need to implement the optimizations/idle-setting stuff

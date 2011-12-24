@@ -438,6 +438,8 @@ void update_water() {
       if (deficiency_of_new_vel_in_movement_dir > 0) {
         dst_tile.water_movement.velocity += move.dir * deficiency_of_new_vel_in_movement_dir;
       }
+      // Also, don't lose movement to rounding error during progress over multiple tiles:
+      dst_tile.water_movement.progress[1+move.dir.x][1+move.dir.y][1+move.dir.z] = std::min(move.excess_progress, progress_necessary);
     }
     else if (dst_tile.contents == WATER) {
       if (move.group_number_or_zero_for_velocity_movement == 0) {
