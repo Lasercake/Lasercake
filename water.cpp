@@ -206,8 +206,12 @@ struct water_movement_info {
   }
 };
 
-const scalar_type progress_necessary = 5000;
-const scalar_type min_convincing_speed = 100;
+const scalar_type precision_factor = 100;
+const scalar_type progress_necessary = 5000 * precision_factor; // loosely speaking, the conversion factor between mini-units and entire tiles
+const scalar_type min_convincing_speed = 100 * precision_factor;
+const vector3 gravity_acceleration(0, 0, -5*precision_factor); // in mini-units per frame squared
+const scalar_type friction_amount = 3 * precision_factor;
+const scalar_type pressure_motion_factor = 100 * precision_factor;
 
 struct tile
 {
@@ -323,7 +327,7 @@ void update_water() {
     for(auto surface = group.exit_surfaces.begin(); surface != group.exit_surfaces.end(); ++surface) {
       const double pressure = ((double)group.max_tile_z - 0.5) - ((double)surface->first.z + 0.5*surface->second.z); // proportional to depth, assuming side surfaces are at the middle of the side. HACK: This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
       if (pressure > 0) {
-        do_progress(wanted_moves, surface->first, surface->second, tiles[surface->first].water_group_number, (scalar_type)(100 * std::sqrt(pressure)));
+        do_progress(wanted_moves, surface->first, surface->second, tiles[surface->first].water_group_number, (scalar_type)(pressure_motion_factor * std::sqrt(pressure)));
       }
     }
   }
@@ -333,12 +337,12 @@ void update_water() {
       bool already_at_the_bottom = (tiles[loc].water_movement.progress[1+0][1+0][1-1] >= progress_necessary);
       
       vector3 &vel_ref = tiles[loc].water_movement.velocity;
-      vel_ref.z -= 5;
+      vel_ref += gravity_acceleration;
       
       // Slight air resistance proportional to the square of the velocity (has very little effect at our current 20x20x20 scale; mostly there to make a natural cap velocity for falling water)
-      vel_ref -= (vel_ref * vel_ref.magnitude()) / 200000;
+      vel_ref -= (vel_ref * vel_ref.magnitude()) / (200000 * precision_factor * precision_factor);
       // Relatively large friction against the ground
-      const scalar_type friction_amount = 3;
+
       if (already_at_the_bottom) {
         vector3 no_vertical_copy = vel_ref; no_vertical_copy.z = 0;
         if (no_vertical_copy.dot(no_vertical_copy) < friction_amount*friction_amount) {

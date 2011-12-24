@@ -245,9 +245,9 @@ srand(time(NULL));
 		  glColor4f(0.0, 1.0, 0.0, 0.5);
 		  glBegin(GL_LINES);
 			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-			glVertex3f((double)loc.x+0.5+((double)tiles[loc].water_movement.velocity.x / 1000),
-			  (double)loc.y+0.5+((double)tiles[loc].water_movement.velocity.y / 1000),
-			  (double)loc.z + 0.5+((double)tiles[loc].water_movement.velocity.z / 1000));
+			glVertex3f((double)loc.x+0.5+((double)tiles[loc].water_movement.velocity.x / (250 * precision_factor)),
+			  (double)loc.y+0.5+((double)tiles[loc].water_movement.velocity.y / (250 * precision_factor)),
+			  (double)loc.z + 0.5+((double)tiles[loc].water_movement.velocity.z / (250 * precision_factor)));
 		  glEnd();
 		  }
 		  glColor4f(0.0, 0.0, 1.0, 0.5);
