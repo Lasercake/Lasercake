@@ -205,7 +205,9 @@ struct water_movement_info {
     }}}
   }
 };
+
 const scalar_type progress_necessary = 5000;
+const scalar_type min_convincing_speed = 100;
 
 struct tile
 {
@@ -356,7 +358,7 @@ void update_water() {
 
         // Hack: Water sitting on pillars falls off
         const one_tile_direction_vector down(0, 0, -1);
-        if (already_at_the_bottom && dir.z == 0 && !out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR && !out_of_bounds(loc + dir + down) && tiles[loc + dir + down].contents == AIR) new_progress += 500;
+        if (already_at_the_bottom && dir.z == 0 && !out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR && !out_of_bounds(loc + dir + down) && tiles[loc + dir + down].contents == AIR) new_progress += min_convincing_speed;
         
         do_progress(wanted_moves, loc, dir, 0, new_progress);
       }
