@@ -290,6 +290,7 @@ struct wanted_move {
   wanted_move(location src,one_tile_direction_vector dir,int g,scalar_type a):src(src),dir(dir),group_number_or_zero_for_velocity_movement(g),amount_of_the_push_that_sent_us_over_the_threshold(a){}
 };
 
+// WARNING: This is glitchy (or at least silly) if you do it more than once for the same loc/dir pair. TODO adjust?
 void do_progress(vector<wanted_move> &wanted_moves, location loc, one_tile_direction_vector dir, int group_number_or_zero_for_velocity_movement, scalar_type amount) {
   scalar_type &progress_ref = tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z];
   assert(amount >= 0);
@@ -325,23 +326,19 @@ void update_water() {
   
   for (EACH_LOCATION(loc)) {
     if (tiles[loc].contents == WATER && !can_be_exit_tile(loc)) {
-      // Hack: Water sitting on pillars falls off
-      if (tiles[loc].water_movement.progress[1+0][1+0][1-1] >= progress_necessary) {
-        for (EACH_CARDINAL_DIRECTION(d2)) {
-          if (d2.z != 0) continue;
-          const one_tile_direction_vector down(0, 0, -1);
-          if (!out_of_bounds(loc + d2) && tiles[loc + d2].contents == AIR && !out_of_bounds(loc + d2 + down) && tiles[loc + d2 + down].contents == AIR) {
-            do_progress(wanted_moves, loc, d2, 0, 500);
-          }
-        }
-      }
+      bool already_at_the_bottom = (tiles[loc].water_movement.progress[1+0][1+0][1-1] >= progress_necessary);
       
       tiles[loc].water_movement.velocity.z -= 5;
       for (EACH_CARDINAL_DIRECTION(dir)) {
         const scalar_type dp = dot_product(tiles[loc].water_movement.velocity, dir);
-        if (dp > 0) {
-          do_progress(wanted_moves, loc, dir, 0, dp);
-        }
+        scalar_type new_progress = 0;
+        if (dp > 0) new_progress += dp;
+
+        // Hack: Water sitting on pillars falls off
+        const one_tile_direction_vector down(0, 0, -1);
+        if (already_at_the_bottom && dir.z == 0 && !out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR && !out_of_bounds(loc + dir + down) && tiles[loc + dir + down].contents == AIR) new_progress += 500;
+        
+        do_progress(wanted_moves, loc, dir, 0, new_progress);
       }
     }
   }
