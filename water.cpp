@@ -244,7 +244,7 @@ struct tile
 {
   tile_contents contents;
   water_movement_info water_movement;
-  int water_group_number; // a temporary variable during the computation
+  int water_group_number; // a temporary variable during the computation. Be warned: Two groups can claim the same non-exit-tile, and the second group will overwrite the first (so after groups are collected, this will only be valid for exit-tiles)
 };
 
 bool out_of_bounds(location loc){return loc.x < 0 || loc.y < 0 || loc.z < 0 || loc.x >= MAX_X || loc.y >= MAX_Y || loc.z >= MAX_Z; }
@@ -294,29 +294,30 @@ void mark_water_group_that_includes(location loc, int group_number, map<int, wat
     groups[group_number].tiles.insert(next_loc);
     if (next_loc.z > groups[group_number].max_tile_z) groups[group_number].max_tile_z = next_loc.z;
     
-    bool is_exit_tile = false;
-    for (EACH_CARDINAL_DIRECTION(dir)) {
-      const location adj_loc = next_loc + dir;
-      if (!out_of_bounds(adj_loc)) {
+    if (can_be_exit_tile(next_loc)) {
+      bool is_exit_tile = false;
+      for (EACH_CARDINAL_DIRECTION(dir)) {
+        const location adj_loc = next_loc + dir;
+        if (out_of_bounds(adj_loc)) continue;
         tile &adj_tile = tiles[adj_loc];
-        if (can_group(adj_loc) && adj_tile.water_group_number == 0) {
+        if (can_group(adj_loc) && adj_tile.water_group_number != group_number) {
           frontier.insert(adj_loc);
         }
         // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
         if (adj_tile.contents == AIR) {
           for (EACH_CARDINAL_DIRECTION(d2)) {
-            if (d2.dot(dir) == 0 && can_group(adj_loc + d2) && tiles[adj_loc + d2].water_group_number == 0) {
+            if (d2.dot(dir) == 0 && can_group(adj_loc + d2) && tiles[adj_loc + d2].water_group_number != group_number) {
               frontier.insert(adj_loc + d2);
             }
           }
         }
-        if (can_be_exit_tile(next_loc) && (adj_tile.contents == AIR || (adj_tile.contents == WATER && !can_be_exit_tile(adj_loc)))) {
+        if (adj_tile.contents == AIR || (adj_tile.contents == WATER && !can_be_exit_tile(adj_loc))) {
           groups[group_number].exit_surfaces.insert(std::make_pair(next_loc, dir));
           is_exit_tile = true;
         }
       }
+      if (is_exit_tile) groups[group_number].exit_tiles.insert(next_loc);
     }
-    if (is_exit_tile) groups[group_number].exit_tiles.insert(next_loc);
   }
 }
 
@@ -365,7 +366,7 @@ void update_water() {
   int next_group_number = 1;
   map<int, water_group> groups;
   for (EACH_LOCATION(loc)) {
-    if(can_group(loc) && tiles[loc].water_group_number == 0) {
+    if(can_be_exit_tile(loc) && tiles[loc].water_group_number == 0) {
       mark_water_group_that_includes(loc, ++next_group_number, groups);
     }
   }
@@ -486,7 +487,8 @@ void update_water() {
         location chosen_top_tile = location(-1,-1,-1);
         int num_top_tiles = 0;
         for (const location loc : groups[move.group_number_or_zero_for_velocity_movement].tiles) {
-          if (tiles[loc].contents != WATER) continue;
+          if (disturbed_tiles.find(loc) != disturbed_tiles.end()) continue;
+          assert(tiles[loc].contents == WATER);
           if (loc.z > chosen_top_tile.z) {
             chosen_top_tile = loc;
             num_top_tiles = 1;
