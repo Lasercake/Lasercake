@@ -286,17 +286,21 @@ struct wanted_move {
   one_tile_direction_vector dir;
   int group_number_or_zero_for_velocity_movement;
   scalar_type amount_of_the_push_that_sent_us_over_the_threshold;
-  wanted_move(location src,one_tile_direction_vector dir,int g,scalar_type a):src(src),dir(dir),group_number_or_zero_for_velocity_movement(g),amount_of_the_push_that_sent_us_over_the_threshold(a){}
+  scalar_type excess_progress;
+  wanted_move(location src,one_tile_direction_vector dir,int g,scalar_type a,scalar_type e):src(src),dir(dir),group_number_or_zero_for_velocity_movement(g),amount_of_the_push_that_sent_us_over_the_threshold(a),excess_progress(e){}
 };
 
-// WARNING: This is glitchy (or at least silly) if you do it more than once for the same loc/dir pair. TODO adjust?
+// WARNING: This is glitchy (or at least silly) if you do it more than once for the same loc/dir pair in the same frame. TODO adjust?
 void do_progress(vector<wanted_move> &wanted_moves, location loc, one_tile_direction_vector dir, int group_number_or_zero_for_velocity_movement, scalar_type amount) {
   scalar_type &progress_ref = tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z];
   assert(amount >= 0);
   assert(progress_ref >= 0);
+  assert(progress_ref <= progress_necessary);
   progress_ref += amount;
-  if (progress_ref > progress_necessary)
-    wanted_moves.push_back(wanted_move(loc, dir, group_number_or_zero_for_velocity_movement, amount));
+  if (progress_ref > progress_necessary) {
+    wanted_moves.push_back(wanted_move(loc, dir, group_number_or_zero_for_velocity_movement, amount, progress_ref - progress_necessary));
+    progress_ref = progress_necessary;
+  }
 }
 
 void update_water() {
@@ -371,8 +375,6 @@ void update_water() {
     assert(src_tile.contents = WATER);
     
     scalar_type& progress_ref = src_tile.water_movement.progress[1+move.dir.x][1+move.dir.y][1+move.dir.z];
-    const scalar_type excess_progress = progress_ref - progress_necessary;
-    assert(excess_progress >= 0);
     
     if (out_of_bounds(dst)) {
       // TODO remove this duplicate code: we behave the same as going to rock
@@ -437,7 +439,6 @@ void update_water() {
           //TODO... right now, same as rock
           if (src_tile.water_movement.velocity.dot(move.dir) > 0)
             src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
-          progress_ref = progress_necessary;
         }
         else {
           const vector3 vel_diff = src_tile.water_movement.velocity - dst_tile.water_movement.velocity;
@@ -446,14 +447,11 @@ void update_water() {
           dst_tile.water_movement.velocity += exchanged_velocity;
           // hmm... since we *don't* move the 'progress' back then they will keep colliding... that might be a good thing? Well, only if we don't let the progress build up extra.
           // TODO: should the velocity-sharing be proportional to the excess progress?
-          progress_ref = progress_necessary;
         }
       }
       else {
         // we tried to move due to pressure, but bumped into free water! Turn our movement into velocity, at some conversion factor.
-        dst_tile.water_movement.velocity += (move.dir * excess_progress) / 10;
-        progress_ref -= excess_progress;
-        assert(progress_ref == progress_necessary);
+        dst_tile.water_movement.velocity += (move.dir * move.excess_progress) / 10;
       }
     }
     else if (dst_tile.contents == ROCK) {
@@ -462,7 +460,6 @@ void update_water() {
       //assert(move.group_number_or_zero_for_velocity_movement == 0);
       if (src_tile.water_movement.velocity.dot(move.dir) > 0)
         src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
-      progress_ref = progress_necessary;
     }
     assert(progress_ref >= 0);
     assert(progress_ref <= progress_necessary);
