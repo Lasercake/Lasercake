@@ -212,6 +212,7 @@ const scalar_type min_convincing_speed = 100 * precision_factor;
 const vector3 gravity_acceleration(0, 0, -5*precision_factor); // in mini-units per frame squared
 const scalar_type friction_amount = 3 * precision_factor;
 const scalar_type pressure_motion_factor = 100 * precision_factor;
+const scalar_type air_resistance_constant = (200000 * precision_factor * precision_factor);
 
 struct tile
 {
@@ -340,7 +341,7 @@ void update_water() {
       vel_ref += gravity_acceleration;
       
       // Slight air resistance proportional to the square of the velocity (has very little effect at our current 20x20x20 scale; mostly there to make a natural cap velocity for falling water)
-      vel_ref -= (vel_ref * vel_ref.magnitude()) / (200000 * precision_factor * precision_factor);
+      vel_ref -= (vel_ref * vel_ref.magnitude()) / air_resistance_constant;
       // Relatively large friction against the ground
 
       if (already_at_the_bottom) {
