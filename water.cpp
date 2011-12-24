@@ -82,7 +82,7 @@ private:
 //typedef int64_t scalar_type;
 typedef int scalar_type;
 
-int divide_rounding_towards_zero(int dividend, int divisor)
+int divide_rounding_towards_zero(scalar_type dividend, scalar_type divisor)
 {
 	assert(divisor != 0);
 	int abs_result = std::abs(dividend) / std::abs(divisor);
@@ -327,13 +327,26 @@ void update_water() {
     if (tiles[loc].contents == WATER && !can_be_exit_tile(loc)) {
       bool already_at_the_bottom = (tiles[loc].water_movement.progress[1+0][1+0][1-1] >= progress_necessary);
       
-      tiles[loc].water_movement.velocity.z -= 5;
+      vector3 &vel_ref = tiles[loc].water_movement.velocity;
+      vel_ref.z -= 5;
       
-      // Slight air resistance proportional to the square of the velocity
-      
+      // Slight air resistance proportional to the square of the velocity (has very little effect at our current 20x20x20 scale; mostly there to make a natural cap velocity for falling water)
+      vel_ref -= (vel_ref * vel_ref.magnitude()) / 200000;
+      // Relatively large friction against the ground
+      const scalar_type friction_amount = 3;
+      if (already_at_the_bottom) {
+        vector3 no_vertical_copy = vel_ref; no_vertical_copy.z = 0;
+        if (no_vertical_copy.dot(no_vertical_copy) < friction_amount*friction_amount) {
+          vel_ref.x = 0; vel_ref.y = 0;
+        }
+        else {
+          vel_ref.x -= divide_rounding_towards_zero(vel_ref.x * friction_amount, no_vertical_copy.magnitude());
+          vel_ref.y -= divide_rounding_towards_zero(vel_ref.y * friction_amount, no_vertical_copy.magnitude());
+        }
+      }
       
       for (EACH_CARDINAL_DIRECTION(dir)) {
-        const scalar_type dp = tiles[loc].water_movement.velocity.dot(dir);
+        const scalar_type dp = vel_ref.dot(dir);
         scalar_type new_progress = 0;
         if (dp > 0) new_progress += dp;
 

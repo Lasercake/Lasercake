@@ -40,4 +40,4 @@ OBSERVATION: Things that have to deal with an "entire lake", but really only car
 
 
 
-Current things missing: water should have some friction/airresistance/whatever; water is a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); the "water falls off stuff" rule should be non-direction-based (just naturally much more likely to apply in the normal direction because of gravity)
+Current things missing: water is a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); the "water falls off stuff" rule should be non-direction-based (just naturally much more likely to apply in the normal direction because of gravity); need to scale the numbers up so that friction doesn't suffer from rounding error
