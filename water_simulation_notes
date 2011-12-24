@@ -40,4 +40,4 @@ OBSERVATION: Things that have to deal with an "entire lake", but really only car
 
 
 
-Current things missing: a 1x1 pillar of water has no exit surfaces; water should have some friction/airresistance/whatever; water is a little too perfect in the direction that it goes
+Current things missing: water should have some friction/airresistance/whatever; water is a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); water after it moves solely due to pressure should start out with a little velocity in the direction it's moving, to avoid weirdness

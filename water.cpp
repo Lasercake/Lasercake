@@ -181,31 +181,9 @@ void incr_cardinal_direction(one_tile_direction_vector &foo){
 #define EACH_DIRECTION(varname) one_tile_direction_vector varname(-1,-1,-1); varname.z < 2; incr_direction(varname)
 #define EACH_CARDINAL_DIRECTION(varname) one_tile_direction_vector varname(-1,0,0); varname.x != -2; incr_cardinal_direction(varname)
 
-//const scalar_type precision_scale = 1000;
 // This constant makes an object be travelling at one tile per frame when it hits the ground after a 100 tile fall.
 //vector3 default_gravity_in_subdivisions_per_frame_squared(0, 0, -(precision_scale / 200));
-//#define NUM_WATER_UNITS
 
-#if 0
-scalar_type stupid_distance(one_tile_direction_vector d)
-{
-	int grid_dist = std::abs(d.x) + std::abs(d.y) + std::abs(d.z);
-	     if (grid_dist == 0)  return 0;
-	else if (grid_dist == 1)  return precision_scale;
-	else if (grid_dist == 2)  return precision_scale *  92682 / (1 << 16);
-	else /*(grid_dist == 3)*/ return precision_scale * 113512 / (1 << 16);
-}
-#endif
-
-
-/*struct water_tile
-{
-	vector3 velocity[NUM_WATER_UNITS]; // in tiles per frame, scaled up by precision_scale
-	vector3 progress[NUM_WATER_UNITS]; // From -precision_scale/2 (bordering the negative-direction tile) to precision_scale/2 (bordering the positive-direction tile).
-	scalar_type pressure;
-	scalar_type amount;
-	water_tile():velocity(0,0,0),total_force(0),amount(0){}
-};*/
 
 enum tile_contents {
   ROCK,
@@ -312,31 +290,12 @@ struct wanted_move {
 };
 
 void check_progress(location loc, int group_number_or_zero_for_velocity_movement, vector<wanted_move> &wanted_moves){
-  // If the tile has been pushed sufficient to move in more than one direction, make a "wanted move" in only one direction, chosen at random.
-  // Actually we can now want to go in all directions. The movement code handles it.
-  /*scalar_type greatest_want = 0;
-  int num_greatest = 0;
-  one_tile_direction_vector chosen_move;*/
   for (EACH_CARDINAL_DIRECTION(dir)) {
     scalar_type want = tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z];
     if (want > progress_necessary) {
       wanted_moves.push_back(wanted_move(loc, dir, group_number_or_zero_for_velocity_movement));
-      /*if (want > greatest_want) {
-        greatest_want = want;
-        num_greatest = 1;
-        chosen_move = dir;
-      }
-      else if (want == greatest_want) {
-        ++num_greatest;
-        if (rand()%num_greatest == 0) {
-          chosen_move = dir;
-        }
-      }*/
     }
   }
-  /*if (num_greatest > 0) {
-    wanted_moves.push_back(wanted_move(loc, chosen_move, group_number_or_zero_for_velocity_movement));
-  }*/
 }
 
 void update_water() {
@@ -380,30 +339,6 @@ void update_water() {
         }
       }
       check_progress(loc, 0, wanted_moves);
-      
-      /*if (loc + travel_dir != loc) {
-        if (out_of_bounds(loc + travel_dir) || tiles[loc + travel_dir].contents == ROCK) {
-          tiles[loc].water_velocity -= project_onto_cardinal_direction(tiles[loc].water_velocity, travel_dir);
-        }
-        else if (tiles[loc + travel_dir].contents == AIR) {
-          tiles[loc].contents = AIR;
-          tiles[loc + travel_dir].contents = WATER;
-          tiles[loc + travel_dir].water_velocity = tiles[loc].water_velocity;
-        }
-        else if (tiles[loc + travel_dir].contents = WATER) {
-          if (can_be_exit_tile(loc + travel_dir)) {
-            //TODO... right now, same as rock
-            tiles[loc].water_velocity -= project_onto_cardinal_direction(tiles[loc].water_velocity, travel_dir);
-          }
-          else {
-            const vector3 vel_diff = tiles[loc].water_velocity - tiles[loc + travel_dir].water_velocity;
-            const vector3 exchanged_velocity = project_onto_cardinal_direction(vel_diff, travel_dir) / 2;
-            tiles[loc].water_velocity -= exchanged_velocity;
-            tiles[loc + travel_dir].water_velocity += exchanged_velocity;
-          }
-        }
-        else assert(false);
-      }*/
     }
   }
   
