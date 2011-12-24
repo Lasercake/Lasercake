@@ -226,7 +226,8 @@ enum tile_contents {
 struct water_movement_info {
   vector3 velocity;
   value_for_each_cardinal_direction<scalar_type> progress;
-  value_for_each_cardinal_direction<bool> being_blocked;
+  value_for_each_cardinal_direction<scalar_type> blockage_amount_this_frame;
+  value_for_each_cardinal_direction<bool> made_any_progress_this_frame;
 };
 
 const scalar_type precision_factor = 100;
@@ -236,6 +237,8 @@ const vector3 gravity_acceleration(0, 0, -5*precision_factor); // in mini-units 
 const scalar_type friction_amount = 3 * precision_factor;
 const scalar_type pressure_motion_factor = 100 * precision_factor;
 const scalar_type air_resistance_constant = (200000 * precision_factor * precision_factor);
+const scalar_type idle_progress_reduction_rate = 100 * precision_factor;
+const scalar_type grouped_water_velocity_reduction_rate = 5*precision_factor;
 
 struct tile
 {
@@ -319,21 +322,37 @@ struct wanted_move {
 };
 
 // WARNING: This is glitchy (or at least silly) if you do it more than once for the same loc/dir pair in the same frame. TODO adjust?
+// NOTE: this is the only function that's allowed to *increase* the amount of progress in a direction. Other places can reduce it, but increasing it must go through here.
 void do_progress(vector<wanted_move> &wanted_moves, location loc, one_tile_direction_vector dir, int group_number_or_zero_for_velocity_movement, scalar_type amount) {
   scalar_type &progress_ref = tiles[loc].water_movement.progress[dir];
   assert(amount >= 0);
   assert(progress_ref >= 0);
   assert(progress_ref <= progress_necessary);
-  progress_ref += amount;
-  if (progress_ref > progress_necessary) {
-    wanted_moves.push_back(wanted_move(loc, dir, group_number_or_zero_for_velocity_movement, amount, progress_ref - progress_necessary));
-    progress_ref = progress_necessary;
+  if (amount > 0) {
+    tiles[loc].water_movement.made_any_progress_this_frame[dir] = true;
+    progress_ref += amount;
+    if (progress_ref > progress_necessary) {
+      wanted_moves.push_back(wanted_move(loc, dir, group_number_or_zero_for_velocity_movement, amount, progress_ref - progress_necessary));
+      progress_ref = progress_necessary;
+    }
   }
 }
 
 void update_water() {
   for (EACH_LOCATION(loc)) {
-    tiles[loc].water_group_number = 0;
+    tile &t = tiles[loc];
+    t.water_group_number = 0;
+    for (bool &mp : t.water_movement.made_any_progress_this_frame) mp = false;
+    
+    if (can_be_exit_tile(loc)) {
+      vector3 &vel_ref = t.water_movement.velocity;
+      if (vel_ref.magnitude_is_less_than(grouped_water_velocity_reduction_rate)) {
+        vel_ref = vector3(0,0,0);
+      }
+      else {
+        vel_ref -= vel_ref * grouped_water_velocity_reduction_rate / vel_ref.magnitude();
+      }
+    }
   }
   int next_group_number = 1;
   map<int, water_group> groups;
@@ -367,7 +386,7 @@ void update_water() {
       // Relatively large friction against the ground
 
       for (EACH_CARDINAL_DIRECTION(dir)) {
-        if (t.water_movement.being_blocked[dir]) {
+        if (t.water_movement.blockage_amount_this_frame[dir] > 0) {
           vector3 copy_stationary_in_blocked_direction = vel_ref; copy_stationary_in_blocked_direction -= project_onto_cardinal_direction(copy_stationary_in_blocked_direction, dir);
           if (copy_stationary_in_blocked_direction.magnitude_is_less_than(friction_amount)) {
             vel_ref -= copy_stationary_in_blocked_direction;
@@ -386,8 +405,8 @@ void update_water() {
 
         // Water that's blocked, but can go around in a diagonal direction, makes "progress" towards all those possible directions (so it'll go in a random direction if it could go around in several different diagonals, without having to 'choose' one right away and gain velocity only in that direction). The main purpose of this is to make it so that water doesn't stack nicely in pillars, or sit still on steep slopes.
         for (EACH_CARDINAL_DIRECTION(d2)) {
-          if (t.water_movement.being_blocked[d2] && d2.dot(dir) == 0 && !out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR && !out_of_bounds(loc + d2 + dir) && tiles[loc + d2 + dir].contents == AIR) {
-            new_progress += min_convincing_speed;
+          if (t.water_movement.blockage_amount_this_frame[d2] > 0 && d2.dot(dir) == 0 && !out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR && !out_of_bounds(loc + d2 + dir) && tiles[loc + d2 + dir].contents == AIR) {
+            new_progress += t.water_movement.blockage_amount_this_frame[d2];
           }
         }
         
@@ -395,7 +414,18 @@ void update_water() {
       }
       
       // TODO: Make sure this always happens, even if water gets blocked and then becomes a potential exit tile.
-      for (bool &bb : t.water_movement.being_blocked) bb = false;
+      for (scalar_type &bb : t.water_movement.blockage_amount_this_frame) bb = 0;
+    }
+  }
+  
+  for (EACH_LOCATION(loc)) {
+    tile &t = tiles[loc];
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      if (!t.water_movement.made_any_progress_this_frame[dir]) {
+        scalar_type &progress_ref = t.water_movement.progress[dir];
+        if (progress_ref < idle_progress_reduction_rate) progress_ref = 0;
+        else progress_ref -= idle_progress_reduction_rate;
+      }
     }
   }
   
@@ -416,8 +446,13 @@ void update_water() {
       // TODO remove this duplicate code: we behave the same as going to rock
       // TODO figure out what to actually do about the fact that water can change to exit-tile-capable while having lots of progress.
       //assert(move.group_number_or_zero_for_velocity_movement == 0);
-      if (src_tile.water_movement.velocity.dot(move.dir) > 0)
-        src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
+      // we're blocked
+      src_tile.water_movement.blockage_amount_this_frame[move.dir] = move.excess_progress;
+      const scalar_type dp = src_tile.water_movement.velocity.dot(move.dir);
+      const scalar_type blocked_velocity = dp - min_convincing_speed;
+      if (blocked_velocity > 0) {
+        src_tile.water_movement.velocity -= move.dir * blocked_velocity;
+      }
       progress_ref = progress_necessary;
       continue;
     }
@@ -473,14 +508,17 @@ void update_water() {
     }
     else {
       // we're blocked
-      src_tile.water_movement.being_blocked[move.dir] = true;
+      src_tile.water_movement.blockage_amount_this_frame[move.dir] = move.excess_progress;
       
       if (dst_tile.contents == WATER) {
         if (move.group_number_or_zero_for_velocity_movement == 0) {
           if (can_be_exit_tile(dst)) {
             //TODO... right now, same as rock
-            if (src_tile.water_movement.velocity.dot(move.dir) > 0)
-              src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
+            const scalar_type dp = src_tile.water_movement.velocity.dot(move.dir);
+            const scalar_type blocked_velocity = dp - min_convincing_speed;
+            if (blocked_velocity > 0) {
+              src_tile.water_movement.velocity -= move.dir * blocked_velocity;
+            }
           }
           else {
             const vector3 vel_diff = src_tile.water_movement.velocity - dst_tile.water_movement.velocity;
@@ -498,10 +536,13 @@ void update_water() {
       }
       else if (dst_tile.contents == ROCK) {
         // TODO figure out what to actually do about the fact that water can change to exit-tile-capable while having lots of progress.
-        // Also note that this code is currently duplicated in three places...
+        // Also note that this code is currently duplicated in three places... TODO fix
         //assert(move.group_number_or_zero_for_velocity_movement == 0);
-        if (src_tile.water_movement.velocity.dot(move.dir) > 0)
-          src_tile.water_movement.velocity -= project_onto_cardinal_direction(src_tile.water_movement.velocity, move.dir);
+        const scalar_type dp = src_tile.water_movement.velocity.dot(move.dir);
+        const scalar_type blocked_velocity = dp - min_convincing_speed;
+        if (blocked_velocity > 0) {
+          src_tile.water_movement.velocity -= move.dir * blocked_velocity;
+        }
       }
       else assert(false);
     }
