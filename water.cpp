@@ -151,6 +151,7 @@ vector3 project_onto_cardinal_direction(vector3 src, one_tile_direction_vector d
 #define MAX_Z 20
 
 namespace hacky_vector_indexing_internals {
+  // the order of this must be in sync with the order of cardinal_direction_vectors
   int cardinal_direction_vector_to_index(one_tile_direction_vector v) {
          if (v.x == -1) return 0;
     else if (v.y == -1) return 1;
@@ -165,6 +166,7 @@ namespace hacky_vector_indexing_internals {
 const one_tile_direction_vector xunitv = one_tile_direction_vector(1, 0, 0);
 const one_tile_direction_vector yunitv = one_tile_direction_vector(0, 1, 0);
 const one_tile_direction_vector zunitv = one_tile_direction_vector(0, 0, 1);
+// the order of this must be in sync with the order of hacky_vector_indexing_internals::cardinal_direction_vector_to_index
 const one_tile_direction_vector cardinal_direction_vectors[6] = { -xunitv, -yunitv, -zunitv, xunitv, yunitv, zunitv };
 
 void incr_location(location &foo){
@@ -370,8 +372,7 @@ void update_water() {
         if (dp > 0) new_progress += dp;
 
         // Hack: Water sitting on pillars falls off
-        const one_tile_direction_vector down(0, 0, -1);
-        if (already_at_the_bottom && dir.z == 0 && !out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR && !out_of_bounds(loc + dir + down) && tiles[loc + dir + down].contents == AIR) new_progress += min_convincing_speed;
+        if (already_at_the_bottom && dir.z == 0 && !out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR && !out_of_bounds(loc + dir - zunitv) && tiles[loc + dir - zunitv].contents == AIR) new_progress += min_convincing_speed;
         
         do_progress(wanted_moves, loc, dir, 0, new_progress);
       }
