@@ -171,6 +171,8 @@ srand(time(NULL));
   else if (scenario == "tank") { build_punctured_tank(); }
   else if (scenario == "tank2") { build_punctured_tank2(); }
   else if (scenario == "twisty") { build_annoying_twisty_passageways(); }
+  else if (scenario == "droplet") { tiles[location(10,10,10)].contents = WATER; }
+  else if (scenario == "droplets") { tiles[location(10,10,10)].contents = WATER; tiles[location(10,10,19)].contents = WATER; }
   else build_a_little_water_on_the_ground();
 
 
@@ -210,19 +212,16 @@ srand(time(NULL));
 		int max_pressure = 0;
 		int total_force = 0;
 		int max_velmgsq = 0;
-	for (EACH_LOCATION(loc))
-	{
-		if(loc.z == 0){
+	for (int x = 0; x < MAX_X; ++x) { for (int y = 0; y < MAX_Y; ++y) {
 		glColor4f(0.2,0.4,0.0,1.0);
 
 		glBegin(GL_POLYGON);
-			glVertex3f(loc.x, loc.y, loc.z);
-			glVertex3f(loc.x + 1, loc.y, loc.z);
-			glVertex3f(loc.x + 1, loc.y +1, loc.z);
-			glVertex3f(loc.x, loc.y+1, loc.z);
+			glVertex3f(x, y, 0);
+			glVertex3f(x + 1, y, 0);
+			glVertex3f(x + 1, y +1, 0);
+			glVertex3f(x, y+1, 0);
 		glEnd();
-		}
-	}
+	}}
 	for (EACH_LOCATION(loc))
 	{
 		if (tiles[loc].contents != AIR)
@@ -241,18 +240,19 @@ srand(time(NULL));
 			glVertex3f(loc.x, loc.y+1, (double)loc.z + 0.5);
 		glEnd();
 		if (tiles[loc].contents == WATER) {
+		  water_movement_info &water = tiles.active_tiles[loc]; // TODO GET RID OF THIS INCREDIBLE HACK THAT ACTIVATES ALL THE WATER CONSTANTLY
 		  //if (!can_be_exit_tile(loc)){
 		  glColor4f(0.0, 1.0, 0.0, 0.5);
 		  glBegin(GL_LINES);
 			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-			glVertex3f((double)loc.x+0.5+((double)tiles[loc].water_movement.velocity.x / (250 * precision_factor)),
-			  (double)loc.y+0.5+((double)tiles[loc].water_movement.velocity.y / (250 * precision_factor)),
-			  (double)loc.z + 0.5+((double)tiles[loc].water_movement.velocity.z / (250 * precision_factor)));
+			glVertex3f((double)loc.x+0.5+((double)water.velocity.x / (250 * precision_factor)),
+			  (double)loc.y+0.5+((double)water.velocity.y / (250 * precision_factor)),
+			  (double)loc.z + 0.5+((double)water.velocity.z / (250 * precision_factor)));
 		  glEnd();
 		  //}
 		  glColor4f(0.0, 0.0, 1.0, 0.5);
 		  for (EACH_CARDINAL_DIRECTION(dir)) {
-		    vector3 vect = (dir * tiles[loc].water_movement.progress[dir]);
+		    vector3 vect = (dir * water.progress[dir]);
 		    glBegin(GL_LINES);
 			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
 			glVertex3f((double)loc.x+0.5+((double)vect.x / progress_necessary),
