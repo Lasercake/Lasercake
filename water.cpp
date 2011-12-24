@@ -407,6 +407,13 @@ void update_water() {
         tiles[chosen_top_tile].contents = AIR;
         disturbed_tiles.insert(chosen_top_tile);
       }
+      
+      // If a tile moves, we're now content to assume that it was moving because it had a realistic velocity in that direction, so we should continue with that assumption.
+      const scalar_type amount_of_new_vel_in_movement_dir = dot_product(dst_tile.water_movement.velocity, move.dir);
+      const scalar_type deficiency_of_new_vel_in_movement_dir = move.amount_of_the_push_that_sent_us_over_the_threshold - amount_of_new_vel_in_movement_dir;
+      if (deficiency_of_new_vel_in_movement_dir > 0) {
+        dst_tile.water_movement.velocity += move.dir * deficiency_of_new_vel_in_movement_dir;
+      }
     }
     else if (dst_tile.contents == WATER) {
       if (move.group_number_or_zero_for_velocity_movement == 0) {
