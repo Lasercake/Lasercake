@@ -310,7 +310,6 @@ srand(time(NULL));
 		glFinish();	
         SDL_GL_SwapBuffers();
 		int before_processing = SDL_GetTicks();
-			std::cerr << time << "\n";
 		
 		//doing stuff code here
 		update_water();
