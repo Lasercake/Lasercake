@@ -244,11 +244,10 @@ bool can_be_exit_tile(location loc) {
 
 struct water_group {
   int max_tile_z;
-  int max_exit_tile_z;
   std::set<location> tiles;
   std::set<location> exit_tiles;
   set<pair<location, one_tile_direction_vector> > exit_surfaces;
-  water_group():max_tile_z(0),max_exit_tile_z(0){}
+  water_group():max_tile_z(0){}
 };
 
 void mark_water_group_that_includes(location loc, int group_number, map<int, water_group>& groups) {
@@ -274,7 +273,6 @@ void mark_water_group_that_includes(location loc, int group_number, map<int, wat
         }
         if (can_be_exit_tile(next_loc) && (adj_tile.contents == AIR || (adj_tile.contents == WATER && !can_be_exit_tile(adj_loc)))) {
           groups[group_number].exit_surfaces.insert(std::make_pair(next_loc, dir));
-          if (next_loc.z > groups[group_number].max_exit_tile_z) groups[group_number].max_exit_tile_z = next_loc.z;
           is_exit_tile = true;
         }
       }
@@ -323,9 +321,10 @@ void update_water() {
     water_group const& group = i->second;
     
     for(auto surface = group.exit_surfaces.begin(); surface != group.exit_surfaces.end(); ++surface) {
-      const double pressure = group.max_exit_tile_z + 0.5 - ((double)surface->first.z + 0.5*surface->second.z); // proportional to depth, assuming side surfaces are at the middle of the side
-      tile &surface_source_tile = tiles[surface->first];
-      do_progress(wanted_moves, surface->first, surface->second, tiles[surface->first].water_group_number, (scalar_type)(100 * std::sqrt(pressure)));
+      const double pressure = ((double)group.max_tile_z - 0.5) - ((double)surface->first.z + 0.5*surface->second.z); // proportional to depth, assuming side surfaces are at the middle of the side. HACK: This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
+      if (pressure > 0) {
+        do_progress(wanted_moves, surface->first, surface->second, tiles[surface->first].water_group_number, (scalar_type)(100 * std::sqrt(pressure)));
+      }
     }
   }
   
