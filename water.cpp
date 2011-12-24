@@ -150,6 +150,23 @@ vector3 project_onto_cardinal_direction(vector3 src, one_tile_direction_vector d
 #define MAX_Y 20
 #define MAX_Z 20
 
+namespace hacky_vector_indexing_internals {
+  int cardinal_direction_vector_to_index(one_tile_direction_vector v) {
+         if (v.x == -1) return 0;
+    else if (v.y == -1) return 1;
+    else if (v.z == -1) return 2;
+    else if (v.x ==  1) return 3;
+    else if (v.y ==  1) return 4;
+    else if (v.z ==  1) return 5;
+    else                  assert(false);
+  }
+}
+
+const one_tile_direction_vector xunitv = one_tile_direction_vector(1, 0, 0);
+const one_tile_direction_vector yunitv = one_tile_direction_vector(0, 1, 0);
+const one_tile_direction_vector zunitv = one_tile_direction_vector(0, 0, 1);
+const one_tile_direction_vector cardinal_direction_vectors[6] = { -xunitv, -yunitv, -zunitv, xunitv, yunitv, zunitv };
+
 void incr_location(location &foo){
 	++foo.x;
 	if (foo.x >= MAX_X) { foo.x = 0; ++foo.y; }
@@ -166,22 +183,25 @@ void incr_direction(one_tile_direction_vector &foo){
 	if (foo.x >= 2) { foo.x = -1; ++foo.y; }
 	if (foo.y >= 2) { foo.y = -1; ++foo.z; }
 }
-void incr_cardinal_direction(one_tile_direction_vector &foo){
-	     if (foo.x == -1) foo = vector3( 0,-1, 0);
-	else if (foo.y == -1) foo = vector3( 0, 0,-1);
-	else if (foo.z == -1) foo = vector3( 1, 0, 0);
-	else if (foo.x == 1) foo = vector3( 0, 1, 0);
-	else if (foo.y == 1) foo = vector3( 0, 0, 1);
-	else if (foo.z == 1) foo = vector3( -2, 0, 0); // hack - "invalid value"
-}
 
 #define EACH_LOCATION(varname) location varname(0,0,0); varname.z < MAX_Z; incr_location(varname)
 #define EACH_LOCATION_REVERSE(varname) location varname(MAX_X - 1,MAX_Y - 1,MAX_Z - 1); varname.z >= 0; decr_location(varname)
 #define EACH_DIRECTION(varname) one_tile_direction_vector varname(-1,-1,-1); varname.z < 2; incr_direction(varname)
-#define EACH_CARDINAL_DIRECTION(varname) one_tile_direction_vector varname(-1,0,0); varname.x != -2; incr_cardinal_direction(varname)
+#define EACH_CARDINAL_DIRECTION(varname) const one_tile_direction_vector varname : cardinal_direction_vectors
 
-// This constant makes an object be travelling at one tile per frame when it hits the ground after a 100 tile fall.
-//vector3 default_gravity_in_subdivisions_per_frame_squared(0, 0, -(precision_scale / 200));
+
+template<class value_type> class value_for_each_cardinal_direction {
+public:
+  value_for_each_cardinal_direction& operator=(value_for_each_cardinal_direction const& other){
+    for(int i=0;i<6;++i) {
+      data[i] = other.data[i];
+    }
+  }
+  value_type      & operator[](one_tile_direction_vector dir)      { return data[hacky_vector_indexing_internals::cardinal_direction_vector_to_index(dir)]; }
+  value_type const& operator[](one_tile_direction_vector dir)const { return data[hacky_vector_indexing_internals::cardinal_direction_vector_to_index(dir)]; }
+private:
+  value_type data[6];
+};
 
 
 enum tile_contents {
@@ -192,18 +212,7 @@ enum tile_contents {
 
 struct water_movement_info {
   vector3 velocity;
-  scalar_type progress[3][3][3];
-  water_movement_info(){
-    for(int x=0;x<3;++x){for(int y=0;y<3;++y){for(int z=0;z<3;++z){
-      progress[x][y][z] = 0;
-    }}}
-  }
-  water_movement_info& operator=(water_movement_info const& other){
-    velocity = other.velocity;
-    for(int x=0;x<3;++x){for(int y=0;y<3;++y){for(int z=0;z<3;++z){
-      progress[x][y][z] = other.progress[x][y][z];
-    }}}
-  }
+  value_for_each_cardinal_direction<scalar_type> progress;
 };
 
 const scalar_type precision_factor = 100;
@@ -297,7 +306,7 @@ struct wanted_move {
 
 // WARNING: This is glitchy (or at least silly) if you do it more than once for the same loc/dir pair in the same frame. TODO adjust?
 void do_progress(vector<wanted_move> &wanted_moves, location loc, one_tile_direction_vector dir, int group_number_or_zero_for_velocity_movement, scalar_type amount) {
-  scalar_type &progress_ref = tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z];
+  scalar_type &progress_ref = tiles[loc].water_movement.progress[dir];
   assert(amount >= 0);
   assert(progress_ref >= 0);
   assert(progress_ref <= progress_necessary);
@@ -335,7 +344,7 @@ void update_water() {
   
   for (EACH_LOCATION(loc)) {
     if (tiles[loc].contents == WATER && !can_be_exit_tile(loc)) {
-      bool already_at_the_bottom = (tiles[loc].water_movement.progress[1+0][1+0][1-1] >= progress_necessary);
+      bool already_at_the_bottom = (tiles[loc].water_movement.progress[-zunitv] >= progress_necessary);
       
       vector3 &vel_ref = tiles[loc].water_movement.velocity;
       vel_ref += gravity_acceleration;
@@ -380,7 +389,7 @@ void update_water() {
     // anything where the water was yanked away should have been marked "disturbed"
     assert(src_tile.contents = WATER);
     
-    scalar_type& progress_ref = src_tile.water_movement.progress[1+move.dir.x][1+move.dir.y][1+move.dir.z];
+    scalar_type& progress_ref = src_tile.water_movement.progress[move.dir];
     
     if (out_of_bounds(dst)) {
       // TODO remove this duplicate code: we behave the same as going to rock
@@ -439,7 +448,7 @@ void update_water() {
         dst_tile.water_movement.velocity += move.dir * deficiency_of_new_vel_in_movement_dir;
       }
       // Also, don't lose movement to rounding error during progress over multiple tiles:
-      dst_tile.water_movement.progress[1+move.dir.x][1+move.dir.y][1+move.dir.z] = std::min(move.excess_progress, progress_necessary);
+      dst_tile.water_movement.progress[move.dir] = std::min(move.excess_progress, progress_necessary);
     }
     else if (dst_tile.contents == WATER) {
       if (move.group_number_or_zero_for_velocity_movement == 0) {

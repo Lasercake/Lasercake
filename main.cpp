@@ -252,7 +252,7 @@ srand(time(NULL));
 		  }
 		  glColor4f(0.0, 0.0, 1.0, 0.5);
 		  for (EACH_CARDINAL_DIRECTION(dir)) {
-		    vector3 vect = (dir * tiles[loc].water_movement.progress[1+dir.x][1+dir.y][1+dir.z]);
+		    vector3 vect = (dir * tiles[loc].water_movement.progress[dir]);
 		    glBegin(GL_LINES);
 			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
 			glVertex3f((double)loc.x+0.5+((double)vect.x / progress_necessary),
