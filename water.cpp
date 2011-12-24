@@ -232,7 +232,7 @@ struct water_movement_info {
 
 const scalar_type precision_factor = 100;
 const scalar_type progress_necessary = 5000 * precision_factor; // loosely speaking, the conversion factor between mini-units and entire tiles
-const scalar_type min_convincing_speed = 100 * precision_factor; // TODO maybe randomize the use of this so that it isn't so... mechanical-looking?
+const scalar_type min_convincing_speed = 100 * precision_factor;
 const vector3 gravity_acceleration(0, 0, -5*precision_factor); // in mini-units per frame squared
 const scalar_type friction_amount = 3 * precision_factor;
 
@@ -539,8 +539,7 @@ void update_water() {
             const vector3 exchanged_velocity = project_onto_cardinal_direction(vel_diff, move.dir) / 2;
             src_tile.water_movement.velocity -= exchanged_velocity;
             dst_tile.water_movement.velocity += exchanged_velocity;
-            // hmm... since we *don't* move the 'progress' back then they will keep colliding... that might be a good thing? Well, only if we don't let the progress build up extra.
-            // TODO: should the velocity-sharing be proportional to the excess progress?
+            // Since we *don't* move the 'progress' back then they will keep colliding, which means their velocity keeps getting equalized - that's probably a good thing.
           }
         }
         else {
