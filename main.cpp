@@ -232,11 +232,6 @@ srand(time(NULL));
     vector<vertex_entry> progress_vertices;
     vector<vertex_entry> idle_marker_vertices;
     
-    frame += 1;
-    glLoadIdentity();
-    gluPerspective(80, 1, 1, 100);
-    gluLookAt(view_x + view_dist * std::cos((double)frame / 40.0),view_y + view_dist * std::sin((double)frame / 40.0),view_z + (view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0),view_x,view_y,view_z,0,0,1);
-    
     for (int x = 0; x < MAX_X; ++x) { for (int y = 0; y < MAX_Y; ++y) {
       push_vertex(ground_vertices, x, y, 0);
       push_vertex(ground_vertices, x + 1, y, 0);
@@ -293,6 +288,11 @@ srand(time(NULL));
     }
     
     int before_GL = SDL_GetTicks();
+    
+    frame += 1;
+    glLoadIdentity();
+    gluPerspective(80, 1, 1, 100);
+    gluLookAt(view_x + view_dist * std::cos((double)frame / 40.0),view_y + view_dist * std::sin((double)frame / 40.0),view_z + (view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0),view_x,view_y,view_z,0,0,1);
     
     glEnableClientState(GL_VERTEX_ARRAY);
     
