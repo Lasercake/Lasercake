@@ -174,10 +174,13 @@ srand(time(NULL));
   else if (scenario == "droplet") { tiles[location(10,10,10)].contents = WATER; }
   else if (scenario == "droplets") { tiles[location(10,10,10)].contents = WATER; tiles[location(10,10,19)].contents = WATER; }
   else build_a_little_water_on_the_ground();
-
+  // init activeness
+  for (EACH_LOCATION(loc)) {
+    if(tiles[loc].contents == WATER) tiles.active_tiles[loc];
+  }
 
     
-    while ( !done ) {
+  while ( !done ) {
 
 		/* Check for events */
 		while ( SDL_PollEvent (&event) ) {
@@ -197,82 +200,93 @@ srand(time(NULL));
 					break;
 			}
 		}
-		if(p_mode == 1)continue;
-		if(p_mode > 1)--p_mode;
-		int before_drawing = SDL_GetTicks();
 		
-		glClear(GL_COLOR_BUFFER_BIT);
-		
-		//drawing code here
-		frame += 1;
-	glLoadIdentity();
-	gluPerspective(80, 1, 1, 100);
-	gluLookAt(5.0 + 20.0 * std::cos((double)frame / 40.0),5.0 + 20.0 * std::sin((double)frame / 40.0),15.0 + 5.0 * std::sin((double)frame / 60.0),5,5,5,0,0,1);
+    if(p_mode == 1)continue;
+    if(p_mode > 1)--p_mode;
+    int before_drawing = SDL_GetTicks();
+    
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    //drawing code here
+    frame += 1;
+    glLoadIdentity();
+    gluPerspective(80, 1, 1, 100);
+    gluLookAt(5.0 + 20.0 * std::cos((double)frame / 40.0),5.0 + 20.0 * std::sin((double)frame / 40.0),15.0 + 5.0 * std::sin((double)frame / 60.0),5,5,5,0,0,1);
+    
+    for (int x = 0; x < MAX_X; ++x) { for (int y = 0; y < MAX_Y; ++y) {
+      glColor4f(0.2,0.4,0.0,1.0);
+      
+      glBegin(GL_POLYGON);
+        glVertex3f(x, y, 0);
+        glVertex3f(x + 1, y, 0);
+        glVertex3f(x + 1, y +1, 0);
+        glVertex3f(x, y+1, 0);
+        glEnd();
+    }}
+      
+    for (EACH_LOCATION(loc))
+    {
+      if (tiles[loc].contents != AIR)
+      {
+        if (tiles[loc].contents == ROCK) {
+          glColor4f(0.5,0.0,0.0,0.5);
+        }
+        else {
+          if(is_sticky_water(loc))glColor4f(0.0, 0.0, 1.0, 0.5);
+          else glColor4f(0.4, 0.4, 1.0, 0.5);
+        }
+        
+        glBegin(GL_POLYGON);
+          glVertex3f(loc.x, loc.y, (double)loc.z + 0.5);
+          glVertex3f(loc.x + 1, loc.y, (double)loc.z + 0.5);
+          glVertex3f(loc.x + 1, loc.y +1, (double)loc.z + 0.5);
+          glVertex3f(loc.x, loc.y+1, (double)loc.z + 0.5);
+        glEnd();
+        if (tiles[loc].contents == WATER) {
+          if (water_movement_info *water = find_as_pointer(tiles.active_tiles, loc)) {
+            glColor4f(0.0, 1.0, 0.0, 0.5);
+            glBegin(GL_LINES);
+            glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
+            glVertex3f((double)loc.x+0.5+((double)water->velocity.x / (250 * precision_factor)),
+                (double)loc.y+0.5+((double)water->velocity.y / (250 * precision_factor)),
+                (double)loc.z + 0.5+((double)water->velocity.z / (250 * precision_factor)));
+            glEnd();
+             
+            glColor4f(0.0, 0.0, 1.0, 0.5);
+            for (EACH_CARDINAL_DIRECTION(dir)) {
+              vector3 vect = (dir * water->progress[dir]);
+              glBegin(GL_LINES);
+                glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
+                glVertex3f((double)loc.x+0.5+((double)vect.x / progress_necessary),
+                    (double)loc.y+0.5+((double)vect.y / progress_necessary),
+                    (double)loc.z + 0.5+((double)vect.z / progress_necessary));
+              glEnd();
+            }
+          }
+          else {
+            glColor4f(0.0, 0.0, 0.0, 0.5);
+            glPointSize(3);
+            glBegin(GL_POINTS);
+              glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
+            glEnd();
+          }
+        }
+      }
+    }
+    
+    glFinish();	
+    SDL_GL_SwapBuffers();
+   
+    int before_processing = SDL_GetTicks();
+    
+    //doing stuff code here
+    update_water();
+    
+    int after = SDL_GetTicks();
+    std::cerr << (after - before_processing) << ", " << (before_processing - before_drawing) << "\n";
 
-	for (int x = 0; x < MAX_X; ++x) { for (int y = 0; y < MAX_Y; ++y) {
-		glColor4f(0.2,0.4,0.0,1.0);
-
-		glBegin(GL_POLYGON);
-			glVertex3f(x, y, 0);
-			glVertex3f(x + 1, y, 0);
-			glVertex3f(x + 1, y +1, 0);
-			glVertex3f(x, y+1, 0);
-		glEnd();
-	}}
-	for (EACH_LOCATION(loc))
-	{
-		if (tiles[loc].contents != AIR)
-		{
-		  if (tiles[loc].contents == ROCK) {
-		glColor4f(0.5,0.0,0.0,0.5);
-		}
-		else {
-		  if(is_sticky_water(loc))glColor4f(0.0, 0.0, 1.0, 0.5);
-		  else glColor4f(0.4, 0.4, 1.0, 0.5);
-		}
-		glBegin(GL_POLYGON);
-			glVertex3f(loc.x, loc.y, (double)loc.z + 0.5);
-			glVertex3f(loc.x + 1, loc.y, (double)loc.z + 0.5);
-			glVertex3f(loc.x + 1, loc.y +1, (double)loc.z + 0.5);
-			glVertex3f(loc.x, loc.y+1, (double)loc.z + 0.5);
-		glEnd();
-		if (tiles[loc].contents == WATER) {
-		  water_movement_info &water = tiles.active_tiles[loc]; // TODO GET RID OF THIS INCREDIBLE HACK THAT ACTIVATES ALL THE WATER CONSTANTLY
-		  //if (!can_be_exit_tile(loc)){
-		  glColor4f(0.0, 1.0, 0.0, 0.5);
-		  glBegin(GL_LINES);
-			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-			glVertex3f((double)loc.x+0.5+((double)water.velocity.x / (250 * precision_factor)),
-			  (double)loc.y+0.5+((double)water.velocity.y / (250 * precision_factor)),
-			  (double)loc.z + 0.5+((double)water.velocity.z / (250 * precision_factor)));
-		  glEnd();
-		  //}
-		  glColor4f(0.0, 0.0, 1.0, 0.5);
-		  for (EACH_CARDINAL_DIRECTION(dir)) {
-		    vector3 vect = (dir * water.progress[dir]);
-		    glBegin(GL_LINES);
-			glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-			glVertex3f((double)loc.x+0.5+((double)vect.x / progress_necessary),
-			  (double)loc.y+0.5+((double)vect.y / progress_necessary),
-			  (double)loc.z + 0.5+((double)vect.z / progress_necessary));
-		    glEnd();
-		  
-		  }
-		}
-		}
-	}
-		glFinish();	
-        SDL_GL_SwapBuffers();
-		int before_processing = SDL_GetTicks();
-		
-		//doing stuff code here
-		update_water();
-		int after = SDL_GetTicks();
-std::cerr << (after - before_processing) << ", " << (before_processing - before_drawing) << "\n";
-
-//	SDL_Delay(50);
-		
-	}
+//    SDL_Delay(50);
+  }
 }
 
 int main(int argc, char *argv[])

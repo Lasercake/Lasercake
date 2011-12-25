@@ -295,6 +295,19 @@ struct water_movement_info {
       velocity -= dir * blocked_velocity;
     }
   }
+  
+  bool can_deactivate()const {
+    // TODO: does it make sense that we're ignoring the 1-frame-duration variable "blockage_amount_this_frame"?
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      if (dir.z < 0) {
+        if (progress[dir] != progress_necessary) return false;
+      }
+      else {
+        if (progress[dir] != 0) return false;
+      }
+    }
+    return velocity == idle_water_velocity;
+  }
 };
 
 typedef int group_number_t;
@@ -742,6 +755,13 @@ void update_water() {
       }
       else assert(false);
     }
+  }
+  
+  for (auto i = tiles.active_tiles.begin(); i != tiles.active_tiles.end(); ) {
+    if (i->second.can_deactivate()) {
+      tiles.active_tiles.erase(i++);
+    }
+    else ++i;
   }
 }
 
