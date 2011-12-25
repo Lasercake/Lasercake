@@ -164,9 +164,9 @@ namespace std {
   };
 }
 
-#define MAX_X 20
-#define MAX_Y 20
-#define MAX_Z 20
+#define MAX_X 100
+#define MAX_Y 100
+#define MAX_Z 100
 
 namespace hacky_vector_indexing_internals {
   // the order of this must be in sync with the order of cardinal_direction_vectors
@@ -236,6 +236,20 @@ private:
 };
 
 
+
+/*
+
+Whether tiles are water or not
+ -- dictates, at one tile distance --
+Whether water tiles are "sticky water" ("fewer than two adjacent tiles are air") or "free water" (at least two adjacent air tiles)
+ -- dictates, at one tile distance --
+Whether sticky water tiles are "interior water" ("every adjacent tile is sticky water") or "membrane water" ("at least one tile is not a sticky water tile")
+
+This is a one-way dictation - the latter things don't affect the former things at all (until they cause water to actually move, anyway). It's not an exact dictation 
+
+*/
+
+
 enum tile_contents {
   ROCK,
   WATER,
@@ -282,7 +296,7 @@ struct water_movement_info {
 struct tile
 {
   tile_contents contents;
-  int water_group_number; // a temporary variable during the computation. Be warned: Two groups can claim the same non-exit-tile, and the second group will overwrite the first (so after groups are collected, this will only be valid for exit-tiles)
+  int water_group_number; // a temporary variable during the computation. Be warned: Two groups can claim the same free water tile, and the second group will overwrite the first (so after groups are collected, this will only be valid for sticky water)
 };
 
 bool out_of_bounds(location loc){return loc.x < 0 || loc.y < 0 || loc.z < 0 || loc.x >= MAX_X || loc.y >= MAX_Y || loc.z >= MAX_Z; }
@@ -312,14 +326,9 @@ void delete_water(location loc) {
   assert(tiles.active_tiles.find(loc) == tiles.active_tiles.end());
 }
 
-bool can_group(location loc) {
-  if (out_of_bounds(loc)) return false;
-  if (tiles[loc].contents != WATER) return false;
-  return true;
-}
 
-bool can_be_exit_tile(location loc) {
-  if (!can_group(loc)) return false;
+bool is_sticky_water(location loc) {
+  if (tiles[loc].contents != WATER) return false;
   int airs = 0;
   for (EACH_CARDINAL_DIRECTION(dir)) {
     if (!out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR) ++airs;
@@ -328,11 +337,21 @@ bool can_be_exit_tile(location loc) {
   return true;
 }
 
+bool is_free_water(location loc) {
+  return tiles[loc].contents == WATER && !is_sticky_water(loc);
+}
+
+bool is_interior_water(location loc) {
+  for (EACH_CARDINAL_DIRECTION(dir)) {
+    if (out_of_bounds(loc + dir) || !is_sticky_water(loc)) return false;
+  }
+  return true;
+}
+
 struct water_group {
   int max_tile_z;
   std::set<location> tiles;
-  std::set<location> exit_tiles;
-  set<pair<location, one_tile_direction_vector> > exit_surfaces;
+  set<pair<location, one_tile_direction_vector> > exit_surfaces; // (sticky water, direction towards something that's either air or free water)
   water_group():max_tile_z(0){}
 };
 
@@ -349,29 +368,26 @@ void mark_water_group_that_includes(location loc, int group_number, map<int, wat
     groups[group_number].tiles.insert(next_loc);
     if (next_loc.z > groups[group_number].max_tile_z) groups[group_number].max_tile_z = next_loc.z;
     
-    if (can_be_exit_tile(next_loc)) {
-      bool is_exit_tile = false;
+    if (is_sticky_water(next_loc)) {
       for (EACH_CARDINAL_DIRECTION(dir)) {
         const location adj_loc = next_loc + dir;
         if (out_of_bounds(adj_loc)) continue;
         tile &adj_tile = tiles[adj_loc];
-        if (can_group(adj_loc) && adj_tile.water_group_number != group_number) {
+        if (adj_tile.contents == WATER && adj_tile.water_group_number != group_number) {
           frontier.insert(adj_loc);
         }
         // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
         if (adj_tile.contents == AIR) {
           for (EACH_CARDINAL_DIRECTION(d2)) {
-            if (d2.dot(dir) == 0 && can_group(adj_loc + d2) && tiles[adj_loc + d2].water_group_number != group_number) {
+            if (d2.dot(dir) == 0 && !out_of_bounds(adj_loc + d2) && tiles[adj_loc + d2].contents == WATER && tiles[adj_loc + d2].water_group_number != group_number) {
               frontier.insert(adj_loc + d2);
             }
           }
         }
-        if (adj_tile.contents == AIR || (adj_tile.contents == WATER && !can_be_exit_tile(adj_loc))) {
+        if (adj_tile.contents == AIR || (adj_tile.contents == WATER && is_free_water(adj_loc))) {
           groups[group_number].exit_surfaces.insert(std::make_pair(next_loc, dir));
-          is_exit_tile = true;
         }
       }
-      if (is_exit_tile) groups[group_number].exit_tiles.insert(next_loc);
     }
   }
 }
@@ -391,7 +407,7 @@ void update_water() {
     assert(tiles[i->first].contents == WATER);
     for (scalar_type &np : i->second.new_progress) np = 0;
     
-    if (can_be_exit_tile(i->first)) {
+    if (is_sticky_water(i->first)) {
       vector3 &vel_ref = i->second.velocity;
       const vector3 current_velocity_wrongness = vel_ref - idle_water_velocity;
       if (current_velocity_wrongness.magnitude_is_less_than(grouped_water_velocity_reduction_rate)) {
@@ -407,7 +423,7 @@ void update_water() {
   map<int, water_group> groups;
   for (auto i = tiles.active_tiles.begin(); i != tiles.active_tiles.end(); ++i) {
     location const& loc = i->first;
-    if (can_be_exit_tile(loc) && tiles[loc].water_group_number == 0) {
+    if (is_sticky_water(loc) && tiles[loc].water_group_number == 0) {
       mark_water_group_that_includes(loc, ++next_group_number, groups);
     }
   }
@@ -428,7 +444,7 @@ void update_water() {
   for (auto i = tiles.active_tiles.begin(); i != tiles.active_tiles.end(); ++i) {
     assert(tiles[i->first].contents == WATER);
     location const& loc = i->first;
-    if (can_be_exit_tile(loc)) {
+    if (is_sticky_water(loc)) {
       i->second.new_progress[-zunitv] += extra_downward_speed_for_grouped_tiles;
     }
     else {
@@ -464,7 +480,7 @@ void update_water() {
       }
     }
       
-    // This always happens, even if water becomes a potential exit tile right after it gets blocked.
+    // This always happens, even if water becomes sticky right after it gets blocked.
     for (scalar_type &bb : i->second.blockage_amount_this_frame) bb = 0;
   }
   
@@ -484,7 +500,7 @@ void update_water() {
         assert(progress_ref <= progress_necessary);
         progress_ref += new_progress;
         if (progress_ref > progress_necessary) {
-          wanted_moves.push_back(wanted_move(i->first, dir, can_be_exit_tile(i->first) ? tiles[i->first].water_group_number : 0, new_progress, progress_ref - progress_necessary));
+          wanted_moves.push_back(wanted_move(i->first, dir, is_sticky_water(i->first) ? tiles[i->first].water_group_number : 0, new_progress, progress_ref - progress_necessary));
           progress_ref = progress_necessary;
         }
       }
@@ -563,7 +579,7 @@ void update_water() {
       if (!out_of_bounds(dst) && tiles[dst].contents == WATER) {
         tile &dst_tile = tiles[dst];
         if (move.group_number_or_zero_for_velocity_movement == 0) {
-          if (can_be_exit_tile(dst)) {
+          if (is_sticky_water(dst)) {
             //TODO... right now, same as rock. Dunno if it should be different.
             src_water.get_completely_blocked(move.dir);
           }
@@ -583,8 +599,7 @@ void update_water() {
         }
       }
       else if (out_of_bounds(dst) || tiles[dst].contents == ROCK) {
-        // TODO figure out what to actually do about the fact that water can change to exit-tile-capable while having lots of progress.
-        // Also note that this code is currently duplicated in three places... TODO fix
+        // TODO figure out what to actually do about the fact that water can become sticky while having lots of progress.
         //assert(move.group_number_or_zero_for_velocity_movement == 0);
         src_water.get_completely_blocked(move.dir);
       }
