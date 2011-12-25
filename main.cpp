@@ -287,7 +287,7 @@ srand(time(NULL));
       for (EACH_CARDINAL_DIRECTION(dir)) {
         const scalar_type prog = water.progress[dir];
         if (prog > 0) {
-          vector3 vect = (dir * prog);
+          vector3 vect = (dir.v * prog);
 
           push_vertex(progress_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
           push_vertex(progress_vertices, (GLfloat)loc.x+0.5+((GLfloat)vect.x / progress_necessary),

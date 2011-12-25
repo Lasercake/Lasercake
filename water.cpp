@@ -148,11 +148,17 @@ public:
 	bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
 };
 
-typedef vector3 one_tile_direction_vector;
+//typedef vector3 one_tile_direction_vector;
 typedef vector3 location;
+typedef int cardinal_direction_index;
+struct cardinal_direction {
+  cardinal_direction(vector3 v, cardinal_direction_index i):v(v),i(i){}
+  vector3 v;
+  cardinal_direction_index i;
+};
 
-vector3 project_onto_cardinal_direction(vector3 src, one_tile_direction_vector dir) {
-  return vector3(src.x * std::abs(dir.x), src.y * std::abs(dir.y), src.z * std::abs(dir.z));
+vector3 project_onto_cardinal_direction(vector3 src, cardinal_direction dir) {
+  return vector3(src.x * std::abs(dir.v.x), src.y * std::abs(dir.v.y), src.z * std::abs(dir.v.z));
 }
 
 namespace std {
@@ -171,25 +177,18 @@ namespace std {
 #define MAX_Y 100
 #define MAX_Z 100
 
-namespace hacky_vector_indexing_internals {
-  // the order of this must be in sync with the order of cardinal_direction_vectors
-  int cardinal_direction_vector_to_index(one_tile_direction_vector v) {
-         if (v.x == -1) return 0;
-    else if (v.y == -1) return 1;
-    else if (v.z == -1) return 2;
-    else if (v.x ==  1) return 3;
-    else if (v.y ==  1) return 4;
-    else if (v.z ==  1) return 5;
-    else                  assert(false);
-  }
-}
-
-const one_tile_direction_vector xunitv = one_tile_direction_vector(1, 0, 0);
-const one_tile_direction_vector yunitv = one_tile_direction_vector(0, 1, 0);
-const one_tile_direction_vector zunitv = one_tile_direction_vector(0, 0, 1);
+const vector3 xunitv(1, 0, 0);
+const vector3 yunitv(0, 1, 0);
+const vector3 zunitv(0, 0, 1);
 // the order of this must be in sync with the order of hacky_vector_indexing_internals::cardinal_direction_vector_to_index
-const int NUM_CARDINAL_DIRECTIONS = 6;
-const one_tile_direction_vector cardinal_direction_vectors[NUM_CARDINAL_DIRECTIONS] = { -xunitv, -yunitv, -zunitv, xunitv, yunitv, zunitv };
+const cardinal_direction_index NUM_CARDINAL_DIRECTIONS = 6;
+const cardinal_direction cdir_xminus = cardinal_direction(-xunitv, 0);
+const cardinal_direction cdir_yminus = cardinal_direction(-yunitv, 1);
+const cardinal_direction cdir_zminus = cardinal_direction(-zunitv, 2);
+const cardinal_direction cdir_xplus = cardinal_direction(xunitv, 3);
+const cardinal_direction cdir_yplus = cardinal_direction(yunitv, 4);
+const cardinal_direction cdir_zplus = cardinal_direction(zunitv, 5);
+const cardinal_direction cardinal_directions[NUM_CARDINAL_DIRECTIONS] = { cdir_xminus, cdir_yminus, cdir_zminus, cdir_xplus, cdir_yplus, cdir_zplus };
 
 void incr_location(location &foo){
 	++foo.x;
@@ -201,36 +200,27 @@ void decr_location(location &foo){
 	if (foo.x < 0) { foo.x = MAX_X - 1; --foo.y; }
 	if (foo.y < 0) { foo.y = MAX_Y - 1; --foo.z; }
 }
-void incr_direction(one_tile_direction_vector &foo){
-	++foo.x;
-	if (foo.x == 0 && foo.y == 0 && foo.z == 0) ++foo.x;
-	if (foo.x >= 2) { foo.x = -1; ++foo.y; }
-	if (foo.y >= 2) { foo.y = -1; ++foo.z; }
-}
 
 #define EACH_LOCATION(varname) location varname(0,0,0); varname.z < MAX_Z; incr_location(varname)
 #define EACH_LOCATION_REVERSE(varname) location varname(MAX_X - 1,MAX_Y - 1,MAX_Z - 1); varname.z >= 0; decr_location(varname)
-#define EACH_DIRECTION(varname) one_tile_direction_vector varname(-1,-1,-1); varname.z < 2; incr_direction(varname)
-#define EACH_CARDINAL_DIRECTION(varname) const one_tile_direction_vector varname : cardinal_direction_vectors
+#define EACH_CARDINAL_DIRECTION(varname) cardinal_direction const& varname : cardinal_directions
 
 
 template<typename value_type> class value_for_each_cardinal_direction {
 public:
   value_for_each_cardinal_direction& operator=(value_for_each_cardinal_direction const& other){
-    for(int dir_idx=0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
+    for(cardinal_direction_index dir_idx=0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
       data[dir_idx] = other.data[dir_idx];
     }
     return *this;
   }
   value_for_each_cardinal_direction(value_type initial_value) {
-    for(int dir_idx=0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
+    for(cardinal_direction_index dir_idx=0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
       data[dir_idx] = initial_value;
     }
   }
-  value_type      & operator[](one_tile_direction_vector dir)      { return data[hacky_vector_indexing_internals::cardinal_direction_vector_to_index(dir)]; }
-  value_type const& operator[](one_tile_direction_vector dir)const { return data[hacky_vector_indexing_internals::cardinal_direction_vector_to_index(dir)]; }
-  value_type      & operator[](int dir_idx)      { return data[dir_idx]; }
-  value_type const& operator[](int dir_idx)const { return data[dir_idx]; }
+  value_type      & operator[](cardinal_direction const& dir) { return data[dir.i]; }
+  value_type const& operator[](cardinal_direction const& dir)const { return data[dir.i]; }
 private:
   typedef array<value_type, NUM_CARDINAL_DIRECTIONS> internal_array;
 public:
@@ -288,26 +278,25 @@ struct water_movement_info {
   
   // Constructing one of these in the default way yields the natural idle state:
   // however we should NOT use std::unordered_map's operator[] to activate it; it should only be created through tiles' activate_water and insert_water.
-  water_movement_info():velocity(idle_water_velocity),progress(0),new_progress(0),blockage_amount_this_frame(0){ progress[-zunitv] = progress_necessary; }
+  water_movement_info():velocity(idle_water_velocity),progress(0),new_progress(0),blockage_amount_this_frame(0){ progress[cdir_zminus] = progress_necessary; }
   
   // This is not a general-purpose function. Only use it during the move-processing part of update_water.
-  void get_completely_blocked(one_tile_direction_vector dir) {
-    const scalar_type dp = velocity.dot(dir);
+  void get_completely_blocked(cardinal_direction dir) {
+    const scalar_type dp = velocity.dot(dir.v);
     const scalar_type blocked_velocity = dp - min_convincing_speed;
     if (blocked_velocity > 0) {
-      velocity -= dir * blocked_velocity;
+      velocity -= dir.v * blocked_velocity;
     }
   }
   
   bool can_deactivate()const {
     // TODO: does it make sense that we're ignoring the 1-frame-duration variable "blockage_amount_this_frame"?
-    for (int dir_idx = 0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
-      one_tile_direction_vector const& dir = cardinal_direction_vectors[dir_idx];
-      if (dir.z < 0) {
-        if (progress[dir_idx] != progress_necessary) return false;
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      if (dir.v.z < 0) {
+        if (progress[dir] != progress_necessary) return false;
       }
       else {
-        if (progress[dir_idx] != 0) return false;
+        if (progress[dir] != 0) return false;
       }
     }
     return velocity == idle_water_velocity;
@@ -340,13 +329,14 @@ private:
     if (t.contents == WATER) { // we don't care whether it's marked sticky if it's not water
       int airs = 0;
       for (EACH_CARDINAL_DIRECTION(dir)) {
-        if (!out_of_bounds(loc + dir) && (*this)[loc + dir].contents == AIR) ++airs;
+        const location other_loc = loc + dir.v;
+        if (!out_of_bounds(other_loc) && (*this)[other_loc].contents == AIR) ++airs;
       }
       bool should_be_sticky = (airs <= 1);
       if (t.is_sticky != should_be_sticky) {
         t.is_sticky = should_be_sticky;
         if (t.is_sticky) check_interiorness(loc);
-        for (EACH_CARDINAL_DIRECTION(dir)) check_interiorness(loc + dir);
+        for (EACH_CARDINAL_DIRECTION(dir)) check_interiorness(loc + dir.v);
       }
     }
   }
@@ -356,7 +346,8 @@ private:
     if (t.contents == WATER && t.is_sticky) { // we don't care whether it's marked interior if it's not sticky water
       bool should_be_interior = true;
       for (EACH_CARDINAL_DIRECTION(dir)) {
-        if (out_of_bounds(loc + dir) || !(*this)[loc + dir].is_sticky_water()) should_be_interior = false;
+        const location other_loc = loc + dir.v;
+        if (out_of_bounds(other_loc) || !(*this)[other_loc].is_sticky_water()) should_be_interior = false;
       }
       if (t.is_interior != should_be_interior) {
         t.is_interior = should_be_interior;
@@ -376,14 +367,14 @@ public:
     active_tiles.erase(loc);
     idle_water.erase(loc);
     
-    for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
+    for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir.v);
   }
   water_movement_info& insert_water(location loc) {
     assert((*this)[loc].contents == AIR);
     (*this)[loc].contents = WATER;
     
     check_stickyness(loc);
-    for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
+    for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir.v);
     
     // created water always starts out active.
     return active_tiles[loc]; // inserts it, default-constructed
@@ -465,7 +456,7 @@ void collect_membrane(location const& loc, group_number_t group_number, water_gr
     if (result.group_numbers_by_location.find(next_loc) == result.group_numbers_by_location.end()) {
       result.group_numbers_by_location.insert(make_pair(next_loc, group_number));
       for (EACH_CARDINAL_DIRECTION(dir)) {
-        const location adj_loc = next_loc + dir;
+        const location adj_loc = next_loc + dir.v;
         if (!out_of_bounds(adj_loc) && tiles[adj_loc].is_membrane_water()) {
           frontier.push_back(adj_loc);
         }
@@ -559,11 +550,11 @@ void compute_groups_that_need_to_be_considered(water_groups_structure &result) {
 
 struct wanted_move {
   location src;
-  one_tile_direction_vector dir;
+  cardinal_direction dir;
   group_number_t group_number_or_NO_GROUP_for_velocity_movement;
   scalar_type amount_of_the_push_that_sent_us_over_the_threshold;
   scalar_type excess_progress;
-  wanted_move(location src,one_tile_direction_vector dir,group_number_t g,scalar_type a,scalar_type e):src(src),dir(dir),group_number_or_NO_GROUP_for_velocity_movement(g),amount_of_the_push_that_sent_us_over_the_threshold(a),excess_progress(e){}
+  wanted_move(location src,cardinal_direction dir,group_number_t g,scalar_type a,scalar_type e):src(src),dir(dir),group_number_or_NO_GROUP_for_velocity_movement(g),amount_of_the_push_that_sent_us_over_the_threshold(a),excess_progress(e){}
 };
 
   
@@ -631,15 +622,14 @@ void update_water() {
 
   for (group_number_t group_number = FIRST_GROUP; group_number < (group_number_t)groups.locations_by_group_number.size(); ++group_number) {
     for (location const& loc : groups.locations_by_group_number[group_number]) {
-      for (int dir_idx = 0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
-        one_tile_direction_vector const& dir = cardinal_direction_vectors[dir_idx];
-        const location dst_loc = loc + dir;
+      for (EACH_CARDINAL_DIRECTION(dir)) {
+        const location dst_loc = loc + dir.v;
         if (!out_of_bounds(dst_loc)) {
           tile const& dst_tile = tiles[dst_loc];
           if (!dst_tile.is_sticky_water() && dst_tile.contents != ROCK) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the idle state what it is.)
-            const double pressure = ((double)groups.max_z_by_group_number[group_number] - 0.5) - ((double)loc.z + 0.5*dir.z); // proportional to depth, assuming side surfaces are at the middle of the side. This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
+            const double pressure = ((double)groups.max_z_by_group_number[group_number] - 0.5) - ((double)loc.z + 0.5*dir.v.z); // proportional to depth, assuming side surfaces are at the middle of the side. This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
             if (pressure > 0) {
-              tiles.activate_water(loc).new_progress[dir_idx] += (scalar_type)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
+              tiles.activate_water(loc).new_progress[dir] += (scalar_type)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
             }
           }
         }
@@ -652,7 +642,7 @@ void update_water() {
     tile const& t = tiles[i->first];
     assert(t.contents == WATER);
     if (t.is_sticky_water()) {
-      i->second.new_progress[-zunitv] += extra_downward_speed_for_sticky_water;
+      i->second.new_progress[cdir_zminus] += extra_downward_speed_for_sticky_water;
     }
     else {
       vector3 &vel_ref = i->second.velocity;
@@ -662,9 +652,8 @@ void update_water() {
       vel_ref -= (vel_ref * vel_ref.magnitude()) / air_resistance_constant;
       
       // Relatively large friction against the ground
-      for (int dir_idx = 0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
-        one_tile_direction_vector const& dir = cardinal_direction_vectors[dir_idx];
-        if (i->second.blockage_amount_this_frame[dir_idx] > 0) {
+      for (EACH_CARDINAL_DIRECTION(dir)) {
+        if (i->second.blockage_amount_this_frame[dir] > 0) {
           vector3 copy_stationary_in_blocked_direction = vel_ref; copy_stationary_in_blocked_direction -= project_onto_cardinal_direction(copy_stationary_in_blocked_direction, dir);
           if (copy_stationary_in_blocked_direction.magnitude_is_less_than(friction_amount)) {
             vel_ref -= copy_stationary_in_blocked_direction;
@@ -675,19 +664,17 @@ void update_water() {
         }
       }
       
-      for (int dir_idx = 0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
-        one_tile_direction_vector const& dir = cardinal_direction_vectors[dir_idx];
-        
-        const scalar_type dp = vel_ref.dot(dir);
-        if (dp > 0) i->second.new_progress[dir_idx] += dp;
+      for (EACH_CARDINAL_DIRECTION(dir)) {
+        const scalar_type dp = vel_ref.dot(dir.v);
+        if (dp > 0) i->second.new_progress[dir] += dp;
 
         // Water that's blocked, but can go around in a diagonal direction, makes "progress" towards all those possible directions (so it'll go in a random direction if it could go around in several different diagonals, without having to 'choose' one right away and gain velocity only in that direction). The main purpose of this is to make it so that water doesn't stack nicely in pillars, or sit still on steep slopes.
-        const location dst_loc = loc + dir;
+        const location dst_loc = loc + dir.v;
         if (!out_of_bounds(dst_loc) && tiles[dst_loc].contents == AIR) {
           for (EACH_CARDINAL_DIRECTION(d2)) {
-            const location diag_loc = dst_loc + d2;
-            if (i->second.blockage_amount_this_frame[d2] > 0 && d2.dot(dir) == 0 &&  !out_of_bounds(diag_loc) && tiles[diag_loc].contents == AIR) {
-              i->second.new_progress[dir_idx] += i->second.blockage_amount_this_frame[d2];
+            const location diag_loc = dst_loc + d2.v;
+            if (i->second.blockage_amount_this_frame[d2] > 0 && d2.v.dot(dir.v) == 0 && !out_of_bounds(diag_loc) && tiles[diag_loc].contents == AIR) {
+              i->second.new_progress[dir] += i->second.blockage_amount_this_frame[d2];
             }
           }
         }
@@ -702,11 +689,10 @@ void update_water() {
   for (auto i = tiles.active_tiles.begin(); i != tiles.active_tiles.end(); ++i) {
     tile const& t = tiles[i->first];
     assert(t.contents == WATER);
-    for (int dir_idx = 0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
-      one_tile_direction_vector const& dir = cardinal_direction_vectors[dir_idx];
-      scalar_type &progress_ref = i->second.progress[dir_idx];
-      const scalar_type new_progress = i->second.new_progress[dir_idx];
-      if (i->second.new_progress[dir_idx] == 0) {
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      scalar_type &progress_ref = i->second.progress[dir];
+      const scalar_type new_progress = i->second.new_progress[dir];
+      if (i->second.new_progress[dir] == 0) {
         if (progress_ref < idle_progress_reduction_rate) progress_ref = 0;
         else progress_ref -= idle_progress_reduction_rate;
       }
@@ -733,7 +719,7 @@ void update_water() {
     for (location const& loc : groups.locations_by_group_number[group_number]) {
       tiles_by_z_location_by_group_number[group_number][loc.z].add(loc);
       for (EACH_CARDINAL_DIRECTION(dir)) {
-        const location dst_loc = loc + dir;
+        const location dst_loc = loc + dir.v;
         if (out_of_bounds(dst_loc)) continue;
         if (tiles[dst_loc].is_free_water()) {
           nearby_free_waters.insert(dst_loc);
@@ -741,8 +727,8 @@ void update_water() {
         // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
         if (tiles[dst_loc].contents == AIR) {
           for (EACH_CARDINAL_DIRECTION(d2)) {
-            if (d2.dot(dir) == 0) {
-              const location diag_loc = dst_loc + d2;
+            if (d2.v.dot(dir.v) == 0) {
+              const location diag_loc = dst_loc + d2.v;
               if (!out_of_bounds(diag_loc) && tiles[diag_loc].is_free_water()) {
                 nearby_free_waters.insert(diag_loc);
               }
@@ -757,7 +743,7 @@ void update_water() {
   }
   
   for (const wanted_move move : wanted_moves) {
-    const location dst = move.src + move.dir;
+    const location dst = move.src + move.dir.v;
     tile &src_tile = tiles[move.src];
     tile src_copy = src_tile; // only for use in gdb
     // in certain situations we shouldn't try to move water more than once
@@ -781,7 +767,7 @@ void update_water() {
       }
       else {
         // the teleported tile starts with zero everything, for some reason (TODO: why should it be like this?)
-        dst_water.velocity = vector3(0,0,0); dst_water.progress[-zunitv] = 0;
+        dst_water.velocity = vector3(0,0,0); dst_water.progress[cdir_zminus] = 0;
         
         // Pick a random top tile.
         map<scalar_type, literally_random_access_removable_stuff<location> > m = tiles_by_z_location_by_group_number[move.group_number_or_NO_GROUP_for_velocity_movement];
@@ -802,10 +788,10 @@ void update_water() {
       }
       
       // If a tile moves, we're now content to assume that it was moving because it had a realistic velocity in that direction, so we should continue with that assumption.
-      const scalar_type amount_of_new_vel_in_movement_dir = dst_water.velocity.dot(move.dir);
+      const scalar_type amount_of_new_vel_in_movement_dir = dst_water.velocity.dot(move.dir.v);
       const scalar_type deficiency_of_new_vel_in_movement_dir = move.amount_of_the_push_that_sent_us_over_the_threshold - amount_of_new_vel_in_movement_dir;
       if (deficiency_of_new_vel_in_movement_dir > 0) {
-        dst_water.velocity += move.dir * deficiency_of_new_vel_in_movement_dir;
+        dst_water.velocity += move.dir.v * deficiency_of_new_vel_in_movement_dir;
       }
       // Also, don't lose movement to rounding error during progress over multiple tiles:
       dst_water.progress[move.dir] = std::min(move.excess_progress, progress_necessary);
@@ -835,7 +821,7 @@ void update_water() {
         }
         else {
           // we tried to move due to pressure, but bumped into free water! Turn our movement into velocity, at some conversion factor.
-          tiles.activate_water(dst).velocity += (move.dir * move.excess_progress) / 10;
+          tiles.activate_water(dst).velocity += (move.dir.v * move.excess_progress) / 10;
         }
       }
       else if (oob || dst_tile_ptr->contents == ROCK) {
