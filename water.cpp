@@ -407,39 +407,6 @@ typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const&
 }
 
 
-
-/*bool is_sticky_water(location loc) {
-  if (tiles[loc].contents != WATER) return false;
-  int airs = 0;
-  for (EACH_CARDINAL_DIRECTION(dir)) {
-    if (!out_of_bounds(loc + dir) && tiles[loc + dir].contents == AIR) ++airs;
-  }
-  if (airs > 1) return false;
-  return true;
-}
-
-bool is_free_water(location loc) {
-  return tiles[loc].contents == WATER && !is_sticky_water(loc);
-}
-
-bool is_interior_water(location loc) {
-  for (EACH_CARDINAL_DIRECTION(dir)) {
-    if (out_of_bounds(loc + dir) || !is_sticky_water(loc + dir)) return false;
-  }
-  return is_sticky_water(loc);
-}
-
-bool is_membrane_water(location loc) {
-  return is_sticky_water(loc) && !is_interior_water(loc);
-}*/
-
-/*struct water_group {
-  int max_tile_z;
-  std::set<location> tiles;
-  set<pair<location, one_tile_direction_vector> > exit_surfaces; // (sticky water, direction towards something that's either air or free water)
-  water_group():max_tile_z(0){}
-};*/
-
 struct water_groups_structure {
   unordered_map<location, group_number_t> group_numbers_by_location;
   vector<unordered_set<location> > locations_by_group_number;
@@ -510,43 +477,6 @@ void compute_groups_that_need_to_be_considered(water_groups_structure &result) {
   }
 }
 
-
-/*void mark_water_group_that_includes(location loc, int group_number, map<int, water_group>& groups) {
-  set<location> frontier;
-  frontier.insert(loc);
-  groups.insert(make_pair(group_number, water_group()));
-  while(!frontier.empty())
-  {
-    const location next_loc = *(frontier.begin());
-    frontier.erase(frontier.begin());
-    
-    tiles[next_loc].water_group_number = group_number;
-    groups[group_number].tiles.insert(next_loc);
-    if (next_loc.z > groups[group_number].max_tile_z) groups[group_number].max_tile_z = next_loc.z;
-    
-    if (is_sticky_water(next_loc)) {
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        const location adj_loc = next_loc + dir;
-        if (out_of_bounds(adj_loc)) continue;
-        tile &adj_tile = tiles[adj_loc];
-        if (adj_tile.contents == WATER && adj_tile.water_group_number != group_number) {
-          frontier.insert(adj_loc);
-        }
-        // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
-        if (adj_tile.contents == AIR) {
-          for (EACH_CARDINAL_DIRECTION(d2)) {
-            if (d2.dot(dir) == 0 && !out_of_bounds(adj_loc + d2) && tiles[adj_loc + d2].contents == WATER && tiles[adj_loc + d2].water_group_number != group_number) {
-              frontier.insert(adj_loc + d2);
-            }
-          }
-        }
-        if (adj_tile.contents == AIR || (adj_tile.contents == WATER && is_free_water(adj_loc))) {
-          groups[group_number].exit_surfaces.insert(std::make_pair(next_loc, dir));
-        }
-      }
-    }
-  }
-}*/
 
 struct wanted_move {
   location src;
