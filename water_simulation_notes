@@ -40,4 +40,4 @@ OBSERVATION: Things that have to deal with an "entire lake", but really only car
 
 
 
-Current things missing: water is sometimes a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); we need to implement the optimizations/idle-setting stuff
+Current things missing: make more randomness in the velocity-only water mechanics; water is sometimes a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); only process the surfaces of groups, not their volume; need to tweak the rules to keep water falling into a long vertical edge from having so much friction
