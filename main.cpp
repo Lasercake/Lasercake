@@ -152,6 +152,11 @@ void build_a_little_water_on_the_ground() {
   }}
 }
 
+struct vertex_entry { GLfloat x, y, z; };
+void push_vertex(vector<vertex_entry> &v, GLfloat x, GLfloat y, GLfloat z) {
+  v.push_back((vertex_entry){x,y,z});
+}
+
 static void mainLoop (std::string scenario)
 {
     SDL_Event event;
@@ -178,28 +183,39 @@ srand(time(NULL));
   for (EACH_LOCATION(loc)) {
     if(tiles[loc].contents == WATER) tiles.active_tiles[loc];
   }
-
+  double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
     
   while ( !done ) {
 
-		/* Check for events */
-		while ( SDL_PollEvent (&event) ) {
-			switch (event.type) {
-
-				case SDL_MOUSEMOTION:
-					break;
-				case SDL_MOUSEBUTTONDOWN:
-					break;
-				case SDL_KEYDOWN:
-					if(event.key.keysym.sym == SDLK_p) ++p_mode;
-					if(event.key.keysym.sym != SDLK_ESCAPE)break;
-				case SDL_QUIT:
-					done = 1;
-					break;
-				default:
-					break;
-			}
-		}
+    /* Check for events */
+    while ( SDL_PollEvent (&event) ) {
+      switch (event.type) {
+        case SDL_MOUSEMOTION:
+          break;
+          
+        case SDL_MOUSEBUTTONDOWN:
+          break;
+          
+        case SDL_KEYDOWN:
+          if(event.key.keysym.sym == SDLK_p) ++p_mode;
+          if(event.key.keysym.sym == SDLK_q) ++view_x;
+          if(event.key.keysym.sym == SDLK_a) --view_x;
+          if(event.key.keysym.sym == SDLK_w) ++view_y;
+          if(event.key.keysym.sym == SDLK_s) --view_y;
+          if(event.key.keysym.sym == SDLK_e) ++view_z;
+          if(event.key.keysym.sym == SDLK_d) --view_z;
+          if(event.key.keysym.sym == SDLK_r) ++view_dist;
+          if(event.key.keysym.sym == SDLK_f) --view_dist;
+          if(event.key.keysym.sym != SDLK_ESCAPE)break;
+          
+        case SDL_QUIT:
+          done = 1;
+          break;
+          
+        default:
+          break;
+      }
+    }
 		
     if(p_mode == 1)continue;
     if(p_mode > 1)--p_mode;
@@ -208,71 +224,108 @@ srand(time(NULL));
     glClear(GL_COLOR_BUFFER_BIT);
     
     //drawing code here
+    vector<vertex_entry> ground_vertices;
+    vector<vertex_entry> rock_vertices;
+    vector<vertex_entry> sticky_water_vertices;
+    vector<vertex_entry> free_water_vertices;
+    vector<vertex_entry> velocity_vertices;
+    vector<vertex_entry> progress_vertices;
+    vector<vertex_entry> idle_marker_vertices;
+    
     frame += 1;
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
-    gluLookAt(5.0 + 20.0 * std::cos((double)frame / 40.0),5.0 + 20.0 * std::sin((double)frame / 40.0),15.0 + 5.0 * std::sin((double)frame / 60.0),5,5,5,0,0,1);
+    gluLookAt(view_x + view_dist * std::cos((double)frame / 40.0),view_y + view_dist * std::sin((double)frame / 40.0),view_z + (view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0),view_x,view_y,view_z,0,0,1);
     
     for (int x = 0; x < MAX_X; ++x) { for (int y = 0; y < MAX_Y; ++y) {
-      glColor4f(0.2,0.4,0.0,1.0);
-      
-      glBegin(GL_POLYGON);
-        glVertex3f(x, y, 0);
-        glVertex3f(x + 1, y, 0);
-        glVertex3f(x + 1, y +1, 0);
-        glVertex3f(x, y+1, 0);
-        glEnd();
+      push_vertex(ground_vertices, x, y, 0);
+      push_vertex(ground_vertices, x + 1, y, 0);
+      push_vertex(ground_vertices, x + 1, y +1, 0);
+      push_vertex(ground_vertices, x, y+1, 0);
     }}
       
     for (EACH_LOCATION(loc))
     {
       if (tiles[loc].contents != AIR)
       {
+        vector<vertex_entry> *vect;
         if (tiles[loc].contents == ROCK) {
-          glColor4f(0.5,0.0,0.0,0.5);
+          vect = &rock_vertices;
         }
         else {
-          if(is_sticky_water(loc))glColor4f(0.0, 0.0, 1.0, 0.5);
-          else glColor4f(0.4, 0.4, 1.0, 0.5);
+          if(is_sticky_water(loc)) {
+            vect = &sticky_water_vertices;
+          }
+          else {
+            vect = &free_water_vertices;
+          }
         }
         
-        glBegin(GL_POLYGON);
-          glVertex3f(loc.x, loc.y, (double)loc.z + 0.5);
-          glVertex3f(loc.x + 1, loc.y, (double)loc.z + 0.5);
-          glVertex3f(loc.x + 1, loc.y +1, (double)loc.z + 0.5);
-          glVertex3f(loc.x, loc.y+1, (double)loc.z + 0.5);
-        glEnd();
+        push_vertex(*vect, loc.x, loc.y, (GLfloat)loc.z + 0.5);
+        push_vertex(*vect, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
+        push_vertex(*vect, loc.x + 1, loc.y +1, (GLfloat)loc.z + 0.5);
+        push_vertex(*vect, loc.x, loc.y+1, (GLfloat)loc.z + 0.5);
+        
         if (tiles[loc].contents == WATER) {
           if (water_movement_info *water = find_as_pointer(tiles.active_tiles, loc)) {
-            glColor4f(0.0, 1.0, 0.0, 0.5);
-            glBegin(GL_LINES);
-            glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-            glVertex3f((double)loc.x+0.5+((double)water->velocity.x / (250 * precision_factor)),
-                (double)loc.y+0.5+((double)water->velocity.y / (250 * precision_factor)),
-                (double)loc.z + 0.5+((double)water->velocity.z / (250 * precision_factor)));
-            glEnd();
+            push_vertex(velocity_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
+            push_vertex(velocity_vertices, (GLfloat)loc.x+0.5+((GLfloat)water->velocity.x / (250 * precision_factor)),
+                (GLfloat)loc.y+0.5+((GLfloat)water->velocity.y / (250 * precision_factor)),
+                (GLfloat)loc.z + 0.5+((GLfloat)water->velocity.z / (250 * precision_factor)));
              
-            glColor4f(0.0, 0.0, 1.0, 0.5);
             for (EACH_CARDINAL_DIRECTION(dir)) {
-              vector3 vect = (dir * water->progress[dir]);
-              glBegin(GL_LINES);
-                glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-                glVertex3f((double)loc.x+0.5+((double)vect.x / progress_necessary),
-                    (double)loc.y+0.5+((double)vect.y / progress_necessary),
-                    (double)loc.z + 0.5+((double)vect.z / progress_necessary));
-              glEnd();
+              const scalar_type prog = water->progress[dir];
+              if (prog > 0) {
+                vector3 vect = (dir * prog);
+
+                push_vertex(progress_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
+                push_vertex(progress_vertices, (GLfloat)loc.x+0.5+((GLfloat)vect.x / progress_necessary),
+                    (GLfloat)loc.y+0.5+((GLfloat)vect.y / progress_necessary),
+                    (GLfloat)loc.z + 0.5+((GLfloat)vect.z / progress_necessary));
+              }
             }
           }
           else {
-            glColor4f(0.0, 0.0, 0.0, 0.5);
-            glPointSize(3);
-            glBegin(GL_POINTS);
-              glVertex3f((double)loc.x+0.5, (double)loc.y+0.5, (double)loc.z + 0.5);
-            glEnd();
+            push_vertex(idle_marker_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
           }
         }
       }
     }
+    
+    int before_GL = SDL_GetTicks();
+    
+    glEnableClientState(GL_VERTEX_ARRAY);
+    
+    glColor4f(0.2,0.4,0.0,1.0);
+    glVertexPointer(3, GL_FLOAT, 0, &ground_vertices[0]);
+    glDrawArrays(GL_QUADS, 0, ground_vertices.size());
+    
+    glColor4f(0.5,0.0,0.0,0.5);
+    glVertexPointer(3, GL_FLOAT, 0, &rock_vertices[0]);
+    glDrawArrays(GL_QUADS, 0, rock_vertices.size());
+    
+    glColor4f(0.0, 0.0, 1.0, 0.5);
+    glVertexPointer(3, GL_FLOAT, 0, &sticky_water_vertices[0]);
+    glDrawArrays(GL_QUADS, 0, sticky_water_vertices.size());
+    
+    glColor4f(0.4, 0.4, 1.0, 0.5);
+    glVertexPointer(3, GL_FLOAT, 0, &free_water_vertices[0]);
+    glDrawArrays(GL_QUADS, 0, free_water_vertices.size());
+    
+    glColor4f(0.0, 1.0, 0.0, 0.5);
+    glVertexPointer(3, GL_FLOAT, 0, &velocity_vertices[0]);
+    glDrawArrays(GL_LINES, 0, velocity_vertices.size());
+    
+    glColor4f(0.0, 0.0, 1.0, 0.5);
+    glVertexPointer(3, GL_FLOAT, 0, &progress_vertices[0]);
+    glDrawArrays(GL_LINES, 0, progress_vertices.size());
+    
+    glColor4f(0.0, 0.0, 0.0, 0.5);
+    glPointSize(3);
+    glVertexPointer(3, GL_FLOAT, 0, &idle_marker_vertices[0]);
+    glDrawArrays(GL_POINTS, 0, idle_marker_vertices.size());
+    
+    
     
     glFinish();	
     SDL_GL_SwapBuffers();
@@ -283,7 +336,7 @@ srand(time(NULL));
     update_water();
     
     int after = SDL_GetTicks();
-    std::cerr << (after - before_processing) << ", " << (before_processing - before_drawing) << "\n";
+    std::cerr << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";
 
 //    SDL_Delay(50);
   }
