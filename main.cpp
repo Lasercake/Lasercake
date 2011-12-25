@@ -208,10 +208,7 @@ srand(time(NULL));
 	glLoadIdentity();
 	gluPerspective(80, 1, 1, 100);
 	gluLookAt(5.0 + 20.0 * std::cos((double)frame / 40.0),5.0 + 20.0 * std::sin((double)frame / 40.0),15.0 + 5.0 * std::sin((double)frame / 60.0),5,5,5,0,0,1);
-		int total_amount = 0;
-		int max_pressure = 0;
-		int total_force = 0;
-		int max_velmgsq = 0;
+
 	for (int x = 0; x < MAX_X; ++x) { for (int y = 0; y < MAX_Y; ++y) {
 		glColor4f(0.2,0.4,0.0,1.0);
 

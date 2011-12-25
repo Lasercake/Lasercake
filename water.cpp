@@ -8,12 +8,15 @@
 #include <array>
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 #include <boost/functional/hash.hpp>
+#include <boost/utility.hpp>
 #include <iostream>
 #include <inttypes.h>
 
 using std::map;
 using std::unordered_map;
+using std::unordered_set;
 using std::pair;
 using std::make_pair;
 using std::set;
@@ -216,6 +219,7 @@ public:
     for(int i=0;i<6;++i) {
       data[i] = other.data[i];
     }
+    return *this;
   }
   value_for_each_cardinal_direction(value_type initial_value) {
     for(int i=0;i<6;++i) {
@@ -265,11 +269,11 @@ const scalar_type friction_amount = 3 * precision_factor;
 // as in 1 + d2 (except with the random based at zero, but who cares)
 const scalar_type pressure_motion_factor = 80 * precision_factor;
 const scalar_type pressure_motion_factor_random = 40 * precision_factor;
-const scalar_type extra_downward_speed_for_grouped_tiles = 100 * precision_factor;
+const scalar_type extra_downward_speed_for_sticky_water = 100 * precision_factor;
 
 const scalar_type air_resistance_constant = (200000 * precision_factor * precision_factor);
 const scalar_type idle_progress_reduction_rate = 100 * precision_factor;
-const scalar_type grouped_water_velocity_reduction_rate = 5*precision_factor;
+const scalar_type sticky_water_velocity_reduction_rate = 5*precision_factor;
 
 const vector3 idle_water_velocity(0, 0, -min_convincing_speed);
 
@@ -293,10 +297,13 @@ struct water_movement_info {
   }
 };
 
+typedef int group_number_t;
+const group_number_t NO_GROUP = -1;
+const group_number_t FIRST_GROUP = 0;
+
 struct tile
 {
   tile_contents contents;
-  int water_group_number; // a temporary variable during the computation. Be warned: Two groups can claim the same free water tile, and the second group will overwrite the first (so after groups are collected, this will only be valid for sticky water)
 };
 
 bool out_of_bounds(location loc){return loc.x < 0 || loc.y < 0 || loc.z < 0 || loc.x >= MAX_X || loc.y >= MAX_Y || loc.z >= MAX_Z; }
@@ -314,7 +321,7 @@ public:
 tiles_type tiles;
 
 template<typename Map>
-typename Map::value_type* find_as_pointer(Map& m, typename Map::key_type const& k) {
+typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const& k) {
   auto i = m.find(k);
   if(i == m.end()) return nullptr;
   else return &(i->second);
@@ -352,14 +359,85 @@ bool is_membrane_water(location loc) {
   return is_sticky_water(loc) && !is_interior_water(loc);
 }
 
-struct water_group {
+/*struct water_group {
   int max_tile_z;
   std::set<location> tiles;
   set<pair<location, one_tile_direction_vector> > exit_surfaces; // (sticky water, direction towards something that's either air or free water)
   water_group():max_tile_z(0){}
+};*/
+
+struct water_groups_structure {
+  unordered_map<location, group_number_t> group_numbers_by_location;
+  vector<unordered_set<location> > locations_by_group_number;
+  vector<scalar_type> max_z_by_group_number;
 };
 
-void mark_water_group_that_includes(location loc, int group_number, map<int, water_group>& groups) {
+void collect_membrane(location const& loc, group_number_t group_number, water_groups_structure &result) {
+  vector<location> frontier;
+  frontier.push_back(loc);
+  while(!frontier.empty())
+  {
+    const location next_loc = frontier.back();
+    frontier.pop_back();
+    if (result.group_numbers_by_location.find(next_loc) == result.group_numbers_by_location.end()) {
+      result.group_numbers_by_location.insert(make_pair(next_loc, group_number));
+      for (EACH_CARDINAL_DIRECTION(dir)) {
+        const location adj_loc = next_loc + dir;
+        if (!out_of_bounds(adj_loc) && is_membrane_water(adj_loc)) {
+          frontier.push_back(adj_loc);
+        }
+      }
+    }
+  }
+}
+
+// the argument must start out default-initialized
+void compute_groups_that_need_to_be_considered(water_groups_structure &result) {
+  group_number_t next_membrane_number = FIRST_GROUP;
+  for (auto const& p : tiles.active_tiles) {
+    location const& loc = p.first;
+    if (is_membrane_water(loc) && result.group_numbers_by_location.find(loc) == result.group_numbers_by_location.end()) {
+      collect_membrane(loc, next_membrane_number, result);
+      ++next_membrane_number;
+    }
+  }
+  
+  // Make a list of locations, sorted by X then Y then Z
+  vector<pair<location, group_number_t> > columns; columns.reserve(result.group_numbers_by_location.size());
+  columns.insert(columns.end(), result.group_numbers_by_location.begin(), result.group_numbers_by_location.end());
+  std::sort(columns.begin(), columns.end()); // TODO: don't rely on location's < to be x-then-y-then-z
+  
+  group_number_t containing_group;
+  for (pair<location, group_number_t> const& p : columns) {
+    if (!out_of_bounds(p.first - zunitv) && is_sticky_water(p.first - zunitv)) {
+      // The tile we've just hit is the boundary of a bubble in the larger group (or it's extra bits of the outer shell, in which case the assignment does nothing).
+      result.group_numbers_by_location[p.first] = containing_group;
+    }
+    else {
+      // We're entering a group from the outside, which means it functions as a containing group.
+      containing_group = p.second;
+    }
+  }
+  
+  // Now we might have some sort of group numbers like "1, 2, 7" because they've consolidated in essentially a random order. Convert them to a nice set of indices like 0, 1, 2.
+  map<group_number_t, group_number_t> key_compacting_map;
+  group_number_t next_group_number = FIRST_GROUP;
+  for (pair<const location, group_number_t> &p : result.group_numbers_by_location) {
+    if (group_number_t *new_number = find_as_pointer(key_compacting_map, p.second)) {
+      p.second = *new_number;
+    }
+    else {
+      p.second = key_compacting_map[p.second] = next_group_number++; // Bwa ha ha ha ha.
+      result.locations_by_group_number.push_back(unordered_set<location>());
+      result.max_z_by_group_number.push_back(p.first.z);
+    }
+    result.locations_by_group_number[p.second].insert(p.first);
+    result.max_z_by_group_number[p.second] = std::max(result.max_z_by_group_number[p.second], p.first.z);
+  }
+}
+
+
+/*void mark_water_group_that_includes(location loc, int group_number, map<int, water_group>& groups) {
   set<location> frontier;
   frontier.insert(loc);
   groups.insert(make_pair(group_number, water_group()));
@@ -394,17 +472,58 @@ void mark_water_group_that_includes(location loc, int group_number, map<int, wat
       }
     }
   }
-}
+}*/
 
 struct wanted_move {
   location src;
   one_tile_direction_vector dir;
-  int group_number_or_zero_for_velocity_movement;
+  group_number_t group_number_or_NO_GROUP_for_velocity_movement;
   scalar_type amount_of_the_push_that_sent_us_over_the_threshold;
   scalar_type excess_progress;
-  wanted_move(location src,one_tile_direction_vector dir,int g,scalar_type a,scalar_type e):src(src),dir(dir),group_number_or_zero_for_velocity_movement(g),amount_of_the_push_that_sent_us_over_the_threshold(a),excess_progress(e){}
+  wanted_move(location src,one_tile_direction_vector dir,group_number_t g,scalar_type a,scalar_type e):src(src),dir(dir),group_number_or_NO_GROUP_for_velocity_movement(g),amount_of_the_push_that_sent_us_over_the_threshold(a),excess_progress(e){}
 };
 
+  
+template<typename Stuff> struct literally_random_access_removable_stuff {
+public:
+  void add(Stuff stuff) {
+    stuffs.push_back(stuff);
+    blacklist_list.push_back(false);
+  }
+  void blacklist(size_t which) {
+    ++num_blacklisted;
+    blacklist_list[which] = true;
+    if (num_blacklisted * 2 > stuffs.size()) {
+      purge_blacklisted_stuffs();
+    }
+  }
+  Stuff get_and_blacklist_random() {
+    assert(!stuffs.empty());
+    size_t idx;
+    do { idx = (size_t)(rand()%(stuffs.size())); } while (blacklist_list[idx]);
+    Stuff result = stuffs[idx];
+    blacklist(idx);
+    return result;
+  }
+  bool empty()const { return stuffs.empty(); }
+private:
+  vector<Stuff> stuffs;
+  vector<bool> blacklist_list;
+  size_t num_blacklisted;
+  void purge_blacklisted_stuffs() {
+    size_t next_insert_idx = 0;
+    for (size_t i = 0; i < stuffs.size(); ++i) {
+      if (!blacklist_list[i]) {
+        stuffs[next_insert_idx] = stuffs[i];
+        blacklist_list[next_insert_idx] = false;
+        ++next_insert_idx;
+      }
+    }
+    stuffs.erase(stuffs.begin() + next_insert_idx, stuffs.end());
+    blacklist_list.erase(blacklist_list.begin() + next_insert_idx, blacklist_list.end());
+    num_blacklisted = 0;
+  }
+};
 
 void update_water() {
   for (auto i = tiles.active_tiles.begin(); i != tiles.active_tiles.end(); ++i) {
@@ -414,33 +533,28 @@ void update_water() {
     if (is_sticky_water(i->first)) {
       vector3 &vel_ref = i->second.velocity;
       const vector3 current_velocity_wrongness = vel_ref - idle_water_velocity;
-      if (current_velocity_wrongness.magnitude_is_less_than(grouped_water_velocity_reduction_rate)) {
+      if (current_velocity_wrongness.magnitude_is_less_than(sticky_water_velocity_reduction_rate)) {
         vel_ref = idle_water_velocity;
       }
       else {
-        vel_ref -= current_velocity_wrongness * grouped_water_velocity_reduction_rate / current_velocity_wrongness.magnitude();
+        vel_ref -= current_velocity_wrongness * sticky_water_velocity_reduction_rate / current_velocity_wrongness.magnitude();
       }
     }
   }
   
-  int next_group_number = 1;
-  map<int, water_group> groups;
-  for (auto i = tiles.active_tiles.begin(); i != tiles.active_tiles.end(); ++i) {
-    location const& loc = i->first;
-    if (is_sticky_water(loc) && tiles[loc].water_group_number == 0) {
-      mark_water_group_that_includes(loc, ++next_group_number, groups);
-    }
-  }
+  water_groups_structure groups;
+  compute_groups_that_need_to_be_considered(groups);
 
-  for (auto i = groups.begin(); i != groups.end(); ++i) {
-    const int group_number = i->first;
-    water_group const& group = i->second;
-    
-    for(auto surface = group.exit_surfaces.begin(); surface != group.exit_surfaces.end(); ++surface) {
-      const double pressure = ((double)group.max_tile_z - 0.5) - ((double)surface->first.z + 0.5*surface->second.z); // proportional to depth, assuming side surfaces are at the middle of the side. HACK: This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
-      if (pressure > 0) {
-        assert(tiles.active_tiles.find(surface->first) != tiles.active_tiles.end());
-        tiles.active_tiles[surface->first].new_progress[surface->second] += (scalar_type)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
+  for (group_number_t group_number = FIRST_GROUP; group_number < (group_number_t)groups.locations_by_group_number.size(); ++group_number) {
+    for (location const& loc : groups.locations_by_group_number[group_number]) {
+      for (EACH_CARDINAL_DIRECTION(dir)) {
+        if (!out_of_bounds(loc + dir) && !is_sticky_water(loc + dir) && tiles[loc + dir].contents != ROCK) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the idle state what it is.)
+          const double pressure = ((double)groups.max_z_by_group_number[group_number] - 0.5) - ((double)loc.z + 0.5*dir.z); // proportional to depth, assuming side surfaces are at the middle of the side. This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
+          if (pressure > 0) {
+            // This activates the tile if it wasn't active.
+            tiles.active_tiles[loc].new_progress[dir] += (scalar_type)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
+          }
+        }
       }
     }
   }
@@ -449,7 +563,7 @@ void update_water() {
     assert(tiles[i->first].contents == WATER);
     location const& loc = i->first;
     if (is_sticky_water(loc)) {
-      i->second.new_progress[-zunitv] += extra_downward_speed_for_grouped_tiles;
+      i->second.new_progress[-zunitv] += extra_downward_speed_for_sticky_water;
     }
     else {
       vector3 &vel_ref = i->second.velocity;
@@ -504,7 +618,7 @@ void update_water() {
         assert(progress_ref <= progress_necessary);
         progress_ref += new_progress;
         if (progress_ref > progress_necessary) {
-          wanted_moves.push_back(wanted_move(i->first, dir, is_sticky_water(i->first) ? tiles[i->first].water_group_number : 0, new_progress, progress_ref - progress_necessary));
+          wanted_moves.push_back(wanted_move(i->first, dir, is_sticky_water(i->first) ? groups.group_numbers_by_location[i->first] : NO_GROUP, new_progress, progress_ref - progress_necessary));
           progress_ref = progress_necessary;
         }
       }
@@ -513,11 +627,37 @@ void update_water() {
   
   std::random_shuffle(wanted_moves.begin(), wanted_moves.end());
   std::set<location> disturbed_tiles;
+
+  vector<map<scalar_type, literally_random_access_removable_stuff<location> > > tiles_by_z_location_by_group_number(groups.locations_by_group_number.size());
+  
+  for (group_number_t group_number = FIRST_GROUP; group_number < (group_number_t)groups.locations_by_group_number.size(); ++group_number) {
+    unordered_set<location> nearby_free_waters;
+    for (location const& loc : groups.locations_by_group_number[group_number]) {
+      tiles_by_z_location_by_group_number[group_number][loc.z].add(loc);
+      for (EACH_CARDINAL_DIRECTION(dir)) {
+        if (out_of_bounds(loc + dir)) continue;
+        if (is_free_water(loc + dir)) {
+          nearby_free_waters.insert(loc + dir);
+        }
+        // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
+        if (tiles[loc + dir].contents == AIR) {
+          for (EACH_CARDINAL_DIRECTION(d2)) {
+            if (d2.dot(dir) == 0 && !out_of_bounds(loc + dir + d2) && is_free_water(loc + dir + d2)) {
+              nearby_free_waters.insert(loc + dir + d2);
+            }
+          }
+        }
+      }
+    }
+    for (location const& loc : nearby_free_waters) {
+      tiles_by_z_location_by_group_number[group_number][loc.z].add(loc);
+    }
+  }
   
   for (const wanted_move move : wanted_moves) {
     const location dst = move.src + move.dir;
     tile &src_tile = tiles[move.src];
-    tile src_copy = src_tile;
+    tile src_copy = src_tile; // only for use in gdb
     // in certain situations we shouldn't try to move water more than once
     if (disturbed_tiles.find(move.src) != disturbed_tiles.end()) continue;
     // anything where the water was yanked away should have been marked "disturbed"
@@ -534,7 +674,7 @@ void update_water() {
       dst_tile.contents = WATER;
       water_movement_info &dst_water = tiles.active_tiles[dst]; // creates it if necessary
       
-      if (move.group_number_or_zero_for_velocity_movement == 0) {
+      if (move.group_number_or_NO_GROUP_for_velocity_movement == NO_GROUP) {
         dst_water = src_water;
         delete_water(move.src);
         disturbed_tiles.insert(move.src);
@@ -543,25 +683,19 @@ void update_water() {
         // the teleported tile starts with zero everything, for some reason (TODO: why should it be like this?)
         dst_water.velocity = vector3(0,0,0); dst_water.progress[-zunitv] = 0;
         
-        // HACK - pick a random top tile in an inefficient way. (We have to recompute stuff in case a lot of tiles were yanked from the top at once.)
-        location chosen_top_tile = location(-1,-1,-1);
-        int num_top_tiles = 0;
-        for (const location loc : groups[move.group_number_or_zero_for_velocity_movement].tiles) {
-          if (disturbed_tiles.find(loc) != disturbed_tiles.end()) continue;
-          assert(tiles[loc].contents == WATER);
-          if (loc.z > chosen_top_tile.z) {
-            chosen_top_tile = loc;
-            num_top_tiles = 1;
-          }
-          else if (loc.z == chosen_top_tile.z) {
-            ++num_top_tiles;
-            if (rand()%num_top_tiles == 0) {
-              chosen_top_tile = loc;
-            }
+        // Pick a random top tile.
+        map<scalar_type, literally_random_access_removable_stuff<location> > m = tiles_by_z_location_by_group_number[move.group_number_or_NO_GROUP_for_velocity_movement];
+        location chosen_top_tile;
+        while (true) {
+          assert(!m.empty());
+          map<scalar_type, literally_random_access_removable_stuff<location> >::iterator l = boost::prior(m.end());
+          if (l->second.empty()) m.erase(l);
+          else {
+            chosen_top_tile = l->second.get_and_blacklist_random();
+            if (disturbed_tiles.find(chosen_top_tile) == disturbed_tiles.end()) break;
           }
         }
         // Since the source tile is still water, there always must be a real tile to choose
-        assert(num_top_tiles > 0);
         
         delete_water(chosen_top_tile);
         disturbed_tiles.insert(chosen_top_tile);
@@ -581,8 +715,7 @@ void update_water() {
       src_water.blockage_amount_this_frame[move.dir] = move.excess_progress;
       
       if (!out_of_bounds(dst) && tiles[dst].contents == WATER) {
-        tile &dst_tile = tiles[dst];
-        if (move.group_number_or_zero_for_velocity_movement == 0) {
+        if (move.group_number_or_NO_GROUP_for_velocity_movement == NO_GROUP) {
           if (is_sticky_water(dst)) {
             //TODO... right now, same as rock. Dunno if it should be different.
             src_water.get_completely_blocked(move.dir);
@@ -604,16 +737,10 @@ void update_water() {
       }
       else if (out_of_bounds(dst) || tiles[dst].contents == ROCK) {
         // TODO figure out what to actually do about the fact that water can become sticky while having lots of progress.
-        //assert(move.group_number_or_zero_for_velocity_movement == 0);
+        //assert(move.group_number_or_NO_GROUP_for_velocity_movement == NO_GROUP);
         src_water.get_completely_blocked(move.dir);
       }
       else assert(false);
-    }
-  }
-  
-  for (auto i = groups.begin(); i != groups.end(); ++i) {
-    for (location const& loc : i->second.tiles) {
-      tiles[loc].water_group_number = 0;
     }
   }
 }
