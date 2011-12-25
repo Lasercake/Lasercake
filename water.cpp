@@ -348,6 +348,10 @@ bool is_interior_water(location loc) {
   return is_sticky_water(loc);
 }
 
+bool is_membrane_water(location loc) {
+  return is_sticky_water(loc) && !is_interior_water(loc);
+}
+
 struct water_group {
   int max_tile_z;
   std::set<location> tiles;
