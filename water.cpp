@@ -343,9 +343,9 @@ bool is_free_water(location loc) {
 
 bool is_interior_water(location loc) {
   for (EACH_CARDINAL_DIRECTION(dir)) {
-    if (out_of_bounds(loc + dir) || !is_sticky_water(loc)) return false;
+    if (out_of_bounds(loc + dir) || !is_sticky_water(loc + dir)) return false;
   }
-  return true;
+  return is_sticky_water(loc);
 }
 
 struct water_group {
