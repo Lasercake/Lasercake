@@ -251,8 +251,8 @@ srand(time(NULL));
       
       // TODO REMOVE DUPLICATE CODE: used for both active and inactive water
       vector<vertex_entry> *vect;
-      if(is_sticky_water(loc)) vect = &sticky_water_vertices;
-      else                     vect = &  free_water_vertices;
+      if(tiles[loc].is_sticky_water()) vect = &sticky_water_vertices;
+      else                             vect = &  free_water_vertices;
       
       push_vertex(*vect, loc.x, loc.y, (GLfloat)loc.z + 0.5);
       push_vertex(*vect, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
@@ -270,8 +270,8 @@ srand(time(NULL));
       
       // TODO REMOVE DUPLICATE CODE: used for both active and inactive water
       vector<vertex_entry> *vect;
-      if(is_sticky_water(loc)) vect = &sticky_water_vertices;
-      else                     vect = &  free_water_vertices;
+      if(tiles[loc].is_sticky_water()) vect = &sticky_water_vertices;
+      else                             vect = &  free_water_vertices;
       
       push_vertex(*vect, loc.x, loc.y, (GLfloat)loc.z + 0.5);
       push_vertex(*vect, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
