@@ -86,7 +86,7 @@ static void createSurface (int fullscreen)
 // Hack - situation building functions
 void build_midair_water_tower(int midairness) {
   for (int x = 4; x <= 6; ++x) { for (int y = 4; y <= 6; ++y) { for(int z = midairness; z < MAX_Z; ++z) {
-    tiles[location(x, y, z)].contents = WATER;
+    tiles.insert_water(location(x, y, z));
   }}}
 }
 void wall_midair_water_tower(int midairness) {
@@ -109,36 +109,36 @@ void build_water_sheet_and_shallow_slope() {
     if (loc.z == 0 && loc.x >= 5) tiles[loc].contents = ROCK;
     else if (loc.z == 1 && loc.x >= 10) tiles[loc].contents = ROCK;
     else if (loc.z == 2 && loc.x >= 15) tiles[loc].contents = ROCK;
-    else if (loc.x == 19)tiles[loc].contents = WATER;
+    else if (loc.x == 19)tiles.insert_water(loc);
   }
 }
 void build_water_mass_and_steep_slope() {
   for (EACH_LOCATION(loc)) {
     if (loc.z < 20 - loc.x) tiles[loc].contents = ROCK;
-    else if (loc.z >= 15 && (20 - loc.x) >= 15) tiles[loc].contents = WATER;
+    else if (loc.z >= 15 && (20 - loc.x) >= 15) tiles.insert_water(loc);
   }
 }
 void build_punctured_tank() {
   for (EACH_LOCATION(loc)) {
     if (loc.z < 8 && loc.x > 10) tiles[loc].contents = ROCK;
-    else if (loc.x >= 12 && loc.y <= 13 && loc.y >= 7) { tiles[loc].contents = WATER; }
+    else if (loc.x >= 12 && loc.y <= 13 && loc.y >= 7) { tiles.insert_water(loc); }
     else if (loc.y != 10 && loc.x > 10) tiles[loc].contents = ROCK;
     else if (loc.z > 8 && loc.x > 10 && loc.x < 18) tiles[loc].contents = ROCK;
-    else if (loc.x > 10) { tiles[loc].contents = WATER; }
+    else if (loc.x > 10) { tiles.insert_water(loc); }
   }
 }
 void build_punctured_tank2() {
   for (EACH_LOCATION(loc)) {
     if (loc.z < 8 && loc.x > 10) tiles[loc].contents = ROCK;
-    else if (loc.x >= 12 && loc.y <= 13 && loc.y >= 7) { tiles[loc].contents = WATER; }
+    else if (loc.x >= 12 && loc.y <= 13 && loc.y >= 7) { tiles.insert_water(loc); }
     else if (loc.y != 9 && loc.y != 10 && loc.x > 10) tiles[loc].contents = ROCK;
     else if (loc.z > 9 && loc.x > 10 && loc.x < 18) tiles[loc].contents = ROCK;
-    else if (loc.x > 10) { tiles[loc].contents = WATER; }
+    else if (loc.x > 10) { tiles.insert_water(loc); }
   }
 }
 void build_annoying_twisty_passageways() {
   for (EACH_LOCATION(loc)) {
-    if (loc.x == 0)tiles[loc].contents = WATER;
+    if (loc.x == 0)tiles.insert_water(loc);
     else if (loc.x == 1 && loc.z > 0) tiles[loc].contents = ROCK;
     else if (loc.x == 5) tiles[loc].contents = ROCK;
     else if (loc.x == 2 && (loc.z % 4) == 1) tiles[loc].contents = ROCK;
@@ -148,7 +148,7 @@ void build_annoying_twisty_passageways() {
 }
 void build_a_little_water_on_the_ground() {
   for (int x = 5; x <= 11; ++x) { for (int y = 5; y <= 11; ++y) {
-    tiles[location(x, y, 0)].contents = WATER;
+    tiles.insert_water(location(x, y, 0));
   }}
 }
 
@@ -159,11 +159,15 @@ void push_vertex(vector<vertex_entry> &v, GLfloat x, GLfloat y, GLfloat z) {
 
 static void mainLoop (std::string scenario)
 {
-    SDL_Event event;
-    int done = 0;
-    int frame = 0;
-    int p_mode = 0;
+  SDL_Event event;
+  int done = 0;
+  int frame = 0;
+  int p_mode = 0;
 srand(time(NULL));
+  
+  vector<vertex_entry> ground_vertices;
+  vector<vertex_entry> rock_vertices;
+  
   for (EACH_LOCATION(loc))
   {
     tiles[loc].contents = AIR;
@@ -176,14 +180,26 @@ srand(time(NULL));
   else if (scenario == "tank") { build_punctured_tank(); }
   else if (scenario == "tank2") { build_punctured_tank2(); }
   else if (scenario == "twisty") { build_annoying_twisty_passageways(); }
-  else if (scenario == "droplet") { tiles[location(10,10,10)].contents = WATER; }
-  else if (scenario == "droplets") { tiles[location(10,10,10)].contents = WATER; tiles[location(10,10,19)].contents = WATER; }
+  else if (scenario == "droplet") { tiles.insert_water(location(10,10,10)); }
+  else if (scenario == "droplets") { tiles.insert_water(location(10,10,10)); tiles.insert_water(location(10,10,19)); }
   else build_a_little_water_on_the_ground();
-  // init activeness
+  
   for (EACH_LOCATION(loc)) {
-    if(tiles[loc].contents == WATER) tiles.active_tiles[loc];
+    if (tiles[loc].contents == ROCK) {
+      push_vertex(rock_vertices, loc.x, loc.y, (GLfloat)loc.z + 0.5);
+      push_vertex(rock_vertices, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
+      push_vertex(rock_vertices, loc.x + 1, loc.y +1, (GLfloat)loc.z + 0.5);
+      push_vertex(rock_vertices, loc.x, loc.y+1, (GLfloat)loc.z + 0.5);
+    }
   }
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
+    
+  for (int x = 0; x < MAX_X; ++x) { for (int y = 0; y < MAX_Y; ++y) {
+    push_vertex(ground_vertices, x, y, 0);
+    push_vertex(ground_vertices, x + 1, y, 0);
+    push_vertex(ground_vertices, x + 1, y +1, 0);
+    push_vertex(ground_vertices, x, y+1, 0);
+  }}
     
   while ( !done ) {
 
@@ -216,73 +232,67 @@ srand(time(NULL));
           break;
       }
     }
-		
+	
     if(p_mode == 1)continue;
     if(p_mode > 1)--p_mode;
     int before_drawing = SDL_GetTicks();
-    
+
     glClear(GL_COLOR_BUFFER_BIT);
-    
+
     //drawing code here
-    vector<vertex_entry> ground_vertices;
-    vector<vertex_entry> rock_vertices;
     vector<vertex_entry> sticky_water_vertices;
     vector<vertex_entry> free_water_vertices;
     vector<vertex_entry> velocity_vertices;
     vector<vertex_entry> progress_vertices;
     vector<vertex_entry> idle_marker_vertices;
-    
-    for (int x = 0; x < MAX_X; ++x) { for (int y = 0; y < MAX_Y; ++y) {
-      push_vertex(ground_vertices, x, y, 0);
-      push_vertex(ground_vertices, x + 1, y, 0);
-      push_vertex(ground_vertices, x + 1, y +1, 0);
-      push_vertex(ground_vertices, x, y+1, 0);
-    }}
-      
-    for (EACH_LOCATION(loc))
-    {
-      if (tiles[loc].contents != AIR)
-      {
-        vector<vertex_entry> *vect;
-        if (tiles[loc].contents == ROCK) {
-          vect = &rock_vertices;
-        }
-        else {
-          if(is_sticky_water(loc)) {
-            vect = &sticky_water_vertices;
-          }
-          else {
-            vect = &free_water_vertices;
-          }
-        }
-        
-        push_vertex(*vect, loc.x, loc.y, (GLfloat)loc.z + 0.5);
-        push_vertex(*vect, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
-        push_vertex(*vect, loc.x + 1, loc.y +1, (GLfloat)loc.z + 0.5);
-        push_vertex(*vect, loc.x, loc.y+1, (GLfloat)loc.z + 0.5);
-        
-        if (tiles[loc].contents == WATER) {
-          if (water_movement_info *water = find_as_pointer(tiles.active_tiles, loc)) {
-            push_vertex(velocity_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
-            push_vertex(velocity_vertices, (GLfloat)loc.x+0.5+((GLfloat)water->velocity.x / (250 * precision_factor)),
-                (GLfloat)loc.y+0.5+((GLfloat)water->velocity.y / (250 * precision_factor)),
-                (GLfloat)loc.z + 0.5+((GLfloat)water->velocity.z / (250 * precision_factor)));
-             
-            for (EACH_CARDINAL_DIRECTION(dir)) {
-              const scalar_type prog = water->progress[dir];
-              if (prog > 0) {
-                vector3 vect = (dir * prog);
 
-                push_vertex(progress_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
-                push_vertex(progress_vertices, (GLfloat)loc.x+0.5+((GLfloat)vect.x / progress_necessary),
-                    (GLfloat)loc.y+0.5+((GLfloat)vect.y / progress_necessary),
-                    (GLfloat)loc.z + 0.5+((GLfloat)vect.z / progress_necessary));
-              }
-            }
-          }
-          else {
-            push_vertex(idle_marker_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
-          }
+    for (location const& loc : tiles.idle_water) {
+      assert(tiles[loc].contents == WATER);
+      
+      // TODO REMOVE DUPLICATE CODE: used for both active and inactive water
+      vector<vertex_entry> *vect;
+      if(is_sticky_water(loc)) vect = &sticky_water_vertices;
+      else                     vect = &  free_water_vertices;
+      
+      push_vertex(*vect, loc.x, loc.y, (GLfloat)loc.z + 0.5);
+      push_vertex(*vect, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
+      push_vertex(*vect, loc.x + 1, loc.y +1, (GLfloat)loc.z + 0.5);
+      push_vertex(*vect, loc.x, loc.y+1, (GLfloat)loc.z + 0.5);
+      // TODO REMOVE DUPLICATE CODE end.
+      
+      push_vertex(idle_marker_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
+    }
+    for (pair<location, water_movement_info> const& i : tiles.active_tiles) {
+      location const& loc = i.first;
+      water_movement_info const& water = i.second;
+      
+      assert(tiles[loc].contents == WATER);
+      
+      // TODO REMOVE DUPLICATE CODE: used for both active and inactive water
+      vector<vertex_entry> *vect;
+      if(is_sticky_water(loc)) vect = &sticky_water_vertices;
+      else                     vect = &  free_water_vertices;
+      
+      push_vertex(*vect, loc.x, loc.y, (GLfloat)loc.z + 0.5);
+      push_vertex(*vect, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
+      push_vertex(*vect, loc.x + 1, loc.y +1, (GLfloat)loc.z + 0.5);
+      push_vertex(*vect, loc.x, loc.y+1, (GLfloat)loc.z + 0.5);
+      // TODO REMOVE DUPLICATE CODE end.
+      
+      push_vertex(velocity_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
+      push_vertex(velocity_vertices, (GLfloat)loc.x+0.5+((GLfloat)water.velocity.x / (250 * precision_factor)),
+          (GLfloat)loc.y+0.5+((GLfloat)water.velocity.y / (250 * precision_factor)),
+          (GLfloat)loc.z + 0.5+((GLfloat)water.velocity.z / (250 * precision_factor)));
+          
+      for (EACH_CARDINAL_DIRECTION(dir)) {
+        const scalar_type prog = water.progress[dir];
+        if (prog > 0) {
+          vector3 vect = (dir * prog);
+
+          push_vertex(progress_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
+          push_vertex(progress_vertices, (GLfloat)loc.x+0.5+((GLfloat)vect.x / progress_necessary),
+              (GLfloat)loc.y+0.5+((GLfloat)vect.y / progress_necessary),
+              (GLfloat)loc.z + 0.5+((GLfloat)vect.z / progress_necessary));
         }
       }
     }

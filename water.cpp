@@ -284,7 +284,7 @@ struct water_movement_info {
   value_for_each_cardinal_direction<scalar_type> blockage_amount_this_frame;
   
   // Constructing one of these in the default way yields the natural idle state:
-  // therefore we can safely use std::unordered_map's operator[] to "activate if necessary".
+  // however we should NOT use std::unordered_map's operator[] to activate it; it should only be created through tiles' activate_water and insert_water.
   water_movement_info():velocity(idle_water_velocity),progress(0),new_progress(0),blockage_amount_this_frame(0){ progress[-zunitv] = progress_necessary; }
   
   // This is not a general-purpose function. Only use it during the move-processing part of update_water.
@@ -325,10 +325,39 @@ class tiles_type {
 private:
   tile tiles[MAX_X][MAX_Y][MAX_Z];
 public:
-  typedef unordered_map<location, water_movement_info> active_tiles_type;
-  active_tiles_type active_tiles;
+  unordered_map<location, water_movement_info> active_tiles;
+  unordered_set<location> idle_water; // this is currently just a cache for the display...
+  
   tile& operator[](location loc){ assert(!out_of_bounds(loc)); return tiles[loc.x][loc.y][loc.z]; }
   tile const& operator[](location loc)const { assert(!out_of_bounds(loc)); return tiles[loc.x][loc.y][loc.z]; }
+  
+  void delete_water(location loc) {
+    (*this)[loc].contents = AIR;
+    active_tiles.erase(loc);
+    idle_water.erase(loc);
+    assert(active_tiles.find(loc) == active_tiles.end());
+  }
+  water_movement_info& insert_water(location loc) {
+    (*this)[loc].contents = WATER;
+    // created water always starts out active.
+    return active_tiles[loc]; // inserts it, default-constructed
+  }
+  void deactivate_water(location loc) {
+    auto i = active_tiles.find(loc);
+    if (i != active_tiles.end()) {
+      active_tiles.erase(i);
+      idle_water.insert(loc);
+    }
+  }
+  water_movement_info& activate_water(location loc) {
+    assert((*this)[loc].contents == WATER);
+    auto i = active_tiles.find(loc);
+    if (i == active_tiles.end()) {
+      idle_water.erase(loc);
+      return active_tiles[loc]; // inserts it, default-constructed
+    }
+    return i->second;
+  }
 };
 
 tiles_type tiles;
@@ -340,11 +369,6 @@ typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const&
   else return &(i->second);
 }
 
-void delete_water(location loc) {
-  tiles[loc].contents = AIR;
-  tiles.active_tiles.erase(loc);
-  assert(tiles.active_tiles.find(loc) == tiles.active_tiles.end());
-}
 
 
 bool is_sticky_water(location loc) {
@@ -564,8 +588,7 @@ void update_water() {
         if (!out_of_bounds(loc + dir) && !is_sticky_water(loc + dir) && tiles[loc + dir].contents != ROCK) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the idle state what it is.)
           const double pressure = ((double)groups.max_z_by_group_number[group_number] - 0.5) - ((double)loc.z + 0.5*dir.z); // proportional to depth, assuming side surfaces are at the middle of the side. This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
           if (pressure > 0) {
-            // This activates the tile if it wasn't active.
-            tiles.active_tiles[loc].new_progress[dir] += (scalar_type)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
+            tiles.activate_water(loc).new_progress[dir] += (scalar_type)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
           }
         }
       }
@@ -676,20 +699,18 @@ void update_water() {
     // anything where the water was yanked away should have been marked "disturbed"
     assert(src_tile.contents == WATER);
     
-    assert(tiles.active_tiles.find(move.src) != tiles.active_tiles.end());
-    water_movement_info &src_water = tiles.active_tiles[move.src];
+    auto fbdkopsw = tiles.active_tiles.find(move.src);
+    assert(fbdkopsw != tiles.active_tiles.end());
+    water_movement_info &src_water = fbdkopsw->second;
     scalar_type& progress_ref = src_water.progress[move.dir];
     
     if (!out_of_bounds(dst) && tiles[dst].contents == AIR) {
-      tile &dst_tile = tiles[dst];
-      
       progress_ref -= progress_necessary;
-      dst_tile.contents = WATER;
-      water_movement_info &dst_water = tiles.active_tiles[dst]; // creates it if necessary
+      water_movement_info &dst_water = tiles.insert_water(dst);
       
       if (move.group_number_or_NO_GROUP_for_velocity_movement == NO_GROUP) {
         dst_water = src_water;
-        delete_water(move.src);
+        tiles.delete_water(move.src);
         disturbed_tiles.insert(move.src);
       }
       else {
@@ -710,7 +731,7 @@ void update_water() {
         }
         // Since the source tile is still water, there always must be a real tile to choose
         
-        delete_water(chosen_top_tile);
+        tiles.delete_water(chosen_top_tile);
         disturbed_tiles.insert(chosen_top_tile);
       }
       
@@ -734,7 +755,7 @@ void update_water() {
             src_water.get_completely_blocked(move.dir);
           }
           else {
-            water_movement_info &dst_water = tiles.active_tiles[dst]; // creates it if necessary
+            water_movement_info &dst_water = tiles.activate_water(dst);
             
             const vector3 vel_diff = src_water.velocity - dst_water.velocity;
             const vector3 exchanged_velocity = project_onto_cardinal_direction(vel_diff, move.dir) / 2;
@@ -745,7 +766,7 @@ void update_water() {
         }
         else {
           // we tried to move due to pressure, but bumped into free water! Turn our movement into velocity, at some conversion factor.
-          tiles.active_tiles[dst].velocity /* creates it if necessary */ += (move.dir * move.excess_progress) / 10;
+          tiles.activate_water(dst).velocity += (move.dir * move.excess_progress) / 10;
         }
       }
       else if (out_of_bounds(dst) || tiles[dst].contents == ROCK) {
@@ -759,7 +780,9 @@ void update_water() {
   
   for (auto i = tiles.active_tiles.begin(); i != tiles.active_tiles.end(); ) {
     if (i->second.can_deactivate()) {
-      tiles.active_tiles.erase(i++);
+      location const& loc = i->first;
+      ++i;
+      tiles.deactivate_water(loc);
     }
     else ++i;
   }
