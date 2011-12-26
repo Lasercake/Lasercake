@@ -45,6 +45,8 @@ struct axis_aligned_bounding_box {
   }
 };
 
+const location_coordinate world_center_coord = (location_coordinate(1) << (8*sizeof(location_coordinate) - 1));
+
 const sub_tile_distance precision_factor = 100;
 const sub_tile_distance progress_necessary = 5000 * precision_factor; // loosely speaking, the conversion factor between mini-units and entire tiles
 const sub_tile_distance min_convincing_speed = 100 * precision_factor;
@@ -139,23 +141,26 @@ struct water_movement_info {
 };
 
 
-
-class worldblock;
+namespace hacky_internals {
+  class worldblock;
+}
 
 class location {
 public:
   // this constructor should only be used when you know exactly what worldblock it's in!!
   // TODO: It's bad that it's both public AND doesn't assert that condition
-  location(vector3<location_coordinate> v, worldblock *wb):v(v),wb(wb){}
   
   location operator+(cardinal_direction dir)const;
   location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
+  bool operator==(location const& other)const { return v == other.v; }
   tile const& stuff_at()const;
   vector3<location_coordinate> const& coords()const { return v; }
 private:
   friend tile& mutable_stuff_at(location const& loc);
+  friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
+  location(vector3<location_coordinate> v, hacky_internals::worldblock *wb):v(v),wb(wb){}
   vector3<location_coordinate> v;
-  worldblock *wb;
+  hacky_internals::worldblock *wb;
 };
 
 namespace std {
@@ -171,8 +176,36 @@ namespace std {
 
 class world;
 
+namespace hacky_internals {
+  const int worldblock_dimension_exp = 4;
+  typedef int worldblock_dimension_type;
+  const worldblock_dimension_type worldblock_dimension = (1 << worldblock_dimension_exp);
+
+  class worldblock {
+public:
+    worldblock():neighbors(nullptr){}
+    worldblock& init_if_needed(world *w_, vector3<location_coordinate> global_position_);
+  
+    // Only to be used in location::stuff_at():
+    tile& get_tile(vector3<location_coordinate> global_coords);
+  
+    // Only to be used in location::operator+(cardinal_direction):
+    location get_neighboring_loc(vector3<location_coordinate> const& old_coords, cardinal_direction dir);
+  
+    location get_loc_across_boundary(vector3<location_coordinate> const& new_coords, cardinal_direction dir);
+    location get_loc_guaranteed_to_be_in_this_block(vector3<location_coordinate> coords);
+private:
+    std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles;
+    value_for_each_cardinal_direction<worldblock*> neighbors;
+    vector3<location_coordinate> global_position; // the lowest x, y, and z among elements in this worldblock
+    world *w;
+    bool inited;
+  };
+}
+
 class world_building_gun {
 public:
+  world_building_gun(world* w, axis_aligned_bounding_box bounds):w(w),bounds(bounds){}
   void operator()(tile_contents new_contents, vector3<location_coordinate> locv);
 private:
   world* w;
@@ -180,10 +213,24 @@ private:
 };
 
 
-class ztree_entry;
+class ztree_entry {
+private:
+  location loc_;
+  std::array<location_coordinate, 3> interleaved_bits;
+  static const size_t bits_in_loc_coord = 8*sizeof(location_coordinate);
+  void set_bit(size_t idx);
+public:
+  location const& loc()const { return loc_; }
+  
+  ztree_entry(location const& loc_);
+  
+  bool operator==(ztree_entry const& other)const;
+  bool operator<(ztree_entry const& other)const;
+};
 
 class world {
 public:
+  friend class world_building_gun;
   typedef std::function<void (world_building_gun, axis_aligned_bounding_box)> worldgen_function_t;
   typedef unordered_map<location, water_movement_info> active_tiles_t;
   
@@ -199,17 +246,17 @@ public:
   
   void collect_tiles_that_contain_anything_near(unordered_set<location> &results, location center, int radius);
   
-  void delete_rock(location loc);
-  void insert_rock(location loc);
-  void delete_water(location loc);
-  water_movement_info& insert_water(location loc);
-  void deactivate_water(location loc);
-  water_movement_info& activate_water(location loc);
+  void delete_rock(location const& loc);
+  void insert_rock(location const& loc);
+  void delete_water(location const& loc);
+  water_movement_info& insert_water(location const& loc);
+  void deactivate_water(location const& loc);
+  water_movement_info& activate_water(location const& loc);
   
 private:
-  unordered_map<vector3<location_coordinate>, worldblock> blocks; // using the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
-  worldblock* create_if_necessary_and_get_worldblock(vector3<location_coordinate> position);
-  friend class worldblock; // No harm in doing this, because worldblock is by definition already hacky.
+  unordered_map<vector3<location_coordinate>, hacky_internals::worldblock> blocks; // using the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
+  hacky_internals::worldblock* create_if_necessary_and_get_worldblock(vector3<location_coordinate> position);
+  friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
   active_tiles_t active_tiles;
   set<ztree_entry> tiles_that_contain_anything;
@@ -218,12 +265,17 @@ private:
   worldgen_function_t worldgen_function;
   
   // these functions update the tiles' stickyness/interiorness caches
-  void check_stickyness(location loc);
-  void check_interiorness(location loc);
+  void check_stickyness(location const& loc);
+  void check_interiorness(location const& loc);
 
-  void something_changed_at(location loc);
+  void something_changed_at(location const& loc);
+  
+  // Used only by world_building_gun
+  void insert_rock_bypassing_checks(location const& loc);
+  void insert_water_bypassing_checks(location const& loc);
 };
 
+void update_water(world &w);
 
 #endif
 

@@ -1,42 +1,33 @@
 
 #include "world.hpp"
 
-const int worldblock_dimension_exp = 4;
-typedef int worldblock_dimension_type;
-const worldblock_dimension_type worldblock_dimension = (1 << worldblock_dimension_exp);
+namespace hacky_internals {
 
-class worldblock {
   // When a worldblock is inited, it DOESN'T call insert_water for all the water in it - the water is 'already there'.
   // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").
   //
   // We would have to make special rules for worldblocks that start out with
   // active water in them, because it could invalidate iterators into the
   // active_tiles map, because worldblocks can be created essentially any time in the processing.
-private:
-  friend class location;
-  friend class world;
-  
-  worldblock& init_if_needed(world *w_) {
+  // TODO: "init_if_needed" is because we don't know how to make unordered_map's mapped_types be constructed in place in a non-default way.
+  worldblock& worldblock::init_if_needed(world *w_, vector3<location_coordinate> global_position_) {
     if (!inited) {
       w = w_;
+      global_position = global_position_;
+      axis_aligned_bounding_box bounds{global_position, vector3<location_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension)};
+      w->worldgen_function(world_building_gun(w, bounds), bounds);
+      std::cerr << "pirates";
+      inited = true;
     }
     return (*this);
   }
-  
-  std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles;
-  value_for_each_cardinal_direction<worldblock*> neighbors;
-  vector3<location_coordinate> global_position; // the lowest x, y, and z among elements in this worldblock
-  world *w;
-  bool inited;
-  
-  // Only to be used in location::stuff_at():
-  tile &get_tile(vector3<location_coordinate> global_coords) {
+
+  tile& worldblock::get_tile(vector3<location_coordinate> global_coords) {
     vector3<location_coordinate> local_coords = global_coords - global_position;
     return tiles[local_coords.x][local_coords.y][local_coords.z];
   }
-  
-  // Only to be used in location::operator+(cardinal_direction):
-  location get_neighboring_loc(vector3<location_coordinate> const& old_coords, cardinal_direction dir) {
+
+  location worldblock::get_neighboring_loc(vector3<location_coordinate> const& old_coords, cardinal_direction dir) {
     // this could be made more effecient, but I'm not sure how
     vector3<location_coordinate> new_coords = old_coords + dir.v;
     if (new_coords.x < global_position.x) return location(new_coords, neighbors[cdir_xminus]);
@@ -47,12 +38,17 @@ private:
     if (new_coords.z >= global_position.z + worldblock_dimension) return location(new_coords, neighbors[cdir_zplus]);
     return location(new_coords, this);
   }
-  
-  location get_loc_across_boundary(vector3<location_coordinate> const& new_coords, cardinal_direction dir) {
+
+  location worldblock::get_loc_across_boundary(vector3<location_coordinate> const& new_coords, cardinal_direction dir) {
     if (worldblock* neighbor = neighbors[dir]) return location(new_coords, neighbor);
-    return location(new_coords, (neighbors[dir] = w->create_if_necessary_and_get_worldblock(global_position + vector3<worldblock_dimension_type>(dir.v) * worldblock_dimension)));
+    return location(new_coords, (neighbors[dir] = w->create_if_necessary_and_get_worldblock(global_position +    vector3<worldblock_dimension_type>(dir.v) * worldblock_dimension)));
   }
-};
+
+  location worldblock::get_loc_guaranteed_to_be_in_this_block(vector3<location_coordinate> coords) {
+    return location(coords, this);
+  }
+
+}
 
 
 location location::operator+(cardinal_direction dir)const {
@@ -61,10 +57,11 @@ location location::operator+(cardinal_direction dir)const {
 tile const& location::stuff_at()const { return wb->get_tile(v); }
 
 location world::make_location(vector3<location_coordinate> const& coords) {
-  return location(coords, create_if_necessary_and_get_worldblock(vector3<location_coordinate>(coords.x & ~(worldblock_dimension-1), coords.y & ~(worldblock_dimension-1), coords.z & ~(worldblock_dimension-1))));
+  return create_if_necessary_and_get_worldblock(vector3<location_coordinate>(coords.x & ~(hacky_internals::worldblock_dimension-1), coords.y & ~(hacky_internals::worldblock_dimension-1), coords.z & ~(hacky_internals::worldblock_dimension-1)))->get_loc_guaranteed_to_be_in_this_block(coords);
 }
 
-worldblock* world::create_if_necessary_and_get_worldblock(vector3<location_coordinate> position) {
-  return &(blocks[position].init_if_needed(this));
+hacky_internals::worldblock* world::create_if_necessary_and_get_worldblock(vector3<location_coordinate> position) {
+  return &(blocks[position].init_if_needed(this, position));
 }
+
 

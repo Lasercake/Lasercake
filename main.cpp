@@ -87,7 +87,7 @@ static void createSurface (int fullscreen)
 
 // TODO: All new scenarios will be centered near (1<<31,1<<31,1<<31)
 // Hack - situation building functions
-void build_midair_water_tower(int midairness) {
+/*void build_midair_water_tower(int midairness) {
   for (int x = 4; x <= 6; ++x) { for (int y = 4; y <= 6; ++y) { for(int z = midairness; z < MAX_Z; ++z) {
     tiles.insert_water(location(x, y, z));
   }}}
@@ -153,7 +153,24 @@ void build_a_little_water_on_the_ground() {
   for (int x = 5; x <= 11; ++x) { for (int y = 5; y <= 11; ++y) {
     tiles.insert_water(location(x, y, 0));
   }}
-}
+}*/
+
+
+struct world_building_func {
+  world_building_func(std::string scenario):scenario(scenario){}
+  std::string scenario;
+  void operator()(world_building_gun make, axis_aligned_bounding_box bounds) {
+    for (location_coordinate x = std::max(world_center_coord-1, bounds.min.x); x < std::min(world_center_coord+21, bounds.min.x + bounds.size.x); ++x) {
+      for (location_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
+        for (location_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {
+          if (x == world_center_coord-1 || x == world_center_coord+21 || y == world_center_coord-1 || y == world_center_coord+21 || z == world_center_coord-1 || z == world_center_coord+21) {
+            make(ROCK, vector3<location_coordinate>(x, y, z));
+          }
+        }
+      }
+    }
+  }
+};
 
 struct vertex_entry { GLfloat x, y, z; };
 void push_vertex(vector<vertex_entry> &v, GLfloat x, GLfloat y, GLfloat z) {
@@ -167,15 +184,10 @@ static void mainLoop (std::string scenario)
   int frame = 0;
   int p_mode = 0;
 srand(time(NULL));
+
+  world w{world::worldgen_function_t(world_building_func(scenario))};
   
-  vector<vertex_entry> ground_vertices;
-  vector<vertex_entry> rock_vertices;
-  
-  for (EACH_LOCATION(loc))
-  {
-    tiles[loc].contents = AIR;
-  }
-  if (scenario == "tower1") { build_midair_water_tower(1); }
+  /*if (scenario == "tower1") { build_midair_water_tower(1); }
   else if (scenario == "tower2") { build_midair_water_tower(1); wall_midair_water_tower(1); }
   else if (scenario == "tower3") { build_midair_water_tower(1); wall_midair_water_tower(1); build_extra_ground_walls(); }
   else if (scenario == "shallow") { build_water_sheet_and_shallow_slope(); }
@@ -185,24 +197,10 @@ srand(time(NULL));
   else if (scenario == "twisty") { build_annoying_twisty_passageways(); }
   else if (scenario == "droplet") { tiles.insert_water(location(10,10,10)); }
   else if (scenario == "droplets") { tiles.insert_water(location(10,10,10)); tiles.insert_water(location(10,10,19)); }
-  else build_a_little_water_on_the_ground();
+  else build_a_little_water_on_the_ground();*/
   
-  for (EACH_LOCATION(loc)) {
-    if (tiles[loc].contents == ROCK) {
-      push_vertex(rock_vertices, loc.x, loc.y, (GLfloat)loc.z + 0.5);
-      push_vertex(rock_vertices, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
-      push_vertex(rock_vertices, loc.x + 1, loc.y +1, (GLfloat)loc.z + 0.5);
-      push_vertex(rock_vertices, loc.x, loc.y+1, (GLfloat)loc.z + 0.5);
-    }
-  }
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
-    
-  for (int x = 0; x < MAX_X; ++x) { for (int y = 0; y < MAX_Y; ++y) {
-    push_vertex(ground_vertices, x, y, 0);
-    push_vertex(ground_vertices, x + 1, y, 0);
-    push_vertex(ground_vertices, x + 1, y +1, 0);
-    push_vertex(ground_vertices, x, y+1, 0);
-  }}
+  w.make_location(vector3<location_coordinate>(world_center_coord, world_center_coord, world_center_coord-1));
     
   while ( !done ) {
 
@@ -243,60 +241,56 @@ srand(time(NULL));
     glClear(GL_COLOR_BUFFER_BIT);
 
     //drawing code here
+    vector<vertex_entry> rock_vertices;
     vector<vertex_entry> sticky_water_vertices;
     vector<vertex_entry> free_water_vertices;
     vector<vertex_entry> velocity_vertices;
     vector<vertex_entry> progress_vertices;
     vector<vertex_entry> idle_marker_vertices;
+    
+    unordered_set<location> tiles_to_draw;
+    w.collect_tiles_that_contain_anything_near(tiles_to_draw, w.make_location(vector3<location_coordinate>(world_center_coord, world_center_coord, world_center_coord)), 50);
 
-    for (location const& loc : tiles.idle_water) {
-      assert(tiles[loc].contents == WATER);
+    for (location const& loc : tiles_to_draw) {
+    std::cerr<<"ninjas";
+      tile const& t = loc.stuff_at();
+      vector3<location_coordinate> const& locv = loc.coords();
       
-      // TODO REMOVE DUPLICATE CODE: used for both active and inactive water
       vector<vertex_entry> *vect;
-      if(tiles[loc].is_sticky_water()) vect = &sticky_water_vertices;
-      else                             vect = &  free_water_vertices;
       
-      push_vertex(*vect, loc.x, loc.y, (GLfloat)loc.z + 0.5);
-      push_vertex(*vect, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
-      push_vertex(*vect, loc.x + 1, loc.y +1, (GLfloat)loc.z + 0.5);
-      push_vertex(*vect, loc.x, loc.y+1, (GLfloat)loc.z + 0.5);
-      // TODO REMOVE DUPLICATE CODE end.
+           if(t.contents() == ROCK) vect = &        rock_vertices;
+      else if(t.is_sticky_water() ) vect = &sticky_water_vertices;
+      else if(t.is_free_water  () ) vect = &  free_water_vertices;
+      else assert(false);
       
-      push_vertex(idle_marker_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
-    }
-    for (pair<location, water_movement_info> const& i : tiles.active_tiles) {
-      location const& loc = i.first;
-      water_movement_info const& water = i.second;
+      push_vertex(*vect, locv.x,     locv.y,     (GLfloat)locv.z + 0.5);
+      push_vertex(*vect, locv.x + 1, locv.y,     (GLfloat)locv.z + 0.5);
+      push_vertex(*vect, locv.x + 1, locv.y + 1, (GLfloat)locv.z + 0.5);
+      push_vertex(*vect, locv.x,     locv.y + 1, (GLfloat)locv.z + 0.5);
       
-      assert(tiles[loc].contents == WATER);
+      if (water_movement_info *water = w.get_active_tile(loc)) {
       
-      // TODO REMOVE DUPLICATE CODE: used for both active and inactive water
-      vector<vertex_entry> *vect;
-      if(tiles[loc].is_sticky_water()) vect = &sticky_water_vertices;
-      else                             vect = &  free_water_vertices;
-      
-      push_vertex(*vect, loc.x, loc.y, (GLfloat)loc.z + 0.5);
-      push_vertex(*vect, loc.x + 1, loc.y, (GLfloat)loc.z + 0.5);
-      push_vertex(*vect, loc.x + 1, loc.y +1, (GLfloat)loc.z + 0.5);
-      push_vertex(*vect, loc.x, loc.y+1, (GLfloat)loc.z + 0.5);
-      // TODO REMOVE DUPLICATE CODE end.
-      
-      push_vertex(velocity_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
-      push_vertex(velocity_vertices, (GLfloat)loc.x+0.5+((GLfloat)water.velocity.x / (250 * precision_factor)),
-          (GLfloat)loc.y+0.5+((GLfloat)water.velocity.y / (250 * precision_factor)),
-          (GLfloat)loc.z + 0.5+((GLfloat)water.velocity.z / (250 * precision_factor)));
+        push_vertex(velocity_vertices, (GLfloat)locv.x+0.5, (GLfloat)locv.y+0.5, (GLfloat)locv.z + 0.5);
+        push_vertex(velocity_vertices,
+            (GLfloat)locv.x + 0.5 + ((GLfloat)water->velocity.x / (250 * precision_factor)),
+            (GLfloat)locv.y + 0.5 + ((GLfloat)water->velocity.y / (250 * precision_factor)),
+            (GLfloat)locv.z + 0.5 + ((GLfloat)water->velocity.z / (250 * precision_factor)));
           
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        const scalar_type prog = water.progress[dir];
-        if (prog > 0) {
-          vector3 vect = (dir.v * prog);
+        for (EACH_CARDINAL_DIRECTION(dir)) {
+          const sub_tile_distance prog = water->progress[dir];
+          if (prog > 0) {
+            vector3<sub_tile_distance> lawl = vector3<sub_tile_distance>(dir.v) * prog;
 
-          push_vertex(progress_vertices, (GLfloat)loc.x+0.5, (GLfloat)loc.y+0.5, (GLfloat)loc.z + 0.5);
-          push_vertex(progress_vertices, (GLfloat)loc.x+0.5+((GLfloat)vect.x / progress_necessary),
-              (GLfloat)loc.y+0.5+((GLfloat)vect.y / progress_necessary),
-              (GLfloat)loc.z + 0.5+((GLfloat)vect.z / progress_necessary));
+            push_vertex(progress_vertices, (GLfloat)locv.x+0.5, (GLfloat)locv.y+0.5, (GLfloat)locv.z + 0.5);
+            push_vertex(progress_vertices,
+                (GLfloat)locv.x + 0.5 + ((GLfloat)lawl.x / progress_necessary),
+                (GLfloat)locv.y + 0.5 + ((GLfloat)lawl.y / progress_necessary),
+                (GLfloat)locv.z + 0.5 + ((GLfloat)lawl.z / progress_necessary));
+          }
         }
+      }
+      else {
+        push_vertex(idle_marker_vertices, (GLfloat)locv.x+0.5, (GLfloat)locv.y+0.5, (GLfloat)locv.z+0.5);
       }
     }
     
@@ -309,9 +303,9 @@ srand(time(NULL));
     
     glEnableClientState(GL_VERTEX_ARRAY);
     
-    glColor4f(0.2,0.4,0.0,1.0);
+    /*glColor4f(0.2,0.4,0.0,1.0);
     glVertexPointer(3, GL_FLOAT, 0, &ground_vertices[0]);
-    glDrawArrays(GL_QUADS, 0, ground_vertices.size());
+    glDrawArrays(GL_QUADS, 0, ground_vertices.size());*/
     
     glColor4f(0.5,0.0,0.0,0.5);
     glVertexPointer(3, GL_FLOAT, 0, &rock_vertices[0]);
@@ -346,7 +340,7 @@ srand(time(NULL));
     int before_processing = SDL_GetTicks();
     
     //doing stuff code here
-    update_water();
+    update_water(w);
     
     int after = SDL_GetTicks();
     std::cerr << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";

@@ -1,95 +1,15 @@
 
 #include "world.hpp"
 
-void world::check_stickyness(location loc) {
-  tile &t = loc.stuff_at();
-  if (t.contents() == WATER) { // we don't care whether it's marked sticky if it's not water
-    int airs = 0;
-    for (EACH_CARDINAL_DIRECTION(dir)) {
-      const location other_loc = loc + dir;
-      if (other_loc.stuff_at().contents() == AIR) ++airs;
-    }
-    bool should_be_sticky = (airs <= 1);
-    if (t.is_sticky_water() != should_be_sticky) {
-      t.set_water_stickyness(should_be_sticky);
-      if (should_be_sticky) check_interiorness(loc);
-      for (EACH_CARDINAL_DIRECTION(dir)) check_interiorness(loc + dir);
-    }
-  }
-}
 
-void world::check_interiorness(location loc) {
-  tile &t = loc.stuff_at();
-  if (t.is_sticky_water()) { // we don't care whether it's marked interior if it's not sticky water
-    bool should_be_interior = true;
-    for (EACH_CARDINAL_DIRECTION(dir)) {
-      const location other_loc = loc + dir;
-      if (!other_loc.stuff_at().is_sticky_water()) should_be_interior = false;
-    }
-    if (t.is_interior_water() != should_be_interior) {
-      t.set_water_interiorness(should_be_interior);
-    }
-  }
-}
-
-void world::something_changed_at(location loc) {
-  for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
-  
-  if (loc.stuff_at().contents() == WATER) {
-    check_stickyness(loc);
-    activate_water(loc);
-  }
-  for (EACH_CARDINAL_DIRECTION(dir)) {
-    location adj_loc = loc + dir;
-    if (adj_loc.stuff_at().contents() == WATER) {
-      activate_water(adj_loc);
-    }
-  }
-}
-
-void world::delete_rock(location loc) {
-  tile &t = loc.stuff_at();
-  assert(t.contents() == ROCK);
-  t.set_contents(AIR);
-    
-  tiles_that_contain_anything.erase(loc); // TODO This will need extra checks if there can be rock and something else in a tile
-  
-  something_changed_at(loc);
-}
-
-void world::delete_water(location loc) {
-  tile &t = loc.stuff_at();
-  assert(t.contents() == WATER);
-  t.set_contents(AIR);
-  active_tiles.erase(loc);
-    
-  tiles_that_contain_anything.erase(loc); // TODO This will need extra checks if there can be water and something else in a tile
-  
-  something_changed_at(loc);
-}
-
-water_movement_info& world::insert_water(location loc) {
-  tile &t = loc.stuff_at();
-  assert(t.contents() == AIR);
-  t.set_contents(WATER);
-    
-  tiles_that_contain_anything.insert(loc);
-    
-  something_changed_at(loc);
-  
-  return active_tiles[loc]; // This will always be present, because something_changed_at already activates it.
-}
-
-void world::deactivate_water(location loc) {
+void world::deactivate_water(location const& loc) {
   active_tiles.erase(loc);
 }
 
-water_movement_info& world::activate_water(location loc) {
+water_movement_info& world::activate_water(location const& loc) {
   assert(loc.stuff_at().contents() == WATER);
   return active_tiles[loc]; // if it's not there, this inserts it, default-constructed
 }
-
-
 
 
 
@@ -126,6 +46,12 @@ void collect_membrane(location const& loc, group_number_t group_number, water_gr
   }
 }
 
+bool columns_sorter_lt(pair<location, group_number_t> const& i, pair<location, group_number_t> const& j) {
+  vector3<location_coordinate> c1 = i.first.coords();
+  vector3<location_coordinate> c2 = j.first.coords();
+  return (c1.x < c2.x) || ((c1.x == c2.x) && ((c1.y < c2.y) || ((c1.y == c2.y) && (c1.z < c2.z))));
+}
+
 // the argument must start out default-initialized
 void compute_groups_that_need_to_be_considered(world &w, water_groups_structure &result) {
   group_number_t next_membrane_number = FIRST_GROUP;
@@ -140,7 +66,7 @@ void compute_groups_that_need_to_be_considered(world &w, water_groups_structure 
   // Make a list of locations, sorted by X then Y then Z
   vector<pair<location, group_number_t> > columns; columns.reserve(result.group_numbers_by_location.size());
   columns.insert(columns.end(), result.group_numbers_by_location.begin(), result.group_numbers_by_location.end());
-  std::sort(columns.begin(), columns.end()); // TODO: don't rely on location's < to be x-then-y-then-z
+  std::sort(columns.begin(), columns.end(), columns_sorter_lt);
   
   group_number_t containing_group;
   for (pair<location, group_number_t> const& p : columns) {
@@ -333,7 +259,7 @@ void update_water(world &w) {
   }
   
   std::random_shuffle(wanted_moves.begin(), wanted_moves.end());
-  std::set<location> disturbed_tiles;
+  std::unordered_set<location> disturbed_tiles;
 
   vector<map<location_coordinate, literally_random_access_removable_stuff<location> > > tiles_by_z_location_by_group_number(groups.locations_by_group_number.size());
   
@@ -367,8 +293,8 @@ void update_water(world &w) {
   
   for (const wanted_move move : wanted_moves) {
     const location dst = move.src + move.dir;
-    tile &src_tile = move.src.stuff_at();
-    tile &dst_tile = dst.stuff_at();
+    tile const& src_tile = move.src.stuff_at();
+    tile const& dst_tile = dst.stuff_at();
     tile src_copy = src_tile; // only for use in gdb
     tile dst_copy = dst_tile; // only for use in gdb
     // in certain situations we shouldn't try to move water more than once
