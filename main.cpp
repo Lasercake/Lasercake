@@ -83,6 +83,8 @@ static void createSurface (int fullscreen)
 	}
 }
 
+
+// TODO: All new scenarios will be centered near (1<<31,1<<31,1<<31)
 // Hack - situation building functions
 void build_midair_water_tower(int midairness) {
   for (int x = 4; x <= 6; ++x) { for (int y = 4; y <= 6; ++y) { for(int z = midairness; z < MAX_Z; ++z) {
