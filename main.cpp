@@ -84,43 +84,9 @@ static void createSurface (int fullscreen)
 	}
 }
 
+/*
 
-// TODO: All new scenarios will be centered near (1<<31,1<<31,1<<31)
-// Hack - situation building functions
-/*void build_midair_water_tower(int midairness) {
-  for (int x = 4; x <= 6; ++x) { for (int y = 4; y <= 6; ++y) { for(int z = midairness; z < MAX_Z; ++z) {
-    tiles.insert_water(location(x, y, z));
-  }}}
-}
-void wall_midair_water_tower(int midairness) {
-  for (int x = 3; x <= 7; ++x) { for (int y = 3; y <= 7; ++y) { for(int z = midairness; z < MAX_Z; ++z) {
-    if (x == 3 || x == 7 || y == 3 || y == 7) tiles[location(x, y, z)].contents = ROCK;
-  }}}
-}
-void build_extra_ground_walls() {
-  for (int x = 0; x < MAX_X; ++x) { for(int z = 0; z < 3; ++z) {
-    tiles[location(x, 1, z)].contents = ROCK;
-    tiles[location(x, 9, z)].contents = ROCK;
-  }}
-  for (int y = 0; y < MAX_Y; ++y) { for(int z = 0; z < 3; ++z) {
-    tiles[location(1, y, z)].contents = ROCK;
-    tiles[location(9, y, z)].contents = ROCK;
-  }}
-}
-void build_water_sheet_and_shallow_slope() {
-  for (EACH_LOCATION(loc)) {
-    if (loc.z == 0 && loc.x >= 5) tiles[loc].contents = ROCK;
-    else if (loc.z == 1 && loc.x >= 10) tiles[loc].contents = ROCK;
-    else if (loc.z == 2 && loc.x >= 15) tiles[loc].contents = ROCK;
-    else if (loc.x == 19)tiles.insert_water(loc);
-  }
-}
-void build_water_mass_and_steep_slope() {
-  for (EACH_LOCATION(loc)) {
-    if (loc.z < 20 - loc.x) tiles[loc].contents = ROCK;
-    else if (loc.z >= 15 && (20 - loc.x) >= 15) tiles.insert_water(loc);
-  }
-}
+
 void build_punctured_tank() {
   for (EACH_LOCATION(loc)) {
     if (loc.z < 8 && loc.x > 10) tiles[loc].contents = ROCK;
@@ -179,6 +145,17 @@ struct world_building_func {
                   z >= wc+1) make(ROCK, l);
             else if (scenario == "tower3" && z < wc+3 && (
                   x == wc+1 || x == wc+9 || y == wc+1 || wc+y == 9)) make(ROCK, l);
+                  
+            if (scenario == "shallow") {
+                   if (z == wc+0 && x >= wc+5) make(ROCK, l);
+              else if (z == wc+1 && x >= wc+10) make(ROCK, l);
+              else if (z == wc+2 && x >= wc+15) make(ROCK, l);
+              else if (x == wc+19) make(WATER, l);
+            }
+            if (scenario == "steep") {
+              if (z < 20 - x) make(ROCK, l);
+              else if (z >= wc+15 && (wc + 20 - x) >= 15) make(WATER, l);
+            }
           }
         }
       }
@@ -284,29 +261,30 @@ srand(time(NULL));
       push_vertex(*vect, locv.x + 1, locv.y + 1, locv.z + 0.5);
       push_vertex(*vect, locv.x,     locv.y + 1, locv.z + 0.5);
       
-      if (water_movement_info *water = w.get_active_tile(loc)) {
-      
-        push_vertex(velocity_vertices, locv.x+0.5, locv.y+0.5, locv.z + 0.5);
-        push_vertex(velocity_vertices,
-            locv.x + 0.5 + ((GLfloat)water->velocity.x / (250 * precision_factor)),
-            locv.y + 0.5 + ((GLfloat)water->velocity.y / (250 * precision_factor)),
-            locv.z + 0.5 + ((GLfloat)water->velocity.z / (250 * precision_factor)));
+      if (t.contents() == WATER) {
+        if (water_movement_info *water = w.get_active_tile(loc)) {
+          push_vertex(velocity_vertices, locv.x+0.5, locv.y+0.5, locv.z + 0.5);
+          push_vertex(velocity_vertices,
+              locv.x + 0.5 + ((GLfloat)water->velocity.x / (250 * precision_factor)),
+              locv.y + 0.5 + ((GLfloat)water->velocity.y / (250 * precision_factor)),
+              locv.z + 0.5 + ((GLfloat)water->velocity.z / (250 * precision_factor)));
           
-        for (EACH_CARDINAL_DIRECTION(dir)) {
-          const sub_tile_distance prog = water->progress[dir];
-          if (prog > 0) {
-            vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary;
+          for (EACH_CARDINAL_DIRECTION(dir)) {
+            const sub_tile_distance prog = water->progress[dir];
+            if (prog > 0) {
+              vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary;
 
-            push_vertex(progress_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
-            push_vertex(progress_vertices,
-                locv.x + 0.5 + directed_prog.x,
-                locv.y + 0.5 + directed_prog.y,
-                locv.z + 0.5 + directed_prog.z);
+              push_vertex(progress_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+              push_vertex(progress_vertices,
+                  locv.x + 0.5 + directed_prog.x,
+                  locv.y + 0.5 + directed_prog.y,
+                  locv.z + 0.5 + directed_prog.z);
+            }
           }
         }
-      }
-      else {
-        push_vertex(idle_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+        else {
+          push_vertex(idle_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+        }
       }
     }
     

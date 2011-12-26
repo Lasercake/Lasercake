@@ -246,7 +246,14 @@ void update_water(world &w) {
         if ((!dst_tile.is_sticky_water()) && (dst_tile.contents() != ROCK)) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the idle state what it is.)
           // Exert pressure proportional to the depth of the target tile. The value is tuned to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
           const location_coordinate_signed_type depth = location_coordinate_signed_type(1 + groups.max_z_including_nearby_free_waters_by_group_number[group_number] - dst_loc.coords().z) - 1;
-          const double pressure = double(depth) - 0.5;
+          double pressure = double(depth) - 0.5; // The 0.5 could be anything in the interval (0, 1).
+          // A variation on the "fall off pillars" rule that covers us against some glitchy situations.
+          // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
+          if (dir.v.z == 0) {
+            if (obstructiveness_for_the_purposes_of_the_fall_off_pillars_rule((loc + dir + cdir_zminus).stuff_at()) < obstructiveness_for_the_purposes_of_the_fall_off_pillars_rule((loc + cdir_zminus).stuff_at())) {
+              pressure += 1.0;
+            }
+          }
           if (pressure > 0) {
             if (temp_data.find(loc) == temp_data.end()) {
               w.activate_water(loc);
