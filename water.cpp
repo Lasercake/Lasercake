@@ -15,6 +15,7 @@
 #include <boost/range/iterator_range.hpp>
 #include <iostream>
 #include <inttypes.h>
+#include <functional>
 
 using std::map;
 using std::unordered_map;
@@ -168,6 +169,15 @@ typedef int32_t sub_tile_distance;
 typedef int8_t neighboring_tile_differential;
 typedef uint32_t location_coordinate;
 
+struct axis_aligned_bounding_box {
+  vector3<location_coordinate> min, size;
+  bool contains(vector3<location_coordinate> v) {
+    return (v.x >= min.x && v.x <= min.x + (size.x - 1) &&
+            v.y >= min.y && v.y <= min.y + (size.y - 1) &&
+            v.z >= min.z && v.z <= min.z + (size.z - 1));
+  }
+};
+
 const sub_tile_distance precision_factor = 100;
 const sub_tile_distance progress_necessary = 5000 * precision_factor; // loosely speaking, the conversion factor between mini-units and entire tiles
 const sub_tile_distance min_convincing_speed = 100 * precision_factor;
@@ -306,9 +316,10 @@ public:
   
   location operator+(cardinal_direction dir)const;
   location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
-  tile& stuff_at()const;
+  tile const& stuff_at()const;
   vector3<location_coordinate> const& coords()const { return v; }
 private:
+  friend tile& mutable_stuff_at(location const& loc);
   vector3<location_coordinate> v;
   worldblock *wb;
 };
@@ -333,27 +344,29 @@ namespace std {
 class world;
 
 class worldblock {
-public:
   // When a worldblock is inited, it DOESN'T call insert_water for all the water in it - the water is 'already there'.
   // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").
   //
   // We would have to make special rules for worldblocks that start out with
   // active water in them, because it could invalidate iterators into the
   // active_tiles map, because worldblocks can be created essentially any time in the processing.
+private:
+  friend class location;
+  friend class world;
+  
   worldblock& init_if_needed(world *w_) {
     if (!inited) {
       w = w_;
     }
     return (*this);
   }
-private:
+  
   std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles;
   value_for_each_cardinal_direction<worldblock*> neighbors;
   vector3<location_coordinate> global_position; // the lowest x, y, and z among elements in this worldblock
   world *w;
   bool inited;
   
-  friend class location;
   // Only to be used in location::stuff_at():
   tile &get_tile(vector3<location_coordinate> global_coords) {
     vector3<location_coordinate> local_coords = global_coords - global_position;
@@ -379,7 +392,7 @@ private:
 location location::operator+(cardinal_direction dir)const {
   return wb->get_neighboring_loc(v, dir);
 }
-tile& location::stuff_at()const { return wb->get_tile(v); }
+tile const& location::stuff_at()const { return wb->get_tile(v); }
 
 
 struct ztree_entry {
@@ -415,6 +428,23 @@ public:
 };
 
 
+class world_building_gun {
+public:
+  operator()(tile_contents new_contents, vector3<location_coordinate> locv) {
+    assert(bounds.contains(locv));
+    if (new_contents == ROCK) {
+      // TODO put the rock
+    }
+    else if (new_contents == WATER) {
+      w->insert_water(w->make_location(locv));
+    }
+    else assert("YOU CAN ONLY PLACE ROCK AND WATER" && false);
+  }
+private:
+  world* w;
+  axis_aligned_bounding_box bounds;
+};
+
 
 class world {
 private:
@@ -424,7 +454,13 @@ private:
   active_tiles_t active_tiles;
   set<ztree_entry> tiles_that_contain_anything;
   
+  // Worldgen functions TODO describe them here
+  typedef std::function<void (world_building_gun, axis_aligned_bounding_box)> worldgen_function_t;
+  worldgen_function_t worldgen_function;
+  
 public:
+  world(worldgen_function_t f):worldgen_function(f){}
+
   worldblock* create_if_necessary_and_get_worldblock(vector3<location_coordinate> position) {
     return &(blocks[position].init_if_needed(this));
   }
