@@ -1,23 +1,37 @@
 
 #include "world.hpp"
 
+location ztree_entry::loc()const { assert(worldblock_if_known); return location(locv, worldblock_if_known); }
+
 void ztree_entry::set_bit(size_t idx) {
   assert(idx < bits_in_loc_coord * 3);
   interleaved_bits[idx / bits_in_loc_coord] |= (size_t(1) << (idx % bits_in_loc_coord));
 }
 
-ztree_entry::ztree_entry(location const& loc_):loc_(loc_),interleaved_bits() {
+void ztree_entry::set_bits() {
   interleaved_bits[0] = 0;
   interleaved_bits[1] = 0;
   interleaved_bits[2] = 0;
   for (size_t bit = 0; bit < bits_in_loc_coord; ++bit) {
-    if (loc_.coords().x & (location_coordinate(1) << bit)) set_bit(3*bit + 0);
-    if (loc_.coords().y & (location_coordinate(1) << bit)) set_bit(3*bit + 1);
-    if (loc_.coords().z & (location_coordinate(1) << bit)) set_bit(3*bit + 2);
+    if (locv.x & (location_coordinate(1) << bit)) set_bit(3*bit + 0);
+    if (locv.y & (location_coordinate(1) << bit)) set_bit(3*bit + 1);
+    if (locv.z & (location_coordinate(1) << bit)) set_bit(3*bit + 2);
   }
 }
+ztree_entry::ztree_entry(location const& loc):
+    locv(loc.coords()),
+    worldblock_if_known(loc.wb),
+    interleaved_bits() {
+  set_bits();
+}
+ztree_entry::ztree_entry(vector3<location_coordinate> const& locv):
+    locv(locv),
+    worldblock_if_known(nullptr),
+    interleaved_bits() {
+  set_bits();
+}
   
-bool ztree_entry::operator==(ztree_entry const& other)const { return loc_.coords() == other.loc_.coords(); }
+bool ztree_entry::operator==(ztree_entry const& other)const { return locv == other.locv; }
 bool ztree_entry::operator<(ztree_entry const& other)const {
   if (interleaved_bits[2] < other.interleaved_bits[2]) return true;
   if (interleaved_bits[2] > other.interleaved_bits[2]) return false;
@@ -37,18 +51,18 @@ void world::collect_tiles_that_contain_anything_near(unordered_set<location> &re
   const int z_shift = (center.coords().z & ((1 << exp) - 1)) < (1 << (exp - 1)) ? -1 : 0;
   for (int x = 0; x < 2; ++x) { for (int y = 0; y < 2; ++y) { for (int z = 0; z < 2; ++z) {
     set<ztree_entry>::iterator lower_bound = tiles_that_contain_anything.lower_bound(
-      ztree_entry(make_location(vector3<location_coordinate>(
+      ztree_entry(vector3<location_coordinate>(
         (center.coords().x & ~((1 << exp) - 1)) + ((x+x_shift) * (1 << exp)),
         (center.coords().y & ~((1 << exp) - 1)) + ((y+y_shift) * (1 << exp)),
         (center.coords().z & ~((1 << exp) - 1)) + ((z+z_shift) * (1 << exp))
-      ))
+      )
     ));
     set<ztree_entry>::iterator upper_bound = tiles_that_contain_anything.upper_bound(
-      ztree_entry(make_location(vector3<location_coordinate>(
+      ztree_entry(vector3<location_coordinate>(
         (center.coords().x | ((1 << exp) - 1)) + ((x+x_shift) * (1 << exp)),
         (center.coords().y | ((1 << exp) - 1)) + ((y+y_shift) * (1 << exp)),
         (center.coords().z | ((1 << exp) - 1)) + ((z+z_shift) * (1 << exp))
-      ))
+      )
     ));
     for(set<ztree_entry>::iterator i = lower_bound; i != upper_bound; ++i) {
       results.insert(i->loc());

@@ -163,8 +163,22 @@ struct world_building_func {
     for (location_coordinate x = std::max(world_center_coord-1, bounds.min.x); x < std::min(world_center_coord+21, bounds.min.x + bounds.size.x); ++x) {
       for (location_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
         for (location_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {
+          vector3<location_coordinate> l(x,y,z);
           if (x == world_center_coord-1 || x == world_center_coord+20 || y == world_center_coord-1 || y == world_center_coord+20 || z == world_center_coord-1 || z == world_center_coord+20) {
-            make(ROCK, vector3<location_coordinate>(x, y, z));
+            make(ROCK, l);
+          }
+          else {
+            const location_coordinate wc = world_center_coord;
+            if ((scenario == "tower1" || scenario == "tower2" || scenario == "tower3") &&
+                  x >= wc+4 && x <= wc+6 &&
+                  y >= wc+4 && y <= wc+6 &&
+                  z >= wc+1) make(WATER, l);
+            else if ((scenario == "tower2" || scenario == "tower3") &&
+                  x >= wc+3 && x <= wc+7 &&
+                  y >= wc+3 && y <= wc+7 &&
+                  z >= wc+1) make(ROCK, l);
+            else if (scenario == "tower3" && z < wc+3 && (
+                  x == wc+1 || x == wc+9 || y == wc+1 || wc+y == 9)) make(ROCK, l);
           }
         }
       }
@@ -254,6 +268,9 @@ srand(time(NULL));
     for (location const& loc : tiles_to_draw) {
       tile const& t = loc.stuff_at();
       vector3<GLfloat> locv(vector3<location_coordinate_signed_type>(loc.coords() - world_center_coords)); // TODO : properly speaking, "minus the perspective you're looking from"? world_center_coords has no business in any code except the world generation, I think
+      
+      // Hack - TODO remove
+      if (frame == 0 && t.contents() == WATER) w.activate_water(loc);
       
       vector<vertex_entry> *vect;
       

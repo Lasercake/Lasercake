@@ -147,6 +147,26 @@ namespace hacky_internals {
   class worldblock;
 }
 
+class location;
+
+class ztree_entry {
+private:
+  vector3<location_coordinate> locv;
+  hacky_internals::worldblock *worldblock_if_known;
+  std::array<location_coordinate, 3> interleaved_bits;
+  static const size_t bits_in_loc_coord = 8*sizeof(location_coordinate);
+  void set_bit(size_t idx);
+  void set_bits();
+public:
+  location loc()const;
+  
+  ztree_entry(location const& loc);
+  ztree_entry(vector3<location_coordinate> const& locv);
+  
+  bool operator==(ztree_entry const& other)const;
+  bool operator<(ztree_entry const& other)const;
+};
+
 class location {
 public:
   // this constructor should only be used when you know exactly what worldblock it's in!!
@@ -160,6 +180,7 @@ public:
 private:
   friend tile& mutable_stuff_at(location const& loc);
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
+  friend class ztree_entry;
   location(vector3<location_coordinate> v, hacky_internals::worldblock *wb):v(v),wb(wb){}
   vector3<location_coordinate> v;
   hacky_internals::worldblock *wb;
@@ -214,21 +235,6 @@ private:
   axis_aligned_bounding_box bounds;
 };
 
-
-class ztree_entry {
-private:
-  location loc_;
-  std::array<location_coordinate, 3> interleaved_bits;
-  static const size_t bits_in_loc_coord = 8*sizeof(location_coordinate);
-  void set_bit(size_t idx);
-public:
-  location const& loc()const { return loc_; }
-  
-  ztree_entry(location const& loc_);
-  
-  bool operator==(ztree_entry const& other)const;
-  bool operator<(ztree_entry const& other)const;
-};
 
 class world {
 public:
