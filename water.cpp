@@ -11,6 +11,26 @@ water_movement_info& world::activate_water(location const& loc) {
   return active_tiles[loc]; // if it's not there, this inserts it, default-constructed
 }
 
+void water_movement_info::get_completely_blocked(cardinal_direction dir) {
+  const sub_tile_distance dp = velocity.dot<sub_tile_distance>(dir.v);
+  const sub_tile_distance blocked_velocity = dp - min_convincing_speed;
+  if (blocked_velocity > 0) {
+    velocity -= vector3<sub_tile_distance>(dir.v) * blocked_velocity;
+  }
+}
+  
+bool water_movement_info::is_in_idle_state()const {
+  // TODO: does it make sense that we're ignoring the 1-frame-duration variable "blockage_amount_this_frame"?
+  for (EACH_CARDINAL_DIRECTION(dir)) {
+    if (dir.v.z < 0) {
+      if (progress[dir] != progress_necessary) return false;
+    }
+    else {
+      if (progress[dir] != 0) return false;
+    }
+  }
+  return velocity == idle_water_velocity;
+}
 
 
 
@@ -24,7 +44,8 @@ const group_number_t FIRST_GROUP = 0;
 struct water_groups_structure {
   unordered_map<location, group_number_t> group_numbers_by_location;
   vector<unordered_set<location> > locations_by_group_number;
-  vector<location_coordinate> max_z_by_group_number;
+  vector<unordered_set<location> > nearby_free_waters_by_group_number;
+  vector<location_coordinate> max_z_including_nearby_free_waters_by_group_number;
 };
 
 void collect_membrane(location const& loc, group_number_t group_number, water_groups_structure &result) {
@@ -84,16 +105,40 @@ void compute_groups_that_need_to_be_considered(world &w, water_groups_structure 
   map<group_number_t, group_number_t> key_compacting_map;
   group_number_t next_group_number = FIRST_GROUP;
   for (pair<const location, group_number_t> &p : result.group_numbers_by_location) {
+    location const& loc = p.first;
     if (group_number_t *new_number = find_as_pointer(key_compacting_map, p.second)) {
       p.second = *new_number;
     }
     else {
       p.second = key_compacting_map[p.second] = next_group_number++; // Bwa ha ha ha ha.
       result.locations_by_group_number.push_back(unordered_set<location>());
-      result.max_z_by_group_number.push_back(p.first.coords().z);
+      result.nearby_free_waters_by_group_number.push_back(unordered_set<location>());
+      result.max_z_including_nearby_free_waters_by_group_number.push_back(loc.coords().z);
     }
-    result.locations_by_group_number[p.second].insert(p.first);
-    result.max_z_by_group_number[p.second] = std::max(result.max_z_by_group_number[p.second], p.first.coords().z);
+    result.locations_by_group_number[p.second].insert(loc);
+    result.max_z_including_nearby_free_waters_by_group_number[p.second] = std::max(result.max_z_including_nearby_free_waters_by_group_number[p.second], loc.coords().z);
+    
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const location dst_loc = loc + dir;
+      tile const& dst_tile = dst_loc.stuff_at();
+      if (dst_tile.is_free_water()) {
+        result.nearby_free_waters_by_group_number[p.second].insert(dst_loc);
+        result.max_z_including_nearby_free_waters_by_group_number[p.second] = std::max(result.max_z_including_nearby_free_waters_by_group_number[p.second], dst_loc.coords().z);
+      }
+      // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
+      // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
+      if (dst_tile.contents() == AIR) {
+        for (EACH_CARDINAL_DIRECTION(d2)) {
+          if (d2.v.dot<sub_tile_distance>(dir.v) == 0) {
+            const location diag_loc = dst_loc + d2;
+            if (diag_loc.stuff_at().is_free_water()) {
+              result.nearby_free_waters_by_group_number[p.second].insert(diag_loc);
+              result.max_z_including_nearby_free_waters_by_group_number[p.second] = std::max(result.max_z_including_nearby_free_waters_by_group_number[p.second], diag_loc.coords().z);
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -149,13 +194,36 @@ private:
   }
 };
 
+struct active_water_temporary_data {
+  active_water_temporary_data():new_progress(0),exerted_pressure(false),was_sticky_at_frame_start(false){}
+  value_for_each_cardinal_direction<sub_tile_distance> new_progress;
+  
+  // The basic rule for sticky water becoming idle is that it does so if it's in the stable state AND didn't exert pressure directly onto another tile for a frame. These variables are primarily to control the process of sticky water becoming idle.
+  bool exerted_pressure;
+  bool was_sticky_at_frame_start;
+};
+
+// TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
+int obstructiveness_for_the_purposes_of_the_fall_off_pillars_rule(tile const& t) {
+  if (t.contents() == ROCK) return 4;
+  else if (t.is_sticky_water()) return 3;
+  else if (t.is_free_water()) return 2;
+  else if (t.contents() == AIR) return 1;
+  else assert(false);
+}
+
 void update_water(world &w) {
+  unordered_map<location, active_water_temporary_data> temp_data;
   for (pair<const location, water_movement_info> &p : w.active_tiles_range()) {
-    tile const& t = p.first.stuff_at();
+    location const& loc = p.first;
+    tile const& t = loc.stuff_at();
     assert(t.contents() == WATER);
-    for (sub_tile_distance &np : p.second.new_progress) np = 0;
+    
+    // initialize...
+    temp_data[loc];
     
     if (t.is_sticky_water()) {
+      temp_data[loc].was_sticky_at_frame_start = true;
       vector3<sub_tile_distance> &vel_ref = p.second.velocity;
       const vector3<sub_tile_distance> current_velocity_wrongness = vel_ref - idle_water_velocity;
       if (current_velocity_wrongness.magnitude_within_32_bits_is_less_than(sticky_water_velocity_reduction_rate)) {
@@ -175,10 +243,18 @@ void update_water(world &w) {
       for (EACH_CARDINAL_DIRECTION(dir)) {
         const location dst_loc = loc + dir;
         tile const& dst_tile = dst_loc.stuff_at();
-        if (!dst_tile.is_sticky_water() && dst_tile.contents() != ROCK) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the idle state what it is.)
-          const double pressure = (double)(groups.max_z_by_group_number[group_number] - loc.coords().z) - 0.5 - 0.5*dir.v.z; // proportional to depth, assuming side surfaces are at the middle of the side. This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
+        if ((!dst_tile.is_sticky_water()) && (dst_tile.contents() != ROCK)) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the idle state what it is.)
+          // Exert pressure proportional to the depth of the target tile. The value is tuned to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
+          const location_coordinate_signed_type depth = location_coordinate_signed_type(1 + groups.max_z_including_nearby_free_waters_by_group_number[group_number] - dst_loc.coords().z) - 1;
+          const double pressure = double(depth) - 0.5;
           if (pressure > 0) {
-            w.activate_water(loc).new_progress[dir] += (sub_tile_distance)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
+            if (temp_data.find(loc) == temp_data.end()) {
+              w.activate_water(loc);
+              // create and initialize...
+              temp_data[loc].was_sticky_at_frame_start = true;
+            }
+            temp_data[loc].exerted_pressure = true;
+            temp_data[loc].new_progress[dir] += (sub_tile_distance)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
           }
         }
       }
@@ -190,7 +266,11 @@ void update_water(world &w) {
     tile const& t = loc.stuff_at();
     assert(t.contents() == WATER);
     if (t.is_sticky_water()) {
-      p.second.new_progress[cdir_zminus] += extra_downward_speed_for_sticky_water;
+      // This doesn't count as a disturbance, it's part of decaying towards the stable state...
+      // If the bottom tile is open, we already marked it above.
+      assert(temp_data[loc].exerted_pressure || (loc+cdir_zminus).stuff_at().contents() == ROCK || (loc+cdir_zminus).stuff_at().is_sticky_water());
+      // If it's blocked, then we're not going to move in that direction anyway, so it's not real pressure.
+      temp_data[loc].new_progress[cdir_zminus] += extra_downward_speed_for_sticky_water;
     }
     else {
       vector3<sub_tile_distance> &vel_ref = p.second.velocity;
@@ -214,15 +294,16 @@ void update_water(world &w) {
       
       for (EACH_CARDINAL_DIRECTION(dir)) {
         const sub_tile_distance dp = vel_ref.dot<sub_tile_distance>(dir.v);
-        if (dp > 0) p.second.new_progress[dir] += dp;
+        if (dp > 0) temp_data[loc].new_progress[dir] += dp;
 
         // Water that's blocked, but can go around in a diagonal direction, makes "progress" towards all those possible directions (so it'll go in a random direction if it could go around in several different diagonals, without having to 'choose' one right away and gain velocity only in that direction). The main purpose of this is to make it so that water doesn't stack nicely in pillars, or sit still on steep slopes.
+        // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
         const location dst_loc = loc + dir;
         if (dst_loc.stuff_at().contents() == AIR) {
           for (EACH_CARDINAL_DIRECTION(d2)) {
             const location diag_loc = dst_loc + d2;
-            if (p.second.blockage_amount_this_frame[d2] > 0 && d2.v.dot<sub_tile_distance>(dir.v) == 0 && diag_loc.stuff_at().contents() == AIR) {
-              p.second.new_progress[dir] += p.second.blockage_amount_this_frame[d2];
+            if (p.second.blockage_amount_this_frame[d2] > 0 && d2.v.dot<sub_tile_distance>(dir.v) == 0 && obstructiveness_for_the_purposes_of_the_fall_off_pillars_rule(diag_loc.stuff_at()) < obstructiveness_for_the_purposes_of_the_fall_off_pillars_rule((loc + d2).stuff_at())) {
+              temp_data[loc].new_progress[dir] += p.second.blockage_amount_this_frame[d2];
             }
           }
         }
@@ -240,8 +321,8 @@ void update_water(world &w) {
     assert(t.contents() == WATER);
     for (EACH_CARDINAL_DIRECTION(dir)) {
       sub_tile_distance &progress_ref = p.second.progress[dir];
-      const sub_tile_distance new_progress = p.second.new_progress[dir];
-      if (p.second.new_progress[dir] == 0) {
+      const sub_tile_distance new_progress = temp_data[loc].new_progress[dir];
+      if (temp_data[loc].new_progress[dir] == 0) {
         if (progress_ref < idle_progress_reduction_rate) progress_ref = 0;
         else progress_ref -= idle_progress_reduction_rate;
       }
@@ -264,33 +345,15 @@ void update_water(world &w) {
   vector<map<location_coordinate, literally_random_access_removable_stuff<location> > > tiles_by_z_location_by_group_number(groups.locations_by_group_number.size());
   
   for (group_number_t group_number = FIRST_GROUP; group_number < (group_number_t)groups.locations_by_group_number.size(); ++group_number) {
-    unordered_set<location> nearby_free_waters;
     for (location const& loc : groups.locations_by_group_number[group_number]) {
       tiles_by_z_location_by_group_number[group_number][loc.coords().z].add(loc);
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        const location dst_loc = loc + dir;
-        tile const& dst_tile = dst_loc.stuff_at();
-        if (dst_tile.is_free_water()) {
-          nearby_free_waters.insert(dst_loc);
-        }
-        // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
-        if (dst_tile.contents() == AIR) {
-          for (EACH_CARDINAL_DIRECTION(d2)) {
-            if (d2.v.dot<sub_tile_distance>(dir.v) == 0) {
-              const location diag_loc = dst_loc + d2;
-              if (diag_loc.stuff_at().is_free_water()) {
-                nearby_free_waters.insert(diag_loc);
-              }
-            }
-          }
-        }
-      }
     }
-    for (location const& loc : nearby_free_waters) {
+    for (location const& loc : groups.nearby_free_waters_by_group_number[group_number]) {
       tiles_by_z_location_by_group_number[group_number][loc.coords().z].add(loc);
     }
   }
   
+  // It doesn't matter that we won't add temp_data for nearby tiles that are activated during this loop by the insertion and deletion of water.
   for (const wanted_move move : wanted_moves) {
     const location dst = move.src + move.dir;
     tile const& src_tile = move.src.stuff_at();
@@ -313,7 +376,9 @@ void update_water(world &w) {
       
       if (move.group_number_or_NO_GROUP_for_velocity_movement == NO_GROUP) {
         dst_water = src_water;
+        temp_data[dst] = temp_data[move.src];
         w.delete_water(move.src);
+        temp_data.erase(move.src);
         disturbed_tiles.insert(move.src);
       }
       else {
@@ -335,6 +400,7 @@ void update_water(world &w) {
         // Since the source tile is still water, there always must be a real tile to choose
         
         w.delete_water(chosen_top_tile);
+        temp_data.erase(chosen_top_tile);
         disturbed_tiles.insert(chosen_top_tile);
       }
       
@@ -381,14 +447,46 @@ void update_water(world &w) {
     }
   }
   
-  const auto range = w.active_tiles_range();
-  for (auto i = range.begin(); i != range.end(); ) {
-    if (i->second.can_deactivate()) {
-      location const& loc = i->first;
-      ++i;
-      w.deactivate_water(loc);
+  for (auto const& p : temp_data) {
+    location const& loc = p.first;
+    if (water_movement_info *water = w.get_active_tile(loc)) {
+      if (water->is_in_idle_state()) {
+        if (loc.stuff_at().is_sticky_water()) {
+          if (p.second.was_sticky_at_frame_start && !p.second.exerted_pressure) {
+            w.deactivate_water(loc);
+          }
+        }
+        else {
+          // Be a little paranoid about making sure free water obeys all the proper conditions of idleness
+          bool can_deactivate = true;
+          for (EACH_CARDINAL_DIRECTION(dir)) {
+            if (dir.v.z < 0) {
+              if (water->blockage_amount_this_frame[dir] != min_convincing_speed + (-gravity_acceleration.z)) {
+                can_deactivate = false; break;
+              }
+            }
+            else {
+              if (water->blockage_amount_this_frame[dir] != 0) {
+                can_deactivate = false; break;
+              }
+            }
+          }
+          if (!can_deactivate) continue;
+          const location downloc = loc + cdir_zminus;
+          if (!(downloc.stuff_at().is_sticky_water() || downloc.stuff_at().contents() == ROCK)) continue;
+          // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
+          for (EACH_CARDINAL_DIRECTION(dir)) {
+            if (dir.v.dot<neighboring_tile_differential>(zunitv) == 0 &&
+                (loc + dir).stuff_at().contents() == AIR &&
+                (((downloc + dir).stuff_at().contents() == AIR) || (downloc + dir).stuff_at().is_free_water())) {
+              can_deactivate = false; break;
+            }
+          }
+          
+          if (can_deactivate) w.deactivate_water(loc);
+        }
+      }
     }
-    else ++i;
   }
 }
 

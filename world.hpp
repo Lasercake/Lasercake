@@ -113,34 +113,14 @@ private:
 struct water_movement_info {
   vector3<sub_tile_distance> velocity;
   value_for_each_cardinal_direction<sub_tile_distance> progress;
-  value_for_each_cardinal_direction<sub_tile_distance> new_progress; // TODO don't put this here, it's temporary in update_water
   value_for_each_cardinal_direction<sub_tile_distance> blockage_amount_this_frame;
   
   // Constructing one of these in the default way yields the natural idle state:
-  water_movement_info():velocity(idle_water_velocity),progress(0),new_progress(0),blockage_amount_this_frame(0){ progress[cdir_zminus] = progress_necessary; }
+  water_movement_info():velocity(idle_water_velocity),progress(0),blockage_amount_this_frame(0){ progress[cdir_zminus] = progress_necessary; }
   
   // This is not a general-purpose function. Only use it during the move-processing part of update_water.
-  // TODO: Move this and the next functions' implementations into water.cpp
-  void get_completely_blocked(cardinal_direction dir) {
-    const sub_tile_distance dp = velocity.dot<sub_tile_distance>(dir.v);
-    const sub_tile_distance blocked_velocity = dp - min_convincing_speed;
-    if (blocked_velocity > 0) {
-      velocity -= vector3<sub_tile_distance>(dir.v) * blocked_velocity;
-    }
-  }
-  
-  bool can_deactivate()const {
-    // TODO: does it make sense that we're ignoring the 1-frame-duration variable "blockage_amount_this_frame"?
-    for (EACH_CARDINAL_DIRECTION(dir)) {
-      if (dir.v.z < 0) {
-        if (progress[dir] != progress_necessary) return false;
-      }
-      else {
-        if (progress[dir] != 0) return false;
-      }
-    }
-    return velocity == idle_water_velocity;
-  }
+  void get_completely_blocked(cardinal_direction dir);
+  bool is_in_idle_state()const;
 };
 
 
