@@ -68,4 +68,25 @@ hacky_internals::worldblock* world::create_if_necessary_and_get_worldblock(vecto
   return &(blocks[position].init_if_needed(this, position));
 }
 
+void world::ensure_space_exists(axis_aligned_bounding_box space) {
+  const hacky_internals::worldblock_dimension_type wd = hacky_internals::worldblock_dimension;
+  for (location_coordinate
+       x =  space.min.x                            / wd;
+       x < (space.min.x + space.size.x + (wd - 1)) / wd;
+       ++x) {
+    for (location_coordinate
+         y =  space.min.y                            / wd;
+         y < (space.min.y + space.size.y + (wd - 1)) / wd;
+         ++y) {
+      for (location_coordinate
+           z =  space.min.z                            / wd;
+           z < (space.min.z + space.size.z + (wd - 1)) / wd;
+           ++z) {
+        const vector3<location_coordinate> worldblock_position(x*wd, y*wd, z*wd);
+        create_if_necessary_and_get_worldblock(worldblock_position);
+      }
+    }
+  }
+}
+
 

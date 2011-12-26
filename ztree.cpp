@@ -27,9 +27,10 @@ bool ztree_entry::operator<(ztree_entry const& other)const {
 }
 
 void world::collect_tiles_that_contain_anything_near(unordered_set<location> &results, location center, int radius) {
-  std::cerr << "Number of tiles that contain anything: " << tiles_that_contain_anything.size() << "\n";
   // TODO use something nicer than "int"
   const int total_width = 2*radius + 1;
+  ensure_space_exists(axis_aligned_bounding_box{center.coords() - vector3<location_coordinate>(radius,radius,radius), vector3<location_coordinate>(total_width,total_width,total_width) });
+  std::cerr << "Number of tiles that contain anything: " << tiles_that_contain_anything.size() << "\n";
   int exp = 0; while ((1 << exp) < total_width) ++exp;
   const int x_shift = (center.coords().x & ((1 << exp) - 1)) < (1 << (exp - 1)) ? -1 : 0;
   const int y_shift = (center.coords().y & ((1 << exp) - 1)) < (1 << (exp - 1)) ? -1 : 0;

@@ -163,7 +163,7 @@ struct world_building_func {
     for (location_coordinate x = std::max(world_center_coord-1, bounds.min.x); x < std::min(world_center_coord+21, bounds.min.x + bounds.size.x); ++x) {
       for (location_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
         for (location_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {
-          if (x == world_center_coord-1 || x == world_center_coord+21 || y == world_center_coord-1 || y == world_center_coord+21 || z == world_center_coord-1 || z == world_center_coord+21) {
+          if (x == world_center_coord-1 || x == world_center_coord+20 || y == world_center_coord-1 || y == world_center_coord+20 || z == world_center_coord-1 || z == world_center_coord+20) {
             make(ROCK, vector3<location_coordinate>(x, y, z));
           }
         }
@@ -200,7 +200,7 @@ srand(time(NULL));
   else build_a_little_water_on_the_ground();*/
   
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
-  w.make_location(vector3<location_coordinate>(world_center_coord, world_center_coord, world_center_coord-1));
+  //w.make_location(vector3<location_coordinate>(world_center_coord, world_center_coord, world_center_coord-1));
     
   while ( !done ) {
 

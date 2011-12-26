@@ -258,6 +258,7 @@ public:
 private:
   unordered_map<vector3<location_coordinate>, hacky_internals::worldblock> blocks; // using the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
   hacky_internals::worldblock* create_if_necessary_and_get_worldblock(vector3<location_coordinate> position);
+  void ensure_space_exists(axis_aligned_bounding_box space);
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
   active_tiles_t active_tiles;
