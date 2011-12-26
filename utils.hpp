@@ -2,6 +2,8 @@
 #ifndef ELISAACWATER_UTILS_HPP__
 #define ELISAACWATER_UTILS_HPP__
 
+#include <array>
+
 template<typename Map>
 typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const& k) {
   auto i = m.find(k);
@@ -100,8 +102,8 @@ struct cardinal_direction {
   cardinal_direction operator-()const;
 };
 
-inline vector3<sub_tile_distance> project_onto_cardinal_direction(vector3<sub_tile_distance> src, cardinal_direction dir) {
-  return vector3<sub_tile_distance>(src.x * std::abs((sub_tile_distance)dir.v.x), src.y * std::abs((sub_tile_distance)dir.v.y), src.z * std::abs((sub_tile_distance)dir.v.z));
+template<typename scalar_type> inline vector3<scalar_type> project_onto_cardinal_direction(vector3<scalar_type> src, cardinal_direction dir) {
+  return vector3<scalar_type>(src.x * std::abs((scalar_type)dir.v.x), src.y * std::abs((scalar_type)dir.v.y), src.z * std::abs((scalar_type)dir.v.z));
 }
 
 const vector3<neighboring_tile_differential> xunitv(1, 0, 0);
@@ -134,7 +136,7 @@ public:
   value_type      & operator[](cardinal_direction const& dir) { return data[dir.cardinal_direction_idx]; }
   value_type const& operator[](cardinal_direction const& dir)const { return data[dir.cardinal_direction_idx]; }
 private:
-  typedef array<value_type, NUM_CARDINAL_DIRECTIONS> internal_array;
+  typedef std::array<value_type, NUM_CARDINAL_DIRECTIONS> internal_array;
 public:
   typename internal_array::iterator begin() { return data.begin(); }
   typename internal_array::iterator end() { return data.end(); }

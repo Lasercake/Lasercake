@@ -60,3 +60,11 @@ location location::operator+(cardinal_direction dir)const {
 }
 tile const& location::stuff_at()const { return wb->get_tile(v); }
 
+location world::make_location(vector3<location_coordinate> const& coords) {
+  return location(coords, create_if_necessary_and_get_worldblock(vector3<location_coordinate>(coords.x & ~(worldblock_dimension-1), coords.y & ~(worldblock_dimension-1), coords.z & ~(worldblock_dimension-1))));
+}
+
+worldblock* world::create_if_necessary_and_get_worldblock(vector3<location_coordinate> position) {
+  return &(blocks[position].init_if_needed(this));
+}
+

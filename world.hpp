@@ -92,14 +92,15 @@ public:
   bool is_interior_water()const{ return contents() == WATER &&  is_sticky_bit() &&  is_interior_bit(); }
   bool is_membrane_water()const{ return contents() == WATER &&  is_sticky_bit() && !is_interior_bit(); }
   
-  tile_contents contents()const{ return data & contents_mask; }
-  void set_contents(tile_contents new_contents)const{ data = (data & ~contents_mask) | (new_contents & contents_mask); }
-  void set_water_stickyness(bool b)const{ data = (data & ~sticky_bit_mask) | (b ? sticky_bit_mask : 0); }
-  void set_water_interiorness(bool b)const{ data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : 0); }
+  tile_contents contents()const{ return (tile_contents)(data & contents_mask); }
+  
+  void set_contents(tile_contents new_contents){ data = (data & ~contents_mask) | (new_contents & contents_mask); }
+  void set_water_stickyness(bool b){ data = (data & ~sticky_bit_mask) | (b ? sticky_bit_mask : 0); }
+  void set_water_interiorness(bool b){ data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : 0); }
 private:
-  static const contents_mask = 0x3;
-  static const sticky_bit_mask = (1<<2);
-  static const interior_bit_mask = (1<<3);
+  static const uint8_t contents_mask = 0x3;
+  static const uint8_t sticky_bit_mask = (1<<2);
+  static const uint8_t interior_bit_mask = (1<<3);
   bool is_sticky_bit()const{ return data & sticky_bit_mask; }
   bool is_interior_bit()const{ return data & interior_bit_mask; }
   uint8_t data;
@@ -172,16 +173,7 @@ class world;
 
 class world_building_gun {
 public:
-  operator()(tile_contents new_contents, vector3<location_coordinate> locv) {
-    assert(bounds.contains(locv));
-    if (new_contents == ROCK) {
-      // TODO put the rock
-    }
-    else if (new_contents == WATER) {
-      w->insert_water(w->make_location(locv));
-    }
-    else assert("YOU CAN ONLY PLACE ROCK AND WATER" && false);
-  }
+  void operator()(tile_contents new_contents, vector3<location_coordinate> locv);
 private:
   world* w;
   axis_aligned_bounding_box bounds;
@@ -192,11 +184,10 @@ class ztree_entry;
 
 class world {
 public:
+  typedef std::function<void (world_building_gun, axis_aligned_bounding_box)> worldgen_function_t;
+  typedef unordered_map<location, water_movement_info> active_tiles_t;
+  
   world(worldgen_function_t f):worldgen_function(f){}
-
-  worldblock* create_if_necessary_and_get_worldblock(vector3<location_coordinate> position) {
-    return &(blocks[position].init_if_needed(this));
-  }
   
   // The iterators are only valid until we activate any tiles.
   boost::iterator_range<active_tiles_t::iterator> active_tiles_range() {
@@ -204,12 +195,12 @@ public:
   }
   water_movement_info* get_active_tile(location l) { return find_as_pointer(active_tiles, l); }
   
-  location make_location(vector3<location_coordinate> const& coords) {
-    return location(coords, create_if_necessary_and_get_worldblock(vector3<location_coordinate>(coords.x & ~(worldblock_dimension-1), coords.y & ~(worldblock_dimension-1), coords.z & ~(worldblock_dimension-1))));
-  }
+  location make_location(vector3<location_coordinate> const& coords);
   
   void collect_tiles_that_contain_anything_near(unordered_set<location> &results, location center, int radius);
   
+  void delete_rock(location loc);
+  void insert_rock(location loc);
   void delete_water(location loc);
   water_movement_info& insert_water(location loc);
   void deactivate_water(location loc);
@@ -217,18 +208,20 @@ public:
   
 private:
   unordered_map<vector3<location_coordinate>, worldblock> blocks; // using the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
+  worldblock* create_if_necessary_and_get_worldblock(vector3<location_coordinate> position);
+  friend class worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
-  typedef unordered_map<location, water_movement_info> active_tiles_t;
   active_tiles_t active_tiles;
   set<ztree_entry> tiles_that_contain_anything;
   
   // Worldgen functions TODO describe them here
-  typedef std::function<void (world_building_gun, axis_aligned_bounding_box)> worldgen_function_t;
   worldgen_function_t worldgen_function;
   
   // these functions update the tiles' stickyness/interiorness caches
   void check_stickyness(location loc);
   void check_interiorness(location loc);
+
+  void something_changed_at(location loc);
 };
 
 

@@ -32,15 +32,40 @@ void world::check_interiorness(location loc) {
   }
 }
 
+void world::something_changed_at(location loc) {
+  for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
+  
+  if (loc.stuff_at().contents() == WATER) {
+    check_stickyness(loc);
+    activate_water(loc);
+  }
+  for (EACH_CARDINAL_DIRECTION(dir)) {
+    location adj_loc = loc + dir;
+    if (adj_loc.stuff_at().contents() == WATER) {
+      activate_water(adj_loc);
+    }
+  }
+}
+
+void world::delete_rock(location loc) {
+  tile &t = loc.stuff_at();
+  assert(t.contents() == ROCK);
+  t.set_contents(AIR);
+    
+  tiles_that_contain_anything.erase(loc); // TODO This will need extra checks if there can be rock and something else in a tile
+  
+  something_changed_at(loc);
+}
+
 void world::delete_water(location loc) {
   tile &t = loc.stuff_at();
   assert(t.contents() == WATER);
   t.set_contents(AIR);
   active_tiles.erase(loc);
     
-  for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
-    
   tiles_that_contain_anything.erase(loc); // TODO This will need extra checks if there can be water and something else in a tile
+  
+  something_changed_at(loc);
 }
 
 water_movement_info& world::insert_water(location loc) {
@@ -48,13 +73,11 @@ water_movement_info& world::insert_water(location loc) {
   assert(t.contents() == AIR);
   t.set_contents(WATER);
     
-  check_stickyness(loc);
-  for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
-    
   tiles_that_contain_anything.insert(loc);
     
-  // created water always starts out active.
-  return active_tiles[loc]; // inserts it, default-constructed
+  something_changed_at(loc);
+  
+  return active_tiles[loc]; // This will always be present, because something_changed_at already activates it.
 }
 
 void world::deactivate_water(location loc) {

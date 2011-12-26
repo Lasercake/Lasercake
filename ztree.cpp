@@ -1,4 +1,6 @@
 
+#include "world.hpp"
+
 class ztree_entry {
 private:
   location loc_;
