@@ -448,8 +448,15 @@ void update_water(world &w) {
           }
         }
         else {
-          // we tried to move due to pressure, but bumped into free water! Turn our movement into velocity, at some conversion factor.
-          w.activate_water(dst).velocity += (vector3<sub_tile_distance>(move.dir.v) * move.excess_progress) / 10;
+          water_movement_info &dst_water = w.activate_water(dst);
+          // we tried to move due to pressure, but bumped into free water! Force the free water to move at the rate we wanted our expelled water to move.
+          const sub_tile_distance amount_of_their_vel_in_movement_dir = dst_water.velocity.dot<sub_tile_distance>(move.dir.v);
+          const sub_tile_distance deficiency_of_their_vel_in_movement_dir = move.amount_of_the_push_that_sent_us_over_the_threshold - amount_of_their_vel_in_movement_dir;
+          if (deficiency_of_their_vel_in_movement_dir > 0) {
+            dst_water.velocity += vector3<sub_tile_distance>(move.dir.v) * deficiency_of_their_vel_in_movement_dir;
+          }
+          // Formerly: Turn our movement into velocity, at some conversion factor.
+          //w.activate_water(dst).velocity += (vector3<sub_tile_distance>(move.dir.v) * move.excess_progress) / 10;
         }
       }
       else if (dst_tile.contents() == ROCK) {
