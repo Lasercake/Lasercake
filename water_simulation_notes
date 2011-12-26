@@ -40,4 +40,4 @@ OBSERVATION: Things that have to deal with an "entire lake", but really only car
 
 
 
-Current things missing: make more randomness in the velocity-only water mechanics; water is sometimes a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); Fix the bug where there sometimes ends up being very-high-velocity water in a mass of sticky water; find out why the top row in "steep" moves first, and fix it
+Current things missing: make more randomness in the velocity-only water mechanics; water is sometimes a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); Fix the bug where there sometimes ends up being very-high-velocity water in a mass of sticky water

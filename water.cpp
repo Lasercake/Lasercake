@@ -8,6 +8,12 @@ void world::deactivate_water(location const& loc) {
 
 water_movement_info& world::activate_water(location const& loc) {
   assert(loc.stuff_at().contents() == WATER);
+  
+  // TODO figure out how much of a hack this is:
+  // (The *first* time a tile activates, it hasn't necessarily had its caches computed)
+  check_stickyness(loc);
+  check_interiorness(loc);
+  
   return active_tiles[loc]; // if it's not there, this inserts it, default-constructed
 }
 
@@ -262,6 +268,7 @@ void update_water(world &w) {
             }
             temp_data[loc].exerted_pressure = true;
             temp_data[loc].new_progress[dir] += (sub_tile_distance)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
+            //std::cerr << "Foo: " << depth << ", " << temp_data[loc].new_progress[dir] << ", " << int64_t(dst_loc.coords().z) - world_center_coord << "\n";
           }
         }
       }
