@@ -169,7 +169,7 @@ struct world_building_func {
           }
           else {
             const location_coordinate wc = world_center_coord;
-            if ((scenario == "tower1" || scenario == "tower2" || scenario == "tower3") &&
+            if ((scenario.substr(0,5) == "tower") &&
                   x >= wc+4 && x <= wc+6 &&
                   y >= wc+4 && y <= wc+6 &&
                   z >= wc+1) make(WATER, l);

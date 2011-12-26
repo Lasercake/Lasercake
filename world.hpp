@@ -120,11 +120,12 @@ struct water_movement_info {
   water_movement_info():velocity(idle_water_velocity),progress(0),new_progress(0),blockage_amount_this_frame(0){ progress[cdir_zminus] = progress_necessary; }
   
   // This is not a general-purpose function. Only use it during the move-processing part of update_water.
+  // TODO: Move this and the next functions' implementations into water.cpp
   void get_completely_blocked(cardinal_direction dir) {
     const sub_tile_distance dp = velocity.dot<sub_tile_distance>(dir.v);
     const sub_tile_distance blocked_velocity = dp - min_convincing_speed;
     if (blocked_velocity > 0) {
-      velocity -= dir.v * blocked_velocity;
+      velocity -= vector3<sub_tile_distance>(dir.v) * blocked_velocity;
     }
   }
   

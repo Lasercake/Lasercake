@@ -342,7 +342,7 @@ void update_water(world &w) {
       const sub_tile_distance amount_of_new_vel_in_movement_dir = dst_water.velocity.dot<sub_tile_distance>(move.dir.v);
       const sub_tile_distance deficiency_of_new_vel_in_movement_dir = move.amount_of_the_push_that_sent_us_over_the_threshold - amount_of_new_vel_in_movement_dir;
       if (deficiency_of_new_vel_in_movement_dir > 0) {
-        dst_water.velocity += move.dir.v * deficiency_of_new_vel_in_movement_dir;
+        dst_water.velocity += vector3<sub_tile_distance>(move.dir.v) * deficiency_of_new_vel_in_movement_dir;
       }
       // Also, don't lose movement to rounding error during progress over multiple tiles:
       dst_water.progress[move.dir] = std::min(move.excess_progress, progress_necessary);
@@ -369,7 +369,7 @@ void update_water(world &w) {
         }
         else {
           // we tried to move due to pressure, but bumped into free water! Turn our movement into velocity, at some conversion factor.
-          w.activate_water(dst).velocity += (move.dir.v * move.excess_progress) / 10;
+          w.activate_water(dst).velocity += (vector3<sub_tile_distance>(move.dir.v) * move.excess_progress) / 10;
         }
       }
       else if (dst_tile.contents() == ROCK) {
