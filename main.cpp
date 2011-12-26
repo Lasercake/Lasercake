@@ -252,9 +252,8 @@ srand(time(NULL));
     w.collect_tiles_that_contain_anything_near(tiles_to_draw, w.make_location(vector3<location_coordinate>(world_center_coord, world_center_coord, world_center_coord)), 50);
 
     for (location const& loc : tiles_to_draw) {
-    std::cerr<<"ninjas";
       tile const& t = loc.stuff_at();
-      vector3<location_coordinate> const& locv = loc.coords();
+      vector3<GLfloat> locv(vector3<location_coordinate_signed_type>(loc.coords() - world_center_coords)); // TODO : properly speaking, "minus the perspective you're looking from"? world_center_coords has no business in any code except the world generation, I think
       
       vector<vertex_entry> *vect;
       
@@ -263,34 +262,34 @@ srand(time(NULL));
       else if(t.is_free_water  () ) vect = &  free_water_vertices;
       else assert(false);
       
-      push_vertex(*vect, locv.x,     locv.y,     (GLfloat)locv.z + 0.5);
-      push_vertex(*vect, locv.x + 1, locv.y,     (GLfloat)locv.z + 0.5);
-      push_vertex(*vect, locv.x + 1, locv.y + 1, (GLfloat)locv.z + 0.5);
-      push_vertex(*vect, locv.x,     locv.y + 1, (GLfloat)locv.z + 0.5);
+      push_vertex(*vect, locv.x,     locv.y,     locv.z + 0.5);
+      push_vertex(*vect, locv.x + 1, locv.y,     locv.z + 0.5);
+      push_vertex(*vect, locv.x + 1, locv.y + 1, locv.z + 0.5);
+      push_vertex(*vect, locv.x,     locv.y + 1, locv.z + 0.5);
       
       if (water_movement_info *water = w.get_active_tile(loc)) {
       
-        push_vertex(velocity_vertices, (GLfloat)locv.x+0.5, (GLfloat)locv.y+0.5, (GLfloat)locv.z + 0.5);
+        push_vertex(velocity_vertices, locv.x+0.5, locv.y+0.5, locv.z + 0.5);
         push_vertex(velocity_vertices,
-            (GLfloat)locv.x + 0.5 + ((GLfloat)water->velocity.x / (250 * precision_factor)),
-            (GLfloat)locv.y + 0.5 + ((GLfloat)water->velocity.y / (250 * precision_factor)),
-            (GLfloat)locv.z + 0.5 + ((GLfloat)water->velocity.z / (250 * precision_factor)));
+            locv.x + 0.5 + ((GLfloat)water->velocity.x / (250 * precision_factor)),
+            locv.y + 0.5 + ((GLfloat)water->velocity.y / (250 * precision_factor)),
+            locv.z + 0.5 + ((GLfloat)water->velocity.z / (250 * precision_factor)));
           
         for (EACH_CARDINAL_DIRECTION(dir)) {
           const sub_tile_distance prog = water->progress[dir];
           if (prog > 0) {
-            vector3<sub_tile_distance> lawl = vector3<sub_tile_distance>(dir.v) * prog;
+            vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary;
 
-            push_vertex(progress_vertices, (GLfloat)locv.x+0.5, (GLfloat)locv.y+0.5, (GLfloat)locv.z + 0.5);
+            push_vertex(progress_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
             push_vertex(progress_vertices,
-                (GLfloat)locv.x + 0.5 + ((GLfloat)lawl.x / progress_necessary),
-                (GLfloat)locv.y + 0.5 + ((GLfloat)lawl.y / progress_necessary),
-                (GLfloat)locv.z + 0.5 + ((GLfloat)lawl.z / progress_necessary));
+                locv.x + 0.5 + directed_prog.x,
+                locv.y + 0.5 + directed_prog.y,
+                locv.z + 0.5 + directed_prog.z);
           }
         }
       }
       else {
-        push_vertex(idle_marker_vertices, (GLfloat)locv.x+0.5, (GLfloat)locv.y+0.5, (GLfloat)locv.z+0.5);
+        push_vertex(idle_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
       }
     }
     
@@ -376,9 +375,10 @@ int main(int argc, char *argv[])
     
     // Draw, get events...
     if (argc < 2) {
-      std::cerr << "You didn't give an argument saying which scenario to use!";
+      std::cerr << "You didn't give an argument saying which scenario to use! Using default value...";
+      mainLoop ("default");
     }
-    mainLoop (argv[1]);
+    else mainLoop (argv[1]);
     
     // Cleanup
 	SDL_Quit();

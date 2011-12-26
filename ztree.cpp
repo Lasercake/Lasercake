@@ -27,7 +27,7 @@ bool ztree_entry::operator<(ztree_entry const& other)const {
 }
 
 void world::collect_tiles_that_contain_anything_near(unordered_set<location> &results, location center, int radius) {
-  std::cerr << tiles_that_contain_anything.size() <<"\n";
+  std::cerr << "Number of tiles that contain anything: " << tiles_that_contain_anything.size() << "\n";
   // TODO use something nicer than "int"
   const int total_width = 2*radius + 1;
   int exp = 0; while ((1 << exp) < total_width) ++exp;

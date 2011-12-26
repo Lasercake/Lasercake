@@ -35,6 +35,7 @@ using std::bitset;
 
 typedef int32_t sub_tile_distance;
 typedef uint32_t location_coordinate;
+typedef int32_t location_coordinate_signed_type;
 
 struct axis_aligned_bounding_box {
   vector3<location_coordinate> min, size;
@@ -46,6 +47,7 @@ struct axis_aligned_bounding_box {
 };
 
 const location_coordinate world_center_coord = (location_coordinate(1) << (8*sizeof(location_coordinate) - 1));
+const vector3<location_coordinate> world_center_coords(world_center_coord, world_center_coord, world_center_coord);
 
 const sub_tile_distance precision_factor = 100;
 const sub_tile_distance progress_necessary = 5000 * precision_factor; // loosely speaking, the conversion factor between mini-units and entire tiles
@@ -183,7 +185,7 @@ namespace hacky_internals {
 
   class worldblock {
 public:
-    worldblock():neighbors(nullptr){}
+    worldblock():neighbors(nullptr),w(nullptr),inited(false){}
     worldblock& init_if_needed(world *w_, vector3<location_coordinate> global_position_);
   
     // Only to be used in location::stuff_at():

@@ -12,12 +12,12 @@ namespace hacky_internals {
   // TODO: "init_if_needed" is because we don't know how to make unordered_map's mapped_types be constructed in place in a non-default way.
   worldblock& worldblock::init_if_needed(world *w_, vector3<location_coordinate> global_position_) {
     if (!inited) {
+      inited = true;
       w = w_;
       global_position = global_position_;
       axis_aligned_bounding_box bounds{global_position, vector3<location_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension)};
       w->worldgen_function(world_building_gun(w, bounds), bounds);
-      std::cerr << "pirates";
-      inited = true;
+      std::cerr << "A worldblock has been created!\n";
     }
     return (*this);
   }
@@ -57,7 +57,11 @@ location location::operator+(cardinal_direction dir)const {
 tile const& location::stuff_at()const { return wb->get_tile(v); }
 
 location world::make_location(vector3<location_coordinate> const& coords) {
-  return create_if_necessary_and_get_worldblock(vector3<location_coordinate>(coords.x & ~(hacky_internals::worldblock_dimension-1), coords.y & ~(hacky_internals::worldblock_dimension-1), coords.z & ~(hacky_internals::worldblock_dimension-1)))->get_loc_guaranteed_to_be_in_this_block(coords);
+  return create_if_necessary_and_get_worldblock(vector3<location_coordinate>(
+      coords.x & ~(hacky_internals::worldblock_dimension-1),
+      coords.y & ~(hacky_internals::worldblock_dimension-1),
+      coords.z & ~(hacky_internals::worldblock_dimension-1)
+    ))->get_loc_guaranteed_to_be_in_this_block(coords);
 }
 
 hacky_internals::worldblock* world::create_if_necessary_and_get_worldblock(vector3<location_coordinate> position) {
