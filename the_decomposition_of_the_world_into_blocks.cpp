@@ -30,12 +30,12 @@ namespace hacky_internals {
   location worldblock::get_neighboring_loc(vector3<location_coordinate> const& old_coords, cardinal_direction dir) {
     // this could be made more effecient, but I'm not sure how
     vector3<location_coordinate> new_coords = old_coords + dir.v;
-    if (new_coords.x < global_position.x) return location(new_coords, neighbors[cdir_xminus]);
-    if (new_coords.y < global_position.y) return location(new_coords, neighbors[cdir_yminus]);
-    if (new_coords.z < global_position.z) return location(new_coords, neighbors[cdir_zminus]);
-    if (new_coords.x >= global_position.x + worldblock_dimension) return location(new_coords, neighbors[cdir_xplus]);
-    if (new_coords.y >= global_position.y + worldblock_dimension) return location(new_coords, neighbors[cdir_yplus]);
-    if (new_coords.z >= global_position.z + worldblock_dimension) return location(new_coords, neighbors[cdir_zplus]);
+    if (new_coords.x < global_position.x) return get_loc_across_boundary(new_coords, cdir_xminus);
+    if (new_coords.y < global_position.y) return get_loc_across_boundary(new_coords, cdir_yminus);
+    if (new_coords.z < global_position.z) return get_loc_across_boundary(new_coords, cdir_zminus);
+    if (new_coords.x >= global_position.x + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_xplus);
+    if (new_coords.y >= global_position.y + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_yplus);
+    if (new_coords.z >= global_position.z + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_zplus);
     return location(new_coords, this);
   }
 
