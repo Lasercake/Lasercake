@@ -1,590 +1,71 @@
 
-#include <vector>
-#include <cstdlib>
-#include <cmath>
-#include <cassert>
-#include <map>
-#include <set>
-#include <array>
-#include <algorithm>
-#include <unordered_map>
-#include <unordered_set>
-#include <bitset>
-#include <boost/functional/hash.hpp>
-#include <boost/utility.hpp>
-#include <boost/range/iterator_range.hpp>
-#include <iostream>
-#include <inttypes.h>
-#include <functional>
+#include "world.hpp"
 
-using std::map;
-using std::unordered_map;
-using std::unordered_set;
-using std::pair;
-using std::make_pair;
-using std::set;
-using std::vector;
-using std::array;
-using std::bitset;
-
-template<typename Map>
-typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const& k) {
-  auto i = m.find(k);
-  if(i == m.end()) return nullptr;
-  else return &(i->second);
-}
-
-class bounds_checked_int {
-public:
-	bounds_checked_int():value(0){}
-	bounds_checked_int(int value):value(value){}
-	bounds_checked_int &operator=(int other) { value = other; return *this; }
-	bounds_checked_int operator+(int other)const {
-		assert((int64_t)value + (int64_t)other < (1LL << 31));
-		assert((int64_t)value + (int64_t)other > -(1LL << 31));
-		return bounds_checked_int(value + other);
-	}
-	void operator+=(int other) {
-		assert((int64_t)value + (int64_t)other < (1LL << 31));
-		assert((int64_t)value + (int64_t)other > -(1LL << 31));
-		value += other;
-	}
-	bounds_checked_int& operator++() {
-		*this += 1; return *this;
-	}
-	bounds_checked_int operator++(int) {
-		bounds_checked_int result(value);
-		*this += 1;
-		return result;
-	}
-	bounds_checked_int& operator--() {
-		*this -= 1; return *this;
-	}
-	bounds_checked_int operator--(int) {
-		bounds_checked_int result(value);
-		*this -= 1;
-		return result;
-	}
-	bounds_checked_int operator-(int other)const {
-		assert((int64_t)value - (int64_t)other < (1LL << 31));
-		assert((int64_t)value - (int64_t)other > -(1LL << 31));
-		return bounds_checked_int(value - other);
-	}
-	void operator-=(int other) {
-		assert((int64_t)value - (int64_t)other < (1LL << 31));
-		assert((int64_t)value - (int64_t)other > -(1LL << 31));
-		value -= other;
-	}
-	bounds_checked_int operator*(int other)const {
-		assert((int64_t)value * (int64_t)other < (1LL << 31));
-		assert((int64_t)value * (int64_t)other > -(1LL << 31));
-		return bounds_checked_int(value * other);
-	}
-	void operator*=(int other) {
-		assert((int64_t)value * (int64_t)other < (1LL << 31));
-		assert((int64_t)value * (int64_t)other > -(1LL << 31));
-		value *= other;
-	}
-	bounds_checked_int operator/(int other)const {
-		return bounds_checked_int(value / other);
-	}
-	void operator/=(int other) {
-		value /= other;
-	}
-	operator int()const{ return value; }
-private:
-	int value;
-};
-
-template<typename scalar_type> scalar_type divide_rounding_towards_zero(scalar_type dividend, scalar_type divisor)
-{
-	assert(divisor != 0);
-	int abs_result = std::abs(dividend) / std::abs(divisor);
-	if ((dividend > 0 && divisor > 0) || (dividend < 0 && divisor < 0)) return abs_result;
-	else return -abs_result;
-}
-
-template<typename scalar_type> class vector3 {
-public:
-	scalar_type x, y, z;
-	vector3():x(0),y(0),z(0){}
-	vector3(scalar_type x, scalar_type y, scalar_type z):x(x),y(y),z(z){}
-	template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
-	  x(other.x),y(other.y),z(other.z){}
-	
-	// Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
-	template<typename OtherType> vector3 operator+(vector3<OtherType> const& other)const {
-		return vector3(x + other.x, y + other.y, z + other.z);
-	}
-	template<typename OtherType> void operator+=(vector3<OtherType> const& other) {
-		x += other.x; y += other.y; z += other.z;
-	}
-	template<typename OtherType> vector3 operator-(vector3<OtherType> const& other)const {
-		return vector3(x - other.x, y - other.y, z - other.z);
-	}
-	template<typename OtherType> void operator-=(vector3<OtherType> const& other) {
-		x -= other.x; y -= other.y; z -= other.z;
-	}
-	vector3 operator*(scalar_type other)const {
-		return vector3(x * other, y * other, z * other);
-	}
-	void operator*=(scalar_type other) {
-		x *= other; y *= other; z *= other;
-	}
-	vector3 operator/(scalar_type other)const {
-		return vector3(divide_rounding_towards_zero(x, other), divide_rounding_towards_zero(y, other), divide_rounding_towards_zero(z, other));
-	}
-	void operator/=(scalar_type other) {
-		x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other);
-	}
-	vector3 operator-()const { // unary minus
-		return vector3(-x, -y, -z);
-	}
-	bool operator==(vector3 const& other)const {return x == other.x && y == other.y && z == other.z; }
-	bool operator!=(vector3 const& other)const {return x != other.x || y != other.y || z != other.z; }
-	
-	// Do not try to use this if either vector has an unsigned scalar_type. It might work in some situations, but why would you ever do that anyway?
-	// You are required to specify an output type, because of the risk of overflow. Make sure to choose one that can fit the squares of the numbers you're dealing with.
-	template<typename OutputType, typename OtherType> OutputType dot(vector3<OtherType> const& other)const {
-		return (OutputType)x * (OutputType)other.x +
-		       (OutputType)y * (OutputType)other.y +
-		       (OutputType)z * (OutputType)other.z;
-	}
-	
-	// Warning - might be slightly inaccurate (in addition to the integer rounding error) for very large vectors, due to floating-point inaccuracy.
-	scalar_type magnitude()const { return (scalar_type)std::sqrt(dot<double>(*this)); }
-	
-	// Choose these the way you'd choose dot's output type (see the comment above)
-	// we had trouble making these templates, so now they just always use int64_t
-	bool magnitude_within_32_bits_is_less_than(scalar_type amount)const {
-	  return dot<int64_t>(*this) < (int64_t)amount * (int64_t)amount;
-	}
-	bool magnitude_within_32_bits_is_greater_than(scalar_type amount)const {
-	  return dot<int64_t>(*this) > (int64_t)amount * (int64_t)amount;
-	}
-	bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
-};
-
-typedef int32_t sub_tile_distance;
-typedef int8_t neighboring_tile_differential;
-typedef uint32_t location_coordinate;
-
-struct axis_aligned_bounding_box {
-  vector3<location_coordinate> min, size;
-  bool contains(vector3<location_coordinate> v) {
-    return (v.x >= min.x && v.x <= min.x + (size.x - 1) &&
-            v.y >= min.y && v.y <= min.y + (size.y - 1) &&
-            v.z >= min.z && v.z <= min.z + (size.z - 1));
-  }
-};
-
-const sub_tile_distance precision_factor = 100;
-const sub_tile_distance progress_necessary = 5000 * precision_factor; // loosely speaking, the conversion factor between mini-units and entire tiles
-const sub_tile_distance min_convincing_speed = 100 * precision_factor;
-const vector3<sub_tile_distance> gravity_acceleration(0, 0, -5*precision_factor); // in mini-units per frame squared
-const sub_tile_distance friction_amount = 3 * precision_factor;
-
-// as in 1 + d2 (except with the random based at zero, but who cares)
-const sub_tile_distance pressure_motion_factor = 80 * precision_factor;
-const sub_tile_distance pressure_motion_factor_random = 40 * precision_factor;
-const sub_tile_distance extra_downward_speed_for_sticky_water = 100 * precision_factor;
-
-const sub_tile_distance air_resistance_constant = (200000 * precision_factor * precision_factor);
-const sub_tile_distance idle_progress_reduction_rate = 100 * precision_factor;
-const sub_tile_distance sticky_water_velocity_reduction_rate = 5*precision_factor;
-
-const vector3<sub_tile_distance> idle_water_velocity(0, 0, -min_convincing_speed);
-
-typedef int8_t cardinal_direction_index;
-const cardinal_direction_index NUM_CARDINAL_DIRECTIONS = 6;
-struct cardinal_direction {
-  cardinal_direction(vector3<neighboring_tile_differential> v, cardinal_direction_index i):v(v),cardinal_direction_idx(i){}
-  vector3<neighboring_tile_differential> v;
-  cardinal_direction_index cardinal_direction_idx;
-  cardinal_direction operator-()const;
-};
-
-vector3<sub_tile_distance> project_onto_cardinal_direction(vector3<sub_tile_distance> src, cardinal_direction dir) {
-  return vector3<sub_tile_distance>(src.x * std::abs((sub_tile_distance)dir.v.x), src.y * std::abs((sub_tile_distance)dir.v.y), src.z * std::abs((sub_tile_distance)dir.v.z));
-}
-
-const vector3<neighboring_tile_differential> xunitv(1, 0, 0);
-const vector3<neighboring_tile_differential> yunitv(0, 1, 0);
-const vector3<neighboring_tile_differential> zunitv(0, 0, 1);
-// the order of this must be in sync with the order of hacky_vector_indexing_internals::cardinal_direction_vector_to_index
-const cardinal_direction cdir_xminus = cardinal_direction(-xunitv, 0);
-const cardinal_direction cdir_yminus = cardinal_direction(-yunitv, 1);
-const cardinal_direction cdir_zminus = cardinal_direction(-zunitv, 2);
-const cardinal_direction cdir_xplus = cardinal_direction(xunitv, 3);
-const cardinal_direction cdir_yplus = cardinal_direction(yunitv, 4);
-const cardinal_direction cdir_zplus = cardinal_direction(zunitv, 5);
-const cardinal_direction cardinal_directions[NUM_CARDINAL_DIRECTIONS] = { cdir_xminus, cdir_yminus, cdir_zminus, cdir_xplus, cdir_yplus, cdir_zplus };
-#define EACH_CARDINAL_DIRECTION(varname) cardinal_direction const& varname : cardinal_directions
-cardinal_direction cardinal_direction::operator-()const { return cardinal_directions[(cardinal_direction_idx + 3)%6]; }
-
-template<typename value_type> class value_for_each_cardinal_direction {
-public:
-  value_for_each_cardinal_direction& operator=(value_for_each_cardinal_direction const& other){
-    for(cardinal_direction_index dir_idx=0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
-      data[dir_idx] = other.data[dir_idx];
-    }
-    return *this;
-  }
-  value_for_each_cardinal_direction(value_type initial_value) {
-    for(cardinal_direction_index dir_idx=0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
-      data[dir_idx] = initial_value;
-    }
-  }
-  value_type      & operator[](cardinal_direction const& dir) { return data[dir.cardinal_direction_idx]; }
-  value_type const& operator[](cardinal_direction const& dir)const { return data[dir.cardinal_direction_idx]; }
-private:
-  typedef array<value_type, NUM_CARDINAL_DIRECTIONS> internal_array;
-public:
-  typename internal_array::iterator begin() { return data.begin(); }
-  typename internal_array::iterator end() { return data.end(); }
-  typename internal_array::const_iterator cbegin()const { return data.cbegin(); }
-  typename internal_array::const_iterator cend()const { return data.cend(); }
-private:
-  internal_array data;
-};
-
-
-struct water_movement_info {
-  vector3<sub_tile_distance> velocity;
-  value_for_each_cardinal_direction<sub_tile_distance> progress;
-  value_for_each_cardinal_direction<sub_tile_distance> new_progress;
-  value_for_each_cardinal_direction<sub_tile_distance> blockage_amount_this_frame;
-  
-  // Constructing one of these in the default way yields the natural idle state:
-  // however we should NOT use std::unordered_map's operator[] to activate it; it should only be created through tiles' activate_water and insert_water.
-  water_movement_info():velocity(idle_water_velocity),progress(0),new_progress(0),blockage_amount_this_frame(0){ progress[cdir_zminus] = progress_necessary; }
-  
-  // This is not a general-purpose function. Only use it during the move-processing part of update_water.
-  void get_completely_blocked(cardinal_direction dir) {
-    const sub_tile_distance dp = velocity.dot<sub_tile_distance>(dir.v);
-    const sub_tile_distance blocked_velocity = dp - min_convincing_speed;
-    if (blocked_velocity > 0) {
-      velocity -= dir.v * blocked_velocity;
-    }
-  }
-  
-  bool can_deactivate()const {
-    // TODO: does it make sense that we're ignoring the 1-frame-duration variable "blockage_amount_this_frame"?
+void world::check_stickyness(location loc) {
+  tile &t = loc.stuff_at();
+  if (t.contents() == WATER) { // we don't care whether it's marked sticky if it's not water
+    int airs = 0;
     for (EACH_CARDINAL_DIRECTION(dir)) {
-      if (dir.v.z < 0) {
-        if (progress[dir] != progress_necessary) return false;
-      }
-      else {
-        if (progress[dir] != 0) return false;
-      }
+      const location other_loc = loc + dir;
+      if (other_loc.stuff_at().contents() == AIR) ++airs;
     }
-    return velocity == idle_water_velocity;
+    bool should_be_sticky = (airs <= 1);
+    if (t.is_sticky_water() != should_be_sticky) {
+      t.set_water_stickyness(should_be_sticky);
+      if (should_be_sticky) check_interiorness(loc);
+      for (EACH_CARDINAL_DIRECTION(dir)) check_interiorness(loc + dir);
+    }
   }
-};
-
-
-enum tile_contents {
-  ROCK,
-  WATER,
-  AIR
-};
-
-struct tile
-{
-  tile():contents(AIR),is_sticky(false),is_interior(false){}
-  tile_contents contents;
-  bool is_sticky;
-  bool is_interior;
-  bool is_sticky_water  ()const{ return contents == WATER &&  is_sticky                ; }
-  bool is_free_water    ()const{ return contents == WATER && !is_sticky                ; }
-  bool is_interior_water()const{ return contents == WATER &&  is_sticky &&  is_interior; }
-  bool is_membrane_water()const{ return contents == WATER &&  is_sticky && !is_interior; }
-};
-
-
-const int worldblock_dimension_exp = 4;
-typedef int worldblock_dimension_type;
-const worldblock_dimension_type worldblock_dimension = (1 << worldblock_dimension_exp);
-
-class worldblock;
-
-class location {
-public:
-  // this constructor should only be used when you know exactly what worldblock it's in!!
-  // TODO: It's bad that it's both public AND doesn't assert that condition
-  location(vector3<location_coordinate> v, worldblock *wb):v(v),wb(wb){}
-  
-  location operator+(cardinal_direction dir)const;
-  location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
-  tile const& stuff_at()const;
-  vector3<location_coordinate> const& coords()const { return v; }
-private:
-  friend tile& mutable_stuff_at(location const& loc);
-  vector3<location_coordinate> v;
-  worldblock *wb;
-};
-
-namespace std {
-  template<typename scalar_type> struct hash<vector3<scalar_type> > {
-    inline size_t operator()(vector3<scalar_type> const& v) const {
-      size_t seed = 0;
-      boost::hash_combine(seed, v.x);
-      boost::hash_combine(seed, v.y);
-      boost::hash_combine(seed, v.z);
-      return seed;
-    }
-  };
-  template<> struct hash<location> {
-    inline size_t operator()(location const& l) const {
-      return hash<vector3<location_coordinate> >()(l.coords());
-    }
-  };
 }
 
-class world;
-
-class worldblock {
-  // When a worldblock is inited, it DOESN'T call insert_water for all the water in it - the water is 'already there'.
-  // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").
-  //
-  // We would have to make special rules for worldblocks that start out with
-  // active water in them, because it could invalidate iterators into the
-  // active_tiles map, because worldblocks can be created essentially any time in the processing.
-private:
-  friend class location;
-  friend class world;
-  
-  worldblock& init_if_needed(world *w_) {
-    if (!inited) {
-      w = w_;
+void world::check_interiorness(location loc) {
+  tile &t = loc.stuff_at();
+  if (t.is_sticky_water()) { // we don't care whether it's marked interior if it's not sticky water
+    bool should_be_interior = true;
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const location other_loc = loc + dir;
+      if (!other_loc.stuff_at().is_sticky_water()) should_be_interior = false;
     }
-    return (*this);
-  }
-  
-  std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles;
-  value_for_each_cardinal_direction<worldblock*> neighbors;
-  vector3<location_coordinate> global_position; // the lowest x, y, and z among elements in this worldblock
-  world *w;
-  bool inited;
-  
-  // Only to be used in location::stuff_at():
-  tile &get_tile(vector3<location_coordinate> global_coords) {
-    vector3<location_coordinate> local_coords = global_coords - global_position;
-    return tiles[local_coords.x][local_coords.y][local_coords.z];
-  }
-  
-  // Only to be used in location::operator+(cardinal_direction):
-  location get_neighboring_loc(vector3<location_coordinate> const& old_coords, cardinal_direction dir) {
-    // this could be made more effecient, but I'm not sure how
-    vector3<location_coordinate> new_coords = old_coords + dir.v;
-    if (new_coords.x < global_position.x) return location(new_coords, neighbors[cdir_xminus]);
-    if (new_coords.y < global_position.y) return location(new_coords, neighbors[cdir_yminus]);
-    if (new_coords.z < global_position.z) return location(new_coords, neighbors[cdir_zminus]);
-    if (new_coords.x >= global_position.x + worldblock_dimension) return location(new_coords, neighbors[cdir_xplus]);
-    if (new_coords.y >= global_position.y + worldblock_dimension) return location(new_coords, neighbors[cdir_yplus]);
-    if (new_coords.z >= global_position.z + worldblock_dimension) return location(new_coords, neighbors[cdir_zplus]);
-    return location(new_coords, this);
-  }
-  
-  location get_loc_across_boundary(vector3<location_coordinate> const& new_coords, cardinal_direction dir);
-};
-
-location location::operator+(cardinal_direction dir)const {
-  return wb->get_neighboring_loc(v, dir);
-}
-tile const& location::stuff_at()const { return wb->get_tile(v); }
-
-
-struct ztree_entry {
-private:
-  location loc_;
-  std::array<location_coordinate, 3> interleaved_bits;
-  static const size_t bits_in_loc_coord = 8*sizeof(location_coordinate);
-  void set_bit(size_t idx) {
-    interleaved_bits[idx / bits_in_loc_coord] &= (location_coordinate(1) << (idx % bits_in_loc_coord));
-  }
-public:
-  location const& loc() { return loc_; }
-  
-  ztree_entry(location const& loc_):loc_(loc_),interleaved_bits() {
-    interleaved_bits[0] = 0;
-    interleaved_bits[1] = 0;
-    interleaved_bits[2] = 0;
-    for (size_t bit = 0; bit < bits_in_loc_coord; ++bit) {
-      if (loc_.coords().x & (location_coordinate(1) << bit)) set_bit(3*bit + 0);
-      if (loc_.coords().y & (location_coordinate(1) << bit)) set_bit(3*bit + 1);
-      if (loc_.coords().z & (location_coordinate(1) << bit)) set_bit(3*bit + 2);
+    if (t.is_interior_water() != should_be_interior) {
+      t.set_water_interiorness(should_be_interior);
     }
   }
-  
-  inline bool operator==(ztree_entry const& other)const { return loc_.coords() == other.loc_.coords(); }
-  inline bool operator<(ztree_entry const& other)const {
-    if (interleaved_bits[2] < other.interleaved_bits[2]) return true;
-    if (interleaved_bits[2] > other.interleaved_bits[2]) return false;
-    if (interleaved_bits[1] < other.interleaved_bits[1]) return true;
-    if (interleaved_bits[1] > other.interleaved_bits[1]) return false;
-    return (interleaved_bits[0] < other.interleaved_bits[0]);
-  }
-};
-
-
-class world_building_gun {
-public:
-  operator()(tile_contents new_contents, vector3<location_coordinate> locv) {
-    assert(bounds.contains(locv));
-    if (new_contents == ROCK) {
-      // TODO put the rock
-    }
-    else if (new_contents == WATER) {
-      w->insert_water(w->make_location(locv));
-    }
-    else assert("YOU CAN ONLY PLACE ROCK AND WATER" && false);
-  }
-private:
-  world* w;
-  axis_aligned_bounding_box bounds;
-};
-
-
-class world {
-private:
-  unordered_map<vector3<location_coordinate>, worldblock> blocks; // using the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
-  
-  typedef unordered_map<location, water_movement_info> active_tiles_t;
-  active_tiles_t active_tiles;
-  set<ztree_entry> tiles_that_contain_anything;
-  
-  // Worldgen functions TODO describe them here
-  typedef std::function<void (world_building_gun, axis_aligned_bounding_box)> worldgen_function_t;
-  worldgen_function_t worldgen_function;
-  
-public:
-  world(worldgen_function_t f):worldgen_function(f){}
-
-  worldblock* create_if_necessary_and_get_worldblock(vector3<location_coordinate> position) {
-    return &(blocks[position].init_if_needed(this));
-  }
-  
-  // The iterators are only valid until we activate any tiles.
-  boost::iterator_range<active_tiles_t::iterator> active_tiles_range() {
-    return boost::make_iterator_range(active_tiles.begin(), active_tiles.end());
-  }
-  water_movement_info* get_active_tile(location l) { return find_as_pointer(active_tiles, l); }
-  
-  location make_location(vector3<location_coordinate> const& coords) {
-    return location(coords, create_if_necessary_and_get_worldblock(vector3<location_coordinate>(coords.x & ~(worldblock_dimension-1), coords.y & ~(worldblock_dimension-1), coords.z & ~(worldblock_dimension-1))));
-  }
-  
-  void collect_tiles_that_contain_anything_near(unordered_set<location> &results, location center, int radius) {
-    // TODO use something nicer than "int"
-    const int total_width = 2*radius + 1;
-    int exp = 0; while ((1 << exp) < total_width) ++exp;
-    const int x_shift = (center.coords().x & ((1 << exp) - 1)) < (1 << (exp - 1)) ? -1 : 0;
-    const int y_shift = (center.coords().y & ((1 << exp) - 1)) < (1 << (exp - 1)) ? -1 : 0;
-    const int z_shift = (center.coords().z & ((1 << exp) - 1)) < (1 << (exp - 1)) ? -1 : 0;
-    for (int x = 0; x < 2; ++x) { for (int y = 0; y < 2; ++y) { for (int z = 0; z < 2; ++z) {
-      set<ztree_entry>::iterator lower_bound = tiles_that_contain_anything.lower_bound(
-        ztree_entry(make_location(vector3<location_coordinate>(
-          (center.coords().x & ~((1 << exp) - 1)) + ((x+x_shift) * (1 << exp)),
-          (center.coords().y & ~((1 << exp) - 1)) + ((y+y_shift) * (1 << exp)),
-          (center.coords().z & ~((1 << exp) - 1)) + ((z+z_shift) * (1 << exp))
-        ))
-      ));
-      set<ztree_entry>::iterator upper_bound = tiles_that_contain_anything.upper_bound(
-        ztree_entry(make_location(vector3<location_coordinate>(
-          (center.coords().x | ((1 << exp) - 1)) + ((x+x_shift) * (1 << exp)),
-          (center.coords().y | ((1 << exp) - 1)) + ((y+y_shift) * (1 << exp)),
-          (center.coords().z | ((1 << exp) - 1)) + ((z+z_shift) * (1 << exp))
-        ))
-      ));
-      results.insert(lower_bound, upper_bound);
-    }}}
-  }
-  
-  void check_stickyness(location loc) {
-    tile &t = loc.stuff_at();
-    if (t.contents == WATER) { // we don't care whether it's marked sticky if it's not water
-      int airs = 0;
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        const location other_loc = loc + dir;
-        if (other_loc.stuff_at().contents == AIR) ++airs;
-      }
-      bool should_be_sticky = (airs <= 1);
-      if (t.is_sticky != should_be_sticky) {
-        t.is_sticky = should_be_sticky;
-        if (t.is_sticky) check_interiorness(loc);
-        for (EACH_CARDINAL_DIRECTION(dir)) check_interiorness(loc + dir);
-      }
-    }
-  }
-  void check_interiorness(location loc) {
-    tile &t = loc.stuff_at();
-    if (t.contents == WATER && t.is_sticky) { // we don't care whether it's marked interior if it's not sticky water
-      bool should_be_interior = true;
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        const location other_loc = loc + dir;
-        if (!other_loc.stuff_at().is_sticky_water()) should_be_interior = false;
-      }
-      if (t.is_interior != should_be_interior) {
-        t.is_interior = should_be_interior;
-      }
-    }
-  }
-  
-  void delete_water(location loc) {
-    tile &t = loc.stuff_at();
-    assert(t.contents == WATER);
-    t.contents = AIR;
-    active_tiles.erase(loc);
-    
-    for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
-    
-    tiles_that_contain_anything.erase(loc); // TODO This will need extra checks if there can be water and something else in a tile
-  }
-  water_movement_info& insert_water(location loc) {
-    tile &t = loc.stuff_at();
-    assert(t.contents == AIR);
-    t.contents = WATER;
-    
-    check_stickyness(loc);
-    for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
-    
-    tiles_that_contain_anything.insert(loc);
-    
-    // created water always starts out active.
-    return active_tiles[loc]; // inserts it, default-constructed
-  }
-  void deactivate_water(location loc) {
-    active_tiles.erase(loc);
-  }
-  water_movement_info& activate_water(location loc) {
-    assert(loc.stuff_at().contents == WATER);
-    return active_tiles[loc]; // if it's not there, this inserts it, default-constructed
-  }
-};
-
-location worldblock::get_loc_across_boundary(vector3<location_coordinate> const& new_coords, cardinal_direction dir) {
-  if (worldblock* neighbor = neighbors[dir]) return location(new_coords, neighbor);
-  return location(new_coords, (neighbors[dir] = w->create_if_necessary_and_get_worldblock(global_position + vector3<worldblock_dimension_type>(dir.v) * worldblock_dimension)));
 }
 
+void world::delete_water(location loc) {
+  tile &t = loc.stuff_at();
+  assert(t.contents() == WATER);
+  t.set_contents(AIR);
+  active_tiles.erase(loc);
+    
+  for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
+    
+  tiles_that_contain_anything.erase(loc); // TODO This will need extra checks if there can be water and something else in a tile
+}
 
+water_movement_info& world::insert_water(location loc) {
+  tile &t = loc.stuff_at();
+  assert(t.contents() == AIR);
+  t.set_contents(WATER);
+    
+  check_stickyness(loc);
+  for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
+    
+  tiles_that_contain_anything.insert(loc);
+    
+  // created water always starts out active.
+  return active_tiles[loc]; // inserts it, default-constructed
+}
 
+void world::deactivate_water(location loc) {
+  active_tiles.erase(loc);
+}
 
+water_movement_info& world::activate_water(location loc) {
+  assert(loc.stuff_at().contents() == WATER);
+  return active_tiles[loc]; // if it's not there, this inserts it, default-constructed
+}
 
-
-
-/*
-
-Whether tiles are water or not
- -- dictates, at one tile distance --
-Whether water tiles are "sticky water" ("fewer than two adjacent tiles are air") or "free water" (at least two adjacent air tiles)
- -- dictates, at one tile distance --
-Whether sticky water tiles are "interior water" ("every adjacent tile is sticky water") or "membrane water" ("at least one tile is not a sticky water tile")
-
-This is a one-way dictation - the latter things don't affect the former things at all (until they cause water to actually move, anyway). It's not an exact dictation 
-
-*/
 
 
 
@@ -722,7 +203,7 @@ private:
 void update_water(world &w) {
   for (pair<const location, water_movement_info> &p : w.active_tiles_range()) {
     tile const& t = p.first.stuff_at();
-    assert(t.contents == WATER);
+    assert(t.contents() == WATER);
     for (sub_tile_distance &np : p.second.new_progress) np = 0;
     
     if (t.is_sticky_water()) {
@@ -745,7 +226,7 @@ void update_water(world &w) {
       for (EACH_CARDINAL_DIRECTION(dir)) {
         const location dst_loc = loc + dir;
         tile const& dst_tile = dst_loc.stuff_at();
-        if (!dst_tile.is_sticky_water() && dst_tile.contents != ROCK) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the idle state what it is.)
+        if (!dst_tile.is_sticky_water() && dst_tile.contents() != ROCK) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the idle state what it is.)
           const double pressure = (double)(groups.max_z_by_group_number[group_number] - loc.coords().z) - 0.5 - 0.5*dir.v.z; // proportional to depth, assuming side surfaces are at the middle of the side. This is less by 1.0 than it naturally should be, to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
           if (pressure > 0) {
             w.activate_water(loc).new_progress[dir] += (sub_tile_distance)((pressure_motion_factor + (rand()%pressure_motion_factor_random)) * std::sqrt(pressure));
@@ -758,7 +239,7 @@ void update_water(world &w) {
   for (pair<const location, water_movement_info> &p : w.active_tiles_range()) {
     location const& loc = p.first;
     tile const& t = loc.stuff_at();
-    assert(t.contents == WATER);
+    assert(t.contents() == WATER);
     if (t.is_sticky_water()) {
       p.second.new_progress[cdir_zminus] += extra_downward_speed_for_sticky_water;
     }
@@ -788,10 +269,10 @@ void update_water(world &w) {
 
         // Water that's blocked, but can go around in a diagonal direction, makes "progress" towards all those possible directions (so it'll go in a random direction if it could go around in several different diagonals, without having to 'choose' one right away and gain velocity only in that direction). The main purpose of this is to make it so that water doesn't stack nicely in pillars, or sit still on steep slopes.
         const location dst_loc = loc + dir;
-        if (dst_loc.stuff_at().contents == AIR) {
+        if (dst_loc.stuff_at().contents() == AIR) {
           for (EACH_CARDINAL_DIRECTION(d2)) {
             const location diag_loc = dst_loc + d2;
-            if (p.second.blockage_amount_this_frame[d2] > 0 && d2.v.dot<sub_tile_distance>(dir.v) == 0 && diag_loc.stuff_at().contents == AIR) {
+            if (p.second.blockage_amount_this_frame[d2] > 0 && d2.v.dot<sub_tile_distance>(dir.v) == 0 && diag_loc.stuff_at().contents() == AIR) {
               p.second.new_progress[dir] += p.second.blockage_amount_this_frame[d2];
             }
           }
@@ -807,7 +288,7 @@ void update_water(world &w) {
   for (pair<const location, water_movement_info> &p : w.active_tiles_range()) {
     location const& loc = p.first;
     tile const& t = loc.stuff_at();
-    assert(t.contents == WATER);
+    assert(t.contents() == WATER);
     for (EACH_CARDINAL_DIRECTION(dir)) {
       sub_tile_distance &progress_ref = p.second.progress[dir];
       const sub_tile_distance new_progress = p.second.new_progress[dir];
@@ -844,7 +325,7 @@ void update_water(world &w) {
           nearby_free_waters.insert(dst_loc);
         }
         // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
-        if (dst_tile.contents == AIR) {
+        if (dst_tile.contents() == AIR) {
           for (EACH_CARDINAL_DIRECTION(d2)) {
             if (d2.v.dot<sub_tile_distance>(dir.v) == 0) {
               const location diag_loc = dst_loc + d2;
@@ -870,14 +351,14 @@ void update_water(world &w) {
     // in certain situations we shouldn't try to move water more than once
     if (disturbed_tiles.find(move.src) != disturbed_tiles.end()) continue;
     // anything where the water was yanked away should have been marked "disturbed"
-    assert(src_tile.contents == WATER);
+    assert(src_tile.contents() == WATER);
     
     water_movement_info *fbdkopsw = w.get_active_tile(move.src);
     assert(fbdkopsw);
     water_movement_info &src_water = *fbdkopsw;
     sub_tile_distance& progress_ref = src_water.progress[move.dir];
     
-    if (dst_tile.contents == AIR) {
+    if (dst_tile.contents() == AIR) {
       progress_ref -= progress_necessary;
       water_movement_info &dst_water = w.insert_water(dst);
       
@@ -921,7 +402,7 @@ void update_water(world &w) {
       // we're blocked
       src_water.blockage_amount_this_frame[move.dir] = move.excess_progress;
       
-      if (dst_tile.contents == WATER) {
+      if (dst_tile.contents() == WATER) {
         if (move.group_number_or_NO_GROUP_for_velocity_movement == NO_GROUP) {
           if (dst_tile.is_sticky_water()) {
             //TODO... right now, same as rock. Dunno if it should be different.
@@ -942,7 +423,7 @@ void update_water(world &w) {
           w.activate_water(dst).velocity += (move.dir.v * move.excess_progress) / 10;
         }
       }
-      else if (dst_tile.contents == ROCK) {
+      else if (dst_tile.contents() == ROCK) {
         // TODO figure out what to actually do about the fact that water can become sticky while having lots of progress.
         //assert(move.group_number_or_NO_GROUP_for_velocity_movement == NO_GROUP);
         src_water.get_completely_blocked(move.dir);

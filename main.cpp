@@ -14,8 +14,9 @@
 #include "GL/gl.h"
 #include "GL/glu.h"
 
-#include "water.cpp"
 #include <iostream>
+
+#include "world.hpp"
 
 static SDL_Surface *gScreen;
 
