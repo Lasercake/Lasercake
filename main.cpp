@@ -241,7 +241,7 @@ srand(time(NULL));
     vector<vertex_entry> idle_marker_vertices;
     
     unordered_set<location> tiles_to_draw;
-    w.collect_tiles_that_contain_anything_near(tiles_to_draw, w.make_location(vector3<location_coordinate>(world_center_coord + view_x, world_center_coord + view_y, world_center_coord + view_z)), 50);
+    w.collect_tiles_that_contain_anything_near(tiles_to_draw, axis_aligned_bounding_box{vector3<location_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50), vector3<location_coordinate>(101,101,101)});
 
     for (location const& loc : tiles_to_draw) {
       tile const& t = loc.stuff_at();

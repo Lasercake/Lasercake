@@ -40,32 +40,31 @@ bool ztree_entry::operator<(ztree_entry const& other)const {
   return (interleaved_bits[0] < other.interleaved_bits[0]);
 }
 
-void world::collect_tiles_that_contain_anything_near(unordered_set<location> &results, location center, int radius) {
+void world::collect_tiles_that_contain_anything_near(unordered_set<location> &results, axis_aligned_bounding_box bounds) {
   // TODO use something nicer than "int"
-  const int total_width = 2*radius + 1;
-  ensure_space_exists(axis_aligned_bounding_box{center.coords() - vector3<location_coordinate>(radius,radius,radius), vector3<location_coordinate>(total_width,total_width,total_width) });
+  const int total_width = std::max(std::max(bounds.size.x,bounds.size.y),bounds.size.z);
+  ensure_space_exists(bounds);
   std::cerr << "Number of tiles that contain anything: " << tiles_that_contain_anything.size() << "\n";
   int exp = 0; while ((1 << exp) < total_width) ++exp;
-  const int x_shift = (center.coords().x & ((1 << exp) - 1)) < (1 << (exp - 1)) ? -1 : 0;
-  const int y_shift = (center.coords().y & ((1 << exp) - 1)) < (1 << (exp - 1)) ? -1 : 0;
-  const int z_shift = (center.coords().z & ((1 << exp) - 1)) < (1 << (exp - 1)) ? -1 : 0;
   for (int x = 0; x < 2; ++x) { for (int y = 0; y < 2; ++y) { for (int z = 0; z < 2; ++z) {
     set<ztree_entry>::iterator lower_bound = tiles_that_contain_anything.lower_bound(
       ztree_entry(vector3<location_coordinate>(
-        (center.coords().x & ~((1 << exp) - 1)) + ((x+x_shift) * (1 << exp)),
-        (center.coords().y & ~((1 << exp) - 1)) + ((y+y_shift) * (1 << exp)),
-        (center.coords().z & ~((1 << exp) - 1)) + ((z+z_shift) * (1 << exp))
+        (bounds.min.x & ~((1 << exp) - 1)) + (x << exp),
+        (bounds.min.y & ~((1 << exp) - 1)) + (y << exp),
+        (bounds.min.z & ~((1 << exp) - 1)) + (z << exp)
       )
     ));
     set<ztree_entry>::iterator upper_bound = tiles_that_contain_anything.upper_bound(
       ztree_entry(vector3<location_coordinate>(
-        (center.coords().x | ((1 << exp) - 1)) + ((x+x_shift) * (1 << exp)),
-        (center.coords().y | ((1 << exp) - 1)) + ((y+y_shift) * (1 << exp)),
-        (center.coords().z | ((1 << exp) - 1)) + ((z+z_shift) * (1 << exp))
+        (bounds.min.x | ((1 << exp) - 1)) + (x << exp),
+        (bounds.min.y | ((1 << exp) - 1)) + (y << exp),
+        (bounds.min.z | ((1 << exp) - 1)) + (z << exp)
       )
     ));
     for(set<ztree_entry>::iterator i = lower_bound; i != upper_bound; ++i) {
-      results.insert(i->loc());
+      const location loc = i->loc();
+      if (bounds.contains(loc.coords()))
+        results.insert(loc);
     }
   }}}
 }

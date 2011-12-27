@@ -263,7 +263,7 @@ public:
   
   location make_location(vector3<location_coordinate> const& coords);
   
-  void collect_tiles_that_contain_anything_near(unordered_set<location> &results, location center, int radius);
+  void collect_tiles_that_contain_anything_near(unordered_set<location> &results, axis_aligned_bounding_box bounds);
   
   void delete_rock(location const& loc);
   void insert_rock(location const& loc);
