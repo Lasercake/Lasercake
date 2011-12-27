@@ -19,6 +19,7 @@
 #include <iostream>
 #include <inttypes.h>
 #include <functional>
+#include <boost/iterator/iterator_facade.hpp>
 
 #include "utils.hpp"
 
@@ -44,6 +45,35 @@ struct axis_aligned_bounding_box {
             v.y >= min.y && v.y <= min.y + (size.y - 1) &&
             v.z >= min.z && v.z <= min.z + (size.z - 1));
   }
+  
+  class iterator : public boost::iterator_facade<iterator, pair<vector3<location_coordinate>, axis_aligned_bounding_box*>, boost::forward_traversal_tag, vector3<location_coordinate>>
+  {
+    public:
+      iterator(){}
+    bool equal(iterator other)const { return data == other.data; }
+    void increment() {
+      data.first.x += 1;
+      if (data.first.x >= data.second->min.x + data.second->size.x) {
+        data.first.x = data.second->min.x;
+        data.first.y += 1;
+        if (data.first.y >= data.second->min.y + data.second->size.y) {
+          data.first.y = data.second->min.y;
+          data.first.z += 1;
+        }
+      }
+    }
+    vector3<location_coordinate> dereference()const { return data.first; }
+
+    explicit iterator(pair<vector3<location_coordinate>, axis_aligned_bounding_box*> data):data(data){}
+    private:
+    friend class boost::iterator_core_access;
+      friend class axis_aligned_bounding_box;
+      pair<vector3<location_coordinate>, axis_aligned_bounding_box*> data;
+      
+  };
+  
+  iterator begin(){ return iterator(make_pair(min, this)); }
+  iterator end(){ return iterator(make_pair(min + vector3<location_coordinate>(0, 0, size.z), this)); }
 };
 
 const location_coordinate world_center_coord = (location_coordinate(1) << (8*sizeof(location_coordinate) - 1));

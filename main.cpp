@@ -90,6 +90,13 @@ struct world_building_func {
   world_building_func(std::string scenario):scenario(scenario){}
   std::string scenario;
   void operator()(world_building_gun make, axis_aligned_bounding_box bounds) {
+    const location_coordinate wc = world_center_coord;
+    if (scenario.substr(0,15) == "pressure_tunnel") {
+      for(vector3<location_coordinate> l : bounds) {
+        if (l.z == wc) make(ROCK, l);
+      }
+      return;
+    }
     for (location_coordinate x = std::max(world_center_coord-1, bounds.min.x); x < std::min(world_center_coord+21, bounds.min.x + bounds.size.x); ++x) {
       for (location_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
         for (location_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {
@@ -98,7 +105,6 @@ struct world_building_func {
             make(ROCK, l);
           }
           else {
-            const location_coordinate wc = world_center_coord;
             if ((scenario.substr(0,5) == "tower") &&
                   x >= wc+4 && x <= wc+6 &&
                   y >= wc+4 && y <= wc+6 &&
