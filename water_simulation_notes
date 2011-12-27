@@ -39,5 +39,13 @@ OBSERVATION: Things that have to deal with an "entire lake", but really only car
 
 
 
+COMPUTING FLUX:
+Approximation:
+flux across cut = area of cut * difference of (maximum height-above-the-cut over all tiles) between the two sides
+That is true if each side is evenly distrubiting its pressure across all surfaces.
+
+Dead end filling?
+
+
 
 Current things missing: make more randomness in the velocity-only water mechanics; water is sometimes a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); can we smooth out the 'progress' of pressure-moved water the way we do for velocity-moved water?
