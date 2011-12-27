@@ -95,10 +95,11 @@ void compute_groups_that_need_to_be_considered(world &w, water_groups_structure 
   columns.insert(columns.end(), result.group_numbers_by_location.begin(), result.group_numbers_by_location.end());
   std::sort(columns.begin(), columns.end(), columns_sorter_lt);
   
-  group_number_t containing_group;
+  group_number_t containing_group = NO_GROUP;
   for (pair<location, group_number_t> const& p : columns) {
     if ((p.first + cdir_zminus).stuff_at().is_sticky_water()) {
       // The tile we've just hit is the boundary of a bubble in the larger group (or it's extra bits of the outer shell, in which case the assignment does nothing).
+      assert(containing_group != NO_GROUP);
       result.group_numbers_by_location[p.first] = containing_group;
     }
     else {
@@ -372,8 +373,6 @@ void update_water(world &w) {
     const location dst = move.src + move.dir;
     tile const& src_tile = move.src.stuff_at();
     tile const& dst_tile = dst.stuff_at();
-    tile src_copy = src_tile; // only for use in gdb
-    tile dst_copy = dst_tile; // only for use in gdb
     // in certain situations we shouldn't try to move water more than once
     if (disturbed_tiles.find(move.src) != disturbed_tiles.end()) continue;
     // anything where the water was yanked away should have been marked "disturbed"
