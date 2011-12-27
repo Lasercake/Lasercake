@@ -93,7 +93,16 @@ struct world_building_func {
     const location_coordinate wc = world_center_coord;
     if (scenario.substr(0,15) == "pressure_tunnel") {
       for(vector3<location_coordinate> l : bounds) {
-        if (l.z == wc) make(ROCK, l);
+        const location_coordinate tower_lower_coord = wc;
+        const location_coordinate tower_upper_coord = wc+10;
+        const location_coordinate tower_height = 200;
+        if (l.x < tower_lower_coord && l.y >= tower_lower_coord && l.y <= tower_lower_coord && l.z >= wc && l.z <= wc) {}
+        else if (l.x < tower_lower_coord && l.y >= tower_lower_coord-1 && l.y <= tower_lower_coord+1 && l.z >= wc-1 && l.z <= wc+1)
+          make(ROCK, l);
+        else if (l.x >= tower_lower_coord && l.x < tower_upper_coord && l.y >= tower_lower_coord && l.y < tower_upper_coord && l.z >= wc && l.z < wc + tower_height)
+          make(WATER, l);
+        else if (l.x >= tower_lower_coord-1 && l.x < tower_upper_coord+1 && l.y >= tower_lower_coord-1 && l.y < tower_upper_coord+1 && l.z >= wc-1 && l.z < wc + tower_height+1)
+          make(ROCK, l);
       }
       return;
     }
@@ -232,7 +241,7 @@ srand(time(NULL));
     vector<vertex_entry> idle_marker_vertices;
     
     unordered_set<location> tiles_to_draw;
-    w.collect_tiles_that_contain_anything_near(tiles_to_draw, w.make_location(vector3<location_coordinate>(world_center_coord, world_center_coord, world_center_coord)), 50);
+    w.collect_tiles_that_contain_anything_near(tiles_to_draw, w.make_location(vector3<location_coordinate>(world_center_coord + view_x, world_center_coord + view_y, world_center_coord + view_z)), 50);
 
     for (location const& loc : tiles_to_draw) {
       tile const& t = loc.stuff_at();
