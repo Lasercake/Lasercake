@@ -84,42 +84,6 @@ static void createSurface (int fullscreen)
 	}
 }
 
-/*
-
-
-void build_punctured_tank() {
-  for (EACH_LOCATION(loc)) {
-    if (loc.z < 8 && loc.x > 10) tiles[loc].contents = ROCK;
-    else if (loc.x >= 12 && loc.y <= 13 && loc.y >= 7) { tiles.insert_water(loc); }
-    else if (loc.y != 10 && loc.x > 10) tiles[loc].contents = ROCK;
-    else if (loc.z > 8 && loc.x > 10 && loc.x < 18) tiles[loc].contents = ROCK;
-    else if (loc.x > 10) { tiles.insert_water(loc); }
-  }
-}
-void build_punctured_tank2() {
-  for (EACH_LOCATION(loc)) {
-    if (loc.z < 8 && loc.x > 10) tiles[loc].contents = ROCK;
-    else if (loc.x >= 12 && loc.y <= 13 && loc.y >= 7) { tiles.insert_water(loc); }
-    else if (loc.y != 9 && loc.y != 10 && loc.x > 10) tiles[loc].contents = ROCK;
-    else if (loc.z > 9 && loc.x > 10 && loc.x < 18) tiles[loc].contents = ROCK;
-    else if (loc.x > 10) { tiles.insert_water(loc); }
-  }
-}
-void build_annoying_twisty_passageways() {
-  for (EACH_LOCATION(loc)) {
-    if (loc.x == 0)tiles.insert_water(loc);
-    else if (loc.x == 1 && loc.z > 0) tiles[loc].contents = ROCK;
-    else if (loc.x == 5) tiles[loc].contents = ROCK;
-    else if (loc.x == 2 && (loc.z % 4) == 1) tiles[loc].contents = ROCK;
-    else if (loc.x == 3 && (loc.z % 2) == 1) tiles[loc].contents = ROCK;
-    else if (loc.x == 4 && (loc.z % 4) == 3) tiles[loc].contents = ROCK;
-  }
-}
-void build_a_little_water_on_the_ground() {
-  for (int x = 5; x <= 11; ++x) { for (int y = 5; y <= 11; ++y) {
-    tiles.insert_water(location(x, y, 0));
-  }}
-}*/
 
 
 struct world_building_func {
@@ -155,6 +119,28 @@ struct world_building_func {
             if (scenario == "steep") {
               if (z < 20 - x) make(ROCK, l);
               else if (z >= wc+15 && (wc + 20 - x) >= 15) make(WATER, l);
+            }
+            if (scenario == "tank") {
+              if (z < wc+8 && x > wc+10) make(ROCK, l);
+              else if (x >= wc+12 && y <= wc+13 && y >= wc+7) make(WATER, l);
+              else if (y != wc+10 && x > wc+10) make(ROCK, l);
+              else if (z > wc+8 && x > wc+10 && x < wc+18) make(ROCK, l);
+              else if (x > wc+10) make(WATER, l);
+            }
+            if (scenario == "tank2") {
+              if (z < wc+8 && x > wc+10) make(ROCK, l);
+              else if (x >= wc+12 && y <= wc+13 && y >= wc+7) make(WATER, l);
+              else if (y != wc+9 && y != wc+10 && x > wc+10) make(ROCK, l);
+              else if (z > wc+9 && x > wc+10 && x < wc+18) make(ROCK, l);
+              else if (x > wc+10) make(WATER, l);
+            }
+            if (scenario == "twisty") {
+              if (x == wc+0) make(WATER, l);
+              else if (x == wc+1 && z > wc+0) make(ROCK, l);
+              else if (x == wc+5) make(ROCK, l);
+              else if (x == wc+2 && (z % 4) == 1) make(ROCK, l);
+              else if (x == wc+3 && (z % 2) == 1) make(ROCK, l);
+              else if (x == wc+4 && (z % 4) == 3) make(ROCK, l);
             }
           }
         }
