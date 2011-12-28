@@ -94,7 +94,7 @@ const sub_tile_distance air_resistance_constant = (200000 * precision_factor * p
 const sub_tile_distance idle_progress_reduction_rate = 100 * precision_factor;
 const sub_tile_distance sticky_water_velocity_reduction_rate = 5*precision_factor;
 
-const vector3<sub_tile_distance> idle_water_velocity(0, 0, -min_convincing_speed);
+const vector3<sub_tile_distance> inactive_water_velocity(0, 0, -min_convincing_speed);
 
 
 /*
@@ -146,12 +146,12 @@ struct water_movement_info {
   value_for_each_cardinal_direction<sub_tile_distance> blockage_amount_this_frame;
   bool computed_sticky_last_frame;
   
-  // Constructing one of these in the default way yields the natural idle state:
-  water_movement_info():velocity(idle_water_velocity),progress(0),blockage_amount_this_frame(0),computed_sticky_last_frame(false) { progress[cdir_zminus] = progress_necessary; }
+  // Constructing one of these in the default way yields the natural inactive state:
+  water_movement_info():velocity(inactive_water_velocity),progress(0),blockage_amount_this_frame(0),computed_sticky_last_frame(false) { progress[cdir_zminus] = progress_necessary; }
   
   // This is not a general-purpose function. Only use it during the move-processing part of update_water.
   void get_completely_blocked(cardinal_direction dir);
-  bool is_in_idle_state()const;
+  bool is_in_inactive_state()const;
 };
 
 

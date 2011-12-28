@@ -24,7 +24,7 @@ void water_movement_info::get_completely_blocked(cardinal_direction dir) {
   }
 }
   
-bool water_movement_info::is_in_idle_state()const {
+bool water_movement_info::is_in_inactive_state()const {
   // TODO: does it make sense that we're ignoring the 1-frame-duration variable "blockage_amount_this_frame"?
   for (EACH_CARDINAL_DIRECTION(dir)) {
     if (dir.v.z < 0) {
@@ -34,7 +34,7 @@ bool water_movement_info::is_in_idle_state()const {
       if (progress[dir] != 0) return false;
     }
   }
-  return velocity == idle_water_velocity;
+  return velocity == inactive_water_velocity;
 }
 
 
@@ -213,7 +213,7 @@ struct active_water_temporary_data {
   active_water_temporary_data():new_progress(0),exerted_pressure(false),was_sticky_at_frame_start(false){}
   value_for_each_cardinal_direction<sub_tile_distance> new_progress;
   
-  // The basic rule for sticky water becoming idle is that it does so if it's in the stable state AND didn't exert pressure directly onto another tile for a frame. These variables are primarily to control the process of sticky water becoming idle.
+  // The basic rule for sticky water becoming inactive is that it does so if it's in the stable state AND didn't exert pressure directly onto another tile for a frame. These variables are primarily to control the process of sticky water becoming inactive.
   bool exerted_pressure;
   bool was_sticky_at_frame_start;
 };
@@ -249,9 +249,9 @@ void update_water(world &w) {
     if (t.is_sticky_water()) {
       temp_data[loc].was_sticky_at_frame_start = true;
       vector3<sub_tile_distance> &vel_ref = p.second.velocity;
-      const vector3<sub_tile_distance> current_velocity_wrongness = vel_ref - idle_water_velocity;
+      const vector3<sub_tile_distance> current_velocity_wrongness = vel_ref - inactive_water_velocity;
       if (current_velocity_wrongness.magnitude_within_32_bits_is_less_than(sticky_water_velocity_reduction_rate)) {
-        vel_ref = idle_water_velocity;
+        vel_ref = inactive_water_velocity;
       }
       else {
         vel_ref -= current_velocity_wrongness * sticky_water_velocity_reduction_rate / current_velocity_wrongness.magnitude();
@@ -267,7 +267,7 @@ void update_water(world &w) {
       for (EACH_CARDINAL_DIRECTION(dir)) {
         const location dst_loc = loc + dir;
         tile const& dst_tile = dst_loc.stuff_at();
-        if ((!dst_tile.is_sticky_water()) && (dst_tile.contents() != ROCK)) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the idle state what it is.)
+        if ((!dst_tile.is_sticky_water()) && (dst_tile.contents() != ROCK)) { // i.e. is air or free water. Those exclusions aren't terribly important, but it'd be slightly silly to remove either of them (and we currently rely on both exclusions to make the inactive state what it is.)
           // Exert pressure proportional to the depth of the target tile. The value is tuned to prevent water that should be stable (if unavoidably uneven by 1 tile or less) from fluctuating.
           const location_coordinate_signed_type depth = location_coordinate_signed_type(1 + groups.max_z_including_nearby_free_waters_by_group_number[group_number] - dst_loc.coords().z) - 1;
           double pressure = double(depth) - 0.5; // The 0.5 could be anything in the interval (0, 1).
@@ -499,14 +499,14 @@ void update_water(world &w) {
   for (auto const& p : temp_data) {
     location const& loc = p.first;
     if (water_movement_info *water = w.get_active_water_tile(loc)) {
-      if (water->is_in_idle_state()) {
+      if (water->is_in_inactive_state()) {
         if (loc.stuff_at().is_sticky_water()) {
           if (p.second.was_sticky_at_frame_start && !p.second.exerted_pressure) {
             w.deactivate_water(loc);
           }
         }
         else {
-          // Be a little paranoid about making sure free water obeys all the proper conditions of idleness
+          // Be a little paranoid about making sure free water obeys all the proper conditions of inactivity
           bool can_deactivate = true;
           for (EACH_CARDINAL_DIRECTION(dir)) {
             if (dir.v.z < 0) {

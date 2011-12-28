@@ -238,7 +238,7 @@ srand(time(NULL));
     vector<vertex_entry> free_water_vertices;
     vector<vertex_entry> velocity_vertices;
     vector<vertex_entry> progress_vertices;
-    vector<vertex_entry> idle_marker_vertices;
+    vector<vertex_entry> inactive_marker_vertices;
     
     unordered_set<location> tiles_to_draw;
     w.collect_tiles_that_contain_anything_near(tiles_to_draw, axis_aligned_bounding_box{vector3<location_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50), vector3<location_coordinate>(101,101,101)});
@@ -284,7 +284,7 @@ srand(time(NULL));
           }
         }
         else {
-          push_vertex(idle_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+          push_vertex(inactive_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
         }
       }
     }
@@ -324,8 +324,8 @@ srand(time(NULL));
     
     glColor4f(0.0, 0.0, 0.0, 0.5);
     glPointSize(3);
-    glVertexPointer(3, GL_FLOAT, 0, &idle_marker_vertices[0]);
-    glDrawArrays(GL_POINTS, 0, idle_marker_vertices.size());
+    glVertexPointer(3, GL_FLOAT, 0, &inactive_marker_vertices[0]);
+    glDrawArrays(GL_POINTS, 0, inactive_marker_vertices.size());
     
     
     
