@@ -3,24 +3,17 @@
 
 tile& mutable_stuff_at(location const& loc) { return loc.wb->get_tile(loc.v); }
 
-void world::check_stickyness(location const& loc) {
+void world::set_stickyness(location const& loc, bool new_stickyness) {
   tile &t = mutable_stuff_at(loc);
-  if (t.contents() == WATER) { // we don't care whether it's marked sticky if it's not water
-    int airs = 0;
+  assert(t.contents() == WATER);
+  if (t.is_sticky_water() != new_stickyness) {
+    t.set_water_stickyness(new_stickyness);
+    if (new_stickyness) check_interiorness(loc);
     for (EACH_CARDINAL_DIRECTION(dir)) {
-      const location other_loc = loc + dir;
-      if (other_loc.stuff_at().contents() == AIR) ++airs;
-    }
-    bool should_be_sticky = (airs <= 1);
-    if (t.is_sticky_water() != should_be_sticky) {
-      t.set_water_stickyness(should_be_sticky);
-      if (should_be_sticky) check_interiorness(loc);
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        const location adj_loc = loc + dir;
-        // TODO: right now, activate_water automatically calls check_interiorness. Should we remove this redundance...? If so, how to justify "activate_water" being expected to do that? If not, how to justify the pointless repeated computation?
-        check_interiorness(adj_loc);
-        if (adj_loc.stuff_at().contents() == WATER) activate_water(loc + dir);
-      }
+      const location adj_loc = loc + dir;
+      // TODO: right now, activate_water automatically calls check_interiorness. Should we remove this redundance...? If so, how to justify "activate_water" being expected to do that? If not, how to justify the pointless repeated computation?
+      check_interiorness(adj_loc);
+      if (adj_loc.stuff_at().contents() == WATER) activate_water(loc + dir);
     }
   }
 }
@@ -44,10 +37,10 @@ void world::something_changed_at(location const& loc) {
   if (t.contents() == AIR) tiles_that_contain_anything.erase (loc); // TODO This will need updating every time I add a new kind of anything
   else                     tiles_that_contain_anything.insert(loc);
   
-  for (EACH_CARDINAL_DIRECTION(dir)) check_stickyness(loc + dir);
+  for (EACH_CARDINAL_DIRECTION(dir)) check_interiorness(loc + dir);
   
   if (t.contents() == WATER) {
-    check_stickyness(loc);
+    check_interiorness(loc);
     activate_water(loc);
   }
   for (EACH_CARDINAL_DIRECTION(dir)) {

@@ -144,9 +144,10 @@ struct water_movement_info {
   vector3<sub_tile_distance> velocity;
   value_for_each_cardinal_direction<sub_tile_distance> progress;
   value_for_each_cardinal_direction<sub_tile_distance> blockage_amount_this_frame;
+  bool computed_sticky_last_frame;
   
   // Constructing one of these in the default way yields the natural idle state:
-  water_movement_info():velocity(idle_water_velocity),progress(0),blockage_amount_this_frame(0){ progress[cdir_zminus] = progress_necessary; }
+  water_movement_info():velocity(idle_water_velocity),progress(0),blockage_amount_this_frame(0),computed_sticky_last_frame(false) { progress[cdir_zminus] = progress_necessary; }
   
   // This is not a general-purpose function. Only use it during the move-processing part of update_water.
   void get_completely_blocked(cardinal_direction dir);
@@ -272,6 +273,8 @@ public:
   void deactivate_water(location const& loc);
   water_movement_info& activate_water(location const& loc);
   
+  void set_stickyness(location const& loc, bool new_stickyness);
+  
 private:
   unordered_map<vector3<location_coordinate>, hacky_internals::worldblock> blocks; // using the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
   hacky_internals::worldblock* create_if_necessary_and_get_worldblock(vector3<location_coordinate> position);
@@ -284,8 +287,6 @@ private:
   // Worldgen functions TODO describe them here
   worldgen_function_t worldgen_function;
   
-  // these functions update the tiles' stickyness/interiorness caches
-  void check_stickyness(location const& loc);
   void check_interiorness(location const& loc);
 
   void something_changed_at(location const& loc);

@@ -11,7 +11,6 @@ water_movement_info& world::activate_water(location const& loc) {
   
   // TODO figure out how much of a hack this is:
   // (The *first* time a tile activates, it hasn't necessarily had its caches computed)
-  check_stickyness(loc);
   check_interiorness(loc);
   
   return active_tiles[loc]; // if it's not there, this inserts it, default-constructed
@@ -228,6 +227,15 @@ int obstructiveness_for_the_purposes_of_the_fall_off_pillars_rule(tile const& t)
   else assert(false);
 }
 
+bool should_be_sticky(location loc) {
+  int airs = 0;
+  for (EACH_CARDINAL_DIRECTION(dir)) {
+    const location other_loc = loc + dir;
+    if (other_loc.stuff_at().contents() == AIR) ++airs;
+  }
+  return (airs <= 1);
+}
+
 void update_water(world &w) {
   unordered_map<location, active_water_temporary_data> temp_data;
   for (pair<const location, water_movement_info> &p : w.active_tiles_range()) {
@@ -395,6 +403,7 @@ void update_water(world &w) {
     if (dst_tile.contents() == AIR) {
       progress_ref -= progress_necessary;
       water_movement_info &dst_water = w.insert_water(dst);
+      w.set_stickyness(dst, should_be_sticky(dst));
       
       if (move.group_number_or_NO_GROUP_for_velocity_movement == NO_GROUP) {
         dst_water = src_water;
@@ -473,6 +482,17 @@ void update_water(world &w) {
         src_water.get_completely_blocked(move.dir);
       }
       else assert(false);
+    }
+  }
+  
+  for (auto const& p : temp_data) {
+    location const& loc = p.first;
+    if (water_movement_info *water = w.get_active_tile(loc)) {
+      bool wanted_stickyness = should_be_sticky(loc);
+      if (wanted_stickyness != loc.stuff_at().is_sticky_water() && water->computed_sticky_last_frame == wanted_stickyness) {
+        w.set_stickyness(loc, wanted_stickyness);
+      }
+      water->computed_sticky_last_frame = wanted_stickyness;
     }
   }
   
