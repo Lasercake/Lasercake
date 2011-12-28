@@ -256,7 +256,7 @@ public:
   
   world(worldgen_function_t f):worldgen_function(f){}
   
-  // The iterators are only valid until we activate any tiles.
+  // The iterators are only valid until we activate any water tiles.
   boost::iterator_range<active_water_tiles_t::iterator> active_water_tiles_range() {
     return boost::make_iterator_range(active_water_tiles.begin(), active_water_tiles.end());
   }
