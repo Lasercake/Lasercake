@@ -252,15 +252,15 @@ class world {
 public:
   friend class world_building_gun;
   typedef std::function<void (world_building_gun, axis_aligned_bounding_box)> worldgen_function_t;
-  typedef unordered_map<location, water_movement_info> active_tiles_t;
+  typedef unordered_map<location, water_movement_info> active_water_tiles_t;
   
   world(worldgen_function_t f):worldgen_function(f){}
   
   // The iterators are only valid until we activate any tiles.
-  boost::iterator_range<active_tiles_t::iterator> active_tiles_range() {
-    return boost::make_iterator_range(active_tiles.begin(), active_tiles.end());
+  boost::iterator_range<active_water_tiles_t::iterator> active_water_tiles_range() {
+    return boost::make_iterator_range(active_water_tiles.begin(), active_water_tiles.end());
   }
-  water_movement_info* get_active_tile(location l) { return find_as_pointer(active_tiles, l); }
+  water_movement_info* get_active_water_tile(location l) { return find_as_pointer(active_water_tiles, l); }
   
   location make_location(vector3<location_coordinate> const& coords);
   
@@ -281,7 +281,7 @@ private:
   void ensure_space_exists(axis_aligned_bounding_box space);
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
-  active_tiles_t active_tiles;
+  active_water_tiles_t active_water_tiles;
   set<ztree_entry> tiles_that_contain_anything;
   
   // Worldgen functions TODO describe them here

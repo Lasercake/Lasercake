@@ -3,7 +3,7 @@
 
 
 void world::deactivate_water(location const& loc) {
-  active_tiles.erase(loc);
+  active_water_tiles.erase(loc);
 }
 
 water_movement_info& world::activate_water(location const& loc) {
@@ -13,7 +13,7 @@ water_movement_info& world::activate_water(location const& loc) {
   // (The *first* time a tile activates, it hasn't necessarily had its caches computed)
   check_interiorness(loc);
   
-  return active_tiles[loc]; // if it's not there, this inserts it, default-constructed
+  return active_water_tiles[loc]; // if it's not there, this inserts it, default-constructed
 }
 
 void water_movement_info::get_completely_blocked(cardinal_direction dir) {
@@ -90,7 +90,7 @@ bool columns_sorter_lt(pair<location, group_number_t> const& i, pair<location, g
 // the argument must start out default-initialized
 void compute_groups_that_need_to_be_considered(world &w, water_groups_structure &result) {
   group_number_t next_membrane_number = FIRST_GROUP;
-  for (pair<const location, water_movement_info> const& p : w.active_tiles_range()) {
+  for (pair<const location, water_movement_info> const& p : w.active_water_tiles_range()) {
     location const& loc = p.first;
     if (loc.stuff_at().is_membrane_water() && result.group_numbers_by_location.find(loc) == result.group_numbers_by_location.end()) {
       collect_membrane(loc, next_membrane_number, result);
@@ -238,7 +238,7 @@ bool should_be_sticky(location loc) {
 
 void update_water(world &w) {
   unordered_map<location, active_water_temporary_data> temp_data;
-  for (pair<const location, water_movement_info> &p : w.active_tiles_range()) {
+  for (pair<const location, water_movement_info> &p : w.active_water_tiles_range()) {
     location const& loc = p.first;
     tile const& t = loc.stuff_at();
     assert(t.contents() == WATER);
@@ -293,7 +293,7 @@ void update_water(world &w) {
     }
   }
   
-  for (pair<const location, water_movement_info> &p : w.active_tiles_range()) {
+  for (pair<const location, water_movement_info> &p : w.active_water_tiles_range()) {
     location const& loc = p.first;
     tile const& t = loc.stuff_at();
     assert(t.contents() == WATER);
@@ -347,7 +347,7 @@ void update_water(world &w) {
   }
   
   vector<wanted_move> wanted_moves;
-  for (pair<const location, water_movement_info> &p : w.active_tiles_range()) {
+  for (pair<const location, water_movement_info> &p : w.active_water_tiles_range()) {
     location const& loc = p.first;
     tile const& t = loc.stuff_at();
     assert(t.contents() == WATER);
@@ -395,7 +395,7 @@ void update_water(world &w) {
     // anything where the water was yanked away should have been marked "disturbed"
     assert(src_tile.contents() == WATER);
     
-    water_movement_info *fbdkopsw = w.get_active_tile(move.src);
+    water_movement_info *fbdkopsw = w.get_active_water_tile(move.src);
     assert(fbdkopsw);
     water_movement_info &src_water = *fbdkopsw;
     sub_tile_distance& progress_ref = src_water.progress[move.dir];
@@ -487,7 +487,7 @@ void update_water(world &w) {
   
   for (auto const& p : temp_data) {
     location const& loc = p.first;
-    if (water_movement_info *water = w.get_active_tile(loc)) {
+    if (water_movement_info *water = w.get_active_water_tile(loc)) {
       bool wanted_stickyness = should_be_sticky(loc);
       if (wanted_stickyness != loc.stuff_at().is_sticky_water() && water->computed_sticky_last_frame == wanted_stickyness) {
         w.set_stickyness(loc, wanted_stickyness);
@@ -498,7 +498,7 @@ void update_water(world &w) {
   
   for (auto const& p : temp_data) {
     location const& loc = p.first;
-    if (water_movement_info *water = w.get_active_tile(loc)) {
+    if (water_movement_info *water = w.get_active_water_tile(loc)) {
       if (water->is_in_idle_state()) {
         if (loc.stuff_at().is_sticky_water()) {
           if (p.second.was_sticky_at_frame_start && !p.second.exerted_pressure) {

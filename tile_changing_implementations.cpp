@@ -83,7 +83,7 @@ void world::delete_water(location const& loc) {
   tile &t = mutable_stuff_at(loc);
   assert(t.contents() == WATER);
   t.set_contents(AIR);
-  active_tiles.erase(loc);
+  active_water_tiles.erase(loc);
   
   something_changed_at(loc);
 }
@@ -95,7 +95,7 @@ water_movement_info& world::insert_water(location const& loc) {
     
   something_changed_at(loc);
   
-  return active_tiles[loc]; // This will always be present, because something_changed_at already activates it.
+  return active_water_tiles[loc]; // This will always be present, because something_changed_at already activates it.
 }
 
 void world::insert_rock_bypassing_checks(location const& loc) {

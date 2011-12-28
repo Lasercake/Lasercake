@@ -8,7 +8,7 @@ namespace hacky_internals {
   //
   // We would have to make special rules for worldblocks that start out with
   // active water in them, because it could invalidate iterators into the
-  // active_tiles map, because worldblocks can be created essentially any time in the processing.
+  // active_water_tiles map, because worldblocks can be created essentially any time in the processing.
   // TODO: "init_if_needed" is because we don't know how to make unordered_map's mapped_types be constructed in place in a non-default way.
   worldblock& worldblock::init_if_needed(world *w_, vector3<location_coordinate> global_position_) {
     if (!inited) {
