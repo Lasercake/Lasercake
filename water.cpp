@@ -68,6 +68,15 @@ void collect_membrane(location const& loc, group_number_t group_number, water_gr
         if (adj_loc.stuff_at().is_membrane_water()) {
           frontier.push_back(adj_loc);
         }
+        // Handle a tricky situation
+        if (adj_loc.stuff_at().is_interior_water()) {
+          for (EACH_CARDINAL_DIRECTION(d2)) {
+            const location adj_loc_2 = adj_loc + d2;
+            if (adj_loc_2.stuff_at().is_membrane_water()) {
+              frontier.push_back(adj_loc);
+            }
+          }
+        }
       }
     }
   }
