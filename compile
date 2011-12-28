@@ -1,4 +1,4 @@
 #!/bin/bash
 
 printf '\n\n\n'
-g++ -std=c++0x -o sim -ggdb -Wall -Wextra -O3 -fmax-errors=15 -I/usr/include/SDL/ -lSDL -lGL -lGLU *.cpp
+g++ -std=c++0x -o sim -ggdb -Wall -Wextra -O0 -fmax-errors=15 -I/usr/include/SDL/ -lSDL -lGL -lGLU *.cpp "$@"
