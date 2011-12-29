@@ -1,0 +1,11 @@
+
+
+Mighty principles:
+
+Things the player doesn't start shouldn't take any processing time.
+Everything should move continuously unless it has a reason to be tile-aligned.
+
+
+Petty principles:
+
+The axis-aligned terrain (water mechanics...) simulates without regarding mobile objects. Mobile objects move on their own and mess with the terrain or actively get messed with by it.
