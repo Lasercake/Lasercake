@@ -211,14 +211,28 @@ public:
       if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
     }
     int exp = 0; while ((Coordinate(1) << exp) < max_dim) ++exp;
-    for (int i = 0; i < (1 << num_dimensions); ++i) {
+    int dimensions_we_can_single = 0;
+    int dimensions_we_can_double = 0;
+    const Coordinate base_box_size = safe_left_shift_one(exp);
+    const Coordinate used_bits_mask = ~(base_box_size - 1);
+    
+    for (int i = num_dimensions - 1; i >= 0; --i) {
+      if ((bbox.min[i] & used_bits_mask) + base_box_size >= bbox.min[i] + bbox.size[i]) ++dimensions_we_can_single;
+      else break;
+    }
+    for (int i = 0; i < dimensions_we_can_single; ++i) {
+      if (bbox.min[i] & safe_left_shift_one(exp)) ++dimensions_we_can_double;
+      else break;
+    }
+    std::cerr << dimensions_we_can_single << "... " << dimensions_we_can_double << "...\n";
+    for (int i = 0; i < (1 << ((num_dimensions - dimensions_we_can_single) - dimensions_we_can_double)); ++i) {
       std::array<Coordinate, num_dimensions> coords = bbox.min;
-      for (num_coordinates_type j = 0; j < num_dimensions; ++j) {
+      for (num_coordinates_type j = dimensions_we_can_single; j < num_dimensions - dimensions_we_can_double; ++j) {
         if (i & (1<<j)) coords[j] += (Coordinate(1) << exp);
       }
-      zbox zb = box_from_coords(coords, exp * num_dimensions);
-      if (zb.get_bbox().overlaps(bbox))  // don't add absurdly unnecessary boxes...
-        insert_box(objects_tree, id, zb);
+      zbox zb = box_from_coords(coords, exp * num_dimensions + dimensions_we_can_double);
+      assert(zb.get_bbox().overlaps(bbox));
+      insert_box(objects_tree, id, zb);
     }
   }
   void erase(ObjectIdentifier id) {
