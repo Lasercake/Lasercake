@@ -35,7 +35,16 @@ void world::check_interiorness(location const& loc) {
 void world::something_changed_at(location const& loc) {
   tile const& t = loc.stuff_at();
   if (t.contents() == AIR) tiles_that_contain_anything.erase (loc); // TODO This will need updating every time I add a new kind of anything
-  else                     tiles_that_contain_anything.insert(loc);
+  else {
+  space_with_fast_lookup_of_everything_overlapping_localized_area<location, 32, 3>::bounding_box b;
+  b.min[0] = loc.coords().x;
+  b.min[1] = loc.coords().y;
+  b.min[2] = loc.coords().z;
+  b.size[0] = 1;
+  b.size[1] = 1;
+  b.size[2] = 1;
+  tiles_that_contain_anything.insert(loc, b);
+  }
   
   for (EACH_CARDINAL_DIRECTION(dir)) check_interiorness(loc + dir);
   
@@ -102,12 +111,26 @@ void world::insert_rock_bypassing_checks(location const& loc) {
   tile &t = mutable_stuff_at(loc);
   assert(t.contents() == AIR);
   t.set_contents(ROCK);
-  tiles_that_contain_anything.insert(loc);
+  space_with_fast_lookup_of_everything_overlapping_localized_area<location, 32, 3>::bounding_box b;
+  b.min[0] = loc.coords().x;
+  b.min[1] = loc.coords().y;
+  b.min[2] = loc.coords().z;
+  b.size[0] = 1;
+  b.size[1] = 1;
+  b.size[2] = 1;
+  tiles_that_contain_anything.insert(loc, b);
 }
 void world::insert_water_bypassing_checks(location const& loc) {
   tile &t = mutable_stuff_at(loc);
   assert(t.contents() == AIR);
   t.set_contents(WATER);
-  tiles_that_contain_anything.insert(loc);
+  space_with_fast_lookup_of_everything_overlapping_localized_area<location, 32, 3>::bounding_box b;
+  b.min[0] = loc.coords().x;
+  b.min[1] = loc.coords().y;
+  b.min[2] = loc.coords().z;
+  b.size[0] = 1;
+  b.size[1] = 1;
+  b.size[2] = 1;
+  tiles_that_contain_anything.insert(loc, b);
 }
 

@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
-#include <bitset>
 #include <boost/functional/hash.hpp>
 #include <boost/utility.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -22,6 +21,7 @@
 #include <boost/iterator/iterator_facade.hpp>
 
 #include "utils.hpp"
+#include "ztree.hpp"
 
 using std::map;
 using std::unordered_map;
@@ -31,7 +31,6 @@ using std::make_pair;
 using std::set;
 using std::vector;
 using std::array;
-using std::bitset;
 
 
 typedef int32_t sub_tile_distance;
@@ -155,13 +154,22 @@ struct water_movement_info {
 };
 
 
+class mobile_thing {
+public:
+  // Something like this, later.
+  // virtual something serialize = 0;
+private:
+
+};
+
+
 namespace hacky_internals {
   class worldblock;
 }
 
 class location;
 
-class ztree_entry {
+/*class ztree_entry {
 private:
   vector3<location_coordinate> locv;
   hacky_internals::worldblock *worldblock_if_known;
@@ -177,7 +185,7 @@ public:
   
   bool operator==(ztree_entry const& other)const;
   bool operator<(ztree_entry const& other)const;
-};
+};*/
 
 class location {
 public:
@@ -192,7 +200,7 @@ public:
 private:
   friend tile& mutable_stuff_at(location const& loc);
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
-  friend class ztree_entry;
+  //friend class ztree_entry;
   location(vector3<location_coordinate> v, hacky_internals::worldblock *wb):v(v),wb(wb){}
   vector3<location_coordinate> v;
   hacky_internals::worldblock *wb;
@@ -282,7 +290,7 @@ private:
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
   active_water_tiles_t active_water_tiles;
-  set<ztree_entry> tiles_that_contain_anything;
+  space_with_fast_lookup_of_everything_overlapping_localized_area<location, 32, 3> tiles_that_contain_anything;
   
   // Worldgen functions TODO describe them here
   worldgen_function_t worldgen_function;

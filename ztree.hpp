@@ -6,7 +6,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
-typedef int num_bits_type;
+using std::unordered_map;
+using std::unordered_set;
+
+typedef size_t num_bits_type;
 typedef size_t num_coordinates_type;
 
 // ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
@@ -65,6 +68,7 @@ private:
       for (num_coordinates_type i = num_low_bits_ignored / coordinate_bits; i < num_dimensions; ++i) {
         result.size[i] = (1 << num_bits_ignored_by_dimension(i));
       }
+      return result;
     }
   };
   
@@ -85,19 +89,21 @@ private:
     ztree_node *child0;
     ztree_node *child1;
     unordered_set<ObjectIdentifier> objects_here;
+    
+    ztree_node(zbox box):here(box){}
   };
   
   zbox smallest_joint_parent(zbox zb1, zbox zb2) {
     zbox new_box;
-    for (num_coordinates_type i = num_dimensions; i >= 0; --i) {
+    for (int /* hack... TODO, should possibly be num_coordinates_type, but signed? */ i = num_dimensions - 1; i >= 0; --i) {
       const num_bits_type highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
       assert((zb1.interleaved_bits[i] & ~((1 << (highest_bit_idx + 1)) - 1)) == (zb2.interleaved_bits[i] & ~((1 << (highest_bit_idx + 1)) - 1)));
-      new_box.interleaved_bits[i] = zb1.interleaved_bits[i] & ~((1 << (highest_bit_idx + 1)) - 1);
+      new_box.interleaved_bits[i] = (zb1.interleaved_bits[i]) & (~((1 << (highest_bit_idx + 1)) - 1));
       if (highest_bit_idx > 0) {
         new_box.num_low_bits_ignored = highest_bit_idx + i * coordinate_bits;
         for (num_coordinates_type j = 0; j < num_dimensions; ++j) {
-          assert(             zb1.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1)
-                           == zb2.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1));
+          assert(             (zb1.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1))
+                           == (zb2.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1)));
           new_box.coords[j] = zb1.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1);
         }
         return new_box;
@@ -127,12 +133,7 @@ private:
   
   void insert_box(ztree_node*& tree, ObjectIdentifier obj, zbox box) {
     if (!tree) {
-      tree = new ztree_node {
-        box,
-        nullptr,
-        nullptr,
-        unordered_set<ObjectIdentifier>()
-      };
+      tree = new ztree_node(box);
       tree->objects_here.insert(obj);
     }
     else {
@@ -146,12 +147,7 @@ private:
         }
       }
       else {
-        const ztree_node *new_tree = new ztree_node {
-          smallest_joint_parent(tree->here, box),
-          nullptr,
-          nullptr,
-          unordered_set<ObjectIdentifier>()
-        };
+        ztree_node *new_tree = new ztree_node(smallest_joint_parent(tree->here, box));
         if (tree->here.get_bit(box.num_low_bits_ignored - 1)) new_tree->child1 = tree;
         else                                                  new_tree->child0 = tree;
       
@@ -179,12 +175,12 @@ private:
     }
   }
   
-  void zget_objects_overlapping(ztree_node* tree, unordered_set<ObjectIdentifier>& results, bounding_box const& bbox) {
+  void zget_objects_overlapping(ztree_node const* tree, unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
     if (tree && tree->here.get_bbox().overlaps(bbox)) {
       for (const ObjectIdentifier obj : tree->objects_here) {
         auto bbox_iter = bboxes_by_object.find(obj);
         assert(bbox_iter != bboxes_by_object.end());
-        if (bbox_iter->overlaps(bbox)) results.insert(obj);
+        if (bbox_iter->second.overlaps(bbox)) results.insert(obj);
       }
       zget_objects_overlapping(tree->child0, results, bbox);
       zget_objects_overlapping(tree->child1, results, bbox);
@@ -198,9 +194,9 @@ public:
 
   void insert(ObjectIdentifier id, bounding_box const& bbox) {
     bboxes_by_object.insert(make_pair(id, bbox));
-    Coordinate max_dim = bbox[0];
+    Coordinate max_dim = bbox.size[0];
     for (num_coordinates_type i = 1; i < num_dimensions; ++i) {
-      if (bbox[i] > max_dim) max_dim = bbox.size[i];
+      if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
     }
     int exp = 0; while ((Coordinate(1) << exp) < max_dim) ++exp;
     for (int i = 0; i < (1 << num_dimensions); ++i) {
@@ -216,7 +212,7 @@ public:
   void erase(ObjectIdentifier id) {
     auto bbox_iter = bboxes_by_object.find(id);
     assert(bbox_iter != bboxes_by_object.end());
-    delete_object(objects_tree, id, (*bbox_iter));
+    delete_object(objects_tree, id, bbox_iter->second);
     bboxes_by_object.erase(bbox_iter);
   }
   

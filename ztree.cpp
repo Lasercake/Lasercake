@@ -6,7 +6,7 @@
 
 
 
-location ztree_entry::loc()const { assert(worldblock_if_known); return location(locv, worldblock_if_known); }
+/*location ztree_entry::loc()const { assert(worldblock_if_known); return location(locv, worldblock_if_known); }
 
 void ztree_entry::set_bit(size_t idx) {
   assert(idx < bits_in_loc_coord * 3);
@@ -43,13 +43,13 @@ bool ztree_entry::operator<(ztree_entry const& other)const {
   if (interleaved_bits[1] < other.interleaved_bits[1]) return true;
   if (interleaved_bits[1] > other.interleaved_bits[1]) return false;
   return (interleaved_bits[0] < other.interleaved_bits[0]);
-}
+}*/
 
 void world::collect_tiles_that_contain_anything_near(unordered_set<location> &results, axis_aligned_bounding_box bounds) {
   // TODO use something nicer than "int"
-  const int total_width = std::max(std::max(bounds.size.x,bounds.size.y),bounds.size.z);
+  /*const int total_width = std::max(std::max(bounds.size.x,bounds.size.y),bounds.size.z);*/
   ensure_space_exists(bounds);
-  std::cerr << "Number of tiles that contain anything: " << tiles_that_contain_anything.size() << "\n";
+  /*std::cerr << "Number of tiles that contain anything: " << tiles_that_contain_anything.size() << "\n";
   int exp = 0; while ((1 << exp) < total_width) ++exp;
   for (int x = 0; x < 2; ++x) { for (int y = 0; y < 2; ++y) { for (int z = 0; z < 2; ++z) {
     set<ztree_entry>::iterator lower_bound = tiles_that_contain_anything.lower_bound(
@@ -71,6 +71,14 @@ void world::collect_tiles_that_contain_anything_near(unordered_set<location> &re
       if (bounds.contains(loc.coords()))
         results.insert(loc);
     }
-  }}}
+  }}}*/
+  space_with_fast_lookup_of_everything_overlapping_localized_area<location, 32, 3>::bounding_box b;
+  b.min[0] = bounds.min.x;
+  b.min[1] = bounds.min.y;
+  b.min[2] = bounds.min.z;
+  b.size[0] = bounds.size.x;
+  b.size[1] = bounds.size.y;
+  b.size[2] = bounds.size.z;
+  tiles_that_contain_anything.get_objects_overlapping(results, b);
 }
 
