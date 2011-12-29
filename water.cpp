@@ -2,6 +2,16 @@
 #include "world.hpp"
 
 
+bool should_be_sticky(location loc) {
+  int airs = 0;
+  for (EACH_CARDINAL_DIRECTION(dir)) {
+    const location other_loc = loc + dir;
+    if (other_loc.stuff_at().contents() == AIR) ++airs;
+  }
+  return (airs <= 1);
+}
+
+
 void world::deactivate_water(location const& loc) {
   active_water_tiles.erase(loc);
 }
@@ -9,11 +19,16 @@ void world::deactivate_water(location const& loc) {
 water_movement_info& world::activate_water(location const& loc) {
   assert(loc.stuff_at().contents() == WATER);
   
-  // TODO figure out how much of a hack this is:
-  // (The *first* time a tile activates, it hasn't necessarily had its caches computed)
-  check_interiorness(loc);
-  
-  return active_water_tiles[loc]; // if it's not there, this inserts it, default-constructed
+  auto water_iter = active_water_tiles.find(loc);
+  if (water_iter == active_water_tiles.end()) {
+    // TODO figure out how much of a hack this is:
+    // (The *first* time a tile activates, it hasn't necessarily had its caches computed)
+    set_stickyness(loc, should_be_sticky(loc));
+    check_interiorness(loc);
+    
+    return active_water_tiles[loc]; // inserts it, default-constructed
+  }
+  else return water_iter->second;
 }
 
 void water_movement_info::get_completely_blocked(cardinal_direction dir) {
@@ -225,15 +240,6 @@ int obstructiveness_for_the_purposes_of_the_fall_off_pillars_rule(tile const& t)
   else if (t.is_free_water()) return 2;
   else if (t.contents() == AIR) return 1;
   else assert(false);
-}
-
-bool should_be_sticky(location loc) {
-  int airs = 0;
-  for (EACH_CARDINAL_DIRECTION(dir)) {
-    const location other_loc = loc + dir;
-    if (other_loc.stuff_at().contents() == AIR) ++airs;
-  }
-  return (airs <= 1);
 }
 
 void update_water(world &w) {
