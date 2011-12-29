@@ -298,11 +298,21 @@ void update_water(world &w) {
     tile const& t = loc.stuff_at();
     assert(t.contents() == WATER);
     if (t.is_sticky_water()) {
+      tile const& t_down = (loc+cdir_zminus).stuff_at();
+      const bool t_down_obstructive = t_down.contents() == ROCK || t_down.is_sticky_water();
       // This doesn't count as a disturbance, it's part of decaying towards the stable state...
       // If the bottom tile is open, we already marked it above.
-      assert(temp_data[loc].exerted_pressure || (loc+cdir_zminus).stuff_at().contents() == ROCK || (loc+cdir_zminus).stuff_at().is_sticky_water());
+      assert(temp_data[loc].exerted_pressure || t_down_obstructive);
       // If it's blocked, then we're not going to move in that direction anyway, so it's not real pressure.
       temp_data[loc].new_progress[cdir_zminus] += extra_downward_speed_for_sticky_water;
+      if (t_down_obstructive) {
+        sub_tile_distance excess_progress = temp_data[loc].new_progress[cdir_zminus] + p.second.progress[cdir_zminus] - progress_necessary;
+        if (excess_progress > 0) {
+          temp_data[loc].new_progress[cdir_zminus] -= excess_progress;
+          if (temp_data[loc].new_progress[cdir_zminus] < 0) 
+            temp_data[loc].new_progress[cdir_zminus] = 0;
+        }
+      }
     }
     else {
       vector3<sub_tile_distance> &vel_ref = p.second.velocity;
