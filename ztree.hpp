@@ -25,8 +25,9 @@ public:
     std::array<Coordinate, num_dimensions> min, size;
     bool overlaps(bounding_box const& other)const {
       for (num_coordinates_type i = 0; i < num_dimensions; ++i) {
-        if (other.min[i] + other.size[i] <       min[i]) return false;
-        if (      min[i] +       size[i] < other.min[i]) return false;
+        // this should correctly handle zboxes' "size=0" when all bits are ignored
+        if (other.min[i] + (other.size[i] - 1) <       min[i]) return false;
+        if (      min[i] + (      size[i] - 1) < other.min[i]) return false;
       }
       return true;
     }
@@ -67,10 +68,11 @@ private:
     num_bits_type num_bits_ignored_by_dimension(num_coordinates_type dim)const {
       return (num_low_bits_ignored + (num_dimensions - 1) - dim) / num_dimensions;
     }
+    // note: gives "size=0" for max-sized things
     bounding_box get_bbox()const {
       bounding_box result;
       result.min = coords;
-      for (num_coordinates_type i = num_low_bits_ignored / coordinate_bits; i < num_dimensions; ++i) {
+      for (num_coordinates_type i = 0; i < num_dimensions; ++i) {
         result.size[i] = safe_left_shift_one(num_bits_ignored_by_dimension(i));
       }
       return result;
