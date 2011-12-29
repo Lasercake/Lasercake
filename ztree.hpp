@@ -13,7 +13,7 @@ typedef size_t num_bits_type;
 typedef size_t num_coordinates_type;
 
 // ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
-// coordinate_bits should usually be 32 or 64.
+// coordinate_bits should usually be 32 or 64. I don't know if it works for other values.
 template<typename ObjectIdentifier, num_bits_type coordinate_bits, num_coordinates_type num_dimensions>
 class space_with_fast_lookup_of_everything_overlapping_localized_area {
   static_assert(num_dimensions >= 0, "You can't make a space with negative dimensions!");
@@ -37,6 +37,11 @@ public:
 private:
   static const num_bits_type total_bits = coordinate_bits * num_dimensions;
   
+  static Coordinate safe_left_shift_one(num_bits_type shift) {
+    if (shift >= 8*sizeof(Coordinate)) return 0;
+    return Coordinate(1) << shift; // TODO address the fact that this could put bits higher than the appropriate amount if coordinate_bits isn't the number of bits of the type
+  }
+  
   struct zbox {
     // We ensure that every bit except the ones specifically supposed to be on is off.
     std::array<Coordinate, num_dimensions> coords;
@@ -48,16 +53,16 @@ private:
     bool subsumes(zbox const& other)const {
       if (other.num_low_bits_ignored > num_low_bits_ignored) return false;
       for (num_coordinates_type i = num_low_bits_ignored / coordinate_bits; i < num_dimensions; ++i) {
-        Coordinate mask = ~0;
+        Coordinate mask = ~Coordinate(0);
         if (i == num_low_bits_ignored / coordinate_bits) {
-          mask &= ~((num_bits_type(1) << (num_low_bits_ignored % coordinate_bits)) - 1);
+          mask &= ~(safe_left_shift_one(num_low_bits_ignored % coordinate_bits) - 1);
         }
         if ((interleaved_bits[i] & mask) != (other.interleaved_bits[i] & mask)) return false;
       }
       return true;
     }
     bool get_bit(num_bits_type bit)const {
-      return interleaved_bits[bit / coordinate_bits] & ~(Coordinate(1) << (bit % coordinate_bits));
+      return interleaved_bits[bit / coordinate_bits] & safe_left_shift_one(bit % coordinate_bits);
     }
     num_bits_type num_bits_ignored_by_dimension(num_coordinates_type dim)const {
       return (num_low_bits_ignored + (num_dimensions - 1) - dim) / num_dimensions;
@@ -66,21 +71,21 @@ private:
       bounding_box result;
       result.min = coords;
       for (num_coordinates_type i = num_low_bits_ignored / coordinate_bits; i < num_dimensions; ++i) {
-        result.size[i] = (1 << num_bits_ignored_by_dimension(i));
+        result.size[i] = safe_left_shift_one(num_bits_ignored_by_dimension(i));
       }
       return result;
     }
   };
   
-  num_bits_type idx_of_highest_bit(Coordinate i) {
+  static int idx_of_highest_bit(Coordinate i) {
     int upper_bound = coordinate_bits;
     int lower_bound = -1;
     while(true) {
-      int halfway_bit_idx = (upper_bound + lower_bound) / 2;
+      int halfway_bit_idx = (upper_bound + lower_bound) >> 1;
       if (halfway_bit_idx == lower_bound) return lower_bound;
       
-      if (i & ~((Coordinate(1) << halfway_bit_idx) - 1)) lower_bound = halfway_bit_idx;
-      else                                               upper_bound = halfway_bit_idx;
+      if (i & ~(safe_left_shift_one(halfway_bit_idx) - 1)) lower_bound = halfway_bit_idx;
+      else                                                 upper_bound = halfway_bit_idx;
     }
   }
   
@@ -90,21 +95,21 @@ private:
     ztree_node *child1;
     unordered_set<ObjectIdentifier> objects_here;
     
-    ztree_node(zbox box):here(box){}
+    ztree_node(zbox box):here(box),child0(nullptr),child1(nullptr){}
   };
   
-  zbox smallest_joint_parent(zbox zb1, zbox zb2) {
+  static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
     zbox new_box;
     for (int /* hack... TODO, should possibly be num_coordinates_type, but signed? */ i = num_dimensions - 1; i >= 0; --i) {
-      const num_bits_type highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
-      assert((zb1.interleaved_bits[i] & ~((1 << (highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits[i] & ~((1 << (highest_bit_idx+1)) - 1)));
-      new_box.interleaved_bits[i] = (zb1.interleaved_bits[i]) & (~((1 << (highest_bit_idx + 1)) - 1));
-      if (highest_bit_idx > 0) {
+      const int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
+      assert((zb1.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
+      new_box.interleaved_bits[i] = (zb1.interleaved_bits[i]) & (~((safe_left_shift_one(highest_bit_idx + 1)) - 1));
+      if (highest_bit_idx >= 0) {
         new_box.num_low_bits_ignored = highest_bit_idx+1 + i * coordinate_bits;
         for (num_coordinates_type j = 0; j < num_dimensions; ++j) {
-          assert(             (zb1.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1))
-                           == (zb2.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1)));
-          new_box.coords[j] = zb1.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1);
+          assert(             (zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
+                           == (zb2.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1)));
+          new_box.coords[j] = zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1);
         }
         return new_box;
       }
@@ -115,7 +120,7 @@ private:
     return new_box;
   }
   
-  zbox box_from_coords(std::array<Coordinate, num_dimensions> const& coords, num_bits_type num_low_bits_ignored) {
+  static zbox box_from_coords(std::array<Coordinate, num_dimensions> const& coords, num_bits_type num_low_bits_ignored) {
     zbox result;
     result.coords = coords;
     result.num_low_bits_ignored = num_low_bits_ignored;
@@ -132,7 +137,7 @@ private:
     return result;
   }
   
-  void insert_box(ztree_node*& tree, ObjectIdentifier obj, zbox box) {
+  static void insert_box(ztree_node*& tree, ObjectIdentifier obj, zbox box) {
     if (!tree) {
       tree = new ztree_node(box);
       tree->objects_here.insert(obj);
@@ -149,8 +154,12 @@ private:
       }
       else {
         ztree_node *new_tree = new ztree_node(smallest_joint_parent(tree->here, box));
-        if (tree->here.get_bit(box.num_low_bits_ignored - 1)) new_tree->child1 = tree;
-        else                                                  new_tree->child0 = tree;
+        assert(new_tree->here.num_low_bits_ignored > tree->here.num_low_bits_ignored);
+        assert(new_tree->here.subsumes(tree->here));
+        assert(new_tree->here.subsumes(box));
+        assert(tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1) != box.get_bit(new_tree->here.num_low_bits_ignored - 1));
+        if (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1)) new_tree->child1 = tree;
+        else                                                             new_tree->child0 = tree;
       
         tree = new_tree;
         insert_box(tree, obj, box);
@@ -158,7 +167,7 @@ private:
     }
   }
   
-  void delete_object(ztree_node*& tree, ObjectIdentifier obj, bounding_box const& bbox) {
+  static void delete_object(ztree_node*& tree, ObjectIdentifier obj, bounding_box const& bbox) {
     if (!tree) return;
     if (tree->here.get_bbox().overlaps(bbox)) {
       tree->objects_here.erase(obj);
