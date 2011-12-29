@@ -1,6 +1,6 @@
 
-#ifndef ELISAACWATER_WORLD_HPP__
-#define ELISAACWATER_WORLD_HPP__
+#ifndef LASERCAKE_WORLD_HPP__
+#define LASERCAKE_WORLD_HPP__
 
 #include <vector>
 #include <cstdlib>

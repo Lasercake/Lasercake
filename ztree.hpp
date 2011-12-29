@@ -1,6 +1,6 @@
 
-#ifndef ELISAACWATER_ZTREE_HPP__
-#define ELISAACWATER_ZTREE_HPP__
+#ifndef LASERCAKE_ZTREE_HPP__
+#define LASERCAKE_ZTREE_HPP__
 
 #include <boost/integer.hpp>
 #include <unordered_map>

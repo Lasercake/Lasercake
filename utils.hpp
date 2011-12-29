@@ -1,6 +1,6 @@
 
-#ifndef ELISAACWATER_UTILS_HPP__
-#define ELISAACWATER_UTILS_HPP__
+#ifndef LASERCAKE_UTILS_HPP__
+#define LASERCAKE_UTILS_HPP__
 
 #include <array>
 
