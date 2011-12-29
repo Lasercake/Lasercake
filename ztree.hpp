@@ -97,10 +97,10 @@ private:
     zbox new_box;
     for (int /* hack... TODO, should possibly be num_coordinates_type, but signed? */ i = num_dimensions - 1; i >= 0; --i) {
       const num_bits_type highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
-      assert((zb1.interleaved_bits[i] & ~((1 << (highest_bit_idx + 1)) - 1)) == (zb2.interleaved_bits[i] & ~((1 << (highest_bit_idx + 1)) - 1)));
+      assert((zb1.interleaved_bits[i] & ~((1 << (highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits[i] & ~((1 << (highest_bit_idx+1)) - 1)));
       new_box.interleaved_bits[i] = (zb1.interleaved_bits[i]) & (~((1 << (highest_bit_idx + 1)) - 1));
       if (highest_bit_idx > 0) {
-        new_box.num_low_bits_ignored = highest_bit_idx + i * coordinate_bits;
+        new_box.num_low_bits_ignored = highest_bit_idx+1 + i * coordinate_bits;
         for (num_coordinates_type j = 0; j < num_dimensions; ++j) {
           assert(             (zb1.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1))
                            == (zb2.coords[j] & ~((Coordinate(1) << new_box.num_bits_ignored_by_dimension(j)) - 1)));
@@ -126,6 +126,7 @@ private:
       const num_coordinates_type which_coordinate    = bit_within_interleaved_bits % num_dimensions;
       const num_bits_type interleaved_bit_array_idx  = bit_within_interleaved_bits / coordinate_bits;
       const num_bits_type interleaved_bit_local_idx  = bit_within_interleaved_bits % coordinate_bits;
+      assert(bit_idx_within_coordinates >= result.num_bits_ignored_by_dimension(which_coordinate));
       result.interleaved_bits[interleaved_bit_array_idx] |= ((coords[which_coordinate] >> bit_idx_within_coordinates) & 1) << interleaved_bit_local_idx;
     }
     return result;
