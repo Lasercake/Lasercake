@@ -230,8 +230,6 @@ srand(time(NULL));
     if(p_mode > 1)--p_mode;
     int before_drawing = SDL_GetTicks();
 
-    glClear(GL_COLOR_BUFFER_BIT);
-
     //drawing code here
     vector<vertex_entry> rock_vertices;
     vector<vertex_entry> sticky_water_vertices;
@@ -290,7 +288,8 @@ srand(time(NULL));
     }
     
     int before_GL = SDL_GetTicks();
-    
+
+    glClear(GL_COLOR_BUFFER_BIT);
     frame += 1;
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
