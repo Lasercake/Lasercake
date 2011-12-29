@@ -263,7 +263,7 @@ srand(time(NULL));
       push_vertex(*vect, locv.x,     locv.y + 1, locv.z + 0.5);
       
       if (t.contents() == WATER) {
-        if (water_movement_info *water = w.get_active_tile(loc)) {
+        if (water_movement_info *water = w.get_active_water_tile(loc)) {
           push_vertex(velocity_vertices, locv.x+0.5, locv.y+0.5, locv.z + 0.5);
           push_vertex(velocity_vertices,
               locv.x + 0.5 + ((GLfloat)water->velocity.x / (250 * precision_factor)),
