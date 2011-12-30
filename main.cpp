@@ -238,7 +238,7 @@ srand(time(NULL));
     vector<vertex_entry> free_water_vertices;
     vector<vertex_entry> velocity_vertices;
     vector<vertex_entry> progress_vertices;
-    vector<vertex_entry> inactive_marker_vertices;
+    //vector<vertex_entry> inactive_marker_vertices;
     
     unordered_set<object_identifier> tiles_to_draw;
     w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(vector3<tile_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50), vector3<tile_coordinate>(101,101,101)));
@@ -285,9 +285,9 @@ srand(time(NULL));
             }
           }
         }
-        else {
+        /*else {
           push_vertex(inactive_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
-        }
+        }*/
       }
      }
     }
@@ -326,10 +326,10 @@ srand(time(NULL));
     glVertexPointer(3, GL_FLOAT, 0, &progress_vertices[0]);
     glDrawArrays(GL_LINES, 0, progress_vertices.size());
     
-    glColor4f(0.0, 0.0, 0.0, 0.5);
+    /*glColor4f(0.0, 0.0, 0.0, 0.5);
     glPointSize(3);
     glVertexPointer(3, GL_FLOAT, 0, &inactive_marker_vertices[0]);
-    glDrawArrays(GL_POINTS, 0, inactive_marker_vertices.size());
+    glDrawArrays(GL_POINTS, 0, inactive_marker_vertices.size());*/
     
     
     
