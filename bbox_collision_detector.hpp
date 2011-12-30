@@ -19,8 +19,8 @@
 
 */
 
-#ifndef LASERCAKE_ZTREE_HPP__
-#define LASERCAKE_ZTREE_HPP__
+#ifndef LASERCAKE_BBOX_COLLISION_DETECTOR_HPP__
+#define LASERCAKE_BBOX_COLLISION_DETECTOR_HPP__
 
 #include <boost/integer.hpp>
 #include <unordered_map>
@@ -35,7 +35,7 @@ typedef size_t num_coordinates_type;
 // ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
 // coordinate_bits should usually be 32 or 64. I don't know if it works for other values.
 template<typename ObjectIdentifier, num_bits_type coordinate_bits, num_coordinates_type num_dimensions>
-class space_with_fast_lookup_of_everything_overlapping_localized_area {
+class bbox_collision_detector {
   static_assert(num_dimensions >= 0, "You can't make a space with negative dimensions!");
   static_assert(coordinate_bits >= 0, "You can't have an int type with negative bits!");
 
@@ -53,7 +53,7 @@ public:
     }
   };
   
-  space_with_fast_lookup_of_everything_overlapping_localized_area():objects_tree(nullptr){}
+  bbox_collision_detector():objects_tree(nullptr){}
   
 private:
   static const num_bits_type total_bits = coordinate_bits * num_dimensions;
@@ -240,11 +240,11 @@ public:
       if ((bbox.min[i] & used_bits_mask) + base_box_size >= bbox.min[i] + bbox.size[i]) ++dimensions_we_can_single;
       else break;
     }
-    for (int i = 0; i < dimensions_we_can_single; ++i) {
+    for (num_coordinates_type i = 0; i < num_dimensions - dimensions_we_can_single; ++i) {
       if (bbox.min[i] & safe_left_shift_one(exp)) ++dimensions_we_can_double;
       else break;
     }
-    std::cerr << dimensions_we_can_single << "... " << dimensions_we_can_double << "...\n";
+    //std::cerr << dimensions_we_can_single << "... " << dimensions_we_can_double << "...\n";
     for (int i = 0; i < (1 << ((num_dimensions - dimensions_we_can_single) - dimensions_we_can_double)); ++i) {
       std::array<Coordinate, num_dimensions> coords = bbox.min;
       for (num_coordinates_type j = dimensions_we_can_single; j < num_dimensions - dimensions_we_can_double; ++j) {

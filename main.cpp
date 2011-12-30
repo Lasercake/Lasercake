@@ -104,13 +104,13 @@ static void createSurface (int fullscreen)
 struct world_building_func {
   world_building_func(std::string scenario):scenario(scenario){}
   std::string scenario;
-  void operator()(world_building_gun make, axis_aligned_bounding_box bounds) {
-    const location_coordinate wc = world_center_coord;
+  void operator()(world_building_gun make, tile_bounding_box bounds) {
+    const tile_coordinate wc = world_center_coord;
     if (scenario.substr(0,15) == "pressure_tunnel") {
-      for(vector3<location_coordinate> l : bounds) {
-        const location_coordinate tower_lower_coord = wc;
-        const location_coordinate tower_upper_coord = wc+10;
-        const location_coordinate tower_height = 200;
+      for(vector3<tile_coordinate> l : bounds) {
+        const tile_coordinate tower_lower_coord = wc;
+        const tile_coordinate tower_upper_coord = wc+10;
+        const tile_coordinate tower_height = 200;
         if (l.x < tower_lower_coord && l.y >= tower_lower_coord && l.y <= tower_lower_coord && l.z >= wc && l.z <= wc) {}
         else if (l.x < tower_lower_coord && l.y >= tower_lower_coord-1 && l.y <= tower_lower_coord+1 && l.z >= wc-1 && l.z <= wc+1)
           make(ROCK, l);
@@ -121,10 +121,10 @@ struct world_building_func {
       }
       return;
     }
-    for (location_coordinate x = std::max(world_center_coord-1, bounds.min.x); x < std::min(world_center_coord+21, bounds.min.x + bounds.size.x); ++x) {
-      for (location_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
-        for (location_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {
-          vector3<location_coordinate> l(x,y,z);
+    for (tile_coordinate x = std::max(world_center_coord-1, bounds.min.x); x < std::min(world_center_coord+21, bounds.min.x + bounds.size.x); ++x) {
+      for (tile_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
+        for (tile_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {
+          vector3<tile_coordinate> l(x,y,z);
           if (x == world_center_coord-1 || x == world_center_coord+20 || y == world_center_coord-1 || y == world_center_coord+20 || z == world_center_coord-1 || z == world_center_coord+20) {
             make(ROCK, l);
           }
@@ -194,20 +194,7 @@ srand(time(NULL));
 
   world w{world::worldgen_function_t(world_building_func(scenario))};
   
-  /*if (scenario == "tower1") { build_midair_water_tower(1); }
-  else if (scenario == "tower2") { build_midair_water_tower(1); wall_midair_water_tower(1); }
-  else if (scenario == "tower3") { build_midair_water_tower(1); wall_midair_water_tower(1); build_extra_ground_walls(); }
-  else if (scenario == "shallow") { build_water_sheet_and_shallow_slope(); }
-  else if (scenario == "steep") { build_water_mass_and_steep_slope(); }
-  else if (scenario == "tank") { build_punctured_tank(); }
-  else if (scenario == "tank2") { build_punctured_tank2(); }
-  else if (scenario == "twisty") { build_annoying_twisty_passageways(); }
-  else if (scenario == "droplet") { tiles.insert_water(location(10,10,10)); }
-  else if (scenario == "droplets") { tiles.insert_water(location(10,10,10)); tiles.insert_water(location(10,10,19)); }
-  else build_a_little_water_on_the_ground();*/
-  
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
-  //w.make_location(vector3<location_coordinate>(world_center_coord, world_center_coord, world_center_coord-1));
     
   while ( !done ) {
 
@@ -253,12 +240,14 @@ srand(time(NULL));
     vector<vertex_entry> progress_vertices;
     vector<vertex_entry> inactive_marker_vertices;
     
-    unordered_set<location> tiles_to_draw;
-    w.collect_tiles_that_contain_anything_near(tiles_to_draw, axis_aligned_bounding_box{vector3<location_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50), vector3<location_coordinate>(101,101,101)});
+    unordered_set<object_identifier> tiles_to_draw;
+    w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(vector3<tile_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50), vector3<tile_coordinate>(101,101,101)));
 
-    for (location const& loc : tiles_to_draw) {
+    for (object_identifier const& id : tiles_to_draw) {
+     if (tile_location const* locp = id.get_tile_location()) {
+      tile_location const& loc = *locp;
       tile const& t = loc.stuff_at();
-      vector3<GLfloat> locv(vector3<location_coordinate_signed_type>(loc.coords() - world_center_coords)); // TODO : properly speaking, "minus the perspective you're looking from"? world_center_coords has no business in any code except the world generation, I think
+      vector3<GLfloat> locv(vector3<tile_coordinate_signed_type>(loc.coords() - world_center_coords)); // TODO : properly speaking, "minus the perspective you're looking from"? world_center_coords has no business in any code except the world generation, I think
       
       // Hack - TODO remove
       if (frame == 0 && t.contents() == WATER) w.activate_water(loc);
@@ -300,6 +289,7 @@ srand(time(NULL));
           push_vertex(inactive_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
         }
       }
+     }
     }
     
     int before_GL = SDL_GetTicks();

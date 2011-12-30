@@ -30,79 +30,79 @@ namespace hacky_internals {
   // active water in them, because it could invalidate iterators into the
   // active_water_tiles map, because worldblocks can be created essentially any time in the processing.
   // TODO: "init_if_needed" is because we don't know how to make unordered_map's mapped_types be constructed in place in a non-default way.
-  worldblock& worldblock::init_if_needed(world *w_, vector3<location_coordinate> global_position_) {
+  worldblock& worldblock::init_if_needed(world *w_, vector3<tile_coordinate> global_position_) {
     if (!inited) {
       inited = true;
       w = w_;
       global_position = global_position_;
-      axis_aligned_bounding_box bounds{global_position, vector3<location_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension)};
+      tile_bounding_box bounds{global_position, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension)};
       w->worldgen_function(world_building_gun(w, bounds), bounds);
       std::cerr << "A worldblock has been created!\n";
     }
     return (*this);
   }
 
-  tile& worldblock::get_tile(vector3<location_coordinate> global_coords) {
-    vector3<location_coordinate> local_coords = global_coords - global_position;
+  tile& worldblock::get_tile(vector3<tile_coordinate> global_coords) {
+    vector3<tile_coordinate> local_coords = global_coords - global_position;
     return tiles[local_coords.x][local_coords.y][local_coords.z];
   }
 
-  location worldblock::get_neighboring_loc(vector3<location_coordinate> const& old_coords, cardinal_direction dir) {
+  tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, cardinal_direction dir) {
     // this could be made more effecient, but I'm not sure how
-    vector3<location_coordinate> new_coords = old_coords + dir.v;
+    vector3<tile_coordinate> new_coords = old_coords + dir.v;
     if (new_coords.x < global_position.x) return get_loc_across_boundary(new_coords, cdir_xminus);
     if (new_coords.y < global_position.y) return get_loc_across_boundary(new_coords, cdir_yminus);
     if (new_coords.z < global_position.z) return get_loc_across_boundary(new_coords, cdir_zminus);
     if (new_coords.x >= global_position.x + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_xplus);
     if (new_coords.y >= global_position.y + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_yplus);
     if (new_coords.z >= global_position.z + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_zplus);
-    return location(new_coords, this);
+    return tile_location(new_coords, this);
   }
 
-  location worldblock::get_loc_across_boundary(vector3<location_coordinate> const& new_coords, cardinal_direction dir) {
-    if (worldblock* neighbor = neighbors[dir]) return location(new_coords, neighbor);
-    return location(new_coords, (neighbors[dir] = w->create_if_necessary_and_get_worldblock(global_position +    vector3<worldblock_dimension_type>(dir.v) * worldblock_dimension)));
+  tile_location worldblock::get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, cardinal_direction dir) {
+    if (worldblock* neighbor = neighbors[dir]) return tile_location(new_coords, neighbor);
+    return tile_location(new_coords, (neighbors[dir] = w->create_if_necessary_and_get_worldblock(global_position +    vector3<worldblock_dimension_type>(dir.v) * worldblock_dimension)));
   }
 
-  location worldblock::get_loc_guaranteed_to_be_in_this_block(vector3<location_coordinate> coords) {
-    return location(coords, this);
+  tile_location worldblock::get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords) {
+    return tile_location(coords, this);
   }
 
 }
 
 
-location location::operator+(cardinal_direction dir)const {
+tile_location tile_location::operator+(cardinal_direction dir)const {
   return wb->get_neighboring_loc(v, dir);
 }
-tile const& location::stuff_at()const { return wb->get_tile(v); }
+tile const& tile_location::stuff_at()const { return wb->get_tile(v); }
 
-location world::make_location(vector3<location_coordinate> const& coords) {
-  return create_if_necessary_and_get_worldblock(vector3<location_coordinate>(
+tile_location world::make_tile_location(vector3<tile_coordinate> const& coords) {
+  return create_if_necessary_and_get_worldblock(vector3<tile_coordinate>(
       coords.x & ~(hacky_internals::worldblock_dimension-1),
       coords.y & ~(hacky_internals::worldblock_dimension-1),
       coords.z & ~(hacky_internals::worldblock_dimension-1)
     ))->get_loc_guaranteed_to_be_in_this_block(coords);
 }
 
-hacky_internals::worldblock* world::create_if_necessary_and_get_worldblock(vector3<location_coordinate> position) {
+hacky_internals::worldblock* world::create_if_necessary_and_get_worldblock(vector3<tile_coordinate> position) {
   return &(blocks[position].init_if_needed(this, position));
 }
 
-void world::ensure_space_exists(axis_aligned_bounding_box space) {
+void world::ensure_space_exists(tile_bounding_box space) {
   const hacky_internals::worldblock_dimension_type wd = hacky_internals::worldblock_dimension;
-  for (location_coordinate
+  for (tile_coordinate
        x =  space.min.x                            / wd;
        x < (space.min.x + space.size.x + (wd - 1)) / wd;
        ++x) {
-    for (location_coordinate
+    for (tile_coordinate
          y =  space.min.y                            / wd;
          y < (space.min.y + space.size.y + (wd - 1)) / wd;
          ++y) {
-      for (location_coordinate
+      for (tile_coordinate
            z =  space.min.z                            / wd;
            z < (space.min.z + space.size.z + (wd - 1)) / wd;
            ++z) {
-        const vector3<location_coordinate> worldblock_position(x*wd, y*wd, z*wd);
+        const vector3<tile_coordinate> worldblock_position(x*wd, y*wd, z*wd);
         create_if_necessary_and_get_worldblock(worldblock_position);
       }
     }
