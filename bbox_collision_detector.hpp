@@ -25,6 +25,9 @@
 #include <boost/integer.hpp>
 #include <unordered_map>
 #include <unordered_set>
+#include <array>
+#include <cassert>
+#include <cstdlib>
 
 using std::unordered_map;
 using std::unordered_set;
@@ -38,6 +41,7 @@ template<typename ObjectIdentifier, num_bits_type coordinate_bits, num_coordinat
 class bbox_collision_detector {
   static_assert(num_dimensions >= 0, "You can't make a space with negative dimensions!");
   static_assert(coordinate_bits >= 0, "You can't have an int type with negative bits!");
+  friend class zbox_tester;
 
 public:
   typedef typename boost::uint_t<coordinate_bits>::fast Coordinate;
@@ -144,8 +148,10 @@ private:
   
   static zbox box_from_coords(std::array<Coordinate, num_dimensions> const& coords, num_bits_type num_low_bits_ignored) {
     zbox result;
-    result.coords = coords;
     result.num_low_bits_ignored = num_low_bits_ignored;
+    for (num_coordinates_type i = 0; i < num_dimensions; ++i) {
+      result.coords[i] = coords[i] & (~(safe_left_shift_one(result.num_bits_ignored_by_dimension(i)) - 1));
+    }
     for (num_bits_type bit_within_interleaved_bits = num_low_bits_ignored;
                        bit_within_interleaved_bits < total_bits;
                      ++bit_within_interleaved_bits) {
@@ -225,7 +231,7 @@ private:
 public:
 
   void insert(ObjectIdentifier id, bounding_box const& bbox) {
-    bboxes_by_object.insert(make_pair(id, bbox));
+    bboxes_by_object.insert(std::make_pair(id, bbox));
     Coordinate max_dim = bbox.size[0];
     for (num_coordinates_type i = 1; i < num_dimensions; ++i) {
       if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
@@ -241,18 +247,20 @@ public:
       else break;
     }
     for (num_coordinates_type i = 0; i < num_dimensions - dimensions_we_can_single; ++i) {
-      if (bbox.min[i] & safe_left_shift_one(exp)) ++dimensions_we_can_double;
+      if (!(bbox.min[i] & base_box_size)) ++dimensions_we_can_double;
       else break;
     }
-    //std::cerr << dimensions_we_can_single << "... " << dimensions_we_can_double << "...\n";
+#ifdef ZTREE_TESTING
+    std::cerr << dimensions_we_can_single << "... " << dimensions_we_can_double << "...\n";
+#endif
     for (int i = 0; i < (1 << ((num_dimensions - dimensions_we_can_single) - dimensions_we_can_double)); ++i) {
       std::array<Coordinate, num_dimensions> coords = bbox.min;
-      for (num_coordinates_type j = dimensions_we_can_single; j < num_dimensions - dimensions_we_can_double; ++j) {
-        if (i & (1<<j)) coords[j] += (Coordinate(1) << exp);
+      for (num_coordinates_type j = dimensions_we_can_double; j < num_dimensions - dimensions_we_can_single; ++j) {
+        if ((i << dimensions_we_can_double) & (1<<j)) coords[j] += base_box_size;
       }
       zbox zb = box_from_coords(coords, exp * num_dimensions + dimensions_we_can_double);
-      assert(zb.get_bbox().overlaps(bbox));
-      insert_box(objects_tree, id, zb);
+      if (zb.get_bbox().overlaps(bbox))
+        insert_box(objects_tree, id, zb);
     }
   }
   void erase(ObjectIdentifier id) {
