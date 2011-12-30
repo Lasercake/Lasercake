@@ -41,6 +41,7 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/variant.hpp>
 #include <boost/variant/get.hpp>
+#include <memory>
 
 #include "utils.hpp"
 #include "bbox_collision_detector.hpp"
@@ -53,19 +54,32 @@ using std::make_pair;
 using std::set;
 using std::vector;
 using std::array;
+using std::shared_ptr;
 
 
 
 typedef int32_t sub_tile_distance;
 typedef uint32_t tile_coordinate;
 typedef uint64_t high_resolution_coordinate;
+typedef int64_t high_resolution_delta;
 typedef int32_t tile_coordinate_signed_type;
 
+inline high_resolution_coordinate convert_to_high_resolution(tile_coordinate c, size_t /*which_coordinate*/) {
+  return high_resolution_coordinate(c) << 32;
+}
 inline vector3<high_resolution_coordinate> convert_to_high_resolution(vector3<tile_coordinate> v) {
   return vector3<high_resolution_coordinate>(
-    high_resolution_coordinate(v.x) << 32,
-    high_resolution_coordinate(v.y) << 32,
-    high_resolution_coordinate(v.z) << 32
+    convert_to_high_resolution(v[0], 0),
+    convert_to_high_resolution(v[1], 1),
+    convert_to_high_resolution(v[2], 2)
+  );
+}
+
+inline vector3<tile_coordinate> get_tile_coordinates(vector3<high_resolution_coordinate> v) {
+  return vector3<tile_coordinate>(
+    v.x >> 32,
+    v.y >> 32,
+    v.z >> 32
   );
 }
 
@@ -111,6 +125,8 @@ struct tile_bounding_box {
 };
 
 struct high_resolution_bounding_box {
+  high_resolution_bounding_box(){}
+  high_resolution_bounding_box(vector3<high_resolution_coordinate> min, vector3<high_resolution_coordinate> size):min(min),size(size){}
   high_resolution_bounding_box(tile_bounding_box b):min(convert_to_high_resolution(b.min)),size(convert_to_high_resolution(b.size)){}
   
   vector3<high_resolution_coordinate> min, size;
@@ -139,6 +155,7 @@ inline tile_bounding_box convert_to_smallest_superset_at_tile_resolution(high_re
 const tile_coordinate world_center_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 1));
 const vector3<tile_coordinate> world_center_coords(world_center_coord, world_center_coord, world_center_coord);
 
+// TODO make these values more in line with "high_resolution" stuff
 const sub_tile_distance precision_factor = 100;
 const sub_tile_distance progress_necessary = 5000 * precision_factor; // loosely speaking, the conversion factor between mini-units and entire tiles
 const sub_tile_distance min_convincing_speed = 100 * precision_factor;
@@ -215,12 +232,22 @@ struct water_movement_info {
 };
 
 
-class mobile_thing {
+class world;
+
+//
+class mobile_object {
 public:
   // Something like this, later.
   // virtual something serialize = 0;
-private:
+  virtual high_resolution_bounding_box bbox()const = 0;
+  
+  virtual void move_due_to_velocity() = 0;
+  virtual void update(world *) {}
+  
+  mobile_object():velocity(0,0,0){}
+  mobile_object(vector3<high_resolution_delta>):velocity(velocity){}
 
+  vector3<high_resolution_delta> velocity;
 };
 
 
@@ -322,8 +349,6 @@ private:
 };
 
 
-class world;
-
 namespace hacky_internals {
   const int worldblock_dimension_exp = 4;
   typedef int worldblock_dimension_type;
@@ -363,9 +388,9 @@ private:
 
 class world {
 public:
-  friend class world_building_gun;
   typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
   typedef unordered_map<tile_location, water_movement_info> active_water_tiles_t;
+  typedef unordered_map<mobile_object_identifier, shared_ptr<mobile_object> > mobile_objects_t;
   
   world(worldgen_function_t f):worldgen_function(f){}
   
@@ -374,6 +399,12 @@ public:
     return boost::make_iterator_range(active_water_tiles.begin(), active_water_tiles.end());
   }
   water_movement_info* get_active_water_tile(tile_location l) { return find_as_pointer(active_water_tiles, l); }
+  
+  // The iterators are only valid until we add any objects.
+  boost::iterator_range<mobile_objects_t::iterator> mobile_objects_range() {
+    return boost::make_iterator_range(mobile_objects.begin(), mobile_objects.end());
+  }
+  shared_ptr<mobile_object>* get_mobile_object(mobile_object_identifier id) { return find_as_pointer(mobile_objects, id); }
   
   tile_location make_tile_location(vector3<tile_coordinate> const& coords);
   
@@ -395,17 +426,46 @@ public:
   
   void set_stickyness(tile_location const& loc, bool new_stickyness);
   
+  void queue_creating_mobile_object(shared_ptr<mobile_object> obj) {
+    mobile_objects_to_add.push_back(obj);
+  }
+  
+  // Risky function: Don't use this while iterating through mobile objects (any other time is okay)
+  void create_queued_objects() {
+    for (shared_ptr<mobile_object> const& obj : mobile_objects_to_add) {
+      mobile_objects.insert(make_pair(next_mobile_object_identifier++, obj));
+    }
+    mobile_objects_to_add.clear();
+  }
+  
+  void add_laser_sfx(vector3<high_resolution_coordinate> laser_source, vector3<high_resolution_delta> laser_delta) {
+    laser_sfxes.push_back(make_pair(laser_source, laser_delta));
+  }
+  std::vector<std::pair<vector3<high_resolution_coordinate>, vector3<high_resolution_delta>>> laser_sfxes;
+  
 private:
-  unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks; // using the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
-  hacky_internals::worldblock* create_if_necessary_and_get_worldblock(vector3<tile_coordinate> position);
-  void ensure_space_exists(tile_bounding_box space);
+  friend class world_building_gun;
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
-  active_water_tiles_t active_water_tiles;
-  world_collision_detector things_exposed_to_collision; // Currently means all mobile objects, all water, and surface rock tiles. TODO I haven't actually implemented restricting to sufface rock yet
+  // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
+  unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks; 
   
-  // Worldgen functions TODO describe them here
+  active_water_tiles_t active_water_tiles;
+  mobile_objects_t mobile_objects;
+  mobile_object_identifier next_mobile_object_identifier;
+  vector<shared_ptr<mobile_object>> mobile_objects_to_add;
+  
+  // This currently means all mobile objects, all water, and surface rock tiles. TODO I haven't actually implemented restricting to sufface rock yet
+  world_collision_detector things_exposed_to_collision;
+  
+  // Worldgen functions TODO describe them
   worldgen_function_t worldgen_function;
+  
+ 
+  
+  
+  hacky_internals::worldblock* create_if_necessary_and_get_worldblock(vector3<tile_coordinate> position);
+  void ensure_space_exists(tile_bounding_box space);
   
   void check_interiorness(tile_location const& loc);
 
@@ -417,6 +477,104 @@ private:
 };
 
 void update_water(world &w);
+void update_mobile_objects(world &w);
+
+inline void update(world &w) {
+  w.create_queued_objects();
+  w.laser_sfxes.clear();
+  update_water(w);
+  update_mobile_objects(w);
+}
+
+class laser_emitter : public mobile_object {
+public:
+  laser_emitter(vector3<high_resolution_coordinate> location, vector3<high_resolution_delta> facing):location(location),facing(facing){}
+  virtual high_resolution_bounding_box bbox()const {
+  // TODO define tile width???????
+    return high_resolution_bounding_box(location - vector3<high_resolution_coordinate>(1ULL<<30, 1ULL<<30, 1ULL<<30), vector3<high_resolution_coordinate>(1ULL<<31, 1ULL<<31, 1ULL<<31)); // TODO lolhack
+  }
+  virtual void move_due_to_velocity() {
+    // gravity. TODO hacky
+    velocity += vector3<high_resolution_delta>(0, 0, -(1 << 22));
+    
+    location += velocity;
+    //std::cerr << std::hex << location.z;
+  }
+  virtual void update(world *w) {
+    struct laser_path_calculator {
+      laser_path_calculator(laser_emitter *emi):emi(emi),current_laser_tile(get_tile_coordinates(emi->location)),facing_signs(sign(emi->facing.x), sign(emi->facing.y), sign(emi->facing.z)),facing_offs(facing_signs.x > 0, facing_signs.y > 0, facing_signs.z > 0){
+        for (size_t i = 0; i < 3; ++i) {
+          if (facing_signs[i] != 0) enter_next_cross(i);
+        }
+      }
+      
+      void enter_next_cross(size_t which_dimension) {
+        coming_crosses.insert(make_pair(
+          convert_to_high_resolution(
+            (current_laser_tile + facing_offs)[which_dimension] - emi->location[which_dimension],
+            which_dimension
+          )
+          / emi->facing[which_dimension],
+          
+          0
+        ));
+      }
+      // returns which dimension we advanced
+      size_t advance_to_next_location() {
+        auto next_cross_iter = coming_crosses.begin();
+        size_t which_dimension = next_cross_iter->second;
+        coming_crosses.erase(next_cross_iter);
+        current_laser_tile[which_dimension] += facing_signs[which_dimension];
+        enter_next_cross(which_dimension);
+        return which_dimension;
+      }
+      
+      laser_emitter *emi;
+      vector3<tile_coordinate> current_laser_tile;
+      std::map<uint64_t, size_t> coming_crosses;
+      vector3<high_resolution_delta> facing_signs;
+      vector3<tile_coordinate_signed_type> facing_offs;
+    };
+    
+    laser_path_calculator calc(this);
+    
+    //std::cerr << facing.x << " foo " << facing.y << " foo " << facing.z << "\n";
+    const vector3<high_resolution_delta> max_laser_delta = ((facing * (100LL << 32)) / facing.magnitude()); // TODO fix overflow
+    //std::cerr << max_laser_delta.x << " foo " << max_laser_delta.y << " foo " << max_laser_delta.z << " bar " << facing.magnitude() << " bar " << (facing * (100LL << 32)).x << "\n";
+    const vector3<tile_coordinate> theoretical_end_tile = get_tile_coordinates(location + max_laser_delta);
+    
+    int which_dimension_we_last_advanced = -1;
+    while(true) {
+      unordered_set<object_identifier> possible_hits;
+      w->collect_things_exposed_to_collision_intersecting(possible_hits, tile_bounding_box(calc.current_laser_tile));
+      for (object_identifier const& id : possible_hits) {
+        if (id.get_tile_location()) {
+          // it's the entire tile, of course we hit it!
+          vector3<high_resolution_delta> laser_delta;
+          if (which_dimension_we_last_advanced == -1) {
+            laser_delta = vector3<high_resolution_delta>(0,0,0);
+          }
+          else {
+            vector3<tile_coordinate> hitloc_finding_hack = calc.current_laser_tile;
+            hitloc_finding_hack[which_dimension_we_last_advanced] += calc.facing_offs[which_dimension_we_last_advanced];
+            const high_resolution_delta laser_delta_in_facing_direction = (convert_to_high_resolution(hitloc_finding_hack)[which_dimension_we_last_advanced] - location[which_dimension_we_last_advanced]);
+            laser_delta = (facing * laser_delta_in_facing_direction) / facing[which_dimension_we_last_advanced];
+          }
+          w->add_laser_sfx(location, laser_delta);
+          return; // TODO handle what happens if there are mobile objects and/or multiple objects and/or whatever
+        }
+      }
+      if (calc.current_laser_tile == theoretical_end_tile) {
+        w->add_laser_sfx(location, max_laser_delta);
+        return;
+      }
+      else which_dimension_we_last_advanced = calc.advance_to_next_location();
+    }
+  }
+private:
+  vector3<high_resolution_coordinate> location;
+  vector3<high_resolution_delta> facing;
+};
 
 #endif
 

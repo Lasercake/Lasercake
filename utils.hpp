@@ -24,6 +24,11 @@
 
 #include <array>
 
+template <typename SignedType>
+inline SignedType sign(SignedType input) {
+  return (input > 0) - (input < 0);
+}
+
 template<typename Map>
 typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const& k) {
   auto i = m.find(k);
@@ -34,8 +39,8 @@ typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const&
 template<typename scalar_type> scalar_type divide_rounding_towards_zero(scalar_type dividend, scalar_type divisor)
 {
 	assert(divisor != 0);
-	int abs_result = std::abs(dividend) / std::abs(divisor);
-	if ((dividend > 0 && divisor > 0) || (dividend < 0 && divisor < 0)) return abs_result;
+	const scalar_type abs_result = std::abs(dividend) / std::abs(divisor);
+	if ((dividend > 0) == (divisor > 0)) return abs_result;
 	else return -abs_result;
 }
 
@@ -47,6 +52,22 @@ public:
 	template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
 	  x(other.x),y(other.y),z(other.z){}
 	
+	scalar_type& operator[](size_t index) {
+	  switch(index) {
+	    case 0: return x;
+	    case 1: return y;
+	    case 2: return z;
+	    default: assert("Trying to index a vector3 with an out-of-bounds index!" && false);
+	  }
+	}
+	scalar_type operator[](size_t index)const {
+	  switch(index) {
+	    case 0: return x;
+	    case 1: return y;
+	    case 2: return z;
+	    default: assert("Trying to index a vector3 with an out-of-bounds index!" && false);
+	  }
+	}
 	// Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
 	template<typename OtherType> vector3 operator+(vector3<OtherType> const& other)const {
 		return vector3(x + other.x, y + other.y, z + other.z);
@@ -87,6 +108,7 @@ public:
 	}
 	
 	// Warning - might be slightly inaccurate (in addition to the integer rounding error) for very large vectors, due to floating-point inaccuracy.
+	// TODO don't use doubles if we want to be deterministic!!!!!
 	scalar_type magnitude()const { return (scalar_type)std::sqrt(dot<double>(*this)); }
 	
 	// Choose these the way you'd choose dot's output type (see the comment above)

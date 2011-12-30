@@ -193,6 +193,8 @@ static void mainLoop (std::string scenario)
 srand(time(NULL));
 
   world w{world::worldgen_function_t(world_building_func(scenario))};
+  shared_ptr<laser_emitter> foo (new laser_emitter(convert_to_high_resolution(world_center_coords) + vector3<high_resolution_coordinate>(10ULL << 32, 10ULL << 32, 10ULL << 32), vector3<high_resolution_delta>(1,0,0)));
+  w.queue_creating_mobile_object(foo);
   
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
     
@@ -239,11 +241,33 @@ srand(time(NULL));
     vector<vertex_entry> velocity_vertices;
     vector<vertex_entry> progress_vertices;
     //vector<vertex_entry> inactive_marker_vertices;
+    vector<vertex_entry> laserbeam_vertices;
     
     unordered_set<object_identifier> tiles_to_draw;
     w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(vector3<tile_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50), vector3<tile_coordinate>(101,101,101)));
-
+    
+    for (auto p : w.laser_sfxes) {
+      vector3<double> locv = vector3<double>(vector3<high_resolution_delta>(p.first - convert_to_high_resolution(world_center_coords))) / double(1ULL << 32);
+      vector3<double> locv2 = vector3<double>(vector3<high_resolution_delta>(p.first + p.second - convert_to_high_resolution(world_center_coords))) / double(1ULL << 32);
+      std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
+      std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
+      push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z-0.5);
+      push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z+0.5);
+      push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z);
+      GLfloat length = (locv2 - locv).magnitude();
+      for (int i = 0; i < length; ++i) {
+        vector3<double> locv3 = (locv + (((locv2 - locv) * i) / length));
+        push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z);
+        push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z);
+      }
+      push_vertex(laserbeam_vertices, locv2.x, locv2.y, locv2.z);
+    }
     for (object_identifier const& id : tiles_to_draw) {
+      /*if (mobile_object_identifier const* mid = id.get_mobile_object_identifier()) {
+        if (shared_ptr<mobile_object> *objp = w.get_mobile_object(loc)) {
+          (*objp)->
+        }
+      }*/
      if (tile_location const* locp = id.get_tile_location()) {
       tile_location const& loc = *locp;
       tile const& t = loc.stuff_at();
@@ -331,6 +355,11 @@ srand(time(NULL));
     glVertexPointer(3, GL_FLOAT, 0, &inactive_marker_vertices[0]);
     glDrawArrays(GL_POINTS, 0, inactive_marker_vertices.size());*/
     
+    glColor4f(0.0, 1.0, 0.0, 0.5);
+    glLineWidth(3);
+    glVertexPointer(3, GL_FLOAT, 0, &laserbeam_vertices[0]);
+    glDrawArrays(GL_LINES, 0, laserbeam_vertices.size());
+    
     
     
     glFinish();	
@@ -339,7 +368,7 @@ srand(time(NULL));
     int before_processing = SDL_GetTicks();
     
     //doing stuff code here
-    update_water(w);
+    update(w);
     
     int after = SDL_GetTicks();
     std::cerr << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";
