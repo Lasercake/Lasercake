@@ -193,7 +193,7 @@ static void mainLoop (std::string scenario)
 srand(time(NULL));
 
   world w{world::worldgen_function_t(world_building_func(scenario))};
-  shared_ptr<laser_emitter> foo (new laser_emitter(convert_to_high_resolution(world_center_coords) + vector3<high_resolution_coordinate>(10ULL << 32, 10ULL << 32, 10ULL << 32), vector3<high_resolution_delta>(1,0,0)));
+  shared_ptr<laser_emitter> foo (new laser_emitter(convert_to_high_resolution(world_center_coords) + vector3<high_resolution_coordinate>(10ULL << 32, 10ULL << 32, 10ULL << 32), vector3<high_resolution_delta>(5,3,2)));
   w.queue_creating_mobile_object(foo);
   
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
@@ -249,8 +249,8 @@ srand(time(NULL));
     for (auto p : w.laser_sfxes) {
       vector3<double> locv = vector3<double>(vector3<high_resolution_delta>(p.first - convert_to_high_resolution(world_center_coords))) / double(1ULL << 32);
       vector3<double> locv2 = vector3<double>(vector3<high_resolution_delta>(p.first + p.second - convert_to_high_resolution(world_center_coords))) / double(1ULL << 32);
-      std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
-      std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
+      //std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
+      //std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
       push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z-0.5);
       push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z+0.5);
       push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z);

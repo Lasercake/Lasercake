@@ -64,9 +64,10 @@ typedef uint64_t high_resolution_coordinate;
 typedef int64_t high_resolution_delta;
 typedef int32_t tile_coordinate_signed_type;
 
-inline high_resolution_coordinate convert_to_high_resolution(tile_coordinate c, size_t /*which_coordinate*/) {
+inline high_resolution_coordinate convert_to_high_resolution(tile_coordinate c, int /*which_coordinate*/) {
   return high_resolution_coordinate(c) << 32;
 }
+// TODO this is badly named, fix
 inline vector3<high_resolution_coordinate> convert_to_high_resolution(vector3<tile_coordinate> v) {
   return vector3<high_resolution_coordinate>(
     convert_to_high_resolution(v[0], 0),
@@ -75,11 +76,12 @@ inline vector3<high_resolution_coordinate> convert_to_high_resolution(vector3<ti
   );
 }
 
+// TODO change name to ... "get_containing_tile_coordinates"?
 inline vector3<tile_coordinate> get_tile_coordinates(vector3<high_resolution_coordinate> v) {
   return vector3<tile_coordinate>(
-    v.x >> 32,
-    v.y >> 32,
-    v.z >> 32
+    tile_coordinate(v.x >> 32),
+    tile_coordinate(v.y >> 32),
+    tile_coordinate(v.z >> 32)
   );
 }
 
@@ -140,11 +142,15 @@ struct high_resolution_bounding_box {
 inline tile_bounding_box convert_to_smallest_superset_at_tile_resolution(high_resolution_bounding_box const& bb) {
   const high_resolution_coordinate round_up = ((high_resolution_coordinate(1) << 32) - 1);
   tile_bounding_box result;
-  result.min = vector3<tile_coordinate>(bb.min.x >> 32, bb.min.y >> 32, bb.min.z >> 32);
+  result.min = vector3<tile_coordinate>(
+    tile_coordinate(bb.min.x >> 32),
+    tile_coordinate(bb.min.y >> 32),
+    tile_coordinate(bb.min.z >> 32)
+  );
   result.size = vector3<tile_coordinate>(
-    ((bb.min.x + bb.size.x + round_up) >> 32) - result.min.x,
-    ((bb.min.y + bb.size.y + round_up) >> 32) - result.min.y,
-    ((bb.min.z + bb.size.z + round_up) >> 32) - result.min.z
+    tile_coordinate(((bb.min.x + bb.size.x + round_up) >> 32) - result.min.x),
+    tile_coordinate(((bb.min.y + bb.size.y + round_up) >> 32) - result.min.y),
+    tile_coordinate(((bb.min.z + bb.size.z + round_up) >> 32) - result.min.z)
   );
   return result;
 }
@@ -205,9 +211,9 @@ public:
   
   tile_contents contents()const{ return (tile_contents)(data & contents_mask); }
   
-  void set_contents(tile_contents new_contents){ data = (data & ~contents_mask) | (new_contents & contents_mask); }
-  void set_water_stickyness(bool b){ data = (data & ~sticky_bit_mask) | (b ? sticky_bit_mask : 0); }
-  void set_water_interiorness(bool b){ data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : 0); }
+  void set_contents(tile_contents new_contents){ data = (data & ~contents_mask) | (uint8_t(new_contents) & contents_mask); }
+  void set_water_stickyness(bool b){ data = (data & ~sticky_bit_mask) | (b ? sticky_bit_mask : uint8_t(0)); }
+  void set_water_interiorness(bool b){ data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
 private:
   static const uint8_t contents_mask = 0x3;
   static const uint8_t sticky_bit_mask = (1<<2);
@@ -502,27 +508,34 @@ public:
   }
   virtual void update(world *w) {
     struct laser_path_calculator {
-      laser_path_calculator(laser_emitter *emi):emi(emi),current_laser_tile(get_tile_coordinates(emi->location)),facing_signs(sign(emi->facing.x), sign(emi->facing.y), sign(emi->facing.z)),facing_offs(facing_signs.x > 0, facing_signs.y > 0, facing_signs.z > 0){
-        for (size_t i = 0; i < 3; ++i) {
+      struct cross {
+        high_resolution_delta dist_in_this_dimension;
+        high_resolution_delta facing_in_this_dimension;
+        int dimension;
+        cross(high_resolution_delta d, high_resolution_delta f, int di):dist_in_this_dimension(d),facing_in_this_dimension(f),dimension(di){}
+        bool operator<(cross const& other)const {
+          return other.facing_in_this_dimension * dist_in_this_dimension < facing_in_this_dimension * other.dist_in_this_dimension;
+        }
+      };
+      laser_path_calculator(laser_emitter *emi):emi(emi),current_laser_tile(get_tile_coordinates(emi->location)){
+        for (int i = 0; i < 3; ++i) {
+          facing_signs[i] = sign(emi->facing[i]);
+          facing_offs[i] = emi->facing[i] > 0;
           if (facing_signs[i] != 0) enter_next_cross(i);
         }
       }
       
-      void enter_next_cross(size_t which_dimension) {
-        coming_crosses.insert(make_pair(
-          convert_to_high_resolution(
-            (current_laser_tile + facing_offs)[which_dimension] - emi->location[which_dimension],
-            which_dimension
-          )
-          / emi->facing[which_dimension],
-          
-          0
+      void enter_next_cross(int which_dimension) {
+        coming_crosses.insert(cross(
+          convert_to_high_resolution((current_laser_tile + facing_offs)[which_dimension], which_dimension) - emi->location[which_dimension],
+          emi->facing[which_dimension],
+          which_dimension
         ));
       }
       // returns which dimension we advanced
-      size_t advance_to_next_location() {
+      int advance_to_next_location() {
         auto next_cross_iter = coming_crosses.begin();
-        size_t which_dimension = next_cross_iter->second;
+        int which_dimension = next_cross_iter->dimension;
         coming_crosses.erase(next_cross_iter);
         current_laser_tile[which_dimension] += facing_signs[which_dimension];
         enter_next_cross(which_dimension);
@@ -531,7 +544,7 @@ public:
       
       laser_emitter *emi;
       vector3<tile_coordinate> current_laser_tile;
-      std::map<uint64_t, size_t> coming_crosses;
+      set<cross> coming_crosses;
       vector3<high_resolution_delta> facing_signs;
       vector3<tile_coordinate_signed_type> facing_offs;
     };
@@ -541,7 +554,7 @@ public:
     //std::cerr << facing.x << " foo " << facing.y << " foo " << facing.z << "\n";
     const vector3<high_resolution_delta> max_laser_delta = ((facing * (100LL << 32)) / facing.magnitude()); // TODO fix overflow
     //std::cerr << max_laser_delta.x << " foo " << max_laser_delta.y << " foo " << max_laser_delta.z << " bar " << facing.magnitude() << " bar " << (facing * (100LL << 32)).x << "\n";
-    const vector3<tile_coordinate> theoretical_end_tile = get_tile_coordinates(location + max_laser_delta);
+    //const vector3<tile_coordinate> theoretical_end_tile = get_tile_coordinates(location + max_laser_delta);
     
     int which_dimension_we_last_advanced = -1;
     while(true) {
@@ -564,7 +577,8 @@ public:
           return; // TODO handle what happens if there are mobile objects and/or multiple objects and/or whatever
         }
       }
-      if (calc.current_laser_tile == theoretical_end_tile) {
+      // TODO figure out a better end condition...
+      if ((calc.current_laser_tile - get_tile_coordinates(location)).magnitude_within_32_bits_is_greater_than(101)) {
         w->add_laser_sfx(location, max_laser_delta);
         return;
       }
