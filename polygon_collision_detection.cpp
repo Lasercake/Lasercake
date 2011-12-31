@@ -88,6 +88,7 @@ namely... 64/4 bits, or 16 bits.
 
 #include "polygon_collision_detection.hpp"
 
+
 void convex_polygon::setup_cache_if_needed()const {
   if (cache.is_valid) return;
   
@@ -118,6 +119,11 @@ void convex_polygon::setup_cache_if_needed()const {
   
   // We don't actually need to skew the polygon, since (by definition) it just skews the z coordinate to zero,
   // and because of that, hereafter we just don't need to refer to the z coordinates at all.
+}
+
+void convex_polygon::translate(vector3<int64_t> t) {
+  for (vector3<int64_t> &v : vertices) v += t;
+  cache.translation_amount -= t;
 }
 
 bool intersects(line_segment l, convex_polygon const& p) {

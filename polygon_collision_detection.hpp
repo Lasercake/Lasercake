@@ -52,6 +52,7 @@ struct convex_polygon {
   convex_polygon(std::vector<vector3<int64_t>> const& vertices):vertices(vertices){ assert(vertices.size() >= 3); }
   polygon_collision_info_cache const& get_cache()const { return cache; }
   std::vector<vector3<int64_t>> const& get_vertices()const { return vertices; }
+  void translate(vector3<int64_t> t);
 private:
   std::vector<vector3<int64_t>> vertices;
   mutable polygon_collision_info_cache cache;
