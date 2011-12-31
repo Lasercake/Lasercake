@@ -21,7 +21,6 @@
 
 #include "world.hpp"
 
-
 bool should_be_sticky(tile_location loc) {
   int airs = 0;
   for (EACH_CARDINAL_DIRECTION(dir)) {
@@ -63,7 +62,7 @@ bool water_movement_info::is_in_inactive_state()const {
   // TODO: does it make sense that we're ignoring the 1-frame-duration variable "blockage_amount_this_frame"?
   for (EACH_CARDINAL_DIRECTION(dir)) {
     if (dir.v.z < 0) {
-      if (progress[dir] != progress_necessary) return false;
+      if (progress[dir] != progress_necessary(dir)) return false;
     }
     else {
       if (progress[dir] != 0) return false;
@@ -332,7 +331,7 @@ void update_water(world &w) {
       // If it's blocked, then we're not going to move in that direction anyway, so it's not real pressure.
       temp_data[loc].new_progress[cdir_zminus] += extra_downward_speed_for_sticky_water;
       if (t_down_obstructive) {
-        sub_tile_distance excess_progress = temp_data[loc].new_progress[cdir_zminus] + p.second.progress[cdir_zminus] - progress_necessary;
+        sub_tile_distance excess_progress = temp_data[loc].new_progress[cdir_zminus] + p.second.progress[cdir_zminus] - progress_necessary(cdir_zminus);
         if (excess_progress > 0) {
           temp_data[loc].new_progress[cdir_zminus] -= excess_progress;
           if (temp_data[loc].new_progress[cdir_zminus] < 0) 
@@ -397,11 +396,11 @@ void update_water(world &w) {
       else {
         assert(new_progress >= 0);
         assert(progress_ref >= 0);
-        assert(progress_ref <= progress_necessary);
+        assert(progress_ref <= progress_necessary(dir));
         progress_ref += new_progress;
-        if (progress_ref > progress_necessary) {
-          wanted_moves.push_back(wanted_move(loc, dir, t.is_sticky_water() ? groups.group_numbers_by_tile_location[loc] : NO_GROUP, new_progress, progress_ref - progress_necessary));
-          progress_ref = progress_necessary;
+        if (progress_ref > progress_necessary(dir)) {
+          wanted_moves.push_back(wanted_move(loc, dir, t.is_sticky_water() ? groups.group_numbers_by_tile_location[loc] : NO_GROUP, new_progress, progress_ref - progress_necessary(dir)));
+          progress_ref = progress_necessary(dir);
         }
       }
     }
@@ -437,7 +436,7 @@ void update_water(world &w) {
     sub_tile_distance& progress_ref = src_water.progress[move.dir];
     
     if (dst_tile.contents() == AIR) {
-      progress_ref -= progress_necessary;
+      progress_ref -= progress_necessary(move.dir);
       water_movement_info &dst_water = w.insert_water(dst);
       w.set_stickyness(dst, should_be_sticky(dst));
       
@@ -478,7 +477,7 @@ void update_water(world &w) {
         dst_water.velocity += vector3<sub_tile_distance>(move.dir.v) * deficiency_of_new_vel_in_movement_dir;
       }
       // Also, don't lose movement to rounding error during progress over multiple tiles:
-      dst_water.progress[move.dir] = std::min(move.excess_progress, progress_necessary);
+      dst_water.progress[move.dir] = std::min(move.excess_progress, progress_necessary(move.dir));
     }
     else {
       // we're blocked

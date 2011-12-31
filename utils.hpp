@@ -145,6 +145,7 @@ struct cardinal_direction {
   vector3<neighboring_tile_differential> v;
   cardinal_direction_index cardinal_direction_idx;
   cardinal_direction operator-()const;
+  int which_dimension()const { return (int)(cardinal_direction_index % 3); } // relies on the current order of the directions
 };
 
 template<typename scalar_type> inline vector3<scalar_type> project_onto_cardinal_direction(vector3<scalar_type> src, cardinal_direction dir) {

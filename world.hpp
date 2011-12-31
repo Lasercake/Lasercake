@@ -58,17 +58,34 @@ using std::array;
 using std::shared_ptr;
 
 
-
-typedef int32_t sub_tile_distance;
 typedef uint32_t tile_coordinate;
 typedef int64_t fine_scalar; // Fine as opposed to coarse, that is.
 typedef int32_t tile_coordinate_signed_type;
+typedef int32_t sub_tile_distance; // We can fit it within 32 bits, so we might as well do faster math
 
 const fine_scalar tile_width == (fine_scalar(1) << 10);
 const fine_scalar tile_height == (fine_scalar(1) << 10);
 const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
 
-fine_scalar velocity_scale_factor = (fine_scalar(1) << 4);
+const fine_scalar velocity_scale_factor = (fine_scalar(1) << 6);
+
+const tile_coordinate world_center_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 1));
+const vector3<tile_coordinate> world_center_coords(world_center_coord, world_center_coord, world_center_coord);
+
+const sub_tile_distance min_convincing_speed = 20 * velocity_scale_factor;
+const vector3<sub_tile_distance> gravity_acceleration(0, 0, -1 * velocity_scale_factor); // in mini-units per frame squared
+const sub_tile_distance friction_amount = (velocity_scale_factor * 3 / 5);
+
+// as in 1 + d2 (except with the random based at zero, but who cares)
+const sub_tile_distance pressure_motion_factor = 16 * velocity_scale_factor;
+const sub_tile_distance pressure_motion_factor_random = 8 * velocity_scale_factor;
+const sub_tile_distance extra_downward_speed_for_sticky_water = 20 * velocity_scale_factor;
+
+const sub_tile_distance air_resistance_constant = (10000 * velocity_scale_factor * velocity_scale_factor);
+const sub_tile_distance idle_progress_reduction_rate = 20 * velocity_scale_factor;
+const sub_tile_distance sticky_water_velocity_reduction_rate = 1 * velocity_scale_factor;
+
+const vector3<sub_tile_distance> inactive_water_velocity(0, 0, -min_convincing_speed);
 
 inline vector3<tile_coordinate> get_containing_tile_coordinates(vector3<fine_scalar> v) {
   return vector3<tile_coordinate>(
@@ -131,19 +148,6 @@ struct tile_bounding_box {
   iterator end(){ return iterator(make_pair(min + vector3<tile_coordinate>(0, 0, size.z), this)); }
 };
 
-/*struct fine_bounding_box {
-  fine_bounding_box(){}
-  fine_bounding_box(vector3<fine_scalar> min, vector3<fine_scalar> size):min(min),size(size){}
-  fine_bounding_box(tile_bounding_box b):min(lower_bound_in_fine_units(b.min)),size(lower_bound_in_fine_units(b.size)){}
-  
-  vector3<fine_scalar> min, size;
-  bool contains(vector3<fine_scalar> const& v) {
-    return (v.x >= min.x && v.x <= min.x + (size.x - 1) &&
-            v.y >= min.y && v.y <= min.y + (size.y - 1) &&
-            v.z >= min.z && v.z <= min.z + (size.z - 1));
-  }
-};*/
-
 inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
   return bounding_box(,
     lower_bound_in_fine_units(bb.min),
@@ -163,29 +167,6 @@ inline shape tile_shape(vector3<tile_coordinate> tile) {
   return shape(convert_to_fine_units(tile_bounding_box(tile)));
 }
 
-
-
-
-const tile_coordinate world_center_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 1));
-const vector3<tile_coordinate> world_center_coords(world_center_coord, world_center_coord, world_center_coord);
-
-// TODO make these values more in line with "fine_scalar" stuff
-const sub_tile_distance precision_factor = 100;
-const sub_tile_distance progress_necessary = 5000 * precision_factor; // loosely speaking, the conversion factor between mini-units and entire tiles
-const sub_tile_distance min_convincing_speed = 100 * precision_factor;
-const vector3<sub_tile_distance> gravity_acceleration(0, 0, -5*precision_factor); // in mini-units per frame squared
-const sub_tile_distance friction_amount = 3 * precision_factor;
-
-// as in 1 + d2 (except with the random based at zero, but who cares)
-const sub_tile_distance pressure_motion_factor = 80 * precision_factor;
-const sub_tile_distance pressure_motion_factor_random = 40 * precision_factor;
-const sub_tile_distance extra_downward_speed_for_sticky_water = 100 * precision_factor;
-
-const sub_tile_distance air_resistance_constant = (200000 * precision_factor * precision_factor);
-const sub_tile_distance idle_progress_reduction_rate = 100 * precision_factor;
-const sub_tile_distance sticky_water_velocity_reduction_rate = 5*precision_factor;
-
-const vector3<sub_tile_distance> inactive_water_velocity(0, 0, -min_convincing_speed);
 
 
 /*
@@ -231,6 +212,11 @@ private:
   uint8_t data;
 };
 
+// "progress" is measured in the smaller, velocity units.
+inline fine_scalar progress_necessary(cardinal_direction dir) {
+  return tile_size[dir.which_dimension()] * velocity_scale_factor;
+}
+
 struct water_movement_info {
   vector3<sub_tile_distance> velocity;
   value_for_each_cardinal_direction<sub_tile_distance> progress;
@@ -238,7 +224,7 @@ struct water_movement_info {
   bool computed_sticky_last_frame;
   
   // Constructing one of these in the default way yields the natural inactive state:
-  water_movement_info():velocity(inactive_water_velocity),progress(0),blockage_amount_this_frame(0),computed_sticky_last_frame(false) { progress[cdir_zminus] = progress_necessary; }
+  water_movement_info():velocity(inactive_water_velocity),progress(0),blockage_amount_this_frame(0),computed_sticky_last_frame(false) { progress[cdir_zminus] = progress_necessary(cdir_zminus); }
   
   // This is not a general-purpose function. Only use it during the move-processing part of update_water.
   void get_completely_blocked(cardinal_direction dir);
