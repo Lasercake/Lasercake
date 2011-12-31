@@ -205,12 +205,24 @@ private:
       if (tree->objects_here.empty()) {
         if (tree->child0) {
           if (!tree->child1) {
+            delete tree;
             tree = tree->child0;
           }
         }
-        else tree = tree->child1; // which could be null
+        else {
+          delete tree;
+          tree = tree->child1; // which could be null
+        }
       }
     }
+  }
+  
+  static void delete_entire_tree(ztree_node*& tree) {
+    if (!tree) return;
+    delete_entire_tree(tree->child0);
+    delete_entire_tree(tree->child1);
+    delete tree;
+    tree = nullptr;
   }
   
   void zget_objects_overlapping(ztree_node const* tree, unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
@@ -273,6 +285,8 @@ public:
   void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
     zget_objects_overlapping(objects_tree, results, bbox);
   }
+  
+  ~bbox_collision_detector() { delete_entire_tree(objects_tree); }
 };
 
 /*
