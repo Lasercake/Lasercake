@@ -1,3 +1,7 @@
 *~
 callgrind.out.*
 sim
+/output
+lasercake
+.*.swp
+
