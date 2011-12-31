@@ -34,7 +34,10 @@ void update_moving_objects_(
    object_shapes_t                   &personal_space_shapes,
    object_shapes_t                   &detail_shapes,
    world_collision_detector          &things_exposed_to_collision) {
+   
   // This entire function is kludgy and horrifically un-optimized.
+  
+  // Accelerate everything due to gravity.
   for (pair<const object_identifier, shared_ptr<mobile_object>> &p : moving_objects) {
     p.second->velocity += gravity_acceleration;
   }
@@ -46,9 +49,12 @@ void update_moving_objects_(
     if (shape const* old_personal_space_shape = find_as_pointer(personal_space_shapes, p.first)) {
       shape dst_personal_space_shape(*old_personal_space_shape);
       dst_personal_space_shape.translate(p.second->velocity / velocity_scale_factor);
+      
       bounding_box sweep_bounds = dst_personal_space_shape.bounds();
       sweep_bounds.combine_with(old_personal_space_shape->bounds());
+      
       sweep_box_cd.insert(p.first, sweep_bounds);
+      
       unordered_set<object_or_tile_identifier> this_overlaps;
       sweep_box_cd.get_objects_overlapping(this_overlaps, sweep_bounds);
       w.collect_things_exposed_to_collision_intersecting(this_overlaps, sweep_bounds);
@@ -70,23 +76,19 @@ void update_moving_objects_(
     }
   }
   
-  /*struct displacement_conversion {
-    displacement_conversion():amount(0),target_dimension(0){}
-    fine_scalar amount;
-    vector3<fine_scalar> target_direction;
-  }*/
-  
   // these get changed if an object bounces
   struct object_trajectory_info {
     object_trajectory_info(){}
     object_trajectory_info(vector3<fine_scalar>r):last_step_time(0),remaining_displacement(r),accumulated_displacement(0,0,0){}
+    
     int64_t last_step_time;
     vector3<fine_scalar> remaining_displacement;
     vector3<fine_scalar> accumulated_displacement;
-    //std::array<displacement_conversion, 3> displacement_conversions;
   };
   
   const int64_t max_time = 1ULL << 32;
+  
+  
   struct stepping_times {
     int64_t current_time;
     std::map<int64_t, object_identifier> queued_steps;
@@ -94,15 +96,22 @@ void update_moving_objects_(
     
     void queue_next_step(object_identifier id, object_trajectory_info info) {
       if (info.last_step_time == max_time) return;
+      
       fine_scalar dispmag = info.remaining_displacement.magnitude_within_32_bits();
+      
       int64_t step_time;
       if (dispmag == 0) step_time = max_time;
       else {
         // We're content to move in increments of tile_width >> 5 or less
-        const int64_t max_normal_step_time = (((tile_width * velocity_scale_factor) >> 5) * (max_time - info.last_step_time) / dispmag);
+        // ((max_time - info.last_step_time) / dispmag) is simply the inverse speed (in normal fine units per time unit) over the rest of the frame
+        // With (max step distance) = (max step time) * (speed)
+        // (max step time) = (max step distance) / speed
+        // Recall that dispmag is in regular fine units instead of velocity units.
+        const int64_t max_normal_step_time = (((tile_width >> 5) * (max_time - info.last_step_time)) / dispmag);
         if (info.last_step_time + max_normal_step_time > current_time) step_time = info.last_step_time + max_normal_step_time;
         else step_time = current_time;
       }
+      
       queued_steps.insert(make_pair(std::min(max_time, step_time), id));
     }
     
