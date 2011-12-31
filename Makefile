@@ -11,9 +11,11 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 OBJ_OPTIMIZED = $(patsubst %,$(ODIR_OPTIMIZED)/%,$(_OBJ))
 
 $(ODIR)/%.o: %.cpp $(DEPS)
+	mkdir -p $(ODIR)
 	$(CC) -c -o $@ $< $(CXXFLAGS)
 
 $(ODIR_OPTIMIZED)/%.o: %.cpp $(DEPS)
+	mkdir -p $(ODIR_OPTIMIZED)
 	$(CC) -c -o $@ $< $(CXXFLAGS) $(OPTFLAGS)
 
 lasercake: $(OBJ)
