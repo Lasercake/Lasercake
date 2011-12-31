@@ -23,6 +23,9 @@
 #define LASERCAKE_UTILS_HPP__
 
 #include <array>
+#include <cmath>
+#include <inttypes.h>
+#include <boost/functional/hash.hpp>
 
 template <typename SignedType>
 inline SignedType sign(SignedType input) {
@@ -52,7 +55,7 @@ public:
 	template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
 	  x(other.x),y(other.y),z(other.z){}
 	
-	scalar_type& operator[](size_t index) {
+	scalar_type& operator[](int index) {
 	  switch(index) {
 	    case 0: return x;
 	    case 1: return y;
@@ -60,7 +63,7 @@ public:
 	    default: assert("Trying to index a vector3 with an out-of-bounds index!" && false);
 	  }
 	}
-	scalar_type operator[](size_t index)const {
+	scalar_type operator[](int index)const {
 	  switch(index) {
 	    case 0: return x;
 	    case 1: return y;
