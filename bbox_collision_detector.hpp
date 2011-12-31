@@ -205,13 +205,15 @@ private:
       if (tree->objects_here.empty()) {
         if (tree->child0) {
           if (!tree->child1) {
+            ztree_node* tree_now = tree->child0;
             delete tree;
-            tree = tree->child0;
+            tree = tree_now;
           }
         }
         else {
+          ztree_node* tree_now = tree->child1;
           delete tree;
-          tree = tree->child1; // which could be null
+          tree = tree_now; // which could be null
         }
       }
     }
