@@ -9,3 +9,4 @@ Everything should move continuously unless it has a reason to be tile-aligned.
 Petty principles:
 
 The axis-aligned terrain (water mechanics...) simulates without regarding mobile objects. Mobile objects move on their own and mess with the terrain or actively get messed with by it.
+"int" denotes a Very Small Number (e.g. coordinate numbers 0-2). Anything of real magnitude should be typedef'd.
