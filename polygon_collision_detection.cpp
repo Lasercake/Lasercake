@@ -88,7 +88,55 @@ namely... 64/4 bits, or 16 bits.
 
 #include "polygon_collision_detection.hpp"
 
+bool bounding_box::contains(vector3<int64_t> const& v)const {
+  if (!is_anywhere) return false;
+  return (v.x >= min.x && v.x <= max.x &&
+          v.y >= min.y && v.y <= max.y &&
+          v.z >= min.z && v.z <= max.z);
+}
+bool bounding_box::overlaps(bounding_box const& o)const {
+  return is_anywhere && other.is_anywhere
+     && min.x <= o.max.x && o.min.x <= max.x
+     && min.y <= o.max.y && o.min.y <= max.y
+     && min.z <= o.max.z && o.min.z <= max.z;
+}
+void bounding_box::combine_with(bounding_box const& o) {
+       if (!o.is_anywhere) {            return; }
+  else if (!  is_anywhere) { *this = o; return; }
+  else {
+    if (o.min.x < min.x) min.x = o.min.x;
+    if (o.min.y < min.y) min.y = o.min.y;
+    if (o.min.z < min.z) min.z = o.min.z;
+    if (o.max.x > max.x) max.x = o.max.x;
+    if (o.max.y > max.y) max.y = o.max.y;
+    if (o.max.z > max.z) max.z = o.max.z;
+  }
+}
 
+shape::shape(bounding_box const& init): bounds_cache_is_valid(true) {
+  bounds_cache = init;
+  if (!init.is_anywhere) return;
+  
+  for (int i = 0; i < 3; ++i) {
+    std::vector<vector3<int64_t>> vertices1, vertices2;
+    vector3<int64_t> base2(init.min); base2[i] = init.max[i];
+    vector3<int64_t> diff1(0,0,0), diff2(0,0,0);
+    diff1[(i+1)%3] = init.max[(i+1)%3] - init.min[(i+1)%3];
+    diff2[(i+2)%3] = init.max[(i+2)%3] - init.min[(i+2)%3];
+    vertices1.push_back(init.min                );
+    vertices1.push_back(init.min + diff1        );
+    vertices1.push_back(init.min + diff1 + diff2);
+    vertices1.push_back(init.min         + diff2);
+    vertices2.push_back(   base2                );
+    vertices2.push_back(   base2 + diff1        );
+    vertices2.push_back(   base2 + diff1 + diff2);
+    vertices2.push_back(   base2         + diff2);
+    
+    polygons.push_back(convex_polygon(vertices1));
+    polygons.push_back(convex_polygon(vertices2));
+  }
+}
+  
 void convex_polygon::setup_cache_if_needed()const {
   if (cache.is_valid) return;
   
@@ -121,12 +169,47 @@ void convex_polygon::setup_cache_if_needed()const {
   // and because of that, hereafter we just don't need to refer to the z coordinates at all.
 }
 
+void line_segment::translate(vector3<int64_t> t) {
+  for (vector3<int64_t> &v : ends) v += t;
+}
+
 void convex_polygon::translate(vector3<int64_t> t) {
   for (vector3<int64_t> &v : vertices) v += t;
   cache.translation_amount -= t;
 }
 
-bool intersects(line_segment l, convex_polygon const& p) {
+void shape::translate(vector3<int64_t> t) {
+  for (  line_segment &l : segments) l.translate(t);
+  for (convex_polygon &p : polygons) p.translate(t);
+  if (bounds_cache_is_valid && bounds_cache.is_anywhere) {
+    bounds_cache.min += t;
+    bounds_cache.max += t;
+    // now still valid!
+  }
+}
+
+bounding_box line_segment::bounds()const {
+  bounding_box result;
+  for (vector3<int64_t> const& v : ends) result.combine_with(bounding_box(v));
+  return result;
+}
+
+bounding_box convex_polygon::bounds()const {
+  bounding_box result;
+  for (vector3<int64_t> const& v : vertices) result.combine_with(bounding_box(v));
+  return result;
+}
+
+bounding_box shape::bounds()const {
+  if (bounds_cache_is_valid) return bounds_cache;
+  bounds_cache = bounding_box();
+  for (  line_segment const& l : segments) bounds_cache.combine_with(l.bounds());
+  for (convex_polygon const& p : polygons) bounds_cache.combine_with(p.bounds());
+  bounds_cache_is_valid = true;
+  return bounds_cache;
+}
+
+bool nonshape_intersects(line_segment l, convex_polygon const& p) {
   p.setup_cache_if_needed();
   polygon_collision_info_cache const& c = p.get_cache();
   
@@ -178,7 +261,7 @@ bool intersects(line_segment l, convex_polygon const& p) {
   return true;
 }
 
-bool intersects(convex_polygon const& p1, convex_polygon const& p2) {
+bool nonshape_intersects(convex_polygon const& p1, convex_polygon const& p2) {
   std::vector<vector3<int64_t>> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
@@ -187,16 +270,20 @@ bool intersects(convex_polygon const& p1, convex_polygon const& p2) {
   return false;
 }
 
-bool intersects(line_segment const& l, std::vector<convex_polygon> const& ps) {
-  for (convex_polygon const& p : ps) {
-    if (intersects(l, p)) return true;
+bool shape::intersects(shape const& other)const {
+  if (!bounds().overlaps(other.bounds())) return false;
+  
+  for (line_segment const& l : segments) {
+    for (convex_polygon const& p2 : other.polygons) {
+      if (intersects(l, p2)) return true;
+    }
   }
-  return false;
-}
 
-bool intersects(std::vector<convex_polygon> const& ps1, std::vector<convex_polygon> const& ps2) {
-  for (convex_polygon const& p1 : ps1) {
-    for (convex_polygon const& p2 : ps2) {
+  for (convex_polygon const& p1 : polygons) {
+    for (line_segment const& l : other.segments) {
+      if (intersects(l, p1)) return true;
+    }
+    for (convex_polygon const& p2 : other.polygons) {
       if (intersects(p1, p2)) return true;
     }
   }
