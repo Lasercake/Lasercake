@@ -54,8 +54,8 @@ void world::check_interiorness(tile_location const& loc) {
 
 void world::something_changed_at(tile_location const& loc) {
   tile const& t = loc.stuff_at();
-  if (t.contents() == AIR) things_exposed_to_collision.erase (loc                                 );
-  else                     things_exposed_to_collision.insert(loc, tile_bounding_box(loc.coords()));
+  if (t.contents() == AIR) things_exposed_to_collision.erase (loc                                                        );
+  else                     things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
   
   for (EACH_CARDINAL_DIRECTION(dir)) check_interiorness(loc + dir);
   
@@ -122,12 +122,12 @@ void world::insert_rock_bypassing_checks(tile_location const& loc) {
   tile &t = mutable_stuff_at(loc);
   assert(t.contents() == AIR);
   t.set_contents(ROCK);
-  things_exposed_to_collision.insert(loc, tile_bounding_box(loc.coords()));
+  things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
 }
 void world::insert_water_bypassing_checks(tile_location const& loc) {
   tile &t = mutable_stuff_at(loc);
   assert(t.contents() == AIR);
   t.set_contents(WATER);
-  things_exposed_to_collision.insert(loc, tile_bounding_box(loc.coords()));
+  things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
 }
 

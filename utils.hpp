@@ -39,12 +39,52 @@ typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const&
   else return &(i->second);
 }
 
+template<typename Map>
+typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key_type const& k) {
+  auto i = m.find(k);
+  if(i == m.end()) return nullptr;
+  else return &(i->second);
+}
+
 template<typename scalar_type> scalar_type divide_rounding_towards_zero(scalar_type dividend, scalar_type divisor)
 {
 	assert(divisor != 0);
 	const scalar_type abs_result = std::abs(dividend) / std::abs(divisor);
 	if ((dividend > 0) == (divisor > 0)) return abs_result;
 	else return -abs_result;
+}
+
+
+inline uint32_t i64sqrt(uint64_t radicand)
+{
+  if(radicand == 0)return 0;
+  
+  int shift = radicand & (((1ULL << 32) - 1) << 32) ? 32 : 0;
+  shift += radicand & ((((1ULL << 16) - 1) << 16) << shift) ? 16 : 0;
+  shift += radicand & ((((1ULL << 8) - 1) << 8) << shift) ? 8 : 0;
+  shift += radicand & ((((1ULL << 4) - 1) << 4) << shift) ? 4 : 0;
+  shift += radicand & ((((1ULL << 2) - 1) << 2) << shift) ? 2 : 0;
+  //I would just lose this piece of accuracy when I divide shift by 2 below:
+  //shift += radicand & ((((uint64_t)1 << 1) - 1) << shift) ? 1 : 0;
+  
+  //shift should now be the log base 2 of radicand, rounded down.
+  uint32_t lower_bound = 1 << (shift >> 1);
+  
+  //replace the lost accuracy:
+  if(radicand & (((((uint64_t)1 << 1) - 1) << 1) << shift))lower_bound = (uint32_t)((lower_bound * 6074000999ULL) >> 32); //approximate the square root of 2
+  
+  uint64_t upper_bound = (uint64_t)lower_bound << 1;
+  //lower_bound is guaranteed to be less than or equal to the answer
+  //upper_bound is guaranteed to be greater than the answer
+  
+  while(lower_bound < upper_bound - 1)
+  {
+    const uint32_t mid = (uint32_t)((upper_bound + lower_bound) >> 1);
+    if((uint64_t)mid * mid > radicand)upper_bound = mid;
+    else lower_bound = mid;
+  }
+  
+  return lower_bound;
 }
 
 template<typename scalar_type> class vector3 {
@@ -110,9 +150,7 @@ public:
 		       (OutputType)z * (OutputType)other.z;
 	}
 	
-	// Warning - might be slightly inaccurate (in addition to the integer rounding error) for very large vectors, due to floating-point inaccuracy.
-	// TODO don't use doubles if we want to be deterministic!!!!!
-	scalar_type magnitude()const { return (scalar_type)std::sqrt(dot<double>(*this)); }
+	scalar_type magnitude_within_32_bits()const { return (scalar_type)i64sqrt(dot<int64_t>(*this)); }
 	
 	// Choose these the way you'd choose dot's output type (see the comment above)
 	// we had trouble making these templates, so now they just always use int64_t
@@ -145,7 +183,7 @@ struct cardinal_direction {
   vector3<neighboring_tile_differential> v;
   cardinal_direction_index cardinal_direction_idx;
   cardinal_direction operator-()const;
-  int which_dimension()const { return (int)(cardinal_direction_index % 3); } // relies on the current order of the directions
+  int which_dimension()const { return (int)(cardinal_direction_idx % 3); } // relies on the current order of the directions
 };
 
 template<typename scalar_type> inline vector3<scalar_type> project_onto_cardinal_direction(vector3<scalar_type> src, cardinal_direction dir) {

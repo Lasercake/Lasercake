@@ -95,7 +95,7 @@ bool bounding_box::contains(vector3<int64_t> const& v)const {
           v.z >= min.z && v.z <= max.z);
 }
 bool bounding_box::overlaps(bounding_box const& o)const {
-  return is_anywhere && other.is_anywhere
+  return is_anywhere && o.is_anywhere
      && min.x <= o.max.x && o.min.x <= max.x
      && min.y <= o.max.y && o.min.y <= max.y
      && min.z <= o.max.z && o.min.z <= max.z;
@@ -110,6 +110,19 @@ void bounding_box::combine_with(bounding_box const& o) {
     if (o.max.x > max.x) max.x = o.max.x;
     if (o.max.y > max.y) max.y = o.max.y;
     if (o.max.z > max.z) max.z = o.max.z;
+  }
+}
+void bounding_box::restrict_to(bounding_box const& o) {
+       if (!  is_anywhere) {                      return; }
+  else if (!o.is_anywhere) { is_anywhere = false; return; }
+  else {
+    if (o.min.x > min.x) min.x = o.min.x;
+    if (o.min.y > min.y) min.y = o.min.y;
+    if (o.min.z > min.z) min.z = o.min.z;
+    if (o.max.x < max.x) max.x = o.max.x;
+    if (o.max.y < max.y) max.y = o.max.y;
+    if (o.max.z < max.z) max.z = o.max.z;
+    if (min.x > max.x || min.y > max.y || min.z > max.z) is_anywhere = false;
   }
 }
 
@@ -261,13 +274,17 @@ bool nonshape_intersects(line_segment l, convex_polygon const& p) {
   return true;
 }
 
-bool nonshape_intersects(convex_polygon const& p1, convex_polygon const& p2) {
+bool nonshape_intersects_onesided(convex_polygon const& p1, convex_polygon const& p2) {
   std::vector<vector3<int64_t>> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
-    if (intersects(line_segment(vs[i], vs[next_i]), p2)) return true;
+    if (nonshape_intersects(line_segment(vs[i], vs[next_i]), p2)) return true;
   }
   return false;
+}
+
+bool nonshape_intersects(convex_polygon const& p1, convex_polygon const& p2) {
+  return (nonshape_intersects_onesided(p1,p2) || nonshape_intersects_onesided(p2,p1));
 }
 
 bool shape::intersects(shape const& other)const {
@@ -275,16 +292,16 @@ bool shape::intersects(shape const& other)const {
   
   for (line_segment const& l : segments) {
     for (convex_polygon const& p2 : other.polygons) {
-      if (intersects(l, p2)) return true;
+      if (nonshape_intersects(l, p2)) return true;
     }
   }
 
   for (convex_polygon const& p1 : polygons) {
     for (line_segment const& l : other.segments) {
-      if (intersects(l, p1)) return true;
+      if (nonshape_intersects(l, p1)) return true;
     }
     for (convex_polygon const& p2 : other.polygons) {
-      if (intersects(p1, p2)) return true;
+      if (nonshape_intersects(p1, p2)) return true;
     }
   }
   return false;

@@ -279,7 +279,7 @@ void update_water(world &w) {
         vel_ref = inactive_water_velocity;
       }
       else {
-        vel_ref -= current_velocity_wrongness * sticky_water_velocity_reduction_rate / current_velocity_wrongness.magnitude();
+        vel_ref -= current_velocity_wrongness * sticky_water_velocity_reduction_rate / current_velocity_wrongness.magnitude_within_32_bits();
       }
     }
   }
@@ -344,7 +344,7 @@ void update_water(world &w) {
       vel_ref += gravity_acceleration;
       
       // Slight air resistance proportional to the square of the velocity (has very little effect at our current 20x20x20 scale; mostly there to make a natural cap velocity for falling water)
-      vel_ref -= (vel_ref * vel_ref.magnitude()) / air_resistance_constant;
+      vel_ref -= (vel_ref * vel_ref.magnitude_within_32_bits()) / air_resistance_constant;
       
       // Relatively large friction against the ground
       for (EACH_CARDINAL_DIRECTION(dir)) {
@@ -354,7 +354,7 @@ void update_water(world &w) {
             vel_ref -= copy_stationary_in_blocked_direction;
           }
           else {
-            vel_ref -= copy_stationary_in_blocked_direction * friction_amount / copy_stationary_in_blocked_direction.magnitude();
+            vel_ref -= copy_stationary_in_blocked_direction * friction_amount / copy_stationary_in_blocked_direction.magnitude_within_32_bits();
           }
         }
       }

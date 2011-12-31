@@ -275,11 +275,12 @@ public:
         insert_box(objects_tree, id, zb);
     }
   }
-  void erase(ObjectIdentifier id) {
+  bool erase(ObjectIdentifier id) {
     auto bbox_iter = bboxes_by_object.find(id);
-    assert(bbox_iter != bboxes_by_object.end());
+    if (bbox_iter == bboxes_by_object.end()) return false;
     delete_object(objects_tree, id, bbox_iter->second);
     bboxes_by_object.erase(bbox_iter);
+    return true;
   }
   
   void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {

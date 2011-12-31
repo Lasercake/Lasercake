@@ -63,8 +63,8 @@ typedef int64_t fine_scalar; // Fine as opposed to coarse, that is.
 typedef int32_t tile_coordinate_signed_type;
 typedef int32_t sub_tile_distance; // We can fit it within 32 bits, so we might as well do faster math
 
-const fine_scalar tile_width == (fine_scalar(1) << 10);
-const fine_scalar tile_height == (fine_scalar(1) << 10);
+const fine_scalar tile_width = (fine_scalar(1) << 10);
+const fine_scalar tile_height = (fine_scalar(1) << 10);
 const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
 
 const fine_scalar velocity_scale_factor = (fine_scalar(1) << 6);
@@ -73,7 +73,8 @@ const tile_coordinate world_center_coord = (tile_coordinate(1) << (8*sizeof(tile
 const vector3<tile_coordinate> world_center_coords(world_center_coord, world_center_coord, world_center_coord);
 
 const sub_tile_distance min_convincing_speed = 20 * velocity_scale_factor;
-const vector3<sub_tile_distance> gravity_acceleration(0, 0, -1 * velocity_scale_factor); // in mini-units per frame squared
+const sub_tile_distance gravity_acceleration_magnitude = 1 * velocity_scale_factor;
+const vector3<sub_tile_distance> gravity_acceleration(0, 0, -gravity_acceleration_magnitude); // in mini-units per frame squared
 const sub_tile_distance friction_amount = (velocity_scale_factor * 3 / 5);
 
 // as in 1 + d2 (except with the random based at zero, but who cares)
@@ -149,17 +150,16 @@ struct tile_bounding_box {
 };
 
 inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
-  return bounding_box(,
+  return bounding_box(
     lower_bound_in_fine_units(bb.min),
-    lower_bound_in_fine_units(bb.min + bb.size) - vector3<fine_scalar>(1,1,1),
+    lower_bound_in_fine_units(bb.min + bb.size) - vector3<fine_scalar>(1,1,1)
   );
 }
 
 inline tile_bounding_box convert_to_smallest_superset_at_tile_resolution(bounding_box const& bb) {
-  const vector3<fine_scalar> round_up(tile_size - vector3<fine_scalar>(1,1,1));
   tile_bounding_box result;
   result.min = get_containing_tile_coordinates(bb.min);
-  result.size = get_containing_tile_coordinates(bb.min + bb.size + tile_size - vector3<fine_scalar>(1,1,1));
+  result.size = get_containing_tile_coordinates(bb.max + tile_size);
   return result;
 }
 
@@ -198,22 +198,27 @@ public:
   bool is_interior_water()const{ return contents() == WATER &&  is_sticky_bit() &&  is_interior_bit(); }
   bool is_membrane_water()const{ return contents() == WATER &&  is_sticky_bit() && !is_interior_bit(); }
   
+  // For tile based physics (e.g. water movement)
+  // This is so that we don't have to search the collision-detector for relevant objects at every tile.
+  bool there_is_an_object_here_that_affects_the_tile_based_physics()const { return data & there_is_an_object_here_that_affects_the_tile_based_physics_mask; }
   tile_contents contents()const{ return (tile_contents)(data & contents_mask); }
   
   void set_contents(tile_contents new_contents){ data = (data & ~contents_mask) | (uint8_t(new_contents) & contents_mask); }
+  void set_whether_there_is_an_object_here_that_affects_the_tile_based_physics(bool b){ data = (data & ~there_is_an_object_here_that_affects_the_tile_based_physics_mask) | (b ? there_is_an_object_here_that_affects_the_tile_based_physics_mask : uint8_t(0)); }
   void set_water_stickyness(bool b){ data = (data & ~sticky_bit_mask) | (b ? sticky_bit_mask : uint8_t(0)); }
   void set_water_interiorness(bool b){ data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
 private:
   static const uint8_t contents_mask = 0x3;
   static const uint8_t sticky_bit_mask = (1<<2);
   static const uint8_t interior_bit_mask = (1<<3);
+  static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask = (1<<4);
   bool is_sticky_bit()const{ return data & sticky_bit_mask; }
   bool is_interior_bit()const{ return data & interior_bit_mask; }
   uint8_t data;
 };
 
 // "progress" is measured in the smaller, velocity units.
-inline fine_scalar progress_necessary(cardinal_direction dir) {
+inline sub_tile_distance progress_necessary(cardinal_direction dir) {
   return tile_size[dir.which_dimension()] * velocity_scale_factor;
 }
 
@@ -234,19 +239,23 @@ struct water_movement_info {
 
 class world;
 
-//
-class mobile_object {
+class object {
+private:
+  virtual void this_virtual_function_makes_this_class_virtual_which_we_need_in_order_to_dynamic_cast_it(){};
+};
+
+class mobile_object : virtual public object {
 public:
-  // Something like this, later.
-  // virtual something serialize = 0;
-  
-  virtual void move_due_to_velocity() = 0;
-  virtual void update(world *) {}
-  
+  //virtual void move_due_to_velocity() = 0;
+
   mobile_object():velocity(0,0,0){}
   mobile_object(vector3<fine_scalar>):velocity(velocity){}
-
   vector3<fine_scalar> velocity;
+};
+
+class tile_aligned_object {
+public:
+  
 };
 
 
@@ -285,12 +294,12 @@ namespace std {
 }
 
 
-typedef uint64_t mobile_object_identifier;
-struct object_identifier {
-  object_identifier(tile_location const& loc):data(loc){}
-  object_identifier(mobile_object_identifier id):data(id){}
+typedef uint64_t object_identifier;
+struct object_or_tile_identifier {
+  object_or_tile_identifier(tile_location const& loc):data(loc){}
+  object_or_tile_identifier(object_identifier id):data(id){}
   tile_location const* get_tile_location()const { return boost::get<tile_location>(&data); }
-  mobile_object_identifier const* get_mobile_object_identifier()const { return boost::get<mobile_object_identifier>(&data); }
+  object_identifier const* get_object_identifier()const { return boost::get<object_identifier>(&data); }
   size_t hash()const {
     struct hash_visitor : public boost::static_visitor<size_t>
     {
@@ -298,20 +307,20 @@ struct object_identifier {
         return std::hash<tile_location>()(i);
       }
     
-      size_t operator()(mobile_object_identifier i) const {
-        return std::hash<mobile_object_identifier>()(i);
+      size_t operator()(object_identifier i) const {
+        return std::hash<object_identifier>()(i);
       }
     };
     return boost::apply_visitor( hash_visitor(), data );
   }
-  bool operator==(object_identifier const& other)const { return data == other.data; }
+  bool operator==(object_or_tile_identifier const& other)const { return data == other.data; }
 private:
-  boost::variant<tile_location, mobile_object_identifier> data;
+  boost::variant<tile_location, object_identifier> data;
 };
 
 namespace std {
-  template<> struct hash<object_identifier> {
-    inline size_t operator()(object_identifier const& id) const {
+  template<> struct hash<object_or_tile_identifier> {
+    inline size_t operator()(object_or_tile_identifier const& id) const {
       return id.hash();
     }
   };
@@ -319,7 +328,7 @@ namespace std {
 
 class world_collision_detector {
 private:
-  typedef bbox_collision_detector<object_identifier, 64, 3> internal_t;
+  typedef bbox_collision_detector<object_or_tile_identifier, 64, 3> internal_t;
   static internal_t::bounding_box convert_bb(bounding_box const& bb) {
     assert(bb.is_anywhere);
     internal_t::bounding_box b;
@@ -334,15 +343,15 @@ private:
 public:
   world_collision_detector(){}
   
-  void get_objects_overlapping(unordered_set<object_identifier>& results, bounding_box const& bb)const {
+  void get_objects_overlapping(unordered_set<object_or_tile_identifier>& results, bounding_box const& bb)const {
     detector.get_objects_overlapping(results, convert_bb(bb));
   }
   
-  void insert(object_identifier id, bounding_box const& bb) {
+  void insert(object_or_tile_identifier id, bounding_box const& bb) {
     detector.insert(id, convert_bb(bb));
   }
-  void erase(object_identifier id) {
-    detector.erase(id);
+  bool erase(object_or_tile_identifier id) {
+    return detector.erase(id);
   }
 private:
   internal_t detector;
@@ -386,17 +395,23 @@ private:
 };
 
 
+class laser_emitter;
+
+typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
+typedef unordered_map<tile_location, water_movement_info> active_water_tiles_t;
+typedef unordered_map<object_identifier, shape> object_shapes_t;
+template<typename ObjectSubtype>
+struct objects_map {
+  typedef unordered_map<object_identifier, shared_ptr<ObjectSubtype>> type;
+};
+
 class world {
 public:
-  typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
-  typedef unordered_map<tile_location, water_movement_info> active_water_tiles_t;
-  typedef unordered_map<mobile_object_identifier, shape> mobile_object_shapes_t;
+  world(worldgen_function_t f):next_object_identifier(1),worldgen_function(f){}
   
-  template<typename ObjectSubtype>
-  typedef unordered_map<mobile_object_identifier, shared_ptr<ObjectSubtype>> mobile_objects_map;
+  void update_moving_objects();
   
-  world(worldgen_function_t f):worldgen_function(f){}
-  
+  // TODO replace these with const accessor functions...?
   // The iterators are only valid until we activate any water tiles.
   water_movement_info* get_active_water_tile(tile_location l) { return find_as_pointer(active_water_tiles, l); }
   boost::iterator_range<active_water_tiles_t::iterator> active_water_tiles_range() {
@@ -404,24 +419,24 @@ public:
   }
   
   // The iterators are only valid until we add any objects.
-  shared_ptr<mobile_object>* get_mobile_object(mobile_object_identifier id) { return find_as_pointer(mobile_objects, id); }
-  boost::iterator_range<mobile_objects_map<mobile_object>::iterator> mobile_objects_range() {
+  shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects, id); }
+  /*boost::iterator_range<mobile_objects_map<mobile_object>::iterator> mobile_objects_range() {
     return boost::make_iterator_range(mobile_objects.begin(), mobile_objects.end());
-  }
-  boost::iterator_range<mobile_objects_map<mobile_object>::iterator> moving_objects_range() {
+  }*/
+  boost::iterator_range<objects_map<mobile_object>::type::iterator> moving_objects_range() {
     return boost::make_iterator_range(moving_objects.begin(), moving_objects.end());
   }
-  boost::iterator_range<mobile_objects_map<laser_emitter>::iterator> active_lasers_range() {
+  boost::iterator_range<objects_map<laser_emitter>::type::iterator> active_lasers_range() {
     return boost::make_iterator_range(active_lasers.begin(), active_lasers.end());
   }
   
   tile_location make_tile_location(vector3<tile_coordinate> const& coords);
   
-  void collect_things_exposed_to_collision_intersecting(unordered_set<object_identifier> &results, bounding_box const& bounds) {
+  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier> &results, bounding_box const& bounds) {
     ensure_space_exists(convert_to_smallest_superset_at_tile_resolution(bounds));
     things_exposed_to_collision.get_objects_overlapping(results, bounds);
   }
-  void collect_things_exposed_to_collision_intersecting(unordered_set<object_identifier> &results, tile_bounding_box const& bounds) {
+  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier> &results, tile_bounding_box const& bounds) {
     ensure_space_exists(bounds);
     things_exposed_to_collision.get_objects_overlapping(results, convert_to_fine_units(bounds));
   }
@@ -435,28 +450,36 @@ public:
   
   void set_stickyness(tile_location const& loc, bool new_stickyness);
   
-  void queue_creating_mobile_object(shared_ptr<mobile_object> obj) {
-    mobile_objects_to_add.push_back(obj);
+  void queue_creating_object(shared_ptr<object> obj) {
+    objects_to_add.push_back(obj);
   }
   
-  // Risky function: Don't use this while iterating through mobile objects (any other time is okay)
+  // Risky function: Don't use this while iterating through objects (any other time is okay)
   void create_queued_objects() {
-    for (shared_ptr<mobile_object> const& obj : mobile_objects_to_add) {
-      mobile_objects.insert(make_pair(next_mobile_object_identifier++, obj));
+    for (shared_ptr<object> const& obj : objects_to_add) {
+      object_identifier id = next_object_identifier++;
+      objects.insert(make_pair(id, obj));
+      // TODO put it in the collision detector
+      // TODO add it to the subcategories if it wants to be in them
+      if(shared_ptr<mobile_object> m = std::dynamic_pointer_cast<mobile_object>(obj)) {
+        moving_objects.insert(make_pair(id, m));
+      }
     }
-    mobile_objects_to_add.clear();
+    objects_to_add.clear();
   }
   
   // If objects overlap with the new position, returns their IDs. If not, changes the shape and returns an empty set.
-  unordered_set<object_identifier> try_to_change_personal_space_shape(mobile_object_identifier id, shape const& new_shape);
+  unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape(object_identifier id, shape const& new_shape);
   // Objects can't fail to change their detail shape, but it may cause effects (like blocking a laser beam)
-  void change_detail_shape(mobile_object_identifier id, shape const& new_shape);
+  void change_detail_shape(object_identifier id, shape const& new_shape);
   
   void add_laser_sfx(vector3<fine_scalar> laser_source, vector3<fine_scalar> laser_delta) {
     laser_sfxes.push_back(make_pair(laser_source, laser_delta));
   }
   std::vector<std::pair<vector3<fine_scalar>, vector3<fine_scalar>>> laser_sfxes;
   
+  
+  object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes; }
 private:
   friend class world_building_gun;
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
@@ -465,14 +488,14 @@ private:
   unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks; 
   
   active_water_tiles_t active_water_tiles;
-  mobile_objects_map<mobile_object> mobile_objects;
-  mobile_objects_map<mobile_object> moving_objects;
-  mobile_objects_map<laser_emitter> active_lasers;
+  objects_map<object>::type objects;
+  objects_map<mobile_object>::type moving_objects;
+  objects_map<laser_emitter>::type active_lasers;
   
-  mobile_object_identifier next_mobile_object_identifier;
-  vector<shared_ptr<mobile_object>> mobile_objects_to_add;
-  mobile_object_shapes_t mobile_object_personal_space_shapes;
-  mobile_object_shapes_t mobile_object_detail_shapes;
+  object_identifier next_object_identifier;
+  vector<shared_ptr<object>> objects_to_add;
+  object_shapes_t object_personal_space_shapes;
+  object_shapes_t object_detail_shapes;
   
   // This currently means all mobile objects, all water, and surface rock tiles. TODO I haven't actually implemented restricting to sufface rock yet
   world_collision_detector things_exposed_to_collision;
@@ -496,13 +519,12 @@ private:
 };
 
 void update_water(world &w);
-void update_mobile_objects(world &w);
 
 inline void update(world &w) {
   w.create_queued_objects();
   w.laser_sfxes.clear();
   update_water(w);
-  update_mobile_objects(w);
+  w.update_moving_objects();
 }
 
 class laser_emitter : public mobile_object {
@@ -512,13 +534,13 @@ public:
   // TODO define tile width???????
     return fine_bounding_box(location - tile_size / 3, tile_size * 2 / 3); // TODO lolhack
   }*/
-  virtual void move_due_to_velocity() {
+  /*virtual void move_due_to_velocity() {
     // gravity. TODO hacky
     velocity += vector3<fine_scalar>(0, 0, -1);
     
     location += velocity;
     //std::cerr << std::hex << location.z;
-  }
+  }*/
   virtual void update(world *w) {
     struct laser_path_calculator {
       struct cross {
@@ -565,15 +587,15 @@ public:
     laser_path_calculator calc(this);
     
     //std::cerr << facing.x << " foo " << facing.y << " foo " << facing.z << "\n";
-    const vector3<fine_scalar> max_laser_delta = ((facing * (100LL << 10)) / facing.magnitude()); // TODO fix overflow
+    const vector3<fine_scalar> max_laser_delta = ((facing * (100LL << 10)) / facing.magnitude_within_32_bits()); // TODO fix overflow
     //std::cerr << max_laser_delta.x << " foo " << max_laser_delta.y << " foo " << max_laser_delta.z << " bar " << facing.magnitude() << " bar " << (facing * (100LL << 10)).x << "\n";
     //const vector3<tile_coordinate> theoretical_end_tile = get_containing_tile_coordinates(location + max_laser_delta);
     
     int which_dimension_we_last_advanced = -1;
     while(true) {
-      unordered_set<object_identifier> possible_hits;
+      unordered_set<object_or_tile_identifier> possible_hits;
       w->collect_things_exposed_to_collision_intersecting(possible_hits, tile_bounding_box(calc.current_laser_tile));
-      for (object_identifier const& id : possible_hits) {
+      for (object_or_tile_identifier const& id : possible_hits) {
         if (id.get_tile_location()) {
           // it's the entire tile, of course we hit it!
           vector3<fine_scalar> laser_delta;

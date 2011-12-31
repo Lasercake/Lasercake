@@ -54,6 +54,7 @@ struct bounding_box {
   bool contains(vector3<int64_t> const& v)const;
   bool overlaps(bounding_box const& o)const;
   void combine_with(bounding_box const& o);
+  void restrict_to(bounding_box const& o);
 };
 
 struct line_segment {
@@ -79,13 +80,14 @@ private:
 };
 
 class shape {
+public:
   shape(                                       ): bounds_cache_is_valid(false)                {}
   shape(               line_segment const& init): bounds_cache_is_valid(false)                { segments.push_back(init); }
   shape(             convex_polygon const& init): bounds_cache_is_valid(false)                { polygons.push_back(init); }
   shape(std::vector<convex_polygon> const& init): bounds_cache_is_valid(false), polygons(init){}
   shape(               bounding_box const& init);
   
-  shape(shape const& o):segments(o.segments),polygons(o.polygons),bounds_cache(o.bounds_cache),bounds_cache_is_valid(o.bounds_cache_is_valid) {}
+  shape(shape const& o):bounds_cache(o.bounds_cache),bounds_cache_is_valid(o.bounds_cache_is_valid),segments(o.segments),polygons(o.polygons) {}
   
   void translate(vector3<int64_t> t);
   
@@ -95,11 +97,11 @@ class shape {
   std::vector<  line_segment> const& get_segments()const { return segments; }
   std::vector<convex_polygon> const& get_polygons()const { return polygons; }
 private:
-  std::vector<  line_segment> segments;
-  std::vector<convex_polygon> polygons;
-  
   mutable bounding_box bounds_cache;
   mutable bool bounds_cache_is_valid;
+  
+  std::vector<  line_segment> segments;
+  std::vector<convex_polygon> polygons;
 };
 
 /*bool intersects(line_segment l, convex_polygon const& p);

@@ -9,5 +9,9 @@ Everything should move continuously unless it has a reason to be tile-aligned.
 Petty principles:
 
 The axis-aligned terrain (water mechanics...) simulates without regarding mobile objects. Mobile objects move on their own and mess with the terrain or actively get messed with by it.
+
 "int" denotes a Very Small Number (e.g. coordinate numbers 0-2). Anything of real magnitude should be typedef'd.
-Anything that blocks you after it hits you must collision-detect with your 'personal space shape'. Anything that doesn't block you after it hits you (either it ceases to exist or just passes through you with an effect, or...) is free to use your detailed shape. ("You" and "your" refer to any mobile object). This is because it's a terrible idea to let complicated shapes get tangled up with each other.
+
+Anything that blocks you after it hits you must collision-detect with your 'personal space shape'. Anything that doesn't block you after it hits you (either it ceases to exist or just passes through you with an effect, or...) is free to use your detailed shape. ("You" and "your" refer to any mobile object). This is because it's a terrible idea to let complicated shapes get tangled up with each other. In general, you don't compute collisions between detail shapes and personal space shapes.
+
+For proper data hiding, any large function of class world that uses private members of world should be implemented as a call to a non-member function that takes references only to the private members that it actually changes.
