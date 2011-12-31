@@ -126,8 +126,10 @@ private:
   
   static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
     zbox new_box;
+    const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored, zb2.num_low_bits_ignored);
     for (int /* hack... TODO, should possibly be num_coordinates_type, but signed? */ i = num_dimensions - 1; i >= 0; --i) {
-      const int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
+      int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
+      if ((highest_bit_idx+1 + i * coordinate_bits) < max_ignored) highest_bit_idx = max_ignored - i * coordinate_bits - 1;
       assert((zb1.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
       new_box.interleaved_bits[i] = (zb1.interleaved_bits[i]) & (~((safe_left_shift_one(highest_bit_idx + 1)) - 1));
       if (highest_bit_idx >= 0) {
@@ -140,7 +142,7 @@ private:
         return new_box;
       }
     }
-    new_box.num_low_bits_ignored = 0;
+    new_box.num_low_bits_ignored = max_ignored;
     assert(zb1.coords == zb2.coords);
     new_box.coords = zb1.coords;
     return new_box;
@@ -185,7 +187,7 @@ private:
         assert(new_tree->here.num_low_bits_ignored > tree->here.num_low_bits_ignored);
         assert(new_tree->here.subsumes(tree->here));
         assert(new_tree->here.subsumes(box));
-        assert(tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1) != box.get_bit(new_tree->here.num_low_bits_ignored - 1));
+        assert(box.subsumes(tree->here) || (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1) != box.get_bit(new_tree->here.num_low_bits_ignored - 1)));
         if (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1)) new_tree->child1 = tree;
         else                                                             new_tree->child0 = tree;
       
