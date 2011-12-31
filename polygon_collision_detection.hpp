@@ -41,6 +41,7 @@ struct polygon_collision_info_cache {
 };
 
 struct line_segment {
+  line_segment(std::array<vector3<int64_t>, 2> ends):ends(ends){}
   line_segment(vector3<int64_t> end1, vector3<int64_t> end2):ends({{end1, end2}}){}
   std::array<vector3<int64_t>, 2> ends;
 };

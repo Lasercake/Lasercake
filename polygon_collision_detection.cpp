@@ -41,26 +41,26 @@ move t3 to (0,0,0)
 
 (0,0,0)(t1x t1y t1z)(t2x t2y t2z)
 want t1z = 0 t2z = 0
-addition to the z coordinate = ax + by
-EQ1) -t1z = at1x + bt1y
-EQ2) -t2z = at2x + bt2y
+addition to the z coordinate = a*x + b*y
+EQ1) -t1z = a*t1x + b*t1y
+EQ2) -t2z = a*t2x + b*t2y
 
-t2x*EQ1 - t1x*EQ2) t2zt1z-t1zt2x = b(t1yt2x - t2yt1x)
-b = (t2zt1x-t1zt2x) / (t1yt2x - t2yt1x)
+t2x*EQ1 - t1x*EQ2) t2z*t1z-t1z*t2x = b(t1y*t2x - t2y*t1x)
+b = (t2z*t1x-t1z*t2x) / (t1y*t2x - t2y*t1x)
 since a and b are only different in an x vs y way, logically...
-a = (t2zt1y-t1zt2y) / (t1xt2y - t2xt1y)
+a = (t2z*t1y-t1z*t2y) / (t1x*t2y - t2x*t1y)
 (denom == 0 iff t1 and t2 are collinear in the plane - just rotate the triangle 90 degrees until they're not.)
 
 We could just do the computations at a factor of that denominator for a little while.
-D = (t1xt2y - t2xt1y) = the denominator of a
-Let A = (t2zt1y-t1zt2y) = a*D
-Let B = -(t2zt1x-t1zt2x) = b*D
+D = (t1x*t2y - t2x*t1y) = the denominator of a
+Let A = (t2z*t1y-t1z*t2y) = a*D
+Let B = -(t2z*t1x-t1z*t2x) = b*D
 Then we'd get two transformed z values...
 
 Ideally...
-z1 = l1z + al1x + bl1y
+z1 = l1z + a*l1x + b*l1y
 Multiply by D...
-Dz1 = Dl1z + Al1x + Bl1y
+D*z1 = D*l1z + A*l1x + B*l1y
 
 We only care about the *proportion* between z1 and z2, so Dz1/Dz2 are just as good, as long as we don't get rounding error.
 Both negative or both positive -> no collision
@@ -69,13 +69,13 @@ let l1xy = l1 projected onto the plane, etc
 ltxy = the point where (l1, l2) intersects the plane
 ltxy = ((0 - z1) / (z2 - z1)) l2xy + ((z2 - 0) / (z2 - z1)) l1xy
 More practically...
-ltxy = ((0 - Dz1) / (Dz2 - Dz1)) l2xy + ((Dz2 - 0) / (Dz2 - Dz1)) l1xy
-ltxy = ((0 - Dz1) l2xy + (Dz2 - 0) l1xy) / (Dz2 - Dz1)
+ltxy = ((0 - D*z1) / (D*z2 - D*z1)) l2xy + ((D*z2 - 0) / (D*z2 - D*z1)) l1xy
+ltxy = ((0 - D*z1) l2xy + (D*z2 - 0) l1xy) / (D*z2 - D*z1)
 
-Now we can multiply everything by (Dz2 - Dz1)...
-(Dz2 - Dz1)ltxy = Dz2*l1xy - Dz1*l2xy
+Now we can multiply everything by (D*z2 - D*z1)...
+(D*z2 - D*z1)ltxy = D*z2*l1xy - D*z1*l2xy
 
-And also multiply the triangle coordinates by (Dz2 - Dz1), and then do the clockwiseness check above!
+And also multiply the triangle coordinates by (D*z2 - D*z1), and then do the clockwiseness check above!
 
 This is a perfect accuracy collision check.
 The downside is that it (in the worst case) has *four* factors of the distances between two points,
@@ -127,19 +127,27 @@ bool intersects(line_segment l, convex_polygon const& p) {
   // Translate and twist, as we did with the polygon.
   for (vector3<int64_t> &v : l.ends) v += c.translation_amount;
   for (vector3<int64_t> &v : l.ends) v = vector3<int64_t>(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
-  // Now skew the line. Skews are linear and hence preserve everything we need.
-  // The line is scaled up as well as skewed.
-  for (vector3<int64_t> &v : l.ends) { v *= c.denom; v.z += (c.a_times_denom * v.x + c.b_times_denom * v.y); }
+  // Now skew the z values. Skews are linear and hence preserve everything we need.
+  // The line's z values are scaled up as well as skewed.
+  for (vector3<int64_t> &v : l.ends) { v.z = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y); }
   
-  // If the endpoints are on the same side, they're not colliding, obviously!
-  if (sign(l.ends[0].z) * sign(l.ends[1].z) == 1) return false;
+  if (sign(l.ends[0].z) == sign(l.ends[1].z)) {
+    if (l.ends[0].z != 0) {
+      // If the endpoints are on the same side, they're not colliding, obviously!
+      return false;
+    }
+    else {
+      std::cerr << "Ack! A coplanar line! Fail!\n";
+      return false;
+    }
+  }
   
   const int64_t denom2 = l.ends[1].z - l.ends[0].z;
   // Find the point in the plane (scaled up by denom2, which was scaled up by denom...)
   
   const vector3<int64_t> point_in_plane_times_denom2(
     l.ends[1].z*l.ends[0].x - l.ends[0].z*l.ends[1].x,
-    l.ends[0].z*l.ends[1].y - l.ends[1].z*l.ends[0].y,
+    l.ends[1].z*l.ends[0].y - l.ends[0].z*l.ends[1].y,
     0
   );
   
@@ -147,7 +155,7 @@ bool intersects(line_segment l, convex_polygon const& p) {
   int previous_clockwiseness = 0;
   for (size_t i = 0; i < c.adjusted_vertices.size(); ++i) {
     const int next_i = (i + 1) % c.adjusted_vertices.size();
-    const int64_t clockwiseness = (
+    const int64_t clockwiseness = sign(
         ((point_in_plane_times_denom2.y - c.adjusted_vertices[i].y*denom2) * (c.adjusted_vertices[next_i].x - c.adjusted_vertices[i].x))
       - ((point_in_plane_times_denom2.x - c.adjusted_vertices[i].x*denom2) * (c.adjusted_vertices[next_i].y - c.adjusted_vertices[i].y))
     );
