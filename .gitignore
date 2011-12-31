@@ -1,5 +1,3 @@
 *~
-/sim
-/zbox_tester/*~
-/zbox_tester/sim
-/callgrind.out.*
+callgrind.out.*
+sim
