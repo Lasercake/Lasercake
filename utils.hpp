@@ -177,7 +177,7 @@ namespace std {
 
 typedef int8_t neighboring_tile_differential;
 typedef int8_t cardinal_direction_index;
-const cardinal_direction_index NUM_CARDINAL_DIRECTIONS = 6;
+const cardinal_direction_index num_cardinal_directions = 6;
 struct cardinal_direction {
   cardinal_direction(vector3<neighboring_tile_differential> v, cardinal_direction_index i):v(v),cardinal_direction_idx(i){}
   vector3<neighboring_tile_differential> v;
@@ -200,27 +200,27 @@ const cardinal_direction cdir_zminus = cardinal_direction(-zunitv, 2);
 const cardinal_direction cdir_xplus = cardinal_direction(xunitv, 3);
 const cardinal_direction cdir_yplus = cardinal_direction(yunitv, 4);
 const cardinal_direction cdir_zplus = cardinal_direction(zunitv, 5);
-const cardinal_direction cardinal_directions[NUM_CARDINAL_DIRECTIONS] = { cdir_xminus, cdir_yminus, cdir_zminus, cdir_xplus, cdir_yplus, cdir_zplus };
+const cardinal_direction cardinal_directions[num_cardinal_directions] = { cdir_xminus, cdir_yminus, cdir_zminus, cdir_xplus, cdir_yplus, cdir_zplus };
 #define EACH_CARDINAL_DIRECTION(varname) cardinal_direction varname : cardinal_directions
 inline cardinal_direction cardinal_direction::operator-()const { return cardinal_directions[(cardinal_direction_idx + 3)%6]; }
 
 template<typename ValueType> class value_for_each_cardinal_direction {
 public:
   value_for_each_cardinal_direction& operator=(value_for_each_cardinal_direction const& other){
-    for(cardinal_direction_index dir_idx=0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
+    for(cardinal_direction_index dir_idx=0; dir_idx < num_cardinal_directions; ++dir_idx) {
       data[dir_idx] = other.data[dir_idx];
     }
     return *this;
   }
   value_for_each_cardinal_direction(ValueType initial_value) {
-    for(cardinal_direction_index dir_idx=0; dir_idx < NUM_CARDINAL_DIRECTIONS; ++dir_idx) {
+    for(cardinal_direction_index dir_idx=0; dir_idx < num_cardinal_directions; ++dir_idx) {
       data[dir_idx] = initial_value;
     }
   }
   ValueType      & operator[](cardinal_direction const& dir) { return data[dir.cardinal_direction_idx]; }
   ValueType const& operator[](cardinal_direction const& dir)const { return data[dir.cardinal_direction_idx]; }
 private:
-  typedef std::array<ValueType, NUM_CARDINAL_DIRECTIONS> internal_array;
+  typedef std::array<ValueType, num_cardinal_directions> internal_array;
 public:
   typename internal_array::iterator begin() { return data.begin(); }
   typename internal_array::iterator end() { return data.end(); }
