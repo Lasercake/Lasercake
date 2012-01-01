@@ -123,6 +123,7 @@ private:
     
     ztree_node(zbox box):here(box),child0(nullptr),child1(nullptr){}
   };
+  typedef ztree_node* ztree_node_ptr;
   
   static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
     zbox new_box;
@@ -165,7 +166,7 @@ private:
     return result;
   }
   
-  static void insert_box(ztree_node*& tree, ObjectIdentifier obj, zbox box) {
+  static void insert_box(ztree_node_ptr& tree, ObjectIdentifier obj, zbox box) {
     if (!tree) {
       tree = new ztree_node(box);
       tree->objects_here.insert(obj);
@@ -181,7 +182,7 @@ private:
         }
       }
       else {
-        ztree_node *new_tree = new ztree_node(smallest_joint_parent(tree->here, box));
+        ztree_node_ptr new_tree = new ztree_node(smallest_joint_parent(tree->here, box));
         assert(new_tree->here.num_low_bits_ignored > tree->here.num_low_bits_ignored);
         assert(new_tree->here.subsumes(tree->here));
         assert(new_tree->here.subsumes(box));
@@ -195,7 +196,7 @@ private:
     }
   }
   
-  static void delete_object(ztree_node*& tree, ObjectIdentifier obj, bounding_box const& bbox) {
+  static void delete_object(ztree_node_ptr& tree, ObjectIdentifier obj, bounding_box const& bbox) {
     if (!tree) return;
     if (tree->here.get_bbox().overlaps(bbox)) {
       tree->objects_here.erase(obj);
@@ -205,13 +206,13 @@ private:
       if (tree->objects_here.empty()) {
         if (tree->child0) {
           if (!tree->child1) {
-            ztree_node* tree_now = tree->child0;
+            ztree_node_ptr tree_now = tree->child0;
             delete tree;
             tree = tree_now;
           }
         }
         else {
-          ztree_node* tree_now = tree->child1;
+          ztree_node_ptr tree_now = tree->child1;
           delete tree;
           tree = tree_now; // which could be null
         }
@@ -219,7 +220,7 @@ private:
     }
   }
   
-  static void delete_entire_tree(ztree_node*& tree) {
+  static void delete_entire_tree(ztree_node_ptr& tree) {
     if (!tree) return;
     delete_entire_tree(tree->child0);
     delete_entire_tree(tree->child1);
@@ -240,7 +241,7 @@ private:
   }
   
   unordered_map<ObjectIdentifier, bounding_box> bboxes_by_object;
-  ztree_node* objects_tree;
+  ztree_node_ptr objects_tree;
   
 public:
 
