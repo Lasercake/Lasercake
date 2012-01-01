@@ -41,6 +41,8 @@ namespace hacky_internals {
       tile_bounding_box bounds{global_position, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension)};
       w->worldgen_function(world_building_gun(w, bounds), bounds);
       //std::cerr << "A worldblock has been created!\n";
+      
+      assert(current_tile_realization == CONTENTS_ONLY);
     }
     
     if ((             realineeded >= CONTENTS_AND_STICKYNESS_ONLY) &&
@@ -59,6 +61,8 @@ namespace hacky_internals {
           }
         }
       }
+      
+      assert(current_tile_realization == CONTENTS_AND_STICKYNESS_ONLY);
     }
     
     if ((             realineeded >= FULL_REALIZATION) &&
@@ -75,6 +79,8 @@ namespace hacky_internals {
           }
         }
       }
+      
+      assert(current_tile_realization == FULL_REALIZATION);
     }
     
     return (*this);

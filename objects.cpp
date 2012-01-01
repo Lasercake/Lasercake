@@ -41,7 +41,7 @@ void robot::update(world &w, object_identifier my_id) {
     (shape_bounds.min.x + shape_bounds.max.x) / 2,
     (shape_bounds.min.y + shape_bounds.max.y) / 2,
     shape_bounds.min.z);
-  const tile_location l = w.make_tile_location(get_containing_tile_coordinates(bottom_middle));
+  const tile_location l = w.make_tile_location(get_containing_tile_coordinates(bottom_middle), FULL_REALIZATION);
   const tile_location lminus = l + cdir_zminus;
   if (lminus.stuff_at().contents() != AIR) {
     // goal: decay towards levitating...
