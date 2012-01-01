@@ -64,7 +64,7 @@ typedef int32_t tile_coordinate_signed_type;
 typedef int32_t sub_tile_distance; // We can fit it within 32 bits, so we might as well do faster math
 
 const fine_scalar tile_width = (fine_scalar(1) << 10);
-const fine_scalar tile_height = (fine_scalar(1) << 10);
+const fine_scalar tile_height = (fine_scalar(1) << 10) / 5 + 1;
 const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
 
 const fine_scalar velocity_scale_factor = (fine_scalar(1) << 6);

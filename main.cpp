@@ -192,11 +192,23 @@ static void mainLoop (std::string scenario)
   int p_mode = 0;
 srand(time(NULL));
 
+  vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
+
   world w{worldgen_function_t(world_building_func(scenario))};
-  vector3<fine_scalar> laser_loc = lower_bound_in_fine_units(world_center_coords) + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
+  vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
   shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,2)));
+  shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,3,2)));
   w.queue_creating_object(foo);
-  w.try_to_change_personal_space_shape(1, shape(bounding_box(laser_loc - tile_size/2, laser_loc + tile_size/2)));
+  w.queue_creating_object(bar);
+  w.try_to_change_personal_space_shape(1, shape(bounding_box(
+    laser_loc - vector3<fine_scalar>(tile_width/2,tile_width/2,tile_width/2),
+    laser_loc + vector3<fine_scalar>(tile_width/2,tile_width/2,tile_width/2)
+  )));
+  w.try_to_change_personal_space_shape(2, shape(bounding_box(
+    laser_loc - vector3<fine_scalar>(tile_width/2,tile_width/2,tile_width/2) + vector3<fine_scalar>(0,0,-tile_width*2),
+    laser_loc + vector3<fine_scalar>(tile_width/2,tile_width/2,tile_width/2) + vector3<fine_scalar>(0,0,-tile_width*2)
+  )));
+  w.create_queued_objects();
   
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
     
@@ -221,6 +233,7 @@ srand(time(NULL));
           if(event.key.keysym.sym == SDLK_d) --view_z;
           if(event.key.keysym.sym == SDLK_r) ++view_dist;
           if(event.key.keysym.sym == SDLK_f) --view_dist;
+          if(event.key.keysym.sym == SDLK_l) local_view = !local_view;
           if(event.key.keysym.sym != SDLK_ESCAPE)break;
           
         case SDL_QUIT:
@@ -247,11 +260,20 @@ srand(time(NULL));
     vector<vertex_entry> object_vertices;
     
     unordered_set<object_or_tile_identifier> tiles_to_draw;
-    w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(vector3<tile_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50), vector3<tile_coordinate>(101,101,101)));
+    /*w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(
+      vector3<tile_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50),
+      vector3<tile_coordinate>(101,101,101)
+    ));*/
+    w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box(
+      wc + vector3<fine_scalar>(view_x*tile_width,view_y*tile_width,view_z*tile_width)
+         - vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50),
+      wc + vector3<fine_scalar>(view_x*tile_width,view_y*tile_width,view_z*tile_width)
+         + vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50)
+    ));
     
     for (auto p : w.laser_sfxes) {
-      vector3<double> locv = vector3<double>(p.first - lower_bound_in_fine_units(world_center_coords)) / tile_width;
-      vector3<double> locv2 = vector3<double>(vector3<fine_scalar>(p.first + p.second - lower_bound_in_fine_units(world_center_coords))) / double(1ULL << 32);
+      vector3<double> locv = vector3<double>(p.first - wc) / tile_width;
+      vector3<double> locv2 = vector3<double>(vector3<fine_scalar>(p.first + p.second - wc)) / double(1ULL << 32);
       //std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
       //std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
       push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z-0.5);
@@ -268,19 +290,26 @@ srand(time(NULL));
     
     for (object_or_tile_identifier const& id : tiles_to_draw) {
       if (object_identifier const* mid = id.get_object_identifier()) {
+        shared_ptr<mobile_object> objp = std::dynamic_pointer_cast<mobile_object>(*(w.get_object(*mid)));
         const object_shapes_t::const_iterator blah = w.get_object_personal_space_shapes().find(*mid);
         std::vector<convex_polygon> const& foo = blah->second.get_polygons();
         for (convex_polygon const& bar : foo) {
           for (vector3<int64_t> const& baz : bar.get_vertices()) {
-            vector3<double> locv = vector3<double>(baz - lower_bound_in_fine_units(world_center_coords)) / tile_width;
+            vector3<double> locv = vector3<double>(baz - wc) / tile_width;
             push_vertex(object_vertices, locv.x, locv.y, locv.z);
+            
+          push_vertex(velocity_vertices, locv.x, locv.y, locv.z);
+          push_vertex(velocity_vertices,
+              locv.x + ((GLfloat)objp->velocity.x / (tile_width)),
+              locv.y + ((GLfloat)objp->velocity.y / (tile_width)),
+              locv.z + ((GLfloat)objp->velocity.z / (tile_width)));
           }
         }
       }
      if (tile_location const* locp = id.get_tile_location()) {
       tile_location const& loc = *locp;
       tile const& t = loc.stuff_at();
-      vector3<GLfloat> locv(vector3<tile_coordinate_signed_type>(loc.coords() - world_center_coords)); // TODO : properly speaking, "minus the perspective you're looking from"? world_center_coords has no business in any code except the world generation, I think
+      vector3<GLfloat> locv = vector3<GLfloat>(lower_bound_in_fine_units(loc.coords()) - wc) / tile_width; // TODO : properly speaking, "minus the perspective you're looking from"? world_center_coords has no business in any code except the world generation, I think
       
       // Hack - TODO remove
       if (frame == 0 && t.contents() == WATER) w.activate_water(loc);
@@ -292,10 +321,18 @@ srand(time(NULL));
       else if(t.is_free_water  () ) vect = &  free_water_vertices;
       else assert(false);
       
-      push_vertex(*vect, locv.x,     locv.y,     locv.z + 0.5);
+      const shape sh = tile_shape(loc.coords());
+      std::vector<convex_polygon> const& foo = sh.get_polygons();
+      for (convex_polygon const& bar : foo) {
+        for (vector3<int64_t> const& baz : bar.get_vertices()) {
+          vector3<double> locve = vector3<double>(baz - wc) / tile_width;
+          push_vertex(*vect, locve.x, locve.y, locve.z);
+        }
+      }
+      /*push_vertex(*vect, locv.x,     locv.y,     locv.z + 0.5);
       push_vertex(*vect, locv.x + 1, locv.y,     locv.z + 0.5);
       push_vertex(*vect, locv.x + 1, locv.y + 1, locv.z + 0.5);
-      push_vertex(*vect, locv.x,     locv.y + 1, locv.z + 0.5);
+      push_vertex(*vect, locv.x,     locv.y + 1, locv.z + 0.5);*/
       
       if (t.contents() == WATER) {
         if (water_movement_info *water = w.get_active_water_tile(loc)) {
@@ -303,7 +340,7 @@ srand(time(NULL));
           push_vertex(velocity_vertices,
               locv.x + 0.5 + ((GLfloat)water->velocity.x / (tile_width)),
               locv.y + 0.5 + ((GLfloat)water->velocity.y / (tile_width)),
-              locv.z + 0.5 + ((GLfloat)water->velocity.z / (tile_height)));
+              locv.z + 0.5 + ((GLfloat)water->velocity.z / (tile_width)));
           
           for (EACH_CARDINAL_DIRECTION(dir)) {
             const sub_tile_distance prog = water->progress[dir];
@@ -352,6 +389,7 @@ srand(time(NULL));
     glDrawArrays(GL_QUADS, 0, free_water_vertices.size());
     
     glColor4f(0.0, 1.0, 0.0, 0.5);
+    glLineWidth(1);
     glVertexPointer(3, GL_FLOAT, 0, &velocity_vertices[0]);
     glDrawArrays(GL_LINES, 0, velocity_vertices.size());
     
@@ -372,6 +410,11 @@ srand(time(NULL));
     glColor4f(0.5,0.5,0.5,0.5);
     glVertexPointer(3, GL_FLOAT, 0, &object_vertices[0]);
     glDrawArrays(GL_QUADS, 0, object_vertices.size());
+    
+    glLineWidth(1);
+    glColor4f(1.0,1.0,1.0,0.5);
+    glVertexPointer(3, GL_FLOAT, 0, &object_vertices[0]);
+    glDrawArrays(GL_LINES, 0, object_vertices.size());
     
     
     
