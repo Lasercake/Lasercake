@@ -28,6 +28,7 @@
 #include <array>
 #include <cassert>
 #include <cstdlib>
+#include <boost/scoped_ptr.hpp>
 
 using std::unordered_map;
 using std::unordered_set;
@@ -116,7 +117,7 @@ private:
   }
   
   struct ztree_node;
-  typedef ztree_node* ztree_node_ptr;
+  typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
   struct ztree_node {
     zbox here;
     ztree_node_ptr child0;
@@ -169,7 +170,7 @@ private:
   
   static void insert_box(ztree_node_ptr& tree, ObjectIdentifier obj, zbox box) {
     if (!tree) {
-      tree = new ztree_node(box);
+      tree.reset(new ztree_node(box));
       tree->objects_here.insert(obj);
     }
     else {
@@ -183,15 +184,17 @@ private:
         }
       }
       else {
-        ztree_node_ptr new_tree = new ztree_node(smallest_joint_parent(tree->here, box));
+        ztree_node_ptr new_tree(new ztree_node(smallest_joint_parent(tree->here, box)));
+
         assert(new_tree->here.num_low_bits_ignored > tree->here.num_low_bits_ignored);
         assert(new_tree->here.subsumes(tree->here));
         assert(new_tree->here.subsumes(box));
         assert(tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1) != box.get_bit(new_tree->here.num_low_bits_ignored - 1));
-        if (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1)) new_tree->child1 = tree;
-        else                                                             new_tree->child0 = tree;
-      
-        tree = new_tree;
+
+        if (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1)) tree.swap(new_tree->child1);
+        else                                                             tree.swap(new_tree->child0);
+
+        tree.swap(new_tree);
         insert_box(tree, obj, box);
       }
     }
@@ -207,26 +210,19 @@ private:
       if (tree->objects_here.empty()) {
         if (tree->child0) {
           if (!tree->child1) {
-            ztree_node_ptr tree_now = tree->child0;
-            delete tree;
-            tree = tree_now;
+            ztree_node_ptr dead_tree;
+            dead_tree.swap(tree);
+            dead_tree->child0.swap(tree);
           }
         }
         else {
-          ztree_node_ptr tree_now = tree->child1;
-          delete tree;
-          tree = tree_now; // which could be null
+          // old 'child1' a.k.a. new 'tree' could be null
+          ztree_node_ptr dead_tree;
+          dead_tree.swap(tree);
+          dead_tree->child1.swap(tree);
         }
       }
     }
-  }
-  
-  static void delete_entire_tree(ztree_node_ptr& tree) {
-    if (!tree) return;
-    delete_entire_tree(tree->child0);
-    delete_entire_tree(tree->child1);
-    delete tree;
-    tree = nullptr;
   }
   
   void zget_objects_overlapping(ztree_node const* tree, unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
@@ -236,8 +232,8 @@ private:
         assert(bbox_iter != bboxes_by_object.end());
         if (bbox_iter->second.overlaps(bbox)) results.insert(obj);
       }
-      zget_objects_overlapping(tree->child0, results, bbox);
-      zget_objects_overlapping(tree->child1, results, bbox);
+      zget_objects_overlapping(tree->child0.get(), results, bbox);
+      zget_objects_overlapping(tree->child1.get(), results, bbox);
     }
   }
   
@@ -288,10 +284,9 @@ public:
   }
   
   void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
-    zget_objects_overlapping(objects_tree, results, bbox);
+    zget_objects_overlapping(objects_tree.get(), results, bbox);
   }
-  
-  ~bbox_collision_detector() { delete_entire_tree(objects_tree); }
+
 };
 
 /*
