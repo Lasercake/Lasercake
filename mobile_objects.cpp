@@ -31,6 +31,24 @@ void actually_change_personal_space_shape(
   things_exposed_to_collision.insert(id, new_shape.bounds());
 }
 
+cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& velocity, bounding_box const& my_bounds, bounding_box const& other_bounds) {
+  bounding_box overlapping_bounds(my_bounds);
+  overlapping_bounds.restrict_to(other_bounds);
+  assert(overlapping_bounds.is_anywhere);
+  cardinal_direction best_dir = cdir_xplus; // it shouldn't matter what I initialize it to
+  fine_scalar best = -1;
+  for (EACH_CARDINAL_DIRECTION(dir)) {
+    if (velocity.dot<fine_scalar>(dir.v) > 0) {
+      const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[dir.which_dimension()] - overlapping_bounds.min[dir.which_dimension()];
+      if (best == -1 || overlap_in_this_dimension < best) {
+        best = overlap_in_this_dimension;
+        best_dir = dir;
+      }
+    }
+  }
+  return best_dir;
+}
+
 void update_moving_objects_(
    world                             &w,
    objects_map<mobile_object>::type  &moving_objects,
@@ -148,55 +166,40 @@ void update_moving_objects_(
       
     unordered_set<object_or_tile_identifier> this_overlaps;
     w.collect_things_exposed_to_collision_intersecting(this_overlaps, new_shape.bounds());
-      
+    
+    // This collision code is kludgy because of the way it handles one collision at a time.
+    // TODO properly consider multiple collisions in the same step.
     bool this_is_colliding = false;
     for (object_or_tile_identifier const& foo : this_overlaps) {
       if (object_identifier const* oidp = foo.get_object_identifier()) {
         if (*oidp != id) {
           if (new_shape.intersects(personal_space_shapes[*oidp])) {
             this_is_colliding = true;
-            // TODO remove duplicate code!!! Also this code is hacky!!!
-            bounding_box overlapping_bounds = new_shape.bounds();
-            overlapping_bounds.restrict_to(personal_space_shapes[*oidp].bounds());
-            assert(overlapping_bounds.is_anywhere);
-            cardinal_direction best_dir = cdir_xplus; // it shouldn't matter what I initialize it to
-            fine_scalar best = -1;
-            for (EACH_CARDINAL_DIRECTION(dir)) {
-              if (objp->velocity.dot<fine_scalar>(dir.v) > 0) {
-                const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[dir.which_dimension()] - overlapping_bounds.min[dir.which_dimension()];
-                if (best == -1 || overlap_in_this_dimension < best) {
-                  best = overlap_in_this_dimension;
-                  best_dir = dir;
-                }
-              }
-            }
-            objp->velocity -= project_onto_cardinal_direction(objp->velocity, best_dir);
-            info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, best_dir);
+            cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), personal_space_shapes[*oidp].bounds());
+            
+            objp->velocity -= project_onto_cardinal_direction(objp->velocity, approx_impact_dir);
+            info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, approx_impact_dir);
             // end TODO remove duplicate code
           }
         }
       }
       if (tile_location const* locp = foo.get_tile_location()) {
         if (new_shape.intersects(tile_shape(locp->coords()))) {
-          this_is_colliding = true;
-            // TODO remove duplicate code!!! Also this code is hacky!!!
-            bounding_box overlapping_bounds = new_shape.bounds();
-            overlapping_bounds.restrict_to(convert_to_fine_units(tile_bounding_box(locp->coords())));
-            assert(overlapping_bounds.is_anywhere);
-            cardinal_direction best_dir = cdir_xplus; // it shouldn't matter what I initialize it to
-            fine_scalar best = -1;
-            for (EACH_CARDINAL_DIRECTION(dir)) {
-              if (objp->velocity.dot<fine_scalar>(dir.v) > 0) {
-                const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[dir.which_dimension()] - overlapping_bounds.min[dir.which_dimension()];
-                if (best == -1 || overlap_in_this_dimension < best) {
-                  best = overlap_in_this_dimension;
-                  best_dir = dir;
-                }
-              }
+          cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), convert_to_fine_units(tile_bounding_box(locp->coords())));
+          
+          const fine_scalar current_velocity_in_that_dir = objp->velocity.dot<fine_scalar>(approx_impact_dir.v);
+          const fine_scalar max_velocity_in_this_substance = (locp->stuff_at().contents() == WATER) ? max_object_speed_through_water : 0;
+          const fine_scalar excess_velocity = current_velocity_in_that_dir - max_velocity_in_this_substance;
+          if (excess_velocity > 0) {
+            objp->velocity -= vector3<fine_scalar>(approx_impact_dir.v) * excess_velocity;
+            const fine_scalar new_natural_displacement_in_that_dir = objp->velocity.dot<fine_scalar>(approx_impact_dir.v) * (max_time - times.current_time) / max_time;
+            const fine_scalar excess_displacement = info.remaining_displacement.dot<fine_scalar>(approx_impact_dir.v) - new_natural_displacement_in_that_dir;
+            if (excess_displacement >= 0) {
+              info.remaining_displacement -= vector3<fine_scalar>(approx_impact_dir.v) * excess_displacement;
             }
-            objp->velocity -= project_onto_cardinal_direction(objp->velocity, best_dir);
-            info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, best_dir);
-            // end TODO remove duplicate code
+            else std::cerr << "wtf?\n";
+            this_is_colliding = true;
+          }
         }
       }
     }

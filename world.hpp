@@ -88,6 +88,8 @@ const sub_tile_distance sticky_water_velocity_reduction_rate = 1 * velocity_scal
 
 const vector3<sub_tile_distance> inactive_water_velocity(0, 0, -min_convincing_speed);
 
+const fine_scalar max_object_speed_through_water = tile_width * velocity_scale_factor / 16;
+
 inline vector3<tile_coordinate> get_containing_tile_coordinates(vector3<fine_scalar> v) {
   return vector3<tile_coordinate>(
     tile_coordinate(v.x / tile_width),
