@@ -282,9 +282,10 @@ srand(time(NULL));
       view_loc = ((b.min + b.max) / 2);
     }
     else {
-      view_loc.x = view_x_for_global_display * tile_width;
-      view_loc.y = view_y_for_global_display * tile_width;
-      view_loc.z = view_z_for_global_display * tile_width;
+      view_loc = wc;
+      view_loc.x += view_x_for_global_display * tile_width;
+      view_loc.y += view_y_for_global_display * tile_width;
+      view_loc.z += view_z_for_global_display * tile_width;
     }
     vector<vertex_entry> velocity_vertices;
     vector<vertex_entry> progress_vertices;
@@ -304,7 +305,7 @@ srand(time(NULL));
     
     for (auto p : w.laser_sfxes) {
       vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, p.first);
-      vector3<GLfloat> locv2 = vector3<GLfloat>(vector3<fine_scalar>(p.first + p.second - wc)) / double(1ULL << 32);
+      vector3<GLfloat> locv2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
       //std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
       //std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
       push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z-0.5);
@@ -326,9 +327,9 @@ srand(time(NULL));
         std::vector<convex_polygon> const& foo = blah->second.get_polygons();
         for (convex_polygon const& bar : foo) {
           for (vector3<int64_t> const& baz : bar.get_vertices()) {
+            vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, baz);
             push_vertex(object_vertices, locv.x, locv.y, locv.z);
             
-            vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, baz);
           push_vertex(velocity_vertices, locv.x, locv.y, locv.z);
           push_vertex(velocity_vertices,
               locv.x + ((GLfloat)objp->velocity.x / (tile_width)),
@@ -356,7 +357,7 @@ srand(time(NULL));
       std::vector<convex_polygon> const& foo = sh.get_polygons();
       for (convex_polygon const& bar : foo) {
         for (vector3<int64_t> const& baz : bar.get_vertices()) {
-          vector3<double> locve = vector3<double>(baz - wc) / tile_width;
+          vector3<GLfloat> locve = convert_coordinates_to_GL(view_loc, baz);
           push_vertex(*vect, locve.x, locve.y, locve.z);
         }
       }
