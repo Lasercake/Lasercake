@@ -21,23 +21,35 @@
 
 /*
 
+Eli says: The following is a description of how the water rules work,
+written by Isaac and slightly edited by myself. I'm not terribly
+satisfied with it, but it's waaaay better than not having a description at all.
+I want to write my own description of the water rules, but I'm too busy!
+Remind me to do that sometime.
+
+* * * * *
+
 Water is simulated something like this:
 
 Water is tile-based.  There's a 3D grid of tiles, and each of them
 either is water or something else (like rock or air).  Tiles are significantly
-shorter than they are wide (this doesn't affect tile physics, only the whole
-rest of the physics and display).
+shorter than they are wide; nothing relies on the exact tile width and tile height,
+but they affect the physics. (It takes longer to move vertically by a tile
+if the height is greater - I don't think there are any other rules that refer to the
+width and height right now.)
 
 Each water tile can be "sticky" or "free" water.  This affects
-how it behaves.  Water is generally "free" water iff more than one of the
-six adjacent tiles is air, otherwise sticky.  A water's freeness or stickiness
-may persist for a short time, however: a sticky water remains sticky for one
-frame so that it flows better, and free water currently becomes sticky
+how it behaves.  Water is generally "free" water if more than one of the
+six adjacent tiles is air; otherwise it's sticky.
 
-In short, "free" water tiles move individually based on velocity,
-and "sticky" water tiles stick together in groups of contiguous sticky water
-tiles and flow via those groups.  Contiguousness is measured in the
+"free" water tiles move individually based on velocity, and "sticky" water tiles
+are computed as contiguous groups of sticky water. Contiguousness is measured in the
 six orthogonal directions.
+
+A water's freeness or stickiness has a special 1-frame delay between when it meets
+the conditions for freeness/stickyness (the amount of air nearby) and when it becomes
+free/sticky. This makes sticky water flow more smoothly (it doesn't lose its group
+properties by snapping to free water in some situations.)
 
 Imagine it were 2D.
 
@@ -81,18 +93,19 @@ water group, and z is the particular neighbor's z coordinate.
 Pressure outward from the edge of a group causes a water tile to
 make "progress" in that direction (a water can make progress in
 several contradictory-seeming directions at once).  Then if a water
-tile has made sufficient progress in a direction, possibly with some
-chance and chicanery thrown in, and sees an air in that direction,
+tile has made sufficient progress in a direction, and sees an air in that direction,
 it "flows" into that direction.  To "flow" means that a water tile teleports
 from a random one of the highest (in z) water-tiles in this group,
-to this air location. TODO the more pressure, the more velocity a
-free water has when it comes out; how does this work?
+to this air location. The more pressure, the more velocity a
+free water has when it comes out. If a sticky water tile makes sufficient
+progress in a direction but there's free water in the way, it pushes that
+free water away from it.
 
 There are special rules for free and sticky water to slide off the
 edges of tiles (in the above example, the top left free-water will
 slide towards the lake despite comfortably sitting still on top
-of a nice rectangular rock).  Free water has friction in air as well as
-when it runs into something.
+of a nice rectangular rock).  Free water has slight air resistance in air,
+and significant friction when it's running into something.
 
 [[[[
 As another optimization, we define "active water" as water which might
@@ -102,40 +115,36 @@ a stable state becomes inactive.  "Active water" is stored in world as a
 hash from tile_location to active_water_temporary_data; the temporary data
 can be discarded for water which reaches a stable state.
 
-Free water becomes stable when it has zero x/y velocity, rock/water below it,
+Free water becomes inactive when it has zero x/y velocity, rock/water below it,
 and the stable amount of down-velocity caused by gravity and the thing below
 it pushing back against gravity.
 
-Sticky water becomes stable when ????? it personally has no desirable exit
-points? TODO find this out.
+Sticky water becomes inactive when it isn't exerting pressure in any direction.
+Sticky water doesn't use its own velocity, but we have it keep any velocity it
+had as free water for a little while so that it doesn't get weird if a tile
+becomes sticky and quickly becomes free again. Sticky water stays "active" until
+its lingering velocity goes away.
 ]]]]
 
-So, water can flow efficiently down tunnels, but it only in some cases
+Because of the group rules, water can flow efficiently down tunnels; only in some cases
 is it slowed down by being forced through a particularly narrow hole/tunnel
 Basically, it's slowed down in those cases where the exit-surface is narrow.
 This is one reason that it's important that water tend to become free when it
 spurts out a small hole, so that it can't easily, right outside the hole,
 form part of a large exit-surface for the large water group.
 
-Yes, these shenanigans makes the water tend to be more realistic,
+These shenanigans make the water tend to be more realistic,
 and don't add high simulation cost.
 
-Water without the grouping/pressure mechanic flows far too slowly. At best,
-roughly, the longer the tunnel, the slower water flows through it, in a
-linear proportion.  (Individual water tiles moving without anything like
-teleportation required air bubbles to travel through pipes to let the next
-water in the pipe entrance, some versions had difficulty going around corners
-in pipes, etc.) That's not good enough for water-fun (although it is
-likely is good enough for sand).  It's not good enough for making two
-connected bodies of water both have the same top-surface-level like real
-life water does (modulo, in-game, height differences of one tile because
-it's tile-based and there won't happen to be an exact round number of water
-tiles in a lake all the time).  The grouping/pressure mechanism does
-admirably at doing all these things, and also is able to completely skip
-simulating the "interior" water-tiles that might make up the mainstay of the
-volume of a lake.
+Water without the grouping/pressure mechanic flows far too slowly. If we
+only had water propagate pressure/velocity to adjacent tiles each frame, then it
+would have terrible difficulty flowing down long, thin tunnels.
+The grouping/pressure mechanism does admirably at handling a wide variety of cases,
+and also is able to completely skip simulating the "interior" water-tiles that might
+make up the mainstay of the volume of a lake.
 
 */
+
 
 #include "world.hpp"
 
