@@ -55,20 +55,20 @@ void robot::update(world &w, object_identifier my_id) {
     
   // TODO HAAAAAACK
   Uint8 *keystate = SDL_GetKeyState(NULL);
-  velocity.x -= velocity.x / 20;
-  velocity.y -= velocity.y / 20;
+  velocity.x -= velocity.x / 10;
+  velocity.y -= velocity.y / 10;
   if (keystate[SDLK_UP]) {
     velocity.x = facing.x;
     velocity.y = facing.y;
   }
   if (keystate[SDLK_RIGHT]) {
-    fine_scalar new_facing_x = facing.x + facing.y / 30;
-    fine_scalar new_facing_y = facing.y - facing.x / 30;
+    fine_scalar new_facing_x = facing.x + facing.y / 20;
+    fine_scalar new_facing_y = facing.y - facing.x / 20;
     facing.x = new_facing_x; facing.y = new_facing_y;
   }
   if (keystate[SDLK_LEFT]) {
-    fine_scalar new_facing_x = facing.x - facing.y / 30;
-    fine_scalar new_facing_y = facing.y + facing.x / 30;
+    fine_scalar new_facing_x = facing.x - facing.y / 20;
+    fine_scalar new_facing_y = facing.y + facing.x / 20;
     facing.x = new_facing_x; facing.y = new_facing_y;
   }
   facing = facing * tile_width * velocity_scale_factor / 8 / facing.magnitude_within_32_bits();
