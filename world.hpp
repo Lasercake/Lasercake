@@ -421,8 +421,8 @@ public:
   inline void update() {
     laser_sfxes.clear();
     update_water(*this); // TODO update_water to be a member
-    update_moving_objects();
     for (auto &obj : autonomously_active_objects) obj.second->update(*this, obj.first);
+    update_moving_objects();
   }
   
   // TODO replace these with const accessor functions...?
