@@ -258,6 +258,7 @@ private:
 public:
 
   void insert(ObjectIdentifier id, bounding_box const& bbox) {
+    assert(bboxes_by_object.find(id) == bboxes_by_object.end());
     bboxes_by_object.insert(std::make_pair(id, bbox));
     Coordinate max_dim = bbox.size[0];
     for (num_coordinates_type i = 1; i < NumDimensions; ++i) {
@@ -290,6 +291,11 @@ public:
         insert_box(objects_tree, id, zb);
     }
   }
+  
+  bool exists(ObjectIdentifier id) {
+    return (bboxes_by_object.find(id) != bboxes_by_object.end());
+  }
+  
   bool erase(ObjectIdentifier id) {
     auto bbox_iter = bboxes_by_object.find(id);
     if (bbox_iter == bboxes_by_object.end()) return false;
