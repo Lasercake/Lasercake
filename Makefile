@@ -5,22 +5,36 @@ CXXFLAGS=-std=c++0x -ggdb -Wall -Wextra -O0 -fmax-errors=15 -I/usr/include/SDL/ 
 ODIR=output
 ODIR_OPTIMIZED=output/optimized
 
-DEPS = world.hpp utils.hpp polygon_collision_detection.hpp bbox_collision_detector.hpp
-_OBJ = main.o mobile_objects.o polygon_collision_detection.o the_decomposition_of_the_world_into_blocks.o tile_changing_implementations.o water.o world_building.o
-OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
-OBJ_OPTIMIZED = $(patsubst %,$(ODIR_OPTIMIZED)/%,$(_OBJ))
+SOURCES = $(wildcard *.cpp)
+OBJ = $(patsubst %,$(ODIR)/%,$(SOURCES:.cpp=.o))
+OBJ_OPTIMIZED = $(patsubst %,$(ODIR_OPTIMIZED)/%,$(SOURCES:.cpp=.o))
 
-$(ODIR)/%.o: %.cpp $(DEPS)
-	mkdir -p $(ODIR)
-	$(CC) -c -o $@ $< $(CXXFLAGS)
-
-$(ODIR_OPTIMIZED)/%.o: %.cpp $(DEPS)
-	mkdir -p $(ODIR_OPTIMIZED)
-	$(CC) -c -o $@ $< $(CXXFLAGS) $(OPTFLAGS)
+$(ODIR)/%.d: %.cpp
+	@set -e; mkdir -p $(ODIR); rm -f $@; \
+	$(CC) -MM $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,$(ODIR)/\1.o $(ODIR_OPTIMIZED)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
 
 lasercake: $(OBJ)
 	$(CC) -o $@ $^ $(CXXFLAGS)
 
 lasercake-optimized: $(OBJ_OPTIMIZED)
 	$(CC) -o $@ $^ $(CXXFLAGS) $(OPTFLAGS)
+
+include $(OBJ:.o=.d)
+
+
+$(ODIR)/%.o: %.cpp
+	@mkdir -p $(ODIR)
+	$(CC) -c -o $@ $< $(CXXFLAGS)
+
+$(ODIR_OPTIMIZED)/%.o: %.cpp
+	@mkdir -p $(ODIR_OPTIMIZED)
+	$(CC) -c -o $@ $< $(CXXFLAGS) $(OPTFLAGS)
+
+.PHONY :
+	clean
+
+clean:
+	rm -rf output lasercake lasercake-optimized
 
