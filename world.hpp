@@ -183,7 +183,6 @@ This is a one-way dictation - the latter things don't affect the former things a
 
 */
 
-
 enum tile_contents {
   AIR = 0,
   ROCK,
@@ -199,6 +198,7 @@ public:
   bool is_free_water    ()const{ return contents() == WATER && !is_sticky_bit()                      ; }
   bool is_interior_water()const{ return contents() == WATER &&  is_sticky_bit() &&  is_interior_bit(); }
   bool is_membrane_water()const{ return contents() == WATER &&  is_sticky_bit() && !is_interior_bit(); }
+  bool is_interior_rock ()const{ return contents() == ROCK  &&                      is_interior_bit(); }
   
   // For tile based physics (e.g. water movement)
   // This is so that we don't have to search the collision-detector for relevant objects at every tile.
@@ -208,7 +208,8 @@ public:
   void set_contents(tile_contents new_contents){ data = (data & ~contents_mask) | (uint8_t(new_contents) & contents_mask); }
   void set_whether_there_is_an_object_here_that_affects_the_tile_based_physics(bool b){ data = (data & ~there_is_an_object_here_that_affects_the_tile_based_physics_mask) | (b ? there_is_an_object_here_that_affects_the_tile_based_physics_mask : uint8_t(0)); }
   void set_water_stickyness(bool b){ data = (data & ~sticky_bit_mask) | (b ? sticky_bit_mask : uint8_t(0)); }
-  void set_water_interiorness(bool b){ data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
+  void set_water_interiorness(bool b){ assert(contents() == WATER); data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
+  void set_rock_interiorness(bool b){ assert(contents() == ROCK); data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
 private:
   static const uint8_t contents_mask = 0x3;
   static const uint8_t sticky_bit_mask = (1<<2);
@@ -245,12 +246,21 @@ namespace hacky_internals {
   class worldblock;
 }
 
+enum level_of_tile_realization_needed {
+  COMPLETELY_IMAGINARY = 0,
+  CONTENTS_ONLY = 1,
+  CONTENTS_AND_STICKYNESS_ONLY = 2,
+  FULL_REALIZATION = 3
+};
+
 class tile_location {
 public:
   // this constructor should only be used when you know exactly what worldblock it's in!!
   // TODO: It's bad that it's both public AND doesn't assert that condition
   
   tile_location operator+(cardinal_direction dir)const;
+  // Equivalent to operator+, except allowing you to specify the amount of realization needed.
+  tile_location get_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
   tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
   bool operator==(tile_location const& other)const { return v == other.v; }
   tile const& stuff_at()const;
@@ -271,6 +281,8 @@ namespace std {
     }
   };
 }
+
+bool should_be_sticky(tile_location loc);
 
 
 typedef uint64_t object_identifier;
@@ -360,6 +372,9 @@ public:
   bool erase(object_or_tile_identifier id) {
     return detector.erase(id);
   }
+  bool exists(object_or_tile_identifier id) {
+    return detector.exists(id);
+  }
 private:
   internal_t detector;
 };
@@ -372,23 +387,23 @@ namespace hacky_internals {
 
   class worldblock {
 public:
-    worldblock():neighbors(nullptr),w(nullptr),inited(false){}
-    worldblock& init_if_needed(world *w_, vector3<tile_coordinate> global_position_);
+    worldblock():neighbors(nullptr),w(nullptr),current_tile_realization(COMPLETELY_IMAGINARY){}
+    worldblock& ensure_realization(world *w_, vector3<tile_coordinate> global_position_, level_of_tile_realization_needed realineeded);
   
     // Only to be used in tile_location::stuff_at():
     tile& get_tile(vector3<tile_coordinate> global_coords);
   
-    // Only to be used in tile_location::operator+(cardinal_direction):
-    tile_location get_neighboring_loc(vector3<tile_coordinate> const& old_coords, cardinal_direction dir);
+    // Only to be used in tile_location::operator+(cardinal_direction) and tile_location::get_neighbor:
+    tile_location get_neighboring_loc(vector3<tile_coordinate> const& old_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded);
   
-    tile_location get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, cardinal_direction dir);
+    tile_location get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded);
     tile_location get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords);
 private:
     std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles;
     value_for_each_cardinal_direction<worldblock*> neighbors;
     vector3<tile_coordinate> global_position; // the lowest x, y, and z among elements in this worldblock
     world *w;
-    bool inited;
+    level_of_tile_realization_needed current_tile_realization;
   };
 }
 
@@ -441,14 +456,14 @@ public:
     return boost::make_iterator_range(moving_objects.begin(), moving_objects.end());
   }
   
-  tile_location make_tile_location(vector3<tile_coordinate> const& coords);
+  tile_location make_tile_location(vector3<tile_coordinate> const& coords, level_of_tile_realization_needed realineeded);
   
   void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier> &results, bounding_box const& bounds) {
-    ensure_space_exists(convert_to_smallest_superset_at_tile_resolution(bounds));
+    ensure_realization_of_space(convert_to_smallest_superset_at_tile_resolution(bounds), FULL_REALIZATION);
     things_exposed_to_collision.get_objects_overlapping(results, bounds);
   }
   void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier> &results, tile_bounding_box const& bounds) {
-    ensure_space_exists(bounds);
+    ensure_realization_of_space(bounds, FULL_REALIZATION);
     things_exposed_to_collision.get_objects_overlapping(results, convert_to_fine_units(bounds));
   }
   
@@ -519,10 +534,12 @@ private:
   
   
   
-  hacky_internals::worldblock* create_if_necessary_and_get_worldblock(vector3<tile_coordinate> position);
-  void ensure_space_exists(tile_bounding_box space);
+  tile_location make_barely_existing_tile_location(vector3<tile_coordinate> const& coords);
+  hacky_internals::worldblock* ensure_realization_of_and_get_worldblock(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
+  void ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded);
   
   void check_interiorness(tile_location const& loc);
+  void check_exposure_to_collision(tile_location const& loc);
 
   void something_changed_at(tile_location const& loc);
   

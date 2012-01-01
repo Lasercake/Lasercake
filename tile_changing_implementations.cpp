@@ -40,22 +40,48 @@ void world::set_stickyness(tile_location const& loc, bool new_stickyness) {
 
 void world::check_interiorness(tile_location const& loc) {
   tile &t = mutable_stuff_at(loc);
-  if (t.is_sticky_water()) { // we don't care whether it's marked interior if it's not sticky water
+  if (t.is_sticky_water()) {
     bool should_be_interior = true;
     for (EACH_CARDINAL_DIRECTION(dir)) {
-      const tile_location other_loc = loc + dir;
+      const tile_location other_loc = loc.get_neighbor(dir, CONTENTS_AND_STICKYNESS_ONLY);
       if (!other_loc.stuff_at().is_sticky_water()) should_be_interior = false;
     }
     if (t.is_interior_water() != should_be_interior) {
       t.set_water_interiorness(should_be_interior);
+      check_exposure_to_collision(loc);
+    }
+  }
+  if (t.contents() == ROCK) {
+    bool should_be_interior = true;
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const tile_location other_loc = loc.get_neighbor(dir, CONTENTS_ONLY);
+      if (!other_loc.stuff_at().contents() == ROCK) should_be_interior = false;
+    }
+    if (t.is_interior_rock() != should_be_interior) {
+      t.set_rock_interiorness(should_be_interior);
+      check_exposure_to_collision(loc);
+    }
+  }
+}
+
+void world::check_exposure_to_collision(tile_location const& loc) {
+  tile const& t = loc.stuff_at();
+  if ((t.contents() == WATER || t.contents() == ROCK) &&
+     !(t.is_interior_water() || t.is_interior_rock())) {
+    if (!things_exposed_to_collision.exists(loc)) {
+      things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
+    }
+  }
+  else {
+    if (things_exposed_to_collision.exists(loc)) {
+      things_exposed_to_collision.erase(loc);
     }
   }
 }
 
 void world::something_changed_at(tile_location const& loc) {
   tile const& t = loc.stuff_at();
-  if (t.contents() == AIR) things_exposed_to_collision.erase (loc                                                        );
-  else                     things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
+  check_exposure_to_collision(loc);
   
   for (EACH_CARDINAL_DIRECTION(dir)) check_interiorness(loc + dir);
   
@@ -122,12 +148,10 @@ void world::insert_rock_bypassing_checks(tile_location const& loc) {
   tile &t = mutable_stuff_at(loc);
   assert(t.contents() == AIR);
   t.set_contents(ROCK);
-  things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
 }
 void world::insert_water_bypassing_checks(tile_location const& loc) {
   tile &t = mutable_stuff_at(loc);
   assert(t.contents() == AIR);
   t.set_contents(WATER);
-  things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
 }
 

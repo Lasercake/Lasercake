@@ -22,9 +22,11 @@
 #include "world.hpp"
 
 bool should_be_sticky(tile_location loc) {
+  if (loc.stuff_at().contents() != WATER) return false;
+  
   int airs = 0;
   for (EACH_CARDINAL_DIRECTION(dir)) {
-    const tile_location other_loc = loc + dir;
+    const tile_location other_loc = loc.get_neighbor(dir, CONTENTS_ONLY);
     if (other_loc.stuff_at().contents() == AIR) ++airs;
   }
   return (airs <= 1);
@@ -40,11 +42,6 @@ water_movement_info& world::activate_water(tile_location const& loc) {
   
   auto water_iter = active_water_tiles.find(loc);
   if (water_iter == active_water_tiles.end()) {
-    // TODO figure out how much of a hack this is:
-    // (The *first* time a tile activates, it hasn't necessarily had its caches computed)
-    set_stickyness(loc, should_be_sticky(loc));
-    check_interiorness(loc);
-    
     return active_water_tiles[loc]; // inserts it, default-constructed
   }
   else return water_iter->second;
