@@ -23,18 +23,24 @@
 
 namespace hacky_internals {
 
-  // When a worldblock is inited, it DOESN'T call insert_water for all the water in it - the water is 'already there'.
   // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").
   //
   // We would have to make special rules for worldblocks that start out with
   // active water in them, because it could invalidate iterators into the
   // active_water_tiles map, because worldblocks can be created essentially any time in the processing.
-  // TODO: "init_if_needed" is because we don't know how to make unordered_map's mapped_types be constructed in place in a non-default way.
-  worldblock& worldblock::ensure_realization(world *w_, vector3<tile_coordinate> global_position_, level_of_tile_realization_needed realineeded) {
+  //
+  // If we try to use a level-X value from a worldblock while it's busy computing a realization
+  // level less-than-or-equal-to X, then we justly receive get an assertion failure.
+  // Realizing a worldblock at a given level must not require same-level information.
+  worldblock& worldblock::ensure_realization(level_of_tile_realization_needed realineeded, world *w_, vector3<tile_coordinate> global_position_) {
+    assert(realineeded >= COMPLETELY_IMAGINARY);
+    assert(realineeded <= FULL_REALIZATION);
+    
     if ((             realineeded >= CONTENTS_ONLY) &&
         (current_tile_realization <  CONTENTS_ONLY)) {
-      
-      current_tile_realization    =  CONTENTS_ONLY;
+    
+      assert(!is_busy_realizing);
+      is_busy_realizing = true;
       
       w = w_;
       global_position = global_position_;
@@ -42,13 +48,15 @@ namespace hacky_internals {
       w->worldgen_function(world_building_gun(w, bounds), bounds);
       //std::cerr << "A worldblock has been created!\n";
       
-      assert(current_tile_realization == CONTENTS_ONLY);
+      current_tile_realization = CONTENTS_ONLY;
+      is_busy_realizing = false;
     }
     
     if ((             realineeded >= CONTENTS_AND_STICKYNESS_ONLY) &&
         (current_tile_realization <  CONTENTS_AND_STICKYNESS_ONLY)) {
-      
-      current_tile_realization    =  CONTENTS_AND_STICKYNESS_ONLY;
+    
+      assert(!is_busy_realizing);
+      is_busy_realizing = true;
       
       for (tile_coordinate x = global_position.x; x < global_position.x + worldblock_dimension; ++x) {
         for (tile_coordinate y = global_position.y; y < global_position.y + worldblock_dimension; ++y) {
@@ -62,13 +70,15 @@ namespace hacky_internals {
         }
       }
       
-      assert(current_tile_realization == CONTENTS_AND_STICKYNESS_ONLY);
+      current_tile_realization = CONTENTS_AND_STICKYNESS_ONLY;
+      is_busy_realizing = false;
     }
     
     if ((             realineeded >= FULL_REALIZATION) &&
         (current_tile_realization <  FULL_REALIZATION)) {
-      
-      current_tile_realization    =  FULL_REALIZATION;
+    
+      assert(!is_busy_realizing);
+      is_busy_realizing = true;
       
       for (tile_coordinate x = global_position.x; x < global_position.x + worldblock_dimension; ++x) {
         for (tile_coordinate y = global_position.y; y < global_position.y + worldblock_dimension; ++y) {
@@ -80,7 +90,8 @@ namespace hacky_internals {
         }
       }
       
-      assert(current_tile_realization == FULL_REALIZATION);
+      current_tile_realization = FULL_REALIZATION;
+      is_busy_realizing = false;
     }
     
     return (*this);
@@ -92,7 +103,7 @@ namespace hacky_internals {
   }
 
   tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded) {
-    ensure_realization(w, global_position, realineeded);
+    ensure_realization(realineeded);
     // this could be made more effecient, but I'm not sure how
     vector3<tile_coordinate> new_coords = old_coords + dir.v;
     if (new_coords.x < global_position.x) return get_loc_across_boundary(new_coords, cdir_xminus, realineeded);
@@ -105,7 +116,10 @@ namespace hacky_internals {
   }
 
   tile_location worldblock::get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded) {
-    if (worldblock* neighbor = neighbors[dir]) return tile_location(new_coords, neighbor);
+    if (worldblock* neighbor = neighbors[dir]) {
+      neighbor->ensure_realization(realineeded);
+      return tile_location(new_coords, neighbor);
+    }
     return tile_location(
       new_coords,
       (
@@ -146,7 +160,7 @@ tile_location world::make_tile_location(vector3<tile_coordinate> const& coords, 
 }
 
 hacky_internals::worldblock* world::ensure_realization_of_and_get_worldblock(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded) {
-  return &(blocks[position].ensure_realization(this, position, realineeded));
+  return &(blocks[position].ensure_realization(realineeded, this, position));
 }
 
 void world::ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded) {

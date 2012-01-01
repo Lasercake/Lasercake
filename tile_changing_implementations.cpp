@@ -31,7 +31,6 @@ void world::set_stickyness(tile_location const& loc, bool new_stickyness) {
     if (new_stickyness) check_interiorness(loc);
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const tile_location adj_loc = loc + dir;
-      // TODO: right now, activate_water automatically calls check_interiorness. Should we remove this redundance...? If so, how to justify "activate_water" being expected to do that? If not, how to justify the pointless repeated computation?
       check_interiorness(adj_loc);
       if (adj_loc.stuff_at().contents() == WATER) activate_water(loc + dir);
     }

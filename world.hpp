@@ -387,8 +387,8 @@ namespace hacky_internals {
 
   class worldblock {
 public:
-    worldblock():neighbors(nullptr),w(nullptr),current_tile_realization(COMPLETELY_IMAGINARY){}
-    worldblock& ensure_realization(world *w_, vector3<tile_coordinate> global_position_, level_of_tile_realization_needed realineeded);
+    worldblock():neighbors(nullptr),w(nullptr),current_tile_realization(COMPLETELY_IMAGINARY),is_busy_realizing(false){}
+    worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w_ = nullptr, vector3<tile_coordinate> global_position_ = vector3<tile_coordinate>(0,0,0));
   
     // Only to be used in tile_location::stuff_at():
     tile& get_tile(vector3<tile_coordinate> global_coords);
@@ -404,6 +404,7 @@ private:
     vector3<tile_coordinate> global_position; // the lowest x, y, and z among elements in this worldblock
     world *w;
     level_of_tile_realization_needed current_tile_realization;
+    bool is_busy_realizing;
   };
 }
 
