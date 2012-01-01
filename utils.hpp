@@ -46,10 +46,10 @@ typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key
   else return &(i->second);
 }
 
-template<typename scalar_type> scalar_type divide_rounding_towards_zero(scalar_type dividend, scalar_type divisor)
+template<typename ScalarType> ScalarType divide_rounding_towards_zero(ScalarType dividend, ScalarType divisor)
 {
 	assert(divisor != 0);
-	const scalar_type abs_result = std::abs(dividend) / std::abs(divisor);
+	const ScalarType abs_result = std::abs(dividend) / std::abs(divisor);
 	if ((dividend > 0) == (divisor > 0)) return abs_result;
 	else return -abs_result;
 }
@@ -87,15 +87,15 @@ inline uint32_t i64sqrt(uint64_t radicand)
   return lower_bound;
 }
 
-template<typename scalar_type> class vector3 {
+template<typename ScalarType> class vector3 {
 public:
-	scalar_type x, y, z;
+	ScalarType x, y, z;
 	vector3():x(0),y(0),z(0){}
-	vector3(scalar_type x, scalar_type y, scalar_type z):x(x),y(y),z(z){}
+	vector3(ScalarType x, ScalarType y, ScalarType z):x(x),y(y),z(z){}
 	template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
 	  x(other.x),y(other.y),z(other.z){}
 	
-	scalar_type& operator[](int index) {
+	ScalarType& operator[](int index) {
 	  switch(index) {
 	    case 0: return x;
 	    case 1: return y;
@@ -103,7 +103,7 @@ public:
 	    default: assert("Trying to index a vector3 with an out-of-bounds index!" && false);
 	  }
 	}
-	scalar_type operator[](int index)const {
+	ScalarType operator[](int index)const {
 	  switch(index) {
 	    case 0: return x;
 	    case 1: return y;
@@ -124,16 +124,16 @@ public:
 	template<typename OtherType> void operator-=(vector3<OtherType> const& other) {
 		x -= other.x; y -= other.y; z -= other.z;
 	}
-	vector3 operator*(scalar_type other)const {
+	vector3 operator*(ScalarType other)const {
 		return vector3(x * other, y * other, z * other);
 	}
-	void operator*=(scalar_type other) {
+	void operator*=(ScalarType other) {
 		x *= other; y *= other; z *= other;
 	}
-	vector3 operator/(scalar_type other)const {
+	vector3 operator/(ScalarType other)const {
 		return vector3(divide_rounding_towards_zero(x, other), divide_rounding_towards_zero(y, other), divide_rounding_towards_zero(z, other));
 	}
-	void operator/=(scalar_type other) {
+	void operator/=(ScalarType other) {
 		x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other);
 	}
 	vector3 operator-()const { // unary minus
@@ -142,7 +142,7 @@ public:
 	bool operator==(vector3 const& other)const {return x == other.x && y == other.y && z == other.z; }
 	bool operator!=(vector3 const& other)const {return x != other.x || y != other.y || z != other.z; }
 	
-	// Do not try to use this if either vector has an unsigned scalar_type. It might work in some situations, but why would you ever do that anyway?
+	// Do not try to use this if either vector has an unsigned ScalarType. It might work in some situations, but why would you ever do that anyway?
 	// You are required to specify an output type, because of the risk of overflow. Make sure to choose one that can fit the squares of the numbers you're dealing with.
 	template<typename OutputType, typename OtherType> OutputType dot(vector3<OtherType> const& other)const {
 		return (OutputType)x * (OutputType)other.x +
@@ -150,22 +150,22 @@ public:
 		       (OutputType)z * (OutputType)other.z;
 	}
 	
-	scalar_type magnitude_within_32_bits()const { return (scalar_type)i64sqrt(dot<int64_t>(*this)); }
+	ScalarType magnitude_within_32_bits()const { return (ScalarType)i64sqrt(dot<int64_t>(*this)); }
 	
 	// Choose these the way you'd choose dot's output type (see the comment above)
 	// we had trouble making these templates, so now they just always use int64_t
-	bool magnitude_within_32_bits_is_less_than(scalar_type amount)const {
+	bool magnitude_within_32_bits_is_less_than(ScalarType amount)const {
 	  return dot<int64_t>(*this) < (int64_t)amount * (int64_t)amount;
 	}
-	bool magnitude_within_32_bits_is_greater_than(scalar_type amount)const {
+	bool magnitude_within_32_bits_is_greater_than(ScalarType amount)const {
 	  return dot<int64_t>(*this) > (int64_t)amount * (int64_t)amount;
 	}
 	bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
 };
 
 namespace std {
-  template<typename scalar_type> struct hash<vector3<scalar_type> > {
-    inline size_t operator()(vector3<scalar_type> const& v) const {
+  template<typename ScalarType> struct hash<vector3<ScalarType> > {
+    inline size_t operator()(vector3<ScalarType> const& v) const {
       size_t seed = 0;
       boost::hash_combine(seed, v.x);
       boost::hash_combine(seed, v.y);
@@ -186,8 +186,8 @@ struct cardinal_direction {
   int which_dimension()const { return (int)(cardinal_direction_idx % 3); } // relies on the current order of the directions
 };
 
-template<typename scalar_type> inline vector3<scalar_type> project_onto_cardinal_direction(vector3<scalar_type> src, cardinal_direction dir) {
-  return vector3<scalar_type>(src.x * std::abs((scalar_type)dir.v.x), src.y * std::abs((scalar_type)dir.v.y), src.z * std::abs((scalar_type)dir.v.z));
+template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_direction(vector3<ScalarType> src, cardinal_direction dir) {
+  return vector3<ScalarType>(src.x * std::abs((ScalarType)dir.v.x), src.y * std::abs((ScalarType)dir.v.y), src.z * std::abs((ScalarType)dir.v.z));
 }
 
 const vector3<neighboring_tile_differential> xunitv(1, 0, 0);
