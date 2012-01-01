@@ -239,32 +239,9 @@ struct water_movement_info {
 
 class world;
 
-class object {
-private:
-  virtual void this_virtual_function_makes_this_class_virtual_which_we_need_in_order_to_dynamic_cast_it(){};
-};
-
-class mobile_object : virtual public object {
-public:
-  //virtual void move_due_to_velocity() = 0;
-
-  mobile_object():velocity(0,0,0){}
-  mobile_object(vector3<fine_scalar>):velocity(velocity){}
-  vector3<fine_scalar> velocity;
-};
-
-class tile_aligned_object {
-public:
-  
-};
-
-
 namespace hacky_internals {
   class worldblock;
 }
-
-class tile_location;
-
 
 class tile_location {
 public:
@@ -325,6 +302,34 @@ namespace std {
     }
   };
 }
+class object {
+public:
+  virtual shape get_initial_personal_space_shape()const = 0;
+  virtual shape get_initial_detail_shape()const = 0;
+  /*
+private:
+  virtual void this_virtual_function_makes_this_class_virtual_which_we_need_in_order_to_dynamic_cast_it(){};*/
+};
+
+class mobile_object : virtual public object {
+public:
+  //virtual void move_due_to_velocity() = 0;
+
+  mobile_object():velocity(0,0,0){}
+  mobile_object(vector3<fine_scalar>):velocity(velocity){}
+  vector3<fine_scalar> velocity;
+};
+
+class tile_aligned_object : virtual public object {
+public:
+  
+};
+
+class autonomous_object : virtual public object {
+public:
+  virtual void update(world &w, object_identifier my_id) = 0;
+};
+
 
 class world_collision_detector {
 private:
@@ -395,8 +400,6 @@ private:
 };
 
 
-class laser_emitter;
-
 typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
 typedef unordered_map<tile_location, water_movement_info> active_water_tiles_t;
 typedef unordered_map<object_identifier, shape> object_shapes_t;
@@ -405,11 +408,20 @@ struct objects_map {
   typedef unordered_map<object_identifier, shared_ptr<ObjectSubtype>> type;
 };
 
+void update_water(world &w);
+
 class world {
 public:
   world(worldgen_function_t f):next_object_identifier(1),worldgen_function(f){}
   
   void update_moving_objects();
+
+  inline void update() {
+    laser_sfxes.clear();
+    update_water(*this); // TODO update_water to be a member
+    update_moving_objects();
+    for (auto &obj : autonomously_active_objects) obj.second->update(*this, obj.first);
+  }
   
   // TODO replace these with const accessor functions...?
   // The iterators are only valid until we activate any water tiles.
@@ -425,9 +437,6 @@ public:
   }*/
   boost::iterator_range<objects_map<mobile_object>::type::iterator> moving_objects_range() {
     return boost::make_iterator_range(moving_objects.begin(), moving_objects.end());
-  }
-  boost::iterator_range<objects_map<laser_emitter>::type::iterator> active_lasers_range() {
-    return boost::make_iterator_range(active_lasers.begin(), active_lasers.end());
   }
   
   tile_location make_tile_location(vector3<tile_coordinate> const& coords);
@@ -450,22 +459,24 @@ public:
   
   void set_stickyness(tile_location const& loc, bool new_stickyness);
   
-  void queue_creating_object(shared_ptr<object> obj) {
-    objects_to_add.push_back(obj);
-  }
-  
-  // Risky function: Don't use this while iterating through objects (any other time is okay)
-  void create_queued_objects() {
-    for (shared_ptr<object> const& obj : objects_to_add) {
-      object_identifier id = next_object_identifier++;
-      objects.insert(make_pair(id, obj));
-      // TODO put it in the collision detector
-      // TODO add it to the subcategories if it wants to be in them
-      if(shared_ptr<mobile_object> m = std::dynamic_pointer_cast<mobile_object>(obj)) {
-        moving_objects.insert(make_pair(id, m));
-      }
+  bool try_create_object(shared_ptr<object> obj) {
+    // TODO: fail if there's something in the way
+    object_identifier id = next_object_identifier++;
+    objects.insert(make_pair(id, obj));
+    bounding_box b; // TODO: in mobile_objects.cpp, include detail_shape in at least the final box left in the ztree
+    object_personal_space_shapes[id] = obj->get_initial_personal_space_shape();
+    b.combine_with(object_personal_space_shapes[id].bounds());
+    object_detail_shapes[id] = obj->get_initial_detail_shape();
+    b.combine_with(object_detail_shapes[id].bounds());
+    things_exposed_to_collision.insert(id, b);
+    if(shared_ptr<mobile_object> m = std::dynamic_pointer_cast<mobile_object>(obj)) {
+      moving_objects.insert(make_pair(id, m));
     }
-    objects_to_add.clear();
+    // TODO: don't do this if you're in the middle of updating autonomous objects
+    if(shared_ptr<autonomous_object> m = std::dynamic_pointer_cast<autonomous_object>(obj)) {
+      autonomously_active_objects.insert(make_pair(id, m));
+    }
+    return true;
   }
   
   // If objects overlap with the new position, returns their IDs. If not, changes the shape and returns an empty set.
@@ -490,7 +501,7 @@ private:
   active_water_tiles_t active_water_tiles;
   objects_map<object>::type objects;
   objects_map<mobile_object>::type moving_objects;
-  objects_map<laser_emitter>::type active_lasers;
+  objects_map<autonomous_object>::type autonomously_active_objects;
   
   object_identifier next_object_identifier;
   vector<shared_ptr<object>> objects_to_add;
@@ -503,7 +514,6 @@ private:
   // Worldgen functions TODO describe them
   worldgen_function_t worldgen_function;
   
- 
   
   
   hacky_internals::worldblock* create_if_necessary_and_get_worldblock(vector3<tile_coordinate> position);
@@ -518,108 +528,27 @@ private:
   void insert_water_bypassing_checks(tile_location const& loc);
 };
 
-void update_water(world &w);
+class robot : public mobile_object, public autonomous_object {
+public:
+  robot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location(location),facing(facing){}
+  
+  virtual shape get_initial_personal_space_shape()const;
+  virtual shape get_initial_detail_shape()const;
+  
+  virtual void update(world &w, object_identifier my_id);
+private:
+  vector3<fine_scalar> location;
+  vector3<fine_scalar> facing;
+};
 
-inline void update(world &w) {
-  w.create_queued_objects();
-  w.laser_sfxes.clear();
-  update_water(w);
-  w.update_moving_objects();
-}
-
-class laser_emitter : public mobile_object {
+class laser_emitter : public mobile_object, public autonomous_object {
 public:
   laser_emitter(vector3<fine_scalar> location, vector3<fine_scalar> facing):location(location),facing(facing){}
-  /*virtual fine_bounding_box bbox()const {
-  // TODO define tile width???????
-    return fine_bounding_box(location - tile_size / 3, tile_size * 2 / 3); // TODO lolhack
-  }*/
-  /*virtual void move_due_to_velocity() {
-    // gravity. TODO hacky
-    velocity += vector3<fine_scalar>(0, 0, -1);
-    
-    location += velocity;
-    //std::cerr << std::hex << location.z;
-  }*/
-  virtual void update(world *w) {
-    struct laser_path_calculator {
-      struct cross {
-        fine_scalar dist_in_this_dimension;
-        fine_scalar facing_in_this_dimension;
-        int dimension;
-        cross(fine_scalar d, fine_scalar f, int di):dist_in_this_dimension(d),facing_in_this_dimension(f),dimension(di){}
-        bool operator<(cross const& other)const {
-          return other.facing_in_this_dimension * dist_in_this_dimension < facing_in_this_dimension * other.dist_in_this_dimension;
-        }
-      };
-      laser_path_calculator(laser_emitter *emi):emi(emi),current_laser_tile(get_containing_tile_coordinates(emi->location)){
-        for (int i = 0; i < 3; ++i) {
-          facing_signs[i] = sign(emi->facing[i]);
-          facing_offs[i] = emi->facing[i] > 0;
-          if (facing_signs[i] != 0) enter_next_cross(i);
-        }
-      }
-      
-      void enter_next_cross(int which_dimension) {
-        coming_crosses.insert(cross(
-          lower_bound_in_fine_units((current_laser_tile + facing_offs)[which_dimension], which_dimension) - emi->location[which_dimension],
-          emi->facing[which_dimension],
-          which_dimension
-        ));
-      }
-      // returns which dimension we advanced
-      int advance_to_next_location() {
-        auto next_cross_iter = coming_crosses.begin();
-        int which_dimension = next_cross_iter->dimension;
-        coming_crosses.erase(next_cross_iter);
-        current_laser_tile[which_dimension] += facing_signs[which_dimension];
-        enter_next_cross(which_dimension);
-        return which_dimension;
-      }
-      
-      laser_emitter *emi;
-      vector3<tile_coordinate> current_laser_tile;
-      set<cross> coming_crosses;
-      vector3<fine_scalar> facing_signs;
-      vector3<tile_coordinate_signed_type> facing_offs;
-    };
-    
-    laser_path_calculator calc(this);
-    
-    //std::cerr << facing.x << " foo " << facing.y << " foo " << facing.z << "\n";
-    const vector3<fine_scalar> max_laser_delta = ((facing * (100LL << 10)) / facing.magnitude_within_32_bits()); // TODO fix overflow
-    //std::cerr << max_laser_delta.x << " foo " << max_laser_delta.y << " foo " << max_laser_delta.z << " bar " << facing.magnitude() << " bar " << (facing * (100LL << 10)).x << "\n";
-    //const vector3<tile_coordinate> theoretical_end_tile = get_containing_tile_coordinates(location + max_laser_delta);
-    
-    int which_dimension_we_last_advanced = -1;
-    while(true) {
-      unordered_set<object_or_tile_identifier> possible_hits;
-      w->collect_things_exposed_to_collision_intersecting(possible_hits, tile_bounding_box(calc.current_laser_tile));
-      for (object_or_tile_identifier const& id : possible_hits) {
-        if (id.get_tile_location()) {
-          // it's the entire tile, of course we hit it!
-          vector3<fine_scalar> laser_delta;
-          if (which_dimension_we_last_advanced == -1) {
-            laser_delta = vector3<fine_scalar>(0,0,0);
-          }
-          else {
-            vector3<tile_coordinate> hitloc_finding_hack = calc.current_laser_tile;
-            hitloc_finding_hack[which_dimension_we_last_advanced] += calc.facing_offs[which_dimension_we_last_advanced];
-            const fine_scalar laser_delta_in_facing_direction = (lower_bound_in_fine_units(hitloc_finding_hack)[which_dimension_we_last_advanced] - location[which_dimension_we_last_advanced]);
-            laser_delta = (facing * laser_delta_in_facing_direction) / facing[which_dimension_we_last_advanced];
-          }
-          w->add_laser_sfx(location, laser_delta);
-          return; // TODO handle what happens if there are mobile objects and/or multiple objects and/or whatever
-        }
-      }
-      // TODO figure out a better end condition...
-      if ((calc.current_laser_tile - get_containing_tile_coordinates(location)).magnitude_within_32_bits_is_greater_than(101)) {
-        w->add_laser_sfx(location, max_laser_delta);
-        return;
-      }
-      else which_dimension_we_last_advanced = calc.advance_to_next_location();
-    }
-  }
+  
+  virtual shape get_initial_personal_space_shape()const;
+  virtual shape get_initial_detail_shape()const;
+  
+  virtual void update(world &w, object_identifier id);
 private:
   vector3<fine_scalar> location;
   vector3<fine_scalar> facing;

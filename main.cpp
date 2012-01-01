@@ -125,7 +125,7 @@ struct world_building_func {
       for (tile_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
         for (tile_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {
           vector3<tile_coordinate> l(x,y,z);
-          if (x == world_center_coord-1 || x == world_center_coord+20 || y == world_center_coord-1 || y == world_center_coord+20 || z == world_center_coord-1 || z == world_center_coord+20) {
+          if (x == world_center_coord-1 || x == world_center_coord+20 || y == world_center_coord-1 || y == world_center_coord+20 || z == world_center_coord-1 /*|| z == world_center_coord+20*/) {
             make(ROCK, l);
           }
           else {
@@ -198,17 +198,10 @@ srand(time(NULL));
   vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
   shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,2)));
   shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,3,2)));
-  w.queue_creating_object(foo);
-  w.queue_creating_object(bar);
-  w.try_to_change_personal_space_shape(1, shape(bounding_box(
-    laser_loc - vector3<fine_scalar>(tile_width/2,tile_width/2,tile_width/2),
-    laser_loc + vector3<fine_scalar>(tile_width/2,tile_width/2,tile_width/2)
-  )));
-  w.try_to_change_personal_space_shape(2, shape(bounding_box(
-    laser_loc - vector3<fine_scalar>(tile_width/2,tile_width/2,tile_width/2) + vector3<fine_scalar>(0,0,-tile_width*2),
-    laser_loc + vector3<fine_scalar>(tile_width/2,tile_width/2,tile_width/2) + vector3<fine_scalar>(0,0,-tile_width*2)
-  )));
-  w.create_queued_objects();
+  w.try_create_object(foo);
+  w.try_create_object(bar);
+  shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,2)));
+  w.try_create_object(baz);
   
   vector3<fine_scalar> view_loc = wc;
   bool local_view = false;
@@ -454,7 +447,7 @@ srand(time(NULL));
     int before_processing = SDL_GetTicks();
     
     //doing stuff code here
-    update(w);
+    w.update();
     
     int after = SDL_GetTicks();
     std::cerr << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";
