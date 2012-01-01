@@ -15,3 +15,29 @@ The axis-aligned terrain (water mechanics...) simulates without regarding mobile
 Anything that blocks you after it hits you must collision-detect with your 'personal space shape'. Anything that doesn't block you after it hits you (either it ceases to exist or just passes through you with an effect, or...) is free to use your detailed shape. ("You" and "your" refer to any mobile object). This is because it's a terrible idea to let complicated shapes get tangled up with each other. In general, you don't compute collisions between detail shapes and personal space shapes.
 
 For proper data hiding, any large function of class world that uses private members of world should be implemented as a call to a non-member function that takes references only to the private members that it actually changes.
+
+
+Naming/formatting conventions:
+
+curly braces {
+  two space indentation;
+  with creative indentation for very extremely long
+    and very uniform
+    and more uniform
+    and sooo uniform
+  lines, so that
+         things
+         like
+         x y and z
+         line up better;
+  there is no concerted attempt to limit the length of lines to anything in particular;
+};
+
+Various names look like:
+
+local_variable
+member_variable (TODO: perhaps change to member_variable_ or such?)
+function_name, struct_name, const_ant
+TemplateArgument
+typedefed_thing or typedefed_thing_t (the latter if it'd be nice to have variables named "typedefed_thing").
+
