@@ -49,6 +49,21 @@ cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& ve
   return best_dir;
 }
 
+  
+const int64_t whole_frame_duration = 1ULL << 32;
+
+// Currently unused...
+void cap_remaining_displacement_to_new_velocity(vector3<fine_scalar> &remaining_displacement, vector3<fine_scalar> const& new_velocity, int64_t remaining_time) {
+  for (int i = 0; i < 3; ++i) {
+    if (new_velocity[i] * remaining_displacement[i] > 0) {
+      const fine_scalar natural_remaining_displacement_in_this_direction = divide_rounding_towards_zero(new_velocity[i] * remaining_time, whole_frame_duration);
+      if (std::abs(natural_remaining_displacement_in_this_direction) < std::abs(remaining_displacement[i])) {
+        remaining_displacement[i] = natural_remaining_displacement_in_this_direction;
+      }
+    }
+  }
+}
+
 void update_moving_objects_(
    world                             &w,
    objects_map<mobile_object>::type  &moving_objects,
@@ -61,6 +76,15 @@ void update_moving_objects_(
   // Accelerate everything due to gravity.
   for (pair<const object_identifier, shared_ptr<mobile_object>> &p : moving_objects) {
     p.second->velocity += gravity_acceleration;
+    
+    // Check any tile it happens to be in for whether there's water there.
+    // If the object is *partially* in water, it'll crash into a surface water on its first step, which will make this same adjustment.
+    if (w.make_tile_location(get_containing_tile_coordinates(personal_space_shapes[p.first].get_polygons()[0].get_vertices()[0])).stuff_at().contents() == WATER) {
+      const fine_scalar current_speed = p.second->velocity.magnitude_within_32_bits();
+      if (current_speed > max_object_speed_through_water) {
+        p.second->velocity = p.second->velocity * max_object_speed_through_water / current_speed;
+      }
+    }
   }
   
   world_collision_detector sweep_box_cd;
@@ -97,8 +121,6 @@ void update_moving_objects_(
     }
   }
   
-  const int64_t max_time = 1ULL << 32;
-  
   
   struct object_trajectory_info {
     object_trajectory_info(){}
@@ -117,24 +139,24 @@ void update_moving_objects_(
     stepping_times():current_time(0){}
     
     void queue_next_step(object_identifier id, object_trajectory_info info) {
-      if (info.last_step_time == max_time) return;
+      if (info.last_step_time == whole_frame_duration) return;
       
       fine_scalar dispmag = info.remaining_displacement.magnitude_within_32_bits();
       
       int64_t step_time;
-      if (dispmag == 0) step_time = max_time;
+      if (dispmag == 0) step_time = whole_frame_duration;
       else {
         // We're content to move in increments of tile_width >> 5 or less
-        // ((max_time - info.last_step_time) / dispmag) is simply the inverse speed (in normal fine units per time unit) over the rest of the frame
+        // ((whole_frame_duration - info.last_step_time) / dispmag) is simply the inverse speed (in normal fine units per time unit) over the rest of the frame
         // With (max step distance) = (max step time) * (speed)
         // (max step time) = (max step distance) / speed
         // Recall that dispmag is in regular fine units instead of velocity units.
-        const int64_t max_normal_step_duration = (((tile_width >> 5) * (max_time - info.last_step_time)) / dispmag);
+        const int64_t max_normal_step_duration = (((tile_width >> 5) * (whole_frame_duration - info.last_step_time)) / dispmag);
         if (info.last_step_time + max_normal_step_duration > current_time) step_time = info.last_step_time + max_normal_step_duration;
         else step_time = current_time;
       }
       
-      queued_steps.insert(make_pair(std::min(max_time, step_time), id));
+      queued_steps.insert(make_pair(std::min(whole_frame_duration, step_time), id));
     }
     
     object_identifier pop_next_step() {
@@ -160,7 +182,7 @@ void update_moving_objects_(
     
     shape new_shape(personal_space_shapes[id]);
       
-    vector3<fine_scalar> wanted_displacement_this_step = info.remaining_displacement * (times.current_time - info.last_step_time) / (max_time - info.last_step_time);
+    vector3<fine_scalar> wanted_displacement_this_step = info.remaining_displacement * (times.current_time - info.last_step_time) / (whole_frame_duration - info.last_step_time);
       
     new_shape.translate(wanted_displacement_this_step);
       
@@ -169,55 +191,58 @@ void update_moving_objects_(
     
     // This collision code is kludgy because of the way it handles one collision at a time.
     // TODO properly consider multiple collisions in the same step.
-    bool this_is_colliding = false;
+    bool this_step_is_a_collision = false;
+    bool this_step_needs_adjusting = false;
     for (object_or_tile_identifier const& foo : this_overlaps) {
       if (object_identifier const* oidp = foo.get_object_identifier()) {
         if (*oidp != id) {
           if (new_shape.intersects(personal_space_shapes[*oidp])) {
-            this_is_colliding = true;
+            this_step_is_a_collision = true;
             cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), personal_space_shapes[*oidp].bounds());
             
             objp->velocity -= project_onto_cardinal_direction(objp->velocity, approx_impact_dir);
             info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, approx_impact_dir);
-            // end TODO remove duplicate code
           }
         }
       }
       if (tile_location const* locp = foo.get_tile_location()) {
         if (new_shape.intersects(tile_shape(locp->coords()))) {
-          cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), convert_to_fine_units(tile_bounding_box(locp->coords())));
-          
-          const fine_scalar current_velocity_in_that_dir = objp->velocity.dot<fine_scalar>(approx_impact_dir.v);
-          const fine_scalar max_velocity_in_this_substance = (locp->stuff_at().contents() == WATER) ? max_object_speed_through_water : 0;
-          const fine_scalar excess_velocity = current_velocity_in_that_dir - max_velocity_in_this_substance;
-          if (excess_velocity > 0) {
-            objp->velocity -= vector3<fine_scalar>(approx_impact_dir.v) * excess_velocity;
-            const fine_scalar new_natural_displacement_in_that_dir = objp->velocity.dot<fine_scalar>(approx_impact_dir.v) * (max_time - times.current_time) / max_time;
-            const fine_scalar excess_displacement = info.remaining_displacement.dot<fine_scalar>(approx_impact_dir.v) - new_natural_displacement_in_that_dir;
-            if (excess_displacement >= 0) {
-              info.remaining_displacement -= vector3<fine_scalar>(approx_impact_dir.v) * excess_displacement;
+          if (locp->stuff_at().contents() == WATER) {
+            const fine_scalar current_speed = objp->velocity.magnitude_within_32_bits();
+            if (current_speed > max_object_speed_through_water) {
+              objp->velocity = objp->velocity * max_object_speed_through_water / current_speed;
+              info.remaining_displacement = info.remaining_displacement * max_object_speed_through_water / current_speed;
             }
-            else std::cerr << "wtf?\n";
-            this_is_colliding = true;
           }
+          else if (locp->stuff_at().contents() == ROCK) {
+            this_step_is_a_collision = true;
+            cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), convert_to_fine_units(tile_bounding_box(locp->coords())));
+            
+            objp->velocity -= project_onto_cardinal_direction(objp->velocity, approx_impact_dir);
+            info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, approx_impact_dir);
+          }
+          else assert(false);
         }
       }
     }
-      
-    if (!this_is_colliding) {
-      actually_change_personal_space_shape(id, new_shape, personal_space_shapes, things_exposed_to_collision);
-      info.accumulated_displacement += wanted_displacement_this_step;
+    
+    if (this_step_is_a_collision) {
       info.remaining_displacement -= wanted_displacement_this_step;
       info.last_step_time = times.current_time;
     }
+    else if (this_step_needs_adjusting) {
+      // don't update last_step_time - it will compute another step at current_time
+    }
     else {
+      actually_change_personal_space_shape(id, new_shape, personal_space_shapes, things_exposed_to_collision);
+      info.accumulated_displacement += wanted_displacement_this_step;
       info.remaining_displacement -= wanted_displacement_this_step;
       info.last_step_time = times.current_time;
     }
     times.queue_next_step(id, info);
       
     if (false) { // if our velocity changed...
-        info.remaining_displacement = (objp->velocity * (max_time - times.current_time)) / (max_time * velocity_scale_factor);
+        info.remaining_displacement = (objp->velocity * (whole_frame_duration - times.current_time)) / (whole_frame_duration * velocity_scale_factor);
         unordered_set<object_or_tile_identifier> new_sweep_overlaps;
         
         shape dst_personal_space_shape(personal_space_shapes[id]);
