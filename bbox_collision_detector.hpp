@@ -115,15 +115,16 @@ private:
     }
   }
   
+  struct ztree_node;
+  typedef ztree_node* ztree_node_ptr;
   struct ztree_node {
     zbox here;
-    ztree_node *child0;
-    ztree_node *child1;
+    ztree_node_ptr child0;
+    ztree_node_ptr child1;
     unordered_set<ObjectIdentifier> objects_here;
     
     ztree_node(zbox box):here(box),child0(nullptr),child1(nullptr){}
   };
-  typedef ztree_node* ztree_node_ptr;
   
   static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
     zbox new_box;
