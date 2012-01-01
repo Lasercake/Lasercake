@@ -184,6 +184,11 @@ void push_vertex(vector<vertex_entry> &v, GLfloat x, GLfloat y, GLfloat z) {
   v.push_back((vertex_entry){x,y,z});
 }
 
+vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
+
+vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
+  return vector3<GLfloat>(input - view_center) / tile_width;
+}
 static void mainLoop (std::string scenario)
 {
   SDL_Event event;
@@ -191,8 +196,6 @@ static void mainLoop (std::string scenario)
   int frame = 0;
   int p_mode = 0;
 srand(time(NULL));
-
-  vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
 
   world w{worldgen_function_t(world_building_func(scenario))};
   vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
@@ -203,11 +206,11 @@ srand(time(NULL));
   w.try_create_object(foo);
   w.try_create_object(bar);
   
-  vector3<fine_scalar> view_loc = wc;
+  vector3<fine_scalar> view_loc_for_local_display = wc;
   enum { GLOBAL, LOCAL, ROBOT } view_type = GLOBAL;
   double view_direction = 0;
   
-  double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
+  double view_x_for_global_display = 5, view_y_for_global_display = 5, view_z_for_global_display = 5, view_dist = 20;
     
   while ( !done ) {
 
@@ -222,12 +225,12 @@ srand(time(NULL));
           
         case SDL_KEYDOWN:
           if(event.key.keysym.sym == SDLK_p) ++p_mode;
-          if(event.key.keysym.sym == SDLK_q) ++view_x;
-          if(event.key.keysym.sym == SDLK_a) --view_x;
-          if(event.key.keysym.sym == SDLK_w) ++view_y;
-          if(event.key.keysym.sym == SDLK_s) --view_y;
-          if(event.key.keysym.sym == SDLK_e) ++view_z;
-          if(event.key.keysym.sym == SDLK_d) --view_z;
+          if(event.key.keysym.sym == SDLK_q) ++view_x_for_global_display;
+          if(event.key.keysym.sym == SDLK_a) --view_x_for_global_display;
+          if(event.key.keysym.sym == SDLK_w) ++view_y_for_global_display;
+          if(event.key.keysym.sym == SDLK_s) --view_y_for_global_display;
+          if(event.key.keysym.sym == SDLK_e) ++view_z_for_global_display;
+          if(event.key.keysym.sym == SDLK_d) --view_z_for_global_display;
           if(event.key.keysym.sym == SDLK_r) ++view_dist;
           if(event.key.keysym.sym == SDLK_f) --view_dist;
           if(event.key.keysym.sym == SDLK_l) view_type = LOCAL;
@@ -250,10 +253,40 @@ srand(time(NULL));
     if(p_mode > 1)--p_mode;
     int before_drawing = SDL_GetTicks();
 
+    vector3<fine_scalar> view_loc;
     //drawing code here
     vector<vertex_entry> rock_vertices;
     vector<vertex_entry> sticky_water_vertices;
     vector<vertex_entry> free_water_vertices;
+    if (view_type == LOCAL) {
+      view_loc = view_loc_for_local_display;
+      if (keystate[SDLK_u]) {
+        view_loc_for_local_display += vector3<fine_scalar>(
+        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
+        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
+        0);
+      }
+      if (keystate[SDLK_j]) {
+        view_loc_for_local_display -= vector3<fine_scalar>(
+          fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
+          fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
+        0);
+      }
+      if (keystate[SDLK_h]) { view_direction += 0.06; }
+      if (keystate[SDLK_k]) { view_direction -= 0.06; }
+      if (keystate[SDLK_y]) { view_loc_for_local_display.z += tile_width / 10; }
+      if (keystate[SDLK_n]) { view_loc_for_local_display.z -= tile_width / 10; }
+    }
+    else if (view_type == ROBOT) {
+      bounding_box b = w.get_object_personal_space_shapes().find(1)->second.bounds();
+      view_loc = ((b.min + b.max) / 2);
+    }
+    else {
+      view_loc = wc;
+      view_loc.x += view_x_for_global_display * tile_width;
+      view_loc.y += view_y_for_global_display * tile_width;
+      view_loc.z += view_z_for_global_display * tile_width;
+    }
     vector<vertex_entry> velocity_vertices;
     vector<vertex_entry> progress_vertices;
     //vector<vertex_entry> inactive_marker_vertices;
@@ -266,15 +299,13 @@ srand(time(NULL));
       vector3<tile_coordinate>(101,101,101)
     ));*/
     w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box(
-      wc + vector3<fine_scalar>(view_x*tile_width,view_y*tile_width,view_z*tile_width)
-         - vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50),
-      wc + vector3<fine_scalar>(view_x*tile_width,view_y*tile_width,view_z*tile_width)
-         + vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50)
+      view_loc - vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50),
+      view_loc + vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50)
     ));
     
     for (auto p : w.laser_sfxes) {
-      vector3<double> locv = vector3<double>(p.first - wc) / tile_width;
-      vector3<double> locv2 = vector3<double>(vector3<fine_scalar>(p.first + p.second - wc)) / double(1ULL << 32);
+      vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, p.first);
+      vector3<GLfloat> locv2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
       //std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
       //std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
       push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z-0.5);
@@ -282,7 +313,7 @@ srand(time(NULL));
       push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z);
       GLfloat length = (locv2 - locv).magnitude_within_32_bits();
       for (int i = 0; i < length; ++i) {
-        vector3<double> locv3 = (locv + (((locv2 - locv) * i) / length));
+        vector3<GLfloat> locv3 = (locv + (((locv2 - locv) * i) / length));
         push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z);
         push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z);
       }
@@ -296,7 +327,7 @@ srand(time(NULL));
         std::vector<convex_polygon> const& foo = blah->second.get_polygons();
         for (convex_polygon const& bar : foo) {
           for (vector3<int64_t> const& baz : bar.get_vertices()) {
-            vector3<double> locv = vector3<double>(baz - wc) / tile_width;
+            vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, baz);
             push_vertex(object_vertices, locv.x, locv.y, locv.z);
             
           push_vertex(velocity_vertices, locv.x, locv.y, locv.z);
@@ -310,7 +341,7 @@ srand(time(NULL));
      if (tile_location const* locp = id.get_tile_location()) {
       tile_location const& loc = *locp;
       tile const& t = loc.stuff_at();
-      vector3<GLfloat> locv = vector3<GLfloat>(lower_bound_in_fine_units(loc.coords()) - wc) / tile_width; // TODO : properly speaking, "minus the perspective you're looking from"? world_center_coords has no business in any code except the world generation, I think
+      vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
       
       // Hack - TODO remove
       if (frame == 0 && t.contents() == WATER) w.activate_water(loc);
@@ -326,7 +357,7 @@ srand(time(NULL));
       std::vector<convex_polygon> const& foo = sh.get_polygons();
       for (convex_polygon const& bar : foo) {
         for (vector3<int64_t> const& baz : bar.get_vertices()) {
-          vector3<double> locve = vector3<double>(baz - wc) / tile_width;
+          vector3<GLfloat> locve = convert_coordinates_to_GL(view_loc, baz);
           push_vertex(*vect, locve.x, locve.y, locve.z);
         }
       }
@@ -370,42 +401,25 @@ srand(time(NULL));
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
     if (view_type == LOCAL) {
-      vector3<GLfloat> foo = vector3<GLfloat>(view_loc - wc) / tile_width;
-      gluLookAt(foo.x, foo.y, foo.z,
-        foo.x + view_dist*std::cos(view_direction), foo.y + view_dist*std::sin(view_direction), foo.z,
+      //vector3<GLfloat> foo = vector3<GLfloat>(view_loc - wc) / tile_width;
+      gluLookAt(0, 0, 0,
+        view_dist*std::cos(view_direction), view_dist*std::sin(view_direction), 0,
         0,0,1);
     }
     else if (view_type == ROBOT) {
       vector3<fine_scalar> facing = std::dynamic_pointer_cast<robot>(w.get_objects().find(1)->second)->get_facing();
-      bounding_box b = w.get_object_personal_space_shapes().find(1)->second.bounds();
-      vector3<fine_scalar> center = ((b.min + b.max) / 2);
-      vector3<GLfloat> foo = vector3<GLfloat>(center - wc) / tile_width;
       vector3<GLfloat> bar = vector3<GLfloat>(facing) / (tile_width);
       //std::cerr << foo.x << ", " << foo.y << ", " << foo.z << ", " << bar.x << ", " << bar.y << ", " << bar.z << ", \n";
-      gluLookAt(foo.x, foo.y, foo.z,
-        foo.x + bar.x, foo.y + bar.y, foo.z,
+      gluLookAt(0, 0, 0,
+        bar.x, bar.y, 0,
         0,0,1);
     }
     else {
-      gluLookAt(view_x + view_dist * std::cos((double)frame / 40.0),view_y + view_dist * std::sin((double)frame / 40.0),view_z + (view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0),view_x,view_y,view_z,0,0,1);
+      gluLookAt(view_dist * std::cos((double)frame / 40.0),view_dist * std::sin((double)frame / 40.0),(view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0),
+      0,0,0,
+      0,0,1);
     }
     
-    if (keystate[SDLK_u]) {
-      view_loc += vector3<fine_scalar>(
-        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
-        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
-      0);
-    }
-    if (keystate[SDLK_j]) {
-      view_loc -= vector3<fine_scalar>(
-        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
-        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
-      0);
-    }
-    if (keystate[SDLK_h]) { view_direction += 0.06; }
-    if (keystate[SDLK_k]) { view_direction -= 0.06; }
-    if (keystate[SDLK_y]) { view_loc.z += tile_width / 10; }
-    if (keystate[SDLK_n]) { view_loc.z -= tile_width / 10; }
     
     glEnableClientState(GL_VERTEX_ARRAY);
     
