@@ -210,6 +210,10 @@ srand(time(NULL));
   )));
   w.create_queued_objects();
   
+  vector3<fine_scalar> view_loc = wc;
+  bool local_view = false;
+  double view_direction = 0;
+  
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
     
   while ( !done ) {
@@ -244,6 +248,8 @@ srand(time(NULL));
           break;
       }
     }
+    
+    Uint8 *keystate = SDL_GetKeyState(NULL);
 	
     if(p_mode == 1)continue;
     if(p_mode > 1)--p_mode;
@@ -368,7 +374,31 @@ srand(time(NULL));
     frame += 1;
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
-    gluLookAt(view_x + view_dist * std::cos((double)frame / 40.0),view_y + view_dist * std::sin((double)frame / 40.0),view_z + (view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0),view_x,view_y,view_z,0,0,1);
+    if (local_view) {
+      vector3<GLfloat> foo = vector3<GLfloat>(view_loc - wc) / tile_width;
+      gluLookAt(foo.x, foo.y, foo.z,
+        foo.x + view_dist*std::cos(view_direction), foo.y + view_dist*std::sin(view_direction), foo.z,
+        0,0,1);
+    }
+    else
+      gluLookAt(view_x + view_dist * std::cos((double)frame / 40.0),view_y + view_dist * std::sin((double)frame / 40.0),view_z + (view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0),view_x,view_y,view_z,0,0,1);
+    
+    if (keystate[SDLK_u]) {
+      view_loc += vector3<fine_scalar>(
+        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
+        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
+      0);
+    }
+    if (keystate[SDLK_j]) {
+      view_loc -= vector3<fine_scalar>(
+        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
+        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
+      0);
+    }
+    if (keystate[SDLK_h]) { view_direction += 0.06; }
+    if (keystate[SDLK_k]) { view_direction -= 0.06; }
+    if (keystate[SDLK_y]) { view_loc.z += tile_width / 10; }
+    if (keystate[SDLK_n]) { view_loc.z -= tile_width / 10; }
     
     glEnableClientState(GL_VERTEX_ARRAY);
     
