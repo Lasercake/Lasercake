@@ -3,5 +3,6 @@ callgrind.out.*
 sim
 /output
 lasercake
+lasercake-optimized
 .*.swp
 
