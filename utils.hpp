@@ -206,17 +206,7 @@ inline cardinal_direction cardinal_direction::operator-()const { return cardinal
 
 template<typename ValueType> class value_for_each_cardinal_direction {
 public:
-  value_for_each_cardinal_direction& operator=(value_for_each_cardinal_direction const& other){
-    for(cardinal_direction_index dir_idx=0; dir_idx < num_cardinal_directions; ++dir_idx) {
-      data[dir_idx] = other.data[dir_idx];
-    }
-    return *this;
-  }
-  value_for_each_cardinal_direction(ValueType initial_value) {
-    for(cardinal_direction_index dir_idx=0; dir_idx < num_cardinal_directions; ++dir_idx) {
-      data[dir_idx] = initial_value;
-    }
-  }
+  explicit value_for_each_cardinal_direction(ValueType const& iv/*initial_value*/) : data({{iv,iv,iv,iv,iv,iv}}) { static_assert(num_cardinal_directions == 6, "fix {{iv,iv,...}} to have the right number"); }
   ValueType      & operator[](cardinal_direction const& dir) { return data[dir.cardinal_direction_idx]; }
   ValueType const& operator[](cardinal_direction const& dir)const { return data[dir.cardinal_direction_idx]; }
 private:
