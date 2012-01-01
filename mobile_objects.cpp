@@ -22,7 +22,10 @@ void collect_collisions_if_object_personal_space_is_at(world& w, unordered_set<o
   }
 }
 
-void actually_change_personal_space_shape(object_identifier id, shape const& new_shape, object_shapes_t &personal_space_shapes, world_collision_detector &things_exposed_to_collision) {
+void actually_change_personal_space_shape(
+   object_identifier id, shape const& new_shape,
+   object_shapes_t           &personal_space_shapes,
+   world_collision_detector  &things_exposed_to_collision) {
   personal_space_shapes[id] = new_shape;
   things_exposed_to_collision.erase(id);
   things_exposed_to_collision.insert(id, new_shape.bounds());
@@ -76,7 +79,9 @@ void update_moving_objects_(
     }
   }
   
-  // these get changed if an object bounces
+  const int64_t max_time = 1ULL << 32;
+  
+  
   struct object_trajectory_info {
     object_trajectory_info(){}
     object_trajectory_info(vector3<fine_scalar>r):last_step_time(0),remaining_displacement(r),accumulated_displacement(0,0,0){}
@@ -86,12 +91,11 @@ void update_moving_objects_(
     vector3<fine_scalar> accumulated_displacement;
   };
   
-  const int64_t max_time = 1ULL << 32;
-  
+  unordered_map<object_identifier, object_trajectory_info> trajinfo;
   
   struct stepping_times {
     int64_t current_time;
-    std::map<int64_t, object_identifier> queued_steps;
+    std::multimap<int64_t, object_identifier> queued_steps;
     stepping_times():current_time(0){}
     
     void queue_next_step(object_identifier id, object_trajectory_info info) {
@@ -107,8 +111,8 @@ void update_moving_objects_(
         // With (max step distance) = (max step time) * (speed)
         // (max step time) = (max step distance) / speed
         // Recall that dispmag is in regular fine units instead of velocity units.
-        const int64_t max_normal_step_time = (((tile_width >> 5) * (max_time - info.last_step_time)) / dispmag);
-        if (info.last_step_time + max_normal_step_time > current_time) step_time = info.last_step_time + max_normal_step_time;
+        const int64_t max_normal_step_duration = (((tile_width >> 5) * (max_time - info.last_step_time)) / dispmag);
+        if (info.last_step_time + max_normal_step_duration > current_time) step_time = info.last_step_time + max_normal_step_duration;
         else step_time = current_time;
       }
       
@@ -125,66 +129,56 @@ void update_moving_objects_(
   
   stepping_times times;
   
-  unordered_map<object_identifier, object_trajectory_info> trajinfo;
-  
   for (object_identifier id : objects_with_some_overlap) {
-    if (shared_ptr<mobile_object> const* objp = find_as_pointer(moving_objects, id)) {
-      //if (shape const* old_personal_space_shape = find_as_pointer(personal_space_shapes, id)) {
-        //fine_scalar velmag = (*objp)->velocity.magnitude_within_32_bits();
-        trajinfo[id] = object_trajectory_info((*objp)->velocity / velocity_scale_factor);
-        times.queue_next_step(id, trajinfo[id]);
-      //}
-    }
+    shared_ptr<mobile_object> objp = moving_objects[id];
+    trajinfo[id] = object_trajectory_info(objp->velocity / velocity_scale_factor);
+    times.queue_next_step(id, trajinfo[id]);
   }
   
   while(!times.queued_steps.empty()) {
     object_identifier id = times.pop_next_step();
-    if (shared_ptr<mobile_object> const* objp = find_as_pointer(moving_objects, id)) {
-      object_trajectory_info &info = trajinfo[id];
-      shape new_shape(personal_space_shapes[id]);
+    shared_ptr<mobile_object> objp = moving_objects[id];
+    object_trajectory_info &info = trajinfo[id];
+    
+    shape new_shape(personal_space_shapes[id]);
       
-      vector3<fine_scalar> wanted_displacement_this_step = info.remaining_displacement * (times.current_time - info.last_step_time) / (max_time - info.last_step_time);
-      /*for (int i = 0; i < 3; ++i) {
-        fine_scalar amount_replaced = std::max(std::abs(wanted_displacement_this_step[i]), info.displacement_conversion[i].amount);
-        if (amount_replaced > 0) {
-          wanted_displacement_this_step += info.displacement_conversion[i].target_direction * amount_replaced;
-          wanted_displacement_this_step[i] -= amount_replaced * sign(wanted_displacement_this_step);
-        }
-      }*/
-      new_shape.translate(wanted_displacement_this_step);
+    vector3<fine_scalar> wanted_displacement_this_step = info.remaining_displacement * (times.current_time - info.last_step_time) / (max_time - info.last_step_time);
       
-      unordered_set<object_or_tile_identifier> this_overlaps;
-      w.collect_things_exposed_to_collision_intersecting(this_overlaps, new_shape.bounds());
+    new_shape.translate(wanted_displacement_this_step);
       
-      bool this_is_colliding = false;
-      for (object_or_tile_identifier const& foo : this_overlaps) {
-        if (object_identifier const* oidp = foo.get_object_identifier()) {
-          if (*oidp != id) {
-            if (new_shape.intersects(personal_space_shapes[*oidp])) {
-              this_is_colliding = true;
-            }
-          }
-        }
-        if (tile_location const* locp = foo.get_tile_location()) {
-          if (new_shape.intersects(tile_shape(locp->coords()))) {
+    unordered_set<object_or_tile_identifier> this_overlaps;
+    w.collect_things_exposed_to_collision_intersecting(this_overlaps, new_shape.bounds());
+      
+    bool this_is_colliding = false;
+    for (object_or_tile_identifier const& foo : this_overlaps) {
+      if (object_identifier const* oidp = foo.get_object_identifier()) {
+        if (*oidp != id) {
+          if (new_shape.intersects(personal_space_shapes[*oidp])) {
             this_is_colliding = true;
           }
         }
       }
-      
-      if (!this_is_colliding) {
-        actually_change_personal_space_shape(id, new_shape, personal_space_shapes, things_exposed_to_collision);
-        info.accumulated_displacement += wanted_displacement_this_step;
-        info.remaining_displacement -= wanted_displacement_this_step;
-        info.last_step_time = times.current_time;
+      if (tile_location const* locp = foo.get_tile_location()) {
+        if (new_shape.intersects(tile_shape(locp->coords()))) {
+          this_is_colliding = true;
+        }
       }
-      else {
-        info.remaining_displacement -= wanted_displacement_this_step;
-        info.last_step_time = times.current_time;
-      }
+    }
       
-      if (false) { // if our velocity changed...
-        info.remaining_displacement = ((*objp)->velocity * (max_time - times.current_time)) / (max_time * velocity_scale_factor);
+    if (!this_is_colliding) {
+      actually_change_personal_space_shape(id, new_shape, personal_space_shapes, things_exposed_to_collision);
+      info.accumulated_displacement += wanted_displacement_this_step;
+      info.remaining_displacement -= wanted_displacement_this_step;
+      info.last_step_time = times.current_time;
+    }
+    else {
+      info.remaining_displacement -= wanted_displacement_this_step;
+      info.last_step_time = times.current_time;
+    }
+    times.queue_next_step(id, info);
+      
+    if (false) { // if our velocity changed...
+        info.remaining_displacement = (objp->velocity * (max_time - times.current_time)) / (max_time * velocity_scale_factor);
         unordered_set<object_or_tile_identifier> new_sweep_overlaps;
         
         shape dst_personal_space_shape(personal_space_shapes[id]);
@@ -206,7 +200,6 @@ void update_moving_objects_(
             }
           }
         }
-      }
     }
   }
   
