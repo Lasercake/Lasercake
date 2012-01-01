@@ -28,6 +28,7 @@
 #include <array>
 #include <cassert>
 #include <cstdlib>
+#include <boost/scoped_ptr.hpp>
 
 using std::unordered_map;
 using std::unordered_set;
@@ -58,6 +59,12 @@ public:
   };
   
   bbox_collision_detector():objects_tree(nullptr){}
+  bbox_collision_detector(bbox_collision_detector const& other) { *this = other; }
+  bbox_collision_detector& operator=(bbox_collision_detector const& other) {
+    bboxes_by_object = other.bboxes_by_object;
+    if(other.objects_tree) objects_tree.reset(new ztree_node(*other.objects_tree));
+    return *this;
+  }
   
 private:
   static const num_bits_type total_bits = coordinate_bits * num_dimensions;
@@ -115,13 +122,22 @@ private:
     }
   }
   
+  struct ztree_node;
+  typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
   struct ztree_node {
     zbox here;
-    ztree_node *child0;
-    ztree_node *child1;
+    ztree_node_ptr child0;
+    ztree_node_ptr child1;
     unordered_set<ObjectIdentifier> objects_here;
     
     ztree_node(zbox box):here(box),child0(nullptr),child1(nullptr){}
+    ztree_node(ztree_node const& other) { *this = other; }
+    ztree_node& operator=(ztree_node const& other) {
+      here = other.here;
+      if(other.child0) child0.reset(new ztree_node(*other.child0));
+      if(other.child1) child1.reset(new ztree_node(*other.child1));
+      return *this;
+    }
   };
   
   static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
@@ -167,9 +183,9 @@ private:
     return result;
   }
   
-  static void insert_box(ztree_node*& tree, ObjectIdentifier obj, zbox box) {
+  static void insert_box(ztree_node_ptr& tree, ObjectIdentifier obj, zbox box) {
     if (!tree) {
-      tree = new ztree_node(box);
+      tree.reset(new ztree_node(box));
       tree->objects_here.insert(obj);
     }
     else {
@@ -183,21 +199,23 @@ private:
         }
       }
       else {
-        ztree_node *new_tree = new ztree_node(smallest_joint_parent(tree->here, box));
+        ztree_node_ptr new_tree(new ztree_node(smallest_joint_parent(tree->here, box)));
+
         assert(new_tree->here.num_low_bits_ignored > tree->here.num_low_bits_ignored);
         assert(new_tree->here.subsumes(tree->here));
         assert(new_tree->here.subsumes(box));
         assert(box.subsumes(tree->here) || (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1) != box.get_bit(new_tree->here.num_low_bits_ignored - 1)));
-        if (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1)) new_tree->child1 = tree;
-        else                                                             new_tree->child0 = tree;
-      
-        tree = new_tree;
+
+        if (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1)) tree.swap(new_tree->child1);
+        else                                                             tree.swap(new_tree->child0);
+
+        tree.swap(new_tree);
         insert_box(tree, obj, box);
       }
     }
   }
   
-  static void delete_object(ztree_node*& tree, ObjectIdentifier obj, bounding_box const& bbox) {
+  static void delete_object(ztree_node_ptr& tree, ObjectIdentifier obj, bounding_box const& bbox) {
     if (!tree) return;
     if (tree->here.get_bbox().overlaps(bbox)) {
       tree->objects_here.erase(obj);
@@ -207,24 +225,19 @@ private:
       if (tree->objects_here.empty()) {
         if (tree->child0) {
           if (!tree->child1) {
-            delete tree;
-            tree = tree->child0;
+            ztree_node_ptr dead_tree;
+            dead_tree.swap(tree);
+            dead_tree->child0.swap(tree);
           }
         }
         else {
-          delete tree;
-          tree = tree->child1; // which could be null
+          // old 'child1' a.k.a. new 'tree' could be null
+          ztree_node_ptr dead_tree;
+          dead_tree.swap(tree);
+          dead_tree->child1.swap(tree);
         }
       }
     }
-  }
-  
-  static void delete_entire_tree(ztree_node*& tree) {
-    if (!tree) return;
-    delete_entire_tree(tree->child0);
-    delete_entire_tree(tree->child1);
-    delete tree;
-    tree = nullptr;
   }
   
   void zget_objects_overlapping(ztree_node const* tree, unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
@@ -234,13 +247,13 @@ private:
         assert(bbox_iter != bboxes_by_object.end());
         if (bbox_iter->second.overlaps(bbox)) results.insert(obj);
       }
-      zget_objects_overlapping(tree->child0, results, bbox);
-      zget_objects_overlapping(tree->child1, results, bbox);
+      zget_objects_overlapping(tree->child0.get(), results, bbox);
+      zget_objects_overlapping(tree->child1.get(), results, bbox);
     }
   }
   
   unordered_map<ObjectIdentifier, bounding_box> bboxes_by_object;
-  ztree_node* objects_tree;
+  ztree_node_ptr objects_tree;
   
 public:
 
@@ -286,10 +299,9 @@ public:
   }
   
   void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
-    zget_objects_overlapping(objects_tree, results, bbox);
+    zget_objects_overlapping(objects_tree.get(), results, bbox);
   }
-  
-  ~bbox_collision_detector() { delete_entire_tree(objects_tree); }
+
 };
 
 /*
