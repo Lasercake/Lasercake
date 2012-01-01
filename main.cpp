@@ -368,22 +368,22 @@ srand(time(NULL));
       
       if (t.contents() == WATER) {
         if (water_movement_info *water = w.get_active_water_tile(loc)) {
-          push_vertex(velocity_vertices, locv.x+0.5, locv.y+0.5, locv.z + 0.5);
+          push_vertex(velocity_vertices, locv.x+0.5, locv.y+0.5, locv.z + 0.1);
           push_vertex(velocity_vertices,
               locv.x + 0.5 + ((GLfloat)water->velocity.x / (tile_width)),
               locv.y + 0.5 + ((GLfloat)water->velocity.y / (tile_width)),
-              locv.z + 0.5 + ((GLfloat)water->velocity.z / (tile_width)));
+              locv.z + 0.1 + ((GLfloat)water->velocity.z / (tile_width)));
           
           for (EACH_CARDINAL_DIRECTION(dir)) {
             const sub_tile_distance prog = water->progress[dir];
             if (prog > 0) {
               vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary(dir);
 
-              push_vertex(progress_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+              push_vertex(progress_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
               push_vertex(progress_vertices,
                   locv.x + 0.5 + directed_prog.x,
                   locv.y + 0.5 + directed_prog.y,
-                  locv.z + 0.5 + directed_prog.z);
+                  locv.z + 0.1 + directed_prog.z);
             }
           }
         }
