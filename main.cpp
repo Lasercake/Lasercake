@@ -196,15 +196,15 @@ srand(time(NULL));
 
   world w{worldgen_function_t(world_building_func(scenario))};
   vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
+  shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
+  w.try_create_object(baz); // will be ID 1
   shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,2)));
   shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,3,2)));
   w.try_create_object(foo);
   w.try_create_object(bar);
-  shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,2)));
-  w.try_create_object(baz);
   
   vector3<fine_scalar> view_loc = wc;
-  bool local_view = false;
+  enum { GLOBAL, LOCAL, ROBOT } view_type = GLOBAL;
   double view_direction = 0;
   
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
@@ -230,7 +230,9 @@ srand(time(NULL));
           if(event.key.keysym.sym == SDLK_d) --view_z;
           if(event.key.keysym.sym == SDLK_r) ++view_dist;
           if(event.key.keysym.sym == SDLK_f) --view_dist;
-          if(event.key.keysym.sym == SDLK_l) local_view = !local_view;
+          if(event.key.keysym.sym == SDLK_l) view_type = LOCAL;
+          if(event.key.keysym.sym == SDLK_o) view_type = GLOBAL;
+          if(event.key.keysym.sym == SDLK_i) view_type = ROBOT;
           if(event.key.keysym.sym != SDLK_ESCAPE)break;
           
         case SDL_QUIT:
@@ -367,14 +369,26 @@ srand(time(NULL));
     frame += 1;
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
-    if (local_view) {
+    if (view_type == LOCAL) {
       vector3<GLfloat> foo = vector3<GLfloat>(view_loc - wc) / tile_width;
       gluLookAt(foo.x, foo.y, foo.z,
         foo.x + view_dist*std::cos(view_direction), foo.y + view_dist*std::sin(view_direction), foo.z,
         0,0,1);
     }
-    else
+    else if (view_type == ROBOT) {
+      vector3<fine_scalar> facing = std::dynamic_pointer_cast<robot>(w.get_objects().find(1)->second)->get_facing();
+      bounding_box b = w.get_object_personal_space_shapes().find(1)->second.bounds();
+      vector3<fine_scalar> center = ((b.min + b.max) / 2);
+      vector3<GLfloat> foo = vector3<GLfloat>(center - wc) / tile_width;
+      vector3<GLfloat> bar = vector3<GLfloat>(facing) / (tile_width);
+      //std::cerr << foo.x << ", " << foo.y << ", " << foo.z << ", " << bar.x << ", " << bar.y << ", " << bar.z << ", \n";
+      gluLookAt(foo.x, foo.y, foo.z,
+        foo.x + bar.x, foo.y + bar.y, foo.z,
+        0,0,1);
+    }
+    else {
       gluLookAt(view_x + view_dist * std::cos((double)frame / 40.0),view_y + view_dist * std::sin((double)frame / 40.0),view_z + (view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0),view_x,view_y,view_z,0,0,1);
+    }
     
     if (keystate[SDLK_u]) {
       view_loc += vector3<fine_scalar>(

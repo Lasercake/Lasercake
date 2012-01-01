@@ -490,6 +490,7 @@ public:
   std::vector<std::pair<vector3<fine_scalar>, vector3<fine_scalar>>> laser_sfxes;
   
   
+  objects_map<object>::type const& get_objects()const { return objects; }
   object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes; }
 private:
   friend class world_building_gun;
@@ -536,6 +537,7 @@ public:
   virtual shape get_initial_detail_shape()const;
   
   virtual void update(world &w, object_identifier my_id);
+  vector3<fine_scalar> get_facing()const { return facing; }
 private:
   vector3<fine_scalar> location;
   vector3<fine_scalar> facing;
