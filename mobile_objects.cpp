@@ -155,12 +155,48 @@ void update_moving_objects_(
         if (*oidp != id) {
           if (new_shape.intersects(personal_space_shapes[*oidp])) {
             this_is_colliding = true;
+            // TODO remove duplicate code!!! Also this code is hacky!!!
+            bounding_box overlapping_bounds = new_shape.bounds();
+            overlapping_bounds.restrict_to(personal_space_shapes[*oidp].bounds());
+            assert(overlapping_bounds.is_anywhere);
+            cardinal_direction best_dir = cdir_xplus; // it shouldn't matter what I initialize it to
+            fine_scalar best = -1;
+            for (EACH_CARDINAL_DIRECTION(dir)) {
+              if (objp->velocity.dot<fine_scalar>(dir.v) > 0) {
+                const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[dir.which_dimension()] - overlapping_bounds.min[dir.which_dimension()];
+                if (best == -1 || overlap_in_this_dimension < best) {
+                  best = overlap_in_this_dimension;
+                  best_dir = dir;
+                }
+              }
+            }
+            objp->velocity -= project_onto_cardinal_direction(objp->velocity, best_dir);
+            info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, best_dir);
+            // end TODO remove duplicate code
           }
         }
       }
       if (tile_location const* locp = foo.get_tile_location()) {
         if (new_shape.intersects(tile_shape(locp->coords()))) {
           this_is_colliding = true;
+            // TODO remove duplicate code!!! Also this code is hacky!!!
+            bounding_box overlapping_bounds = new_shape.bounds();
+            overlapping_bounds.restrict_to(convert_to_fine_units(tile_bounding_box(locp->coords())));
+            assert(overlapping_bounds.is_anywhere);
+            cardinal_direction best_dir = cdir_xplus; // it shouldn't matter what I initialize it to
+            fine_scalar best = -1;
+            for (EACH_CARDINAL_DIRECTION(dir)) {
+              if (objp->velocity.dot<fine_scalar>(dir.v) > 0) {
+                const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[dir.which_dimension()] - overlapping_bounds.min[dir.which_dimension()];
+                if (best == -1 || overlap_in_this_dimension < best) {
+                  best = overlap_in_this_dimension;
+                  best_dir = dir;
+                }
+              }
+            }
+            objp->velocity -= project_onto_cardinal_direction(objp->velocity, best_dir);
+            info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, best_dir);
+            // end TODO remove duplicate code
         }
       }
     }
