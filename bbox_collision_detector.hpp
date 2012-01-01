@@ -59,6 +59,12 @@ public:
   };
   
   bbox_collision_detector():objects_tree(nullptr){}
+  bbox_collision_detector(bbox_collision_detector const& other) { *this = other; }
+  bbox_collision_detector& operator=(bbox_collision_detector const& other) {
+    bboxes_by_object = other.bboxes_by_object;
+    if(other.objects_tree) objects_tree.reset(new ztree_node(*other.objects_tree));
+    return *this;
+  }
   
 private:
   static const num_bits_type total_bits = coordinate_bits * num_dimensions;
@@ -125,6 +131,13 @@ private:
     unordered_set<ObjectIdentifier> objects_here;
     
     ztree_node(zbox box):here(box),child0(nullptr),child1(nullptr){}
+    ztree_node(ztree_node const& other) { *this = other; }
+    ztree_node& operator=(ztree_node const& other) {
+      here = other.here;
+      if(other.child0) child0.reset(new ztree_node(*other.child0));
+      if(other.child1) child1.reset(new ztree_node(*other.child1));
+      return *this;
+    }
   };
   
   static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
