@@ -287,6 +287,8 @@ bool should_be_sticky(tile_location loc);
 
 
 typedef uint64_t object_identifier;
+const object_identifier NO_OBJECT = 0;
+
 struct object_or_tile_identifier {
   object_or_tile_identifier(tile_location const& loc):data(loc){}
   object_or_tile_identifier(object_identifier id):data(id){}
@@ -478,8 +480,8 @@ public:
   
   void set_stickyness(tile_location const& loc, bool new_stickyness);
   
-  bool try_create_object(shared_ptr<object> obj) {
-    // TODO: fail if there's something in the way
+  object_identifier try_create_object(shared_ptr<object> obj) {
+    // TODO: fail (and return NO_OBJECT) if there's something in the way
     object_identifier id = next_object_identifier++;
     objects.insert(make_pair(id, obj));
     bounding_box b; // TODO: in mobile_objects.cpp, include detail_shape in at least the final box left in the ztree
@@ -495,7 +497,7 @@ public:
     if(shared_ptr<autonomous_object> m = boost::dynamic_pointer_cast<autonomous_object>(obj)) {
       autonomously_active_objects.insert(make_pair(id, m));
     }
-    return true;
+    return id;
   }
   
   // If objects overlap with the new position, returns their IDs. If not, changes the shape and returns an empty set.
