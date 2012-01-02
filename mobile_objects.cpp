@@ -193,35 +193,26 @@ void update_moving_objects_(
     // TODO properly consider multiple collisions in the same step.
     bool this_step_is_a_collision = false;
     bool this_step_needs_adjusting = false;
-    for (object_or_tile_identifier const& foo : this_overlaps) {
-      if (object_identifier const* oidp = foo.get_object_identifier()) {
-        if (*oidp != id) {
-          if (new_shape.intersects(personal_space_shapes[*oidp])) {
-            this_step_is_a_collision = true;
-            cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), personal_space_shapes[*oidp].bounds());
-            
-            objp->velocity -= project_onto_cardinal_direction(objp->velocity, approx_impact_dir);
-            info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, approx_impact_dir);
+    for (object_or_tile_identifier const& them : this_overlaps) {
+      if (them != id) {
+        tile_location const* locp = them.get_tile_location();
+        if (locp && locp->stuff_at().contents() == WATER) {
+          const fine_scalar current_speed = objp->velocity.magnitude_within_32_bits();
+          if (current_speed > max_object_speed_through_water) {
+            objp->velocity = objp->velocity * max_object_speed_through_water / current_speed;
+            info.remaining_displacement = info.remaining_displacement * max_object_speed_through_water / current_speed;
+            this_step_needs_adjusting = true;
           }
         }
-      }
-      if (tile_location const* locp = foo.get_tile_location()) {
-        if (new_shape.intersects(tile_shape(locp->coords()))) {
-          if (locp->stuff_at().contents() == WATER) {
-            const fine_scalar current_speed = objp->velocity.magnitude_within_32_bits();
-            if (current_speed > max_object_speed_through_water) {
-              objp->velocity = objp->velocity * max_object_speed_through_water / current_speed;
-              info.remaining_displacement = info.remaining_displacement * max_object_speed_through_water / current_speed;
-            }
-          }
-          else if (locp->stuff_at().contents() == ROCK) {
+        else {
+          shape their_shape = w.get_personal_space_shape_of_object_or_tile(them);
+          if (new_shape.intersects(their_shape)) {
             this_step_is_a_collision = true;
-            cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), convert_to_fine_units(tile_bounding_box(locp->coords())));
+            cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), their_shape.bounds());
             
             objp->velocity -= project_onto_cardinal_direction(objp->velocity, approx_impact_dir);
             info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, approx_impact_dir);
           }
-          else assert(false);
         }
       }
     }

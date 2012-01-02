@@ -98,20 +98,11 @@ void laser_emitter::update(world &w, object_identifier my_id) {
     w.collect_things_exposed_to_collision_intersecting(possible_hits, laser_line.bounds());
     std::pair<bool, boost::rational<int64_t>> best_inters(false, 0);
     for (object_or_tile_identifier const& id : possible_hits) {
-      if (tile_location const* locp = id.get_tile_location()) {
-      // TODO fix duplicate code
-        std::pair<bool, boost::rational<int64_t>> inters = tile_shape(locp->coords()).first_intersection(laser_line);
+      if (id != my_id) {
+        shape other_shape = w.get_detail_shape_of_object_or_tile(id);
+        std::pair<bool, boost::rational<int64_t>> inters = other_shape.first_intersection(laser_line);
         if (inters.first && (!best_inters.first || inters.second < best_inters.second)) {
           best_inters = inters;
-        }
-      }
-      if (object_identifier const* oidp = id.get_object_identifier()) {
-        if (*oidp != my_id) {
-          shape const& their_shape = w.get_object_detail_shapes().find(*oidp)->second;
-          std::pair<bool, boost::rational<int64_t>> inters = their_shape.first_intersection(laser_line);
-          if (inters.first && (!best_inters.first || inters.second < best_inters.second)) {
-            best_inters = inters;
-          }
         }
       }
     }

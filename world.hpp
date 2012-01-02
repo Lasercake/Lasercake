@@ -308,6 +308,16 @@ struct object_or_tile_identifier {
     return boost::apply_visitor( hash_visitor(), data );
   }
   bool operator==(object_or_tile_identifier const& other)const { return data == other.data; }
+  bool operator==(object_identifier const& other)const {
+    if (object_identifier const* foo = get_object_identifier()) { return *foo == other; }
+    else return false;
+  }
+  bool operator==(tile_location const& other)const {
+    if (tile_location const* foo = get_tile_location()) { return *foo == other; }
+    else return false;
+  }
+  bool operator!=(object_identifier const& other)const { return !(*this == other); }
+  bool operator!=(tile_location const& other)const { return !(*this == other); }
 private:
   boost::variant<tile_location, object_identifier> data;
 };
