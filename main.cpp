@@ -184,7 +184,7 @@ void push_vertex(vector<vertex_entry> &v, GLfloat x, GLfloat y, GLfloat z) {
   v.push_back((vertex_entry){x,y,z});
 }
 
-vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
+const vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
 
 vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
   return vector3<GLfloat>(input - view_center) / tile_width;
