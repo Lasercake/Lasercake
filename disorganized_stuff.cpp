@@ -31,3 +31,25 @@ void world_building_gun::operator()(tile_contents new_contents, vector3<tile_coo
   }
   else assert("YOU CAN ONLY PLACE ROCK AND WATER" && false);
 }
+
+
+shape world::get_personal_space_shape_of_object_or_tile(object_or_tile_identifier id)const {
+  if (tile_location const* tlocp = id.get_tile_location()) {
+    return tile_shape(tlocp->coords());
+  }
+  if (object_identifier const* oidp = id.get_object_identifier()) {
+    return object_personal_space_shapes.find(*oidp)->second;
+  }
+  assert(false);
+}
+shape world::get_detail_shape_of_object_or_tile(object_or_tile_identifier id)const {
+  if (tile_location const* tlocp = id.get_tile_location()) {
+    return tile_shape(tlocp->coords());
+  }
+  if (object_identifier const* oidp = id.get_object_identifier()) {
+    return object_personal_space_shapes.find(*oidp)->second;
+  }
+  assert(false);
+}
+
+

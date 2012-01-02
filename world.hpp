@@ -510,6 +510,8 @@ public:
   }
   std::vector<std::pair<vector3<fine_scalar>, vector3<fine_scalar>>> laser_sfxes;
   
+  shape get_personal_space_shape_of_object_or_tile(object_or_tile_identifier id)const;
+  shape get_detail_shape_of_object_or_tile(object_or_tile_identifier id)const;
   
   objects_map<object>::type const& get_objects()const { return objects; }
   object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes; }
