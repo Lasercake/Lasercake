@@ -44,7 +44,7 @@ namespace hacky_internals {
       
       w = w_;
       global_position = global_position_;
-      tile_bounding_box bounds{global_position, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension)};
+      tile_bounding_box bounds(global_position, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
       w->worldgen_function(world_building_gun(w, bounds), bounds);
       //std::cerr << "A worldblock has been created!\n";
       
