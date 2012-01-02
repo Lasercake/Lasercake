@@ -19,6 +19,9 @@
 
 */
 
+
+#include "world.hpp"
+
 /*
 
 Loosely:
@@ -390,8 +393,9 @@ void replace_substance(
             water_groups_by_surface_tile[new_grouped_loc] = new_group_id;
             new_group.surface_tiles.insert(new_grouped_loc);
             water_group->surface_tiles.erase(new_grouped_loc);
-            ++new_group.num_tiles_by_height[new_grouped_loc.coords().z];
-            --water_group.num_tiles_by_height[new_grouped_loc.coords().z];
+            // TODO figure out a real way to recompute the num_tiles_by_height stuff.
+            //++new_group.num_tiles_by_height[new_grouped_loc.coords().z];
+            //--water_group.num_tiles_by_height[new_grouped_loc.coords().z];
           }
         }
         else {
@@ -428,6 +432,14 @@ void replace_substance(
     //  End of flood-fill-based group-splitting algorithm
     // ==============================================================================
   }
+}
+
+
+void update_fluids(world &w) {
+  // for each active water
+  // if you're an interior, near-edge member of an active group, gain some prog. towards other tiles
+  // if you're interior, lose a little vel. and prog.
+  // if you're not, 
 }
 
 /*
@@ -559,21 +571,6 @@ make up the mainstay of the volume of a lake.
 
 */
 
-
-#include "world.hpp"
-
-bool should_be_sticky(tile_location loc) {
-  if (loc.stuff_at().contents() != WATER) return false;
-  
-  int airs = 0;
-  for (EACH_CARDINAL_DIRECTION(dir)) {
-    const tile_location other_loc = loc.get_neighbor(dir, CONTENTS_ONLY);
-    if (other_loc.stuff_at().contents() == AIR) ++airs;
-  }
-  return (airs <= 1);
-}
-
-
 void world::deactivate_water(tile_location const& loc) {
   active_water_tiles.erase(loc);
 }
@@ -611,123 +608,6 @@ bool water_movement_info::is_in_inactive_state()const {
 
 
 
-typedef int group_number_t;
-const group_number_t NO_GROUP = -1;
-const group_number_t FIRST_GROUP = 0;
-
-
-
-
-struct water_groups_structure {
-  unordered_map<tile_location, group_number_t> group_numbers_by_tile_location;
-  vector<unordered_set<tile_location> > tile_locations_by_group_number;
-  vector<unordered_set<tile_location> > nearby_free_waters_by_group_number;
-  vector<tile_coordinate> max_z_including_nearby_free_waters_by_group_number;
-};
-
-void collect_membrane(tile_location const& loc, group_number_t group_number, water_groups_structure &result) {
-  vector<tile_location> frontier;
-  frontier.push_back(loc);
-  while(!frontier.empty())
-  {
-    const tile_location next_loc = frontier.back();
-    frontier.pop_back();
-    if (result.group_numbers_by_tile_location.find(next_loc) == result.group_numbers_by_tile_location.end()) {
-      result.group_numbers_by_tile_location.insert(make_pair(next_loc, group_number));
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        const tile_location adj_loc = next_loc + dir;
-        if (adj_loc.stuff_at().is_membrane_water()) {
-          frontier.push_back(adj_loc);
-        }
-        // Handle a tricky situation
-        if (adj_loc.stuff_at().is_interior_water()) {
-          for (EACH_CARDINAL_DIRECTION(d2)) {
-            const tile_location adj_loc_2 = adj_loc + d2;
-            if (adj_loc_2.stuff_at().is_membrane_water()) {
-              frontier.push_back(adj_loc_2);
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-bool columns_sorter_lt(pair<tile_location, group_number_t> const& i, pair<tile_location, group_number_t> const& j) {
-  vector3<tile_coordinate> c1 = i.first.coords();
-  vector3<tile_coordinate> c2 = j.first.coords();
-  return (c1.x < c2.x) || ((c1.x == c2.x) && ((c1.y < c2.y) || ((c1.y == c2.y) && (c1.z < c2.z))));
-}
-
-// the argument must start out default-initialized
-void compute_groups_that_need_to_be_considered(world &w, water_groups_structure &result) {
-  group_number_t next_membrane_number = FIRST_GROUP;
-  for (pair<const tile_location, water_movement_info> const& p : w.active_water_tiles_range()) {
-    tile_location const& loc = p.first;
-    if (loc.stuff_at().is_membrane_water() && result.group_numbers_by_tile_location.find(loc) == result.group_numbers_by_tile_location.end()) {
-      collect_membrane(loc, next_membrane_number, result);
-      ++next_membrane_number;
-    }
-  }
-  
-  // Make a list of locations, sorted by X then Y then Z
-  vector<pair<tile_location, group_number_t> > columns; columns.reserve(result.group_numbers_by_tile_location.size());
-  columns.insert(columns.end(), result.group_numbers_by_tile_location.begin(), result.group_numbers_by_tile_location.end());
-  std::sort(columns.begin(), columns.end(), columns_sorter_lt);
-  
-  group_number_t containing_group = NO_GROUP;
-  for (pair<tile_location, group_number_t> const& p : columns) {
-    if ((p.first + cdir_zminus).stuff_at().is_sticky_water()) {
-      // The tile we've just hit is the boundary of a bubble in the larger group (or it's extra bits of the outer shell, in which case the assignment does nothing).
-      assert(containing_group != NO_GROUP);
-      result.group_numbers_by_tile_location[p.first] = containing_group;
-    }
-    else {
-      // We're entering a group from the outside, which means it functions as a containing group.
-      containing_group = p.second;
-    }
-  }
-  
-  // Now we might have some sort of group numbers like "1, 2, 7" because they've consolidated in essentially a random order. Convert them to a nice set of indices like 0, 1, 2.
-  map<group_number_t, group_number_t> key_compacting_map;
-  group_number_t next_group_number = FIRST_GROUP;
-  for (pair<const tile_location, group_number_t> &p : result.group_numbers_by_tile_location) {
-    tile_location const& loc = p.first;
-    if (group_number_t *new_number = find_as_pointer(key_compacting_map, p.second)) {
-      p.second = *new_number;
-    }
-    else {
-      p.second = key_compacting_map[p.second] = next_group_number++; // Bwa ha ha ha ha.
-      result.tile_locations_by_group_number.push_back(unordered_set<tile_location>());
-      result.nearby_free_waters_by_group_number.push_back(unordered_set<tile_location>());
-      result.max_z_including_nearby_free_waters_by_group_number.push_back(loc.coords().z);
-    }
-    result.tile_locations_by_group_number[p.second].insert(loc);
-    result.max_z_including_nearby_free_waters_by_group_number[p.second] = std::max(result.max_z_including_nearby_free_waters_by_group_number[p.second], loc.coords().z);
-    
-    for (EACH_CARDINAL_DIRECTION(dir)) {
-      const tile_location dst_loc = loc + dir;
-      tile const& dst_tile = dst_loc.stuff_at();
-      if (dst_tile.is_free_water()) {
-        result.nearby_free_waters_by_group_number[p.second].insert(dst_loc);
-        result.max_z_including_nearby_free_waters_by_group_number[p.second] = std::max(result.max_z_including_nearby_free_waters_by_group_number[p.second], dst_loc.coords().z);
-      }
-      // Hack? Include tiles connected diagonally, if there's air in between (this makes sure that water using the 'fall off pillars' rule to go into a lake is grouped with the lake)
-      // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
-      if (dst_tile.contents() == AIR) {
-        for (EACH_CARDINAL_DIRECTION(d2)) {
-          if (d2.v.dot<sub_tile_distance>(dir.v) == 0) {
-            const tile_location diag_loc = dst_loc + d2;
-            if (diag_loc.stuff_at().is_free_water()) {
-              result.nearby_free_waters_by_group_number[p.second].insert(diag_loc);
-              result.max_z_including_nearby_free_waters_by_group_number[p.second] = std::max(result.max_z_including_nearby_free_waters_by_group_number[p.second], diag_loc.coords().z);
-            }
-          }
-        }
-      }
-    }
-  }
-}
 
 
 struct wanted_move {
