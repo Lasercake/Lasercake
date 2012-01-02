@@ -42,6 +42,7 @@
 #include <boost/variant.hpp>
 #include <boost/variant/get.hpp>
 #include <memory>
+#include <boost/shared_ptr.hpp>
 
 #include "utils.hpp"
 #include "polygon_collision_detection.hpp"
@@ -55,7 +56,7 @@ using std::make_pair;
 using std::set;
 using std::vector;
 using std::array;
-using std::shared_ptr;
+using boost::shared_ptr;
 
 
 typedef uint32_t tile_coordinate;
@@ -487,11 +488,11 @@ public:
     object_detail_shapes[id] = obj->get_initial_detail_shape();
     b.combine_with(object_detail_shapes[id].bounds());
     things_exposed_to_collision.insert(id, b);
-    if(shared_ptr<mobile_object> m = std::dynamic_pointer_cast<mobile_object>(obj)) {
+    if(shared_ptr<mobile_object> m = boost::dynamic_pointer_cast<mobile_object>(obj)) {
       moving_objects.insert(make_pair(id, m));
     }
     // TODO: don't do this if you're in the middle of updating autonomous objects
-    if(shared_ptr<autonomous_object> m = std::dynamic_pointer_cast<autonomous_object>(obj)) {
+    if(shared_ptr<autonomous_object> m = boost::dynamic_pointer_cast<autonomous_object>(obj)) {
       autonomously_active_objects.insert(make_pair(id, m));
     }
     return true;
