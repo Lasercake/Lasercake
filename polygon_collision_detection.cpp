@@ -222,7 +222,7 @@ bounding_box shape::bounds()const {
   return bounds_cache;
 }
 
-bool nonshape_intersects(line_segment l, convex_polygon const& p) {
+std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment l, convex_polygon const& p) {
   p.setup_cache_if_needed();
   polygon_collision_info_cache const& c = p.get_cache();
   
@@ -236,11 +236,11 @@ bool nonshape_intersects(line_segment l, convex_polygon const& p) {
   if (sign(l.ends[0].z) == sign(l.ends[1].z)) {
     if (l.ends[0].z != 0) {
       // If the endpoints are on the same side, they're not colliding, obviously!
-      return false;
+      return std::make_pair(false, 1);
     }
     else {
       std::cerr << "Ack! A coplanar line! Fail!\n";
-      return false;
+      return std::make_pair(false, 1);
     }
   }
   
@@ -266,19 +266,19 @@ bool nonshape_intersects(line_segment l, convex_polygon const& p) {
         previous_clockwiseness = clockwiseness;
       }
       else {
-        if (clockwiseness != previous_clockwiseness) return false;
+        if (clockwiseness != previous_clockwiseness) return std::make_pair(false, boost::rational<int64_t>(1));
       }
     }
   }
   
-  return true;
+  return std::make_pair(true, boost::rational<int64_t>(l.ends[0].z, l.ends[0].z - l.ends[1].z));
 }
 
 bool nonshape_intersects_onesided(convex_polygon const& p1, convex_polygon const& p2) {
   std::vector<vector3<int64_t>> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
-    if (nonshape_intersects(line_segment(vs[i], vs[next_i]), p2)) return true;
+    if (get_intersection(line_segment(vs[i], vs[next_i]), p2).first) return true;
   }
   return false;
 }
@@ -292,18 +292,29 @@ bool shape::intersects(shape const& other)const {
   
   for (line_segment const& l : segments) {
     for (convex_polygon const& p2 : other.polygons) {
-      if (nonshape_intersects(l, p2)) return true;
+      if (get_intersection(l, p2).first) return true;
     }
   }
 
   for (convex_polygon const& p1 : polygons) {
     for (line_segment const& l : other.segments) {
-      if (nonshape_intersects(l, p1)) return true;
+      if (get_intersection(l, p1).first) return true;
     }
     for (convex_polygon const& p2 : other.polygons) {
       if (nonshape_intersects(p1, p2)) return true;
     }
   }
   return false;
+}
+
+std::pair<bool, boost::rational<int64_t>> shape::first_intersection(line_segment const& other)const {
+  std::pair<bool, boost::rational<int64_t>> result(false, boost::rational<int64_t>(1));
+  for (convex_polygon const& p : polygons) {
+    std::pair<bool, boost::rational<int64_t>> here = get_intersection(other, p);
+    if (here.first && (!result.first || here.second < result.second)) {
+      result = here;
+    }
+  }
+  return result;
 }
 

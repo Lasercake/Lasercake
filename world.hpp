@@ -510,6 +510,7 @@ public:
   
   objects_map<object>::type const& get_objects()const { return objects; }
   object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes; }
+  object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes; }
 private:
   friend class world_building_gun;
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.

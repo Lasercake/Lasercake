@@ -86,8 +86,47 @@ shape laser_emitter::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
-void laser_emitter::update(world &w, object_identifier id) {
-  struct laser_path_calculator {
+void laser_emitter::update(world &w, object_identifier my_id) {
+  bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
+  vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
+  location = middle;
+  facing = facing * tile_width * 2 / facing.magnitude_within_32_bits();
+  
+  line_segment laser_line(location, location + facing);
+  for (int i = 0; i < 50; ++i) {
+    unordered_set<object_or_tile_identifier> possible_hits;
+    w.collect_things_exposed_to_collision_intersecting(possible_hits, laser_line.bounds());
+    std::pair<bool, boost::rational<int64_t>> best_inters(false, 0);
+    for (object_or_tile_identifier const& id : possible_hits) {
+      if (tile_location const* locp = id.get_tile_location()) {
+      // TODO fix duplicate code
+        std::pair<bool, boost::rational<int64_t>> inters = tile_shape(locp->coords()).first_intersection(laser_line);
+        if (inters.first && (!best_inters.first || inters.second < best_inters.second)) {
+          best_inters = inters;
+        }
+      }
+      if (object_identifier const* oidp = id.get_object_identifier()) {
+        if (*oidp != my_id) {
+          shape const& their_shape = w.get_object_detail_shapes().find(*oidp)->second;
+          std::pair<bool, boost::rational<int64_t>> inters = their_shape.first_intersection(laser_line);
+          if (inters.first && (!best_inters.first || inters.second < best_inters.second)) {
+            best_inters = inters;
+          }
+        }
+      }
+    }
+    
+    if (best_inters.first) {
+      // TODO do I have to worry about overflow?
+      w.add_laser_sfx(location, facing * i + facing * best_inters.second.numerator() / best_inters.second.denominator());
+      return;
+    }
+    laser_line.translate(facing);
+  }
+  w.add_laser_sfx(location, facing * 50);
+  return;
+  
+  /*struct laser_path_calculator {
     struct cross {
       fine_scalar dist_in_this_dimension;
       fine_scalar facing_in_this_dimension;
@@ -131,9 +170,7 @@ void laser_emitter::update(world &w, object_identifier id) {
   
   laser_path_calculator calc(this);
   
-  //std::cerr << facing.x << " foo " << facing.y << " foo " << facing.z << "\n";
-  const vector3<fine_scalar> max_laser_delta = ((facing * (100LL << 10)) / facing.magnitude_within_32_bits()); // TODO fix overflow
-  //std::cerr << max_laser_delta.x << " foo " << max_laser_delta.y << " foo " << max_laser_delta.z << " bar " << facing.magnitude() << " bar " << (facing * (100LL << 10)).x << "\n";
+  const vector3<fine_scalar> max_laser_delta = facing * 50;
   //const vector3<tile_coordinate> theoretical_end_tile = get_containing_tile_coordinates(location + max_laser_delta);
   
   int which_dimension_we_last_advanced = -1;
@@ -156,6 +193,10 @@ void laser_emitter::update(world &w, object_identifier id) {
         w.add_laser_sfx(location, laser_delta);
         return; // TODO handle what happens if there are mobile objects and/or multiple objects and/or whatever
       }
+      if (object_identifier const* oidp = id.get_object_identifier()) {
+        shape const& their_shape = w.get_object_personal_space_shapes().find(*oidp)->second;
+        if (their_shape)
+      }
     }
     // TODO figure out a better end condition...
     if ((calc.current_laser_tile - get_containing_tile_coordinates(location)).magnitude_within_32_bits_is_greater_than(101)) {
@@ -163,6 +204,6 @@ void laser_emitter::update(world &w, object_identifier id) {
       return;
     }
     else which_dimension_we_last_advanced = calc.advance_to_next_location();
-  }
+  }*/
 }
 

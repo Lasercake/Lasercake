@@ -201,8 +201,8 @@ srand(time(NULL));
   vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
   shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   w.try_create_object(baz); // will be ID 1
-  shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,2)));
-  shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,3,2)));
+  shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
+  shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,4,-1)));
   w.try_create_object(foo);
   w.try_create_object(bar);
   
@@ -308,16 +308,20 @@ srand(time(NULL));
       vector3<GLfloat> locv2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
       //std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
       //std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
-      push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z-0.5);
       push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z+0.5);
-      push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z);
-      GLfloat length = (locv2 - locv).magnitude_within_32_bits();
+      push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z-0.5);
+      //push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z);
+      //push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z + 0.1);
+      GLfloat length = 50; //(locv2 - locv).magnitude_within_32_bits();
       for (int i = 0; i < length; ++i) {
         vector3<GLfloat> locv3 = (locv + (((locv2 - locv) * i) / length));
         push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z);
+        push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z + 0.1);
+        push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z + 0.1);
         push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z);
       }
       push_vertex(laserbeam_vertices, locv2.x, locv2.y, locv2.z);
+      push_vertex(laserbeam_vertices, locv2.x, locv2.y, locv2.z+0.1);
     }
     
     for (object_or_tile_identifier const& id : tiles_to_draw) {
@@ -396,10 +400,11 @@ srand(time(NULL));
     
     int before_GL = SDL_GetTicks();
 
-    glClear(GL_COLOR_BUFFER_BIT);
+    //glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
     frame += 1;
     glLoadIdentity();
-    gluPerspective(80, 1, 1, 100);
+    gluPerspective(80, 1, 0.1, 100);
     if (view_type == LOCAL) {
       //vector3<GLfloat> foo = vector3<GLfloat>(view_loc - wc) / tile_width;
       gluLookAt(0, 0, 0,
@@ -419,7 +424,6 @@ srand(time(NULL));
       0,0,0,
       0,0,1);
     }
-    
     
     glEnableClientState(GL_VERTEX_ARRAY);
     
@@ -454,9 +458,8 @@ srand(time(NULL));
     glDrawArrays(GL_POINTS, 0, inactive_marker_vertices.size());*/
     
     glColor4f(0.0, 1.0, 0.0, 0.5);
-    glLineWidth(3);
     glVertexPointer(3, GL_FLOAT, 0, &laserbeam_vertices[0]);
-    glDrawArrays(GL_LINES, 0, laserbeam_vertices.size());
+    glDrawArrays(GL_QUADS, 0, laserbeam_vertices.size());
     
     glColor4f(0.5,0.5,0.5,0.5);
     glVertexPointer(3, GL_FLOAT, 0, &object_vertices[0]);

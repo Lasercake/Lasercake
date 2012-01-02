@@ -28,6 +28,7 @@
 #include <array>
 
 #include "utils.hpp"
+#include "boost/rational.hpp"
 
 // 64 bits though these ints are, you can't really do collision detection with them except for things
 //  with a max distance of about 14 bits between any of the parts of them.
@@ -92,6 +93,8 @@ public:
   void translate(vector3<int64_t> t);
   
   bool intersects(shape const& other)const;
+  // returns (was there an intersection?, what fraction of the length of the line segment was the first)
+  std::pair<bool, boost::rational<int64_t>> first_intersection(line_segment const& other)const;
   bounding_box bounds()const;
   
   std::vector<  line_segment> const& get_segments()const { return segments; }
