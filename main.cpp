@@ -322,7 +322,7 @@ srand(time(NULL));
     
     for (object_or_tile_identifier const& id : tiles_to_draw) {
       if (object_identifier const* mid = id.get_object_identifier()) {
-        shared_ptr<mobile_object> objp = std::dynamic_pointer_cast<mobile_object>(*(w.get_object(*mid)));
+        shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(*mid)));
         const object_shapes_t::const_iterator blah = w.get_object_personal_space_shapes().find(*mid);
         std::vector<convex_polygon> const& foo = blah->second.get_polygons();
         for (convex_polygon const& bar : foo) {
@@ -407,7 +407,7 @@ srand(time(NULL));
         0,0,1);
     }
     else if (view_type == ROBOT) {
-      vector3<fine_scalar> facing = std::dynamic_pointer_cast<robot>(w.get_objects().find(1)->second)->get_facing();
+      vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(1)->second)->get_facing();
       vector3<GLfloat> bar = vector3<GLfloat>(facing) / (tile_width);
       //std::cerr << foo.x << ", " << foo.y << ", " << foo.z << ", " << bar.x << ", " << bar.y << ", " << bar.z << ", \n";
       gluLookAt(0, 0, 0,
