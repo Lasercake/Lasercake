@@ -99,7 +99,10 @@ from a random one of the highest (in z) water-tiles in this group,
 to this air location. The more pressure, the more velocity a
 free water has when it comes out. If a sticky water tile makes sufficient
 progress in a direction but there's free water in the way, it pushes that
-free water away from it.
+free water away from it (by setting that free water's velocity).
+
+Free water velocity also moves by incrementing 'progress'
+in the direction(s) it's moving.
 
 There are special rules for free and sticky water to slide off the
 edges of tiles (in the above example, the top left free-water will
