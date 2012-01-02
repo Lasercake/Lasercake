@@ -200,7 +200,7 @@ srand(time(NULL));
   world w( (worldgen_function_t(world_building_func(scenario))) );
   vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
   shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
-  w.try_create_object(baz); // will be ID 1
+  object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
   shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
   shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,4,-1)));
   w.try_create_object(foo);
@@ -278,7 +278,7 @@ srand(time(NULL));
       if (keystate[SDLK_n]) { view_loc_for_local_display.z -= tile_width / 10; }
     }
     else if (view_type == ROBOT) {
-      bounding_box b = w.get_object_personal_space_shapes().find(1)->second.bounds();
+      bounding_box b = w.get_object_personal_space_shapes().find(robot_id)->second.bounds();
       view_loc = ((b.min + b.max) / 2);
     }
     else {
@@ -412,7 +412,7 @@ srand(time(NULL));
         0,0,1);
     }
     else if (view_type == ROBOT) {
-      vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(1)->second)->get_facing();
+      vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(robot_id)->second)->get_facing();
       vector3<GLfloat> bar = vector3<GLfloat>(facing) / (tile_width);
       //std::cerr << foo.x << ", " << foo.y << ", " << foo.z << ", " << bar.x << ", " << bar.y << ", " << bar.z << ", \n";
       gluLookAt(0, 0, 0,
