@@ -187,9 +187,14 @@ This is a one-way dictation - the latter things don't affect the former things a
 enum tile_contents {
   AIR = 0,
   ROCK,
-  WATER
+  WATER,
+  RUBBLE
   // it matters that there are no more than four of these, currently
 };
+
+bool is_fluid(tile_contents t) {
+  return (t == WATER) || (t == RUBBLE);
+}
 
 class tile {
 public:

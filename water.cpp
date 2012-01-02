@@ -21,6 +21,417 @@
 
 /*
 
+Loosely:
+Scan downwards over all water {
+  Hit an active water that wants to go down into other water: Great! Start a 'group' and add 1 suckability to it for each such water tile. 
+  Hit an area underneath an existing group: Great! make a 'flat group' here pointing at all the groups that feed into it. Its 'suckability' is the max of the number of tiles here and the total number in the above groups (?). If there are 'exit surfaces' here, 
+  
+  Water that doesn't have water above it can try 'going down'.
+  Water that doesn't have air anywhere in any non-up direction can conduct pressure.
+  
+  Whenever water disappears, it checks if there's pressure trying to fill the tile it just vacated.
+  
+  Interior water tiles gravitate to zero progress.
+  Exterior tiles and non-water fluid tiles behave as current 'free' water.
+  
+  "Interior" = every adjacent tile is the same type of substance
+  "Pressure-conducting" = no adjacent air horizontally or down
+  "Free" = any adjacent air
+  "Top-surface" = pressure-conducting && free
+  
+  Free water = same mechanics as before, plus "if there are pressurey tiles next to you, get pushed by them"?
+}
+
+
+*/
+
+/*
+
+- Only water (not other fluids) behaves as groups
+
+*/
+
+typedef uint64_t water_tile_count;
+typedef uint64_t water_group_identifier;
+water_group_identifier NO_WATER_GROUP = 0;
+
+typedef uint64_t pressure_amount;
+
+struct persistent_water_group_info {
+  // Number of water tiles at height n = W(n)
+  // Pressure at height n = P(n) = ((1 + P(n+1)) * std::min(1, W(n+1) / W(n)))
+  
+  /*TODO type*/ suckable_tiles_by_height
+  map<tile_coordinate, water_tile_count> num_tiles_by_height;
+  unordered_set<tile_location> surface_tiles;
+  
+  map<tile_coordinate, pressure_amount> pressure_caches;
+  
+  void we_are_active_so_mess_with_the_water(world &w) {
+    for every 
+  }
+}
+
+
+bool tile_compare_xyz(tile_location const& i, tile_location const& j) {
+  vector3<tile_coordinate> c1 = i.coords();
+  vector3<tile_coordinate> c2 = j.coords();
+  return (c1.x < c2.x) || ((c1.x == c2.x) && ((c1.y < c2.y) || ((c1.y == c2.y) && (c1.z < c2.z))));
+}
+
+//TODO: in world:
+typedef unordered_map<water_group_identifier, persistent_water_groups_t> persistent_water_groups_t;
+typedef unordered_map<tile_location, water_group_identifier> water_groups_by_location_t;
+water_groups_by_location_t water_groups_by_surface_tile;
+persistent_water_groups_t persistent_water_groups;
+set<tile_location, tile_compare_yzx> x_end_water_tiles;
+set<tile_location, tile_compare_zxy> y_end_water_tiles;
+set<tile_location, tile_compare_xyz> z_end_water_tiles;
+typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
+unordered_map<tile_location, active_fluid_tile_info> active_fluids;
+
+// ONLY to be called by replace_substance
+water_group_identifier make_new_water_group(water_group_identifier &next_water_group_identifier, persistent_water_groups_t &persistent_water_groups) {
+  water_group_identifier this_id = next_water_group_identifier++;
+  persistent_water_groups[this_id]; // operator[] inserts a default-constructed one
+  return this_id;
+}
+
+// ONLY to be called by replace_substance
+water_group_identifier merge_water_groups(water_group_identifier id_1, water_group_identifier id_2,
+   persistent_water_groups_t &persistent_water_groups,
+   water_groups_by_location_t &water_groups_by_surface_tile) {
+  persistent_water_group_info &group_1 = persistent_water_groups.find(id_1)->second;
+  persistent_water_group_info &group_2 = persistent_water_groups.find(id_2)->second;
+  
+  bool group_1_is_smaller = group_1.surface_tiles.size() < group_2.surface_tiles.size();
+  persistent_water_group_info &smaller_group = (group_1_is_smaller ? group_1 : group_2);
+  persistent_water_group_info & larger_group = (group_1_is_smaller ? group_2 : group_1);
+  water_group_identifier  remaining_group_id = (group_1_is_smaller ?    id_2 :    id_1);
+  
+  /* TODO merge suckable_tiles_by_height */
+  for (auto const& p : smaller_group.num_tiles_by_height) {
+    // Note: the [] operator default-constructs a zero if there's nothing there
+    larger_group.num_tiles_by_height[p.first] += p.second;
+  }
+  for (auto const& l : smaller_group.surface_tiles) {
+    larger_group.surface_tiles.insert(l);
+    water_groups_by_surface_tile[l] = remaining_group_id;
+  }
+  
+  larger_group.pressure_caches.erase(larger_group.pressure_caches.begin(), larger_group.pressure_caches.lower_bound(smaller_group.num_tiles_by_height.rbegin()->first + 1));
+  
+  return remaining_group_id;
+}
+
+void replace_substance(
+   tile_location const& loc,
+   tile_contents old_substance_type,
+   tile_contents new_substance_type,
+  
+   active_fluid_tile_info *info_for_new_fluid, // pass nullptr if you're not creating a fluid
+  
+   set<tile_location, tile_compare_xyz> &z_end_water_tiles,
+   active_fluids_t &active_fluids,
+   water_group_identifier &next_water_group_identifier,
+   persistent_water_groups_t &persistent_water_groups,
+   water_groups_by_location_t &water_groups_by_surface_tile)
+{
+  tile &t = mutable_stuff_at(loc); // TODO figure out how to integrate this with tile_changing_implementations.cpp
+  
+  assert(t.contents() == old_substance_type);
+  assert(is_fluid(new_substance_type) || !info_for_new_fluid));
+  
+  if (old_substance_type != AIR && new_substance_type == AIR) {
+    // We might have moved away from a tile that was trying to push water into us.
+    // This system formerly used rules where the emptied tile naturally didn't refill until the following frame.
+    // The downside of those rules was that the simulation could immediately mark the tile that had been trying
+    // to exert pressure as having too much air next to it, which would make it stop exerting pressure;
+    // To combat that effect, we made the pressure-exertingness linger for a frame, but that was a kludge.
+    // 
+    // So the rule now is that the tile *immediately* fills with the pressure-moved water as soon as it empties.
+    // This saves us a kludge, and also saves us from having to do the "deleted water" and "inserted water" recomputations
+    // in the cases where the water would just be replaced anyway.
+    
+    // TODO out of all adjacent locations, find the best for:
+    // require: is water
+    // require: has sufficient progress towards us to move
+    // require: is part of a group with a spare suckable tile above our height, and choose a random such suckable tile
+    // prefer: is opposite the direction we moved (can we do that...?)
+    // prefer: is where our velocity is leaving
+    
+    // if we selected one (i.e. selected an adjacent tile to provide pressure and a tile to suck from)
+    {
+      // TODO move the sucked tile's velocity-etc to the tile below it
+      replace_substance(/*the sucked tile's location*/, WATER, AIR, active_fluids);
+      // TODO maybe: have it share velocity with the pressure-providing tile?
+      new_substance_type = WATER; // this will make this function 'place the sucked tile here'
+    }
+  }
+  
+  // old_substance_type and new_substance_type shouldn't change after this point
+  
+  // If we're removing water, we have complicated computations to do. We do it in this order:
+  // 1) Gather as much information as possible BEFORE physically changing anything (while we're still marked as water)
+  // 2) Physically change us
+  // 3) Update the relatively-isolated cached info like interiorness
+  // 4) Update the relatively-interconnected cached info of our group
+  
+  persistent_water_group_info *water_group = nullptr;
+  if (old_substance_type == WATER && new_substance_type != WATER) {
+    // ==============================================================================
+    // 1) Gather as much information as possible without physically changing anything
+    //    (while we're still marked as water)
+    // ==============================================================================
+    water_group_identifier group_id;
+    if (t.is_interior_water()) {
+      // Crap, we don't know what group we're part of unless we find a surface tile!
+      // Find the next surface tile in some arbitrary direction.
+      // That tile will tell us what group we're in.
+      location const& surface_loc = *(z_end_water_tiles.lower_bound(loc));
+      group_id = water_groups_by_surface_tile.find(surface_loc)->second;
+    }
+    else {
+      group_id = water_groups_by_surface_tile.find(loc)->second;
+    }
+    water_group = &persistent_water_groups.find(group_id)->second;
+  }
+  
+  // For inserting water, we check group membership BEFORE
+  // updating the caches, because the adjacent tiles won't know their group
+  // membership if they've all become interior. (We could look it up, but
+  // it's easier this way.) And it's more convenient to merge the groups
+  // now, too.
+  
+  if (new_substance_type == WATER && old_substance_type != WATER) {
+    // Inserting water: Are we adjacent to an existing group?
+    // If we're next to one adjacent group, we will merely join that group.
+    // If we're adjacent to more than one adjacent group, then our existence
+    // constitutes a merger of those two groups, so we execute that.
+    water_group_identifier group_id = NO_WATER_GROUP;
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const location adj_loc = loc + dir;
+      auto iter = water_groups_by_surface_tile.find(adj_loc);
+      if (iter != water_groups_by_surface_tile.end()) {
+        if (group_id == NO_WATER_GROUP) {
+          group_id = iter->second;
+        }
+        else {
+          // Two groups we join! Merge them. merge_water_groups() automatically
+          // handles the "merge the smaller one into the larger one" optimization
+          // and returns the ID of the group that remains.
+          group_id = merge_water_groups(group_id, iter->second, water_groups_by_surface_tile);
+        }
+      }
+      
+      // Now we're either adjacent to one water group or none. If none, we have to create a new one for ourself.
+      if (group_id == NO_WATER_GROUP) {
+        group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
+      }
+      
+      water_group = &persistent_water_groups.find(group_id)->second;
+    }
+  }
+  
+  // ==============================================================================
+  // 2) Physically change us
+  // ==============================================================================
+  t.set_contents(new_substance_type);
+  if (info_for_new_fluid) {
+    active_fluids[loc] = *info_for_new_fluid;
+  }
+  else {
+    active_fluids.erase(loc);
+  }
+  
+  // ==============================================================================
+  // 3) Update the relatively-isolated cached info like interiorness
+  // ==============================================================================
+  if (new_substance_type != old_substance_type) {
+    tile_changed_so_update_caches_of_adjacent_tiles(loc); // TODO implement
+  }
+  if (old_substance_type == WATER && new_substance_type != WATER) {
+  {
+    z_end_water_tiles.erase(loc);
+    location less_z_loc = loc + cdir_zminus;
+    if (less_z_loc.stuff_at().contents() == WATER) {
+      z_end_water_tiles.insert(less_z_loc);
+    }
+  }
+  if (new_substance_type == WATER && old_substance_type != WATER) {
+    location less_z_loc = loc + cdir_zminus;
+    z_end_water_tiles.erase(less_z_loc);
+    location more_z_loc = loc + cdir_zplus;
+    if (more_z_loc.stuff_at().contents() != WATER) {
+      z_end_water_tiles.insert(loc);
+    }
+  }
+  
+  // ==============================================================================
+  // 4) Update the relatively-interconnected cached info of water groups
+  // ==============================================================================
+  
+  // For creating water, there are only a few more caches to update.
+  if (new_substance_type == WATER && old_substance_type != WATER) {
+    // We need to make this check AFTER updating our new interiorness. of course.
+    if (loc.stuff_at().is_membrane_water()) {
+      water_groups_by_surface_tile.erase(loc);
+      water_group->surface_tiles.erase(loc);
+    }
+    // We don't need to unmark adjacent tiles as group-surface tiles because that's
+    // automatically done in tile_changed_so_update_caches_of_adjacent_tiles. [ TODO implement ]
+    
+    ++water_group->num_tiles_by_height[loc.z];
+    
+    // Adding a tile at a specific height can change pressure at that height, but not anywhere above
+    water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.lower_bound(loc.z+1));
+  }
+  
+  if (old_substance_type == WATER && new_substance_type != WATER) {
+    // If we were a surface tile of the group, we are no longer.
+    water_groups_by_surface_tile.erase(loc);
+    water_group->surface_tiles.erase(loc);
+    
+    // We may have exposed other group tiles, which now need to be marked as the group surface.
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const location adj_loc = loc + dir;
+      if (adj_loc.stuff_at().is_membrane_water()) {
+        water_groups_by_location_t::iterator iter = water_groups_by_surface_tile.find(adj_loc);
+      }
+    }
+    
+    // TODO if we're in group's suckable tiles list, exit that list; we're gone, hence no longer suckable
+    
+    --water_group->num_tiles_by_height[loc.z];
+    
+    // Removing a tile from a specific height can change pressure at that height, but not anywhere above
+    water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.lower_bound(loc.z+1));
+    
+    // Our disappearance might have split the group.
+    // If we *did* split the group, we're going to have to flood-fill along the surfaces of all the components in order to divide the groups from each other.
+    // If we *didn't*, and we start a breadth-first flood fill from the adjacent tiles, then the fill groups will probably run into each other almost immediately. When that happens, we know that the adjacent tiles are connected.
+  
+    // ==============================================================================
+    //  Start of flood-fill-based group-splitting algorithm
+    // ==============================================================================
+    
+    struct water_splitting_info {
+      unordered_map<tile_location, unordered_set<tile_location>> collected_locs_by_neighbor;
+      unordered_map<tile_location, tile_location> neighbors_by_collected_loc;
+      unordered_map<tile_location, std::queue<tile_location>> disconnected_frontiers;
+      
+      // Try to collect a location into one of the fills.
+      // If no one has claimed it, claim it and add it to your frontier.
+      // If you've claimed it, ignore it and move on.
+      // If one of the other collectors has claimed it, then we now know that those two are connected,
+      //     so merge the two of them.
+      // returns true if-and-only-if the operation should destroy the collector by merging it into another collector.
+      bool try_collect_loc(tile_location collector, tile_location collectee) {
+        if (collectee.stuff_at().is_membrane_water()) {
+          unordered_map<tile_location, tile_location>::iterator iter = neighbors_by_collected_loc.find(collectee);
+          
+          if (iter == neighbors_by_collected_loc.end()) {
+            disconnected_frontiers[collector].push_back(collectee);
+            collected_locs_by_neighbor[collector].insert(collectee);
+            neighbors_by_collected_loc[collectee] = collector;
+          }
+          else {
+            if (iter->second != collector) {
+              // Found an overlap - merge the two!
+              // Hack: If there are only two collectors left, then we don't need to do any more processing - just get destroyed, and bail.
+              if (disconnected_frontiers.size() == 2) return true;
+              
+              // The collectors will normally be the same size, but if two merged already, then one might be bigger. And we want to merge the smaller one into the bigger one for performance reasons.
+              bool this_collector_is_bigger = collected_locs_by_neighbor[collector].size() > collected_locs_by_neighbor[iter->second].size()
+              tile_location  bigger_collector = (this_collector_is_bigger ? collector    : iter->second);
+              tile_location smaller_collector = (this_collector_is_bigger ? iter->second : collector   );
+              
+              for (tile_location const& loc : collected_locs_by_neighbor[smaller_collector]) {
+                collected_locs_by_neighbor[bigger_collector].insert(loc);
+                neighbors_by_collected_loc[loc] = bigger_collector;
+              }
+              while (!disconnected_frontiers[smaller_collector].empty()) {
+                disconnected_frontiers[bigger_collector].push_back(disconnected_frontiers[smaller_collector].front());
+                disconnected_frontiers[smaller_collector].pop();
+              }
+              
+              return (!this_collector_is_bigger);
+            }
+          }
+        }
+      }
+    }
+    water_splitting_info inf;
+    
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const location adj_loc = loc + dir;
+      if (adj_loc.stuff_at().contents() == WATER) {
+        inf.frontiers[adj_loc].push_back(adj_loc);
+      }
+    }
+    while(inf.disconnected_frontiers.size() > 1) {
+      for (auto p = inf.disconnected_frontiers.begin(); p != inf.disconnected_frontiers.end(); ) {
+        tile_location const& which_neighbor = p->first;
+        std::queue<tile_location> &frontier = p->second;
+        bool destroy_this_frontier = false;
+        
+        if (frontier.empty()) {
+          // If the frontier is empty, that means this route has finished its search and not found any
+          // connections to the rest of the water. Therefore, we need to mark this frontier off as a
+          // separate group.
+          destroy_this_frontier = true;
+          
+          new_group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
+          
+          persistent_water_group_info &new_group = persistent_water_groups.find(new_group_id)->second;
+          new_group.
+          // TODO figure out how to split suckable tiles
+          for (location const& new_grouped_loc : collected_locs_by_neighbor[which_neighbor]) {
+            water_groups_by_surface_tile[new_grouped_loc] = new_group_id;
+            new_group.surface_tiles.insert(new_grouped_loc);
+            water_group->surface_tiles.erase(new_grouped_loc);
+            ++new_group.num_tiles_by_height[new_grouped_loc.coords().z];
+            --water_group.num_tiles_by_height[new_grouped_loc.coords().z];
+          }
+        }
+        else {
+          tile_location search_loc = frontier.front();
+          frontier.pop();
+          
+          for (EACH_CARDINAL_DIRECTION(dir)) {
+            tile_location adj_loc = search_loc + dir;
+            
+            destroy_this_frontier = try_collect_loc(adj_loc));
+            if (destroy_this_frontier) break;
+            
+            if (adj_loc.stuff_at().is_interior_water()) {
+              for (EACH_CARDINAL_DIRECTION(d2)) {
+                if (d2.dot<neighboring_tile_differential>(dir) == 0) {
+                  destroy_this_frontier = try_collect_loc(adj_loc + d2);
+                  if (destroy_this_frontier) break;
+                }
+              }
+            }
+          }
+        }
+          
+        if (destroy_this_frontier) {
+          inf.disconnected_frontiers.erase(p++);
+        }
+        else {
+          ++p;
+        }
+      }
+    }
+  
+    // ==============================================================================
+    //  End of flood-fill-based group-splitting algorithm
+    // ==============================================================================
+  }
+}
+
+/*
+
 Eli says: The following is a description of how the water rules work,
 written by Isaac and slightly edited by myself. I'm not terribly
 satisfied with it, but it's waaaay better than not having a description at all.
