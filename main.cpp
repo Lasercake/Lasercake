@@ -197,7 +197,7 @@ static void mainLoop (std::string scenario)
   int p_mode = 0;
 srand(time(NULL));
 
-  world w{worldgen_function_t(world_building_func(scenario))};
+  world w( (worldgen_function_t(world_building_func(scenario))) );
   vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
   shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   w.try_create_object(baz); // will be ID 1
