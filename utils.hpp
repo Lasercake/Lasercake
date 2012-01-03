@@ -213,6 +213,9 @@ public:
 	}
 	bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
 };
+template<typename T> inline std::ostream& operator<<(std::ostream& os, vector3<T>const& v) {
+  return os << '(' << v.x << ',' << v.y << ',' << v.z << ')';
+}
 
 namespace std {
   template<typename ScalarType> struct hash<vector3<ScalarType> > {
