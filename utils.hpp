@@ -252,10 +252,8 @@ public:
     assert((int64_t)value + (int64_t)other > -(1LL << 31));
     return bounds_checked_int(value + other);
   }
-  void operator+=(int other) {
-    assert((int64_t)value + (int64_t)other < (1LL << 31));
-    assert((int64_t)value + (int64_t)other > -(1LL << 31));
-    value += other;
+  bounds_checked_int& operator+=(int other) {
+    return *this = *this + other;
   }
   bounds_checked_int& operator++() {
     *this += 1; return *this;
@@ -278,26 +276,22 @@ public:
     assert((int64_t)value - (int64_t)other > -(1LL << 31));
     return bounds_checked_int(value - other);
   }
-  void operator-=(int other) {
-    assert((int64_t)value - (int64_t)other < (1LL << 31));
-    assert((int64_t)value - (int64_t)other > -(1LL << 31));
-    value -= other;
+  bounds_checked_int& operator-=(int other) {
+    return *this = *this - other;
   }
   bounds_checked_int operator*(int other)const {
     assert((int64_t)value * (int64_t)other < (1LL << 31));
     assert((int64_t)value * (int64_t)other > -(1LL << 31));
     return bounds_checked_int(value * other);
   }
-  void operator*=(int other) {
-    assert((int64_t)value * (int64_t)other < (1LL << 31));
-    assert((int64_t)value * (int64_t)other > -(1LL << 31));
-    value *= other;
+  bounds_checked_int& operator*=(int other) {
+    return *this = *this * other;
   }
   bounds_checked_int operator/(int other)const {
     return bounds_checked_int(value / other);
   }
-  void operator/=(int other) {
-    value /= other;
+  bounds_checked_int& operator/=(int other) {
+    return *this = *this / other;
   }
   operator int()const{ return value; }
 private:
