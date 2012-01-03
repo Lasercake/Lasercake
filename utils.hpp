@@ -47,6 +47,9 @@ inline ATTRIBUTE_NORETURN void logic_error(std::string error) {
   // feel free to comment this out and use asserts/segfaults/breakpoints.
   boost::throw_exception(std::logic_error(error));
 }
+// You must provide an explanatory string so that the user of the library
+// will know what *they* did wrong, and not have to interpret an assert() expression
+// to find out.
 inline void logic_error_if(bool cond, std::string error) {
   if(cond) {
     logic_error(error);
