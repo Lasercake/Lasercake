@@ -42,7 +42,7 @@
 
 // It's not polite for library functions to assert() because the library's users
 // misused a correct library; use these for that case.
-inline ATTRIBUTE_NORETURN void logic_error(std::string error) {
+inline ATTRIBUTE_NORETURN void caller_error(std::string error) {
   // If exceptions prove worse for debugging than asserts/segfaults,
   // feel free to comment this out and use asserts/segfaults/breakpoints.
   boost::throw_exception(std::logic_error(error));
@@ -50,14 +50,14 @@ inline ATTRIBUTE_NORETURN void logic_error(std::string error) {
 // You must provide an explanatory string so that the user of the library
 // will know what *they* did wrong, and not have to interpret an assert() expression
 // to find out.
-inline void logic_error_if(bool cond, std::string error) {
+inline void caller_error_if(bool cond, std::string error) {
   if(cond) {
-    logic_error(error);
+    caller_error(error);
   }
 }
-inline void logic_correct_if(bool cond, std::string error) {
+inline void caller_correct_if(bool cond, std::string error) {
   if(!cond) {
-    logic_error(error);
+    caller_error(error);
   }
 }
 
@@ -83,7 +83,7 @@ typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key
 
 template<typename ScalarType> ScalarType divide_rounding_towards_zero(ScalarType dividend, ScalarType divisor)
 {
-	logic_correct_if(divisor != 0, "divisor must be nonzero");
+	caller_correct_if(divisor != 0, "divisor must be nonzero");
 	const ScalarType abs_result = std::abs(dividend) / std::abs(divisor);
 	if ((dividend > 0) == (divisor > 0)) return abs_result;
 	else return -abs_result;
@@ -135,7 +135,7 @@ public:
 	    case 0: return x;
 	    case 1: return y;
 	    case 2: return z;
-	    default: logic_error("Trying to index a vector3 with an out-of-bounds index!");
+	    default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
 	  }
 	}
 	ScalarType operator[](int index)const {
@@ -143,7 +143,7 @@ public:
 	    case 0: return x;
 	    case 1: return y;
 	    case 2: return z;
-	    default: logic_error("Trying to index a vector3 with an out-of-bounds index!");
+	    default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
 	  }
 	}
 	// Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
@@ -260,14 +260,14 @@ class bounds_checked_int {
 public:
   bounds_checked_int():value(0){}
   bounds_checked_int(int value) : value(value) {
-    logic_correct_if(value != -(1LL << 31), "bounds_checked_int underflow in constructor");
+    caller_correct_if(value != -(1LL << 31), "bounds_checked_int underflow in constructor");
   }
   bounds_checked_int &operator=(int other) { value = other; return *this; }
   bounds_checked_int operator+() { return *this; }
   bounds_checked_int operator-() { return bounds_checked_int(-value); }
   bounds_checked_int operator+(int other)const {
-    logic_correct_if((int64_t)value + (int64_t)other < (1LL << 31), "bounds_checked_int overflow in +");
-    logic_correct_if((int64_t)value + (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in +");
+    caller_correct_if((int64_t)value + (int64_t)other < (1LL << 31), "bounds_checked_int overflow in +");
+    caller_correct_if((int64_t)value + (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in +");
     return bounds_checked_int(value + other);
   }
   bounds_checked_int& operator+=(int other) {
@@ -290,16 +290,16 @@ public:
     return result;
   }
   bounds_checked_int operator-(int other)const {
-    logic_correct_if((int64_t)value - (int64_t)other < (1LL << 31), "bounds_checked_int overflow in -");
-    logic_correct_if((int64_t)value - (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in -");
+    caller_correct_if((int64_t)value - (int64_t)other < (1LL << 31), "bounds_checked_int overflow in -");
+    caller_correct_if((int64_t)value - (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in -");
     return bounds_checked_int(value - other);
   }
   bounds_checked_int& operator-=(int other) {
     return *this = *this - other;
   }
   bounds_checked_int operator*(int other)const {
-    logic_correct_if((int64_t)value * (int64_t)other < (1LL << 31), "bounds_checked_int overflow in *");
-    logic_correct_if((int64_t)value * (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in *");
+    caller_correct_if((int64_t)value * (int64_t)other < (1LL << 31), "bounds_checked_int overflow in *");
+    caller_correct_if((int64_t)value * (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in *");
     return bounds_checked_int(value * other);
   }
   bounds_checked_int& operator*=(int other) {
