@@ -171,9 +171,25 @@ public:
 	vector3& operator/=(ScalarType other) {
 		x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other); return *this;
 	}
+	// Careful, shift operators on builtin types (ScalarType?) are only
+	// defined for shift >= 0 && shift < bits_in_type
+	vector3 operator<<(int shift)const {
+		return vector3(x << shift, y << shift, z << shift);
+	}
+	vector3& operator<<=(int shift) {
+		x <<= shift; y <<= shift; z <<= shift; return *this;
+	}
+	vector3 operator>>(int shift)const {
+		return vector3(x >> shift, y >> shift, z >> shift);
+	}
+	vector3& operator>>=(int shift) {
+		x >>= shift; y >>= shift; z >>= shift; return *this;
+	}
+	vector3 operator+()const { return *this; } // unary plus
 	vector3 operator-()const { // unary minus
 		return vector3(-x, -y, -z);
 	}
+
 	bool operator==(vector3 const& other)const {return x == other.x && y == other.y && z == other.z; }
 	bool operator!=(vector3 const& other)const {return x != other.x || y != other.y || z != other.z; }
 	
