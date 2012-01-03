@@ -61,10 +61,9 @@ namespace hacky_internals {
       for (tile_coordinate x = global_position.x; x < global_position.x + worldblock_dimension; ++x) {
         for (tile_coordinate y = global_position.y; y < global_position.y + worldblock_dimension; ++y) {
           for (tile_coordinate z = global_position.z; z < global_position.z + worldblock_dimension; ++z) {
-            const tile_location loc(vector3<tile_coordinate>(x,y,z), this);
-            const vector3<tile_coordinate> local_coords = loc.coords() - global_position;
-            tile& here = tiles[local_coords.x][local_coords.y][local_coords.z];
-            if (here.contents() == WATER && should_be_sticky(loc)) {
+            const vector3<tile_coordinate> coords(x,y,z);
+            tile& here = this->get_tile(coords);
+            if (here.contents() == WATER && should_be_sticky(tile_location(coords, this))) {
               here.set_water_stickyness(true);
             }
           }
