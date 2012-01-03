@@ -248,8 +248,8 @@ public:
   bounds_checked_int(int value):value(value){}
   bounds_checked_int &operator=(int other) { value = other; return *this; }
   bounds_checked_int operator+(int other)const {
-    assert((int64_t)value + (int64_t)other < (1LL << 31));
-    assert((int64_t)value + (int64_t)other > -(1LL << 31));
+    logic_correct_if((int64_t)value + (int64_t)other < (1LL << 31), "bounds_checked_int overflow in +");
+    logic_correct_if((int64_t)value + (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in +");
     return bounds_checked_int(value + other);
   }
   bounds_checked_int& operator+=(int other) {
@@ -272,16 +272,16 @@ public:
     return result;
   }
   bounds_checked_int operator-(int other)const {
-    assert((int64_t)value - (int64_t)other < (1LL << 31));
-    assert((int64_t)value - (int64_t)other > -(1LL << 31));
+    logic_correct_if((int64_t)value - (int64_t)other < (1LL << 31), "bounds_checked_int overflow in -"));
+    logic_correct_if((int64_t)value - (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in -"));
     return bounds_checked_int(value - other);
   }
   bounds_checked_int& operator-=(int other) {
     return *this = *this - other;
   }
   bounds_checked_int operator*(int other)const {
-    assert((int64_t)value * (int64_t)other < (1LL << 31));
-    assert((int64_t)value * (int64_t)other > -(1LL << 31));
+    logic_correct_if((int64_t)value * (int64_t)other < (1LL << 31), "bounds_checked_int overflow in *");
+    logic_correct_if((int64_t)value * (int64_t)other > -(1LL << 31)), "bounds_checked_int underflow in *");
     return bounds_checked_int(value * other);
   }
   bounds_checked_int& operator*=(int other) {
