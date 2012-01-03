@@ -26,6 +26,27 @@
 #include <cmath>
 #include <inttypes.h>
 #include <boost/functional/hash.hpp>
+#include <boost/throw_exception.hpp>
+#include <stdexcept>
+
+// It's not polite for library functions to assert() because the library's users
+// misused a correct library; use these for that case.
+void logic_error(std::string error) {
+  // If exceptions prove worse for debugging than asserts/segfaults,
+  // feel free to comment this out and use asserts/segfaults/breakpoints.
+  boost::throw_exception(std::logic_error(error));
+}
+void logic_error_if(bool cond, std::string error) {
+  if(cond) {
+    logic_error(error);
+  }
+}
+void logic_correct_if(bool cond, std::string error) {
+  if(!cond) {
+    logic_error(error);
+  }
+}
+
 
 template <typename SignedType>
 inline SignedType sign(SignedType input) {
@@ -48,7 +69,7 @@ typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key
 
 template<typename ScalarType> ScalarType divide_rounding_towards_zero(ScalarType dividend, ScalarType divisor)
 {
-	assert(divisor != 0);
+	logic_correct_if(divisor != 0);
 	const ScalarType abs_result = std::abs(dividend) / std::abs(divisor);
 	if ((dividend > 0) == (divisor > 0)) return abs_result;
 	else return -abs_result;
@@ -100,7 +121,7 @@ public:
 	    case 0: return x;
 	    case 1: return y;
 	    case 2: return z;
-	    default: assert("Trying to index a vector3 with an out-of-bounds index!" && false);
+	    default: logic_error("Trying to index a vector3 with an out-of-bounds index!");
 	  }
 	}
 	ScalarType operator[](int index)const {
@@ -108,7 +129,7 @@ public:
 	    case 0: return x;
 	    case 1: return y;
 	    case 2: return z;
-	    default: assert("Trying to index a vector3 with an out-of-bounds index!" && false);
+	    default: logic_error("Trying to index a vector3 with an out-of-bounds index!");
 	  }
 	}
 	// Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
