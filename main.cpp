@@ -363,35 +363,46 @@ srand(time(NULL));
           convert_coordinates_to_GL(view_loc, upper_bound_in_fine_units(loc.coords()))
         }};
 
-        push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
-        push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
-        push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
-        push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
-        
-        push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
-        push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
-        push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
-        push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
-        
-        push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
-        push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
-        push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
-        push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
-        
-        push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
-        push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
-        push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
-        push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
-        
-        push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
-        push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
-        push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
-        push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
-        
-        push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
-        push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
-        push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
-        push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
+        // Only output the 1/2 of the faces that are nearer to the viewer.
+        // TODO: if you're inside a tile, should it really be invisible to you?
+        // or alignedly to the side of a translucent tile, should all of the side-
+        // tile, 
+        if(glb[0].z > view_loc.z) {
+          push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
+          push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
+          push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
+          push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
+        }
+        if(glb[1].z < view_loc.z){
+          push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
+          push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
+          push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
+          push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
+        }
+        if(glb[0].x > view_loc.x){
+          push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
+          push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
+          push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
+          push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
+        }
+        if(glb[1].x < view_loc.x){
+          push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
+          push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
+          push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
+          push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
+        }
+        if(glb[0].y > view_loc.y){
+          push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
+          push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
+          push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
+          push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
+        }
+        if(glb[1].y < view_loc.y){
+          push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
+          push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
+          push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
+          push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
+        }
       }
       /*push_vertex(*vect, locv.x,     locv.y,     locv.z + 0.5);
       push_vertex(*vect, locv.x + 1, locv.y,     locv.z + 0.5);
