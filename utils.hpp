@@ -150,26 +150,26 @@ public:
 	template<typename OtherType> vector3 operator+(vector3<OtherType> const& other)const {
 		return vector3(x + other.x, y + other.y, z + other.z);
 	}
-	template<typename OtherType> void operator+=(vector3<OtherType> const& other) {
-		x += other.x; y += other.y; z += other.z;
+	template<typename OtherType> vector3& operator+=(vector3<OtherType> const& other) {
+		x += other.x; y += other.y; z += other.z; return *this;
 	}
 	template<typename OtherType> vector3 operator-(vector3<OtherType> const& other)const {
 		return vector3(x - other.x, y - other.y, z - other.z);
 	}
-	template<typename OtherType> void operator-=(vector3<OtherType> const& other) {
-		x -= other.x; y -= other.y; z -= other.z;
+	template<typename OtherType> vector3& operator-=(vector3<OtherType> const& other) {
+		x -= other.x; y -= other.y; z -= other.z; return *this;
 	}
 	vector3 operator*(ScalarType other)const {
 		return vector3(x * other, y * other, z * other);
 	}
-	void operator*=(ScalarType other) {
-		x *= other; y *= other; z *= other;
+	vector3& operator*=(ScalarType other) {
+		x *= other; y *= other; z *= other; return *this;
 	}
 	vector3 operator/(ScalarType other)const {
 		return vector3(divide_rounding_towards_zero(x, other), divide_rounding_towards_zero(y, other), divide_rounding_towards_zero(z, other));
 	}
-	void operator/=(ScalarType other) {
-		x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other);
+	vector3& operator/=(ScalarType other) {
+		x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other); return *this;
 	}
 	vector3 operator-()const { // unary minus
 		return vector3(-x, -y, -z);
