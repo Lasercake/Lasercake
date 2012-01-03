@@ -245,7 +245,9 @@ private:
 class bounds_checked_int {
 public:
   bounds_checked_int():value(0){}
-  bounds_checked_int(int value):value(value){}
+  bounds_checked_int(int value) : value(value) {
+    logic_correct_if(value != -(1LL << 31), "bounds_checked_int underflow in constructor");
+  }
   bounds_checked_int &operator=(int other) { value = other; return *this; }
   bounds_checked_int operator+(int other)const {
     logic_correct_if((int64_t)value + (int64_t)other < (1LL << 31), "bounds_checked_int overflow in +");
