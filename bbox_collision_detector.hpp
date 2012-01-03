@@ -29,6 +29,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <boost/scoped_ptr.hpp>
+#include "utils.hpp" /* for caller_correct_if */
 
 using std::unordered_map;
 using std::unordered_set;
@@ -258,7 +259,12 @@ private:
 public:
 
   void insert(ObjectIdentifier id, bounding_box const& bbox) {
-    assert(bboxes_by_object.find(id) == bboxes_by_object.end());
+    caller_correct_if(
+      bboxes_by_object.find(id) == bboxes_by_object.end(),
+      "bbox_collision_detector::insert() requires for your safety that the id "
+      "is not already in this container.  Use .erase() or .exists() if you need "
+      "any particular behaviour in this case."
+    );
     bboxes_by_object.insert(std::make_pair(id, bbox));
     Coordinate max_dim = bbox.size[0];
     for (num_coordinates_type i = 1; i < NumDimensions; ++i) {
