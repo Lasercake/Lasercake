@@ -357,13 +357,41 @@ srand(time(NULL));
       else if(t.is_free_water  () ) vect = &  free_water_vertices;
       else assert(false);
       
-      const shape sh = tile_shape(loc.coords());
-      std::vector<convex_polygon> const& foo = sh.get_polygons();
-      for (convex_polygon const& bar : foo) {
-        for (vector3<int64_t> const& baz : bar.get_vertices()) {
-          vector3<GLfloat> locve = convert_coordinates_to_GL(view_loc, baz);
-          push_vertex(*vect, locve.x, locve.y, locve.z);
-        }
+      {
+        const std::array<vector3<GLfloat>, 2> glb = {{
+          convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords())),
+          convert_coordinates_to_GL(view_loc, upper_bound_in_fine_units(loc.coords()))
+        }};
+
+        push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
+        push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
+        push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
+        push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
+        
+        push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
+        push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
+        push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
+        push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
+        
+        push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
+        push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
+        push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
+        push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
+        
+        push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
+        push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
+        push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
+        push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
+        
+        push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
+        push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
+        push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
+        push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
+        
+        push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
+        push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
+        push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
+        push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
       }
       /*push_vertex(*vect, locv.x,     locv.y,     locv.z + 0.5);
       push_vertex(*vect, locv.x + 1, locv.y,     locv.z + 0.5);

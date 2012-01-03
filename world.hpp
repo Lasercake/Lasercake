@@ -102,12 +102,27 @@ inline fine_scalar lower_bound_in_fine_units(tile_coordinate c, int which_coordi
   if (which_coordinate == 2) return c * tile_height;
   else                       return c * tile_width;
 }
+inline fine_scalar upper_bound_in_fine_units(tile_coordinate c, int which_coordinate) {
+  if (which_coordinate == 2) return c * tile_height + (tile_height-1);
+  else                       return c * tile_width + (tile_width-1);
+}
 inline vector3<fine_scalar> lower_bound_in_fine_units(vector3<tile_coordinate> v) {
   return vector3<fine_scalar>(
     lower_bound_in_fine_units(v[0], 0),
     lower_bound_in_fine_units(v[1], 1),
     lower_bound_in_fine_units(v[2], 2)
   );
+}
+inline vector3<fine_scalar> upper_bound_in_fine_units(vector3<tile_coordinate> v) {
+  return vector3<fine_scalar>(
+    upper_bound_in_fine_units(v[0], 0),
+    upper_bound_in_fine_units(v[1], 1),
+    upper_bound_in_fine_units(v[2], 2)
+  );
+}
+
+inline bounding_box fine_bounding_box_of_tile(vector3<tile_coordinate> v) {
+  return bounding_box(lower_bound_in_fine_units(v), upper_bound_in_fine_units(v));
 }
 
 
