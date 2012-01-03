@@ -578,6 +578,8 @@ private:
   // Used only by world_building_gun
   void insert_rock_bypassing_checks(tile_location const& loc);
   void insert_water_bypassing_checks(tile_location const& loc);
+  // Used only by worldblock
+  void initialize_interiorness_and_exposure_to_collision(tile_location const& loc);
 };
 
 class robot : public mobile_object, public autonomous_object {
