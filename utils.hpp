@@ -83,10 +83,10 @@ typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key
 
 template<typename ScalarType> ScalarType divide_rounding_towards_zero(ScalarType dividend, ScalarType divisor)
 {
-	caller_correct_if(divisor != 0, "divisor must be nonzero");
-	const ScalarType abs_result = std::abs(dividend) / std::abs(divisor);
-	if ((dividend > 0) == (divisor > 0)) return abs_result;
-	else return -abs_result;
+  caller_correct_if(divisor != 0, "divisor must be nonzero");
+  const ScalarType abs_result = std::abs(dividend) / std::abs(divisor);
+  if ((dividend > 0) == (divisor > 0)) return abs_result;
+  else return -abs_result;
 }
 
 
@@ -124,94 +124,94 @@ inline uint32_t i64sqrt(uint64_t radicand)
 
 template<typename ScalarType> class vector3 {
 public:
-	ScalarType x, y, z;
-	vector3():x(0),y(0),z(0){}
-	vector3(ScalarType x, ScalarType y, ScalarType z):x(x),y(y),z(z){}
-	template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
-	  x(other.x),y(other.y),z(other.z){}
-	
-	ScalarType& operator[](int index) {
-	  switch(index) {
-	    case 0: return x;
-	    case 1: return y;
-	    case 2: return z;
-	    default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
-	  }
-	}
-	ScalarType operator[](int index)const {
-	  switch(index) {
-	    case 0: return x;
-	    case 1: return y;
-	    case 2: return z;
-	    default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
-	  }
-	}
-	// Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
-	template<typename OtherType> vector3 operator+(vector3<OtherType> const& other)const {
-		return vector3(x + other.x, y + other.y, z + other.z);
-	}
-	template<typename OtherType> vector3& operator+=(vector3<OtherType> const& other) {
-		x += other.x; y += other.y; z += other.z; return *this;
-	}
-	template<typename OtherType> vector3 operator-(vector3<OtherType> const& other)const {
-		return vector3(x - other.x, y - other.y, z - other.z);
-	}
-	template<typename OtherType> vector3& operator-=(vector3<OtherType> const& other) {
-		x -= other.x; y -= other.y; z -= other.z; return *this;
-	}
-	vector3 operator*(ScalarType other)const {
-		return vector3(x * other, y * other, z * other);
-	}
-	vector3& operator*=(ScalarType other) {
-		x *= other; y *= other; z *= other; return *this;
-	}
-	vector3 operator/(ScalarType other)const {
-		return vector3(divide_rounding_towards_zero(x, other), divide_rounding_towards_zero(y, other), divide_rounding_towards_zero(z, other));
-	}
-	vector3& operator/=(ScalarType other) {
-		x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other); return *this;
-	}
-	// Careful, shift operators on builtin types (ScalarType?) are only
-	// defined for shift >= 0 && shift < bits_in_type
-	vector3 operator<<(int shift)const {
-		return vector3(x << shift, y << shift, z << shift);
-	}
-	vector3& operator<<=(int shift) {
-		x <<= shift; y <<= shift; z <<= shift; return *this;
-	}
-	vector3 operator>>(int shift)const {
-		return vector3(x >> shift, y >> shift, z >> shift);
-	}
-	vector3& operator>>=(int shift) {
-		x >>= shift; y >>= shift; z >>= shift; return *this;
-	}
-	vector3 operator+()const { return *this; } // unary plus
-	vector3 operator-()const { // unary minus
-		return vector3(-x, -y, -z);
-	}
+  ScalarType x, y, z;
+  vector3():x(0),y(0),z(0){}
+  vector3(ScalarType x, ScalarType y, ScalarType z):x(x),y(y),z(z){}
+  template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
+    x(other.x),y(other.y),z(other.z){}
+  
+  ScalarType& operator[](int index) {
+    switch(index) {
+      case 0: return x;
+      case 1: return y;
+      case 2: return z;
+      default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
+    }
+  }
+  ScalarType operator[](int index)const {
+    switch(index) {
+      case 0: return x;
+      case 1: return y;
+      case 2: return z;
+      default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
+    }
+  }
+  // Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
+  template<typename OtherType> vector3 operator+(vector3<OtherType> const& other)const {
+    return vector3(x + other.x, y + other.y, z + other.z);
+  }
+  template<typename OtherType> vector3& operator+=(vector3<OtherType> const& other) {
+    x += other.x; y += other.y; z += other.z; return *this;
+  }
+  template<typename OtherType> vector3 operator-(vector3<OtherType> const& other)const {
+    return vector3(x - other.x, y - other.y, z - other.z);
+  }
+  template<typename OtherType> vector3& operator-=(vector3<OtherType> const& other) {
+    x -= other.x; y -= other.y; z -= other.z; return *this;
+  }
+  vector3 operator*(ScalarType other)const {
+    return vector3(x * other, y * other, z * other);
+  }
+  vector3& operator*=(ScalarType other) {
+    x *= other; y *= other; z *= other; return *this;
+  }
+  vector3 operator/(ScalarType other)const {
+    return vector3(divide_rounding_towards_zero(x, other), divide_rounding_towards_zero(y, other), divide_rounding_towards_zero(z, other));
+  }
+  vector3& operator/=(ScalarType other) {
+    x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other); return *this;
+  }
+  // Careful, shift operators on builtin types (ScalarType?) are only
+  // defined for shift >= 0 && shift < bits_in_type
+  vector3 operator<<(int shift)const {
+    return vector3(x << shift, y << shift, z << shift);
+  }
+  vector3& operator<<=(int shift) {
+    x <<= shift; y <<= shift; z <<= shift; return *this;
+  }
+  vector3 operator>>(int shift)const {
+    return vector3(x >> shift, y >> shift, z >> shift);
+  }
+  vector3& operator>>=(int shift) {
+    x >>= shift; y >>= shift; z >>= shift; return *this;
+  }
+  vector3 operator+()const { return *this; } // unary plus
+  vector3 operator-()const { // unary minus
+    return vector3(-x, -y, -z);
+  }
 
-	bool operator==(vector3 const& other)const {return x == other.x && y == other.y && z == other.z; }
-	bool operator!=(vector3 const& other)const {return x != other.x || y != other.y || z != other.z; }
-	
-	// Do not try to use this if either vector has an unsigned ScalarType. It might work in some situations, but why would you ever do that anyway?
-	// You are required to specify an output type, because of the risk of overflow. Make sure to choose one that can fit the squares of the numbers you're dealing with.
-	template<typename OutputType, typename OtherType> OutputType dot(vector3<OtherType> const& other)const {
-		return (OutputType)x * (OutputType)other.x +
-		       (OutputType)y * (OutputType)other.y +
-		       (OutputType)z * (OutputType)other.z;
-	}
-	
-	ScalarType magnitude_within_32_bits()const { return (ScalarType)i64sqrt(dot<int64_t>(*this)); }
-	
-	// Choose these the way you'd choose dot's output type (see the comment above)
-	// we had trouble making these templates, so now they just always use int64_t
-	bool magnitude_within_32_bits_is_less_than(ScalarType amount)const {
-	  return dot<int64_t>(*this) < (int64_t)amount * (int64_t)amount;
-	}
-	bool magnitude_within_32_bits_is_greater_than(ScalarType amount)const {
-	  return dot<int64_t>(*this) > (int64_t)amount * (int64_t)amount;
-	}
-	bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
+  bool operator==(vector3 const& other)const {return x == other.x && y == other.y && z == other.z; }
+  bool operator!=(vector3 const& other)const {return x != other.x || y != other.y || z != other.z; }
+  
+  // Do not try to use this if either vector has an unsigned ScalarType. It might work in some situations, but why would you ever do that anyway?
+  // You are required to specify an output type, because of the risk of overflow. Make sure to choose one that can fit the squares of the numbers you're dealing with.
+  template<typename OutputType, typename OtherType> OutputType dot(vector3<OtherType> const& other)const {
+    return (OutputType)x * (OutputType)other.x +
+           (OutputType)y * (OutputType)other.y +
+           (OutputType)z * (OutputType)other.z;
+  }
+  
+  ScalarType magnitude_within_32_bits()const { return (ScalarType)i64sqrt(dot<int64_t>(*this)); }
+  
+  // Choose these the way you'd choose dot's output type (see the comment above)
+  // we had trouble making these templates, so now they just always use int64_t
+  bool magnitude_within_32_bits_is_less_than(ScalarType amount)const {
+    return dot<int64_t>(*this) < (int64_t)amount * (int64_t)amount;
+  }
+  bool magnitude_within_32_bits_is_greater_than(ScalarType amount)const {
+    return dot<int64_t>(*this) > (int64_t)amount * (int64_t)amount;
+  }
+  bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
 };
 template<typename T> inline std::ostream& operator<<(std::ostream& os, vector3<T>const& v) {
   return os << '(' << v.x << ',' << v.y << ',' << v.z << ')';
