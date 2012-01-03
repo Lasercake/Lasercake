@@ -182,7 +182,7 @@ inline tile_bounding_box convert_to_smallest_superset_at_tile_resolution(boundin
 }
 
 inline shape tile_shape(vector3<tile_coordinate> tile) {
-  return shape(convert_to_fine_units(tile_bounding_box(tile)));
+  return shape(fine_bounding_box_of_tile(tile));
 }
 
 

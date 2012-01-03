@@ -68,7 +68,7 @@ void world::check_exposure_to_collision(tile_location const& loc) {
   if ((t.contents() == WATER || t.contents() == ROCK) &&
      !(t.is_interior_water() || t.is_interior_rock())) {
     if (!things_exposed_to_collision.exists(loc)) {
-      things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
+      things_exposed_to_collision.insert(loc, fine_bounding_box_of_tile(loc.coords()));
     }
   }
   else {
