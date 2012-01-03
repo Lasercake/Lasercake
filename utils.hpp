@@ -42,7 +42,7 @@
 
 // It's not polite for library functions to assert() because the library's users
 // misused a correct library; use these for that case.
-inline ATTRIBUTE_NORETURN void caller_error(std::string error) {
+inline ATTRIBUTE_NORETURN void caller_error(const char* error) {
   // If exceptions prove worse for debugging than asserts/segfaults,
   // feel free to comment this out and use asserts/segfaults/breakpoints.
   boost::throw_exception(std::logic_error(error));
@@ -50,12 +50,12 @@ inline ATTRIBUTE_NORETURN void caller_error(std::string error) {
 // You must provide an explanatory string so that the user of the library
 // will know what *they* did wrong, and not have to interpret an assert() expression
 // to find out.
-inline void caller_error_if(bool cond, std::string error) {
+inline void caller_error_if(bool cond, const char* error) {
   if(cond) {
     caller_error(error);
   }
 }
-inline void caller_correct_if(bool cond, std::string error) {
+inline void caller_correct_if(bool cond, const char* error) {
   if(!cond) {
     caller_error(error);
   }

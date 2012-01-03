@@ -37,44 +37,73 @@ void world::set_stickyness(tile_location const& loc, bool new_stickyness) {
   }
 }
 
-void world::check_interiorness(tile_location const& loc) {
-  tile &t = mutable_stuff_at(loc);
-  if (t.is_sticky_water()) {
-    bool should_be_interior = true;
+namespace {
+  bool should_be_exposed_to_collision(tile_location const& loc) {
+    tile const& t = loc.stuff_at();
+    return ((t.contents() == WATER || t.contents() == ROCK) &&
+           !(t.is_interior_water() || t.is_interior_rock()));
+  }
+
+  bool should_be_interior_water(tile_location const& loc) {
+    tile const& t = loc.stuff_at();
+    if (!t.is_sticky_water()) return false;
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const tile_location other_loc = loc.get_neighbor(dir, CONTENTS_AND_STICKYNESS_ONLY);
-      if (!other_loc.stuff_at().is_sticky_water()) should_be_interior = false;
+      if (!other_loc.stuff_at().is_sticky_water()) return false;
     }
-    if (t.is_interior_water() != should_be_interior) {
-      t.set_water_interiorness(should_be_interior);
-      check_exposure_to_collision(loc);
-    }
+    return true;
   }
-  if (t.contents() == ROCK) {
-    bool should_be_interior = true;
+
+  bool should_be_interior_rock(tile_location const& loc) {
+    tile const& t = loc.stuff_at();
+    if (t.contents() != ROCK) return false;
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const tile_location other_loc = loc.get_neighbor(dir, CONTENTS_ONLY);
-      if (!other_loc.stuff_at().contents() == ROCK) should_be_interior = false;
+      if (!other_loc.stuff_at().contents() == ROCK) return false;
     }
-    if (t.is_interior_rock() != should_be_interior) {
-      t.set_rock_interiorness(should_be_interior);
-      check_exposure_to_collision(loc);
-    }
+    return true;
+  }
+}
+
+void world::check_interiorness(tile_location const& loc) {
+  tile &t = mutable_stuff_at(loc);
+  
+  const bool new_water_interiorness = should_be_interior_water(loc);
+  if (t.is_interior_water() != new_water_interiorness) {
+    t.set_water_interiorness(new_water_interiorness);
+    check_exposure_to_collision(loc);
+  }
+  
+  const bool new_rock_interiorness = should_be_interior_rock(loc);
+  if (t.is_interior_rock() != new_rock_interiorness) {
+    t.set_rock_interiorness(new_rock_interiorness);
+    check_exposure_to_collision(loc);
   }
 }
 
 void world::check_exposure_to_collision(tile_location const& loc) {
-  tile const& t = loc.stuff_at();
-  if ((t.contents() == WATER || t.contents() == ROCK) &&
-     !(t.is_interior_water() || t.is_interior_rock())) {
+  if (should_be_exposed_to_collision(loc)) {
     if (!things_exposed_to_collision.exists(loc)) {
-      things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
+      things_exposed_to_collision.insert(loc, fine_bounding_box_of_tile(loc.coords()));
     }
   }
   else {
     if (things_exposed_to_collision.exists(loc)) {
       things_exposed_to_collision.erase(loc);
     }
+  }
+}
+
+void world::initialize_interiorness_and_exposure_to_collision(tile_location const& loc) {
+  if(should_be_interior_water(loc)) {
+    mutable_stuff_at(loc).set_water_interiorness(true);
+  }
+  if(should_be_interior_rock(loc)) {
+    mutable_stuff_at(loc).set_rock_interiorness(true);
+  }
+  // This check has to come after initializing the interiornesses.
+  if (should_be_exposed_to_collision(loc)) {
+    things_exposed_to_collision.insert(loc, fine_bounding_box_of_tile(loc.coords()));
   }
 }
 

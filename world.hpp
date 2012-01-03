@@ -102,12 +102,27 @@ inline fine_scalar lower_bound_in_fine_units(tile_coordinate c, int which_coordi
   if (which_coordinate == 2) return c * tile_height;
   else                       return c * tile_width;
 }
+inline fine_scalar upper_bound_in_fine_units(tile_coordinate c, int which_coordinate) {
+  if (which_coordinate == 2) return c * tile_height + (tile_height-1);
+  else                       return c * tile_width + (tile_width-1);
+}
 inline vector3<fine_scalar> lower_bound_in_fine_units(vector3<tile_coordinate> v) {
   return vector3<fine_scalar>(
     lower_bound_in_fine_units(v[0], 0),
     lower_bound_in_fine_units(v[1], 1),
     lower_bound_in_fine_units(v[2], 2)
   );
+}
+inline vector3<fine_scalar> upper_bound_in_fine_units(vector3<tile_coordinate> v) {
+  return vector3<fine_scalar>(
+    upper_bound_in_fine_units(v[0], 0),
+    upper_bound_in_fine_units(v[1], 1),
+    upper_bound_in_fine_units(v[2], 2)
+  );
+}
+
+inline bounding_box fine_bounding_box_of_tile(vector3<tile_coordinate> v) {
+  return bounding_box(lower_bound_in_fine_units(v), upper_bound_in_fine_units(v));
 }
 
 
@@ -167,7 +182,7 @@ inline tile_bounding_box convert_to_smallest_superset_at_tile_resolution(boundin
 }
 
 inline shape tile_shape(vector3<tile_coordinate> tile) {
-  return shape(convert_to_fine_units(tile_bounding_box(tile)));
+  return shape(fine_bounding_box_of_tile(tile));
 }
 
 
@@ -256,9 +271,6 @@ enum level_of_tile_realization_needed {
 
 class tile_location {
 public:
-  // this constructor should only be used when you know exactly what worldblock it's in!!
-  // TODO: It's bad that it's both public AND doesn't assert that condition
-  
   tile_location operator+(cardinal_direction dir)const;
   // Equivalent to operator+, except allowing you to specify the amount of realization needed.
   tile_location get_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
@@ -269,10 +281,12 @@ public:
 private:
   friend tile& mutable_stuff_at(tile_location const& loc);
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
-  //friend class ztree_entry;
+
+  // This constructor should only be used when you know exactly what worldblock it's in!!
   tile_location(vector3<tile_coordinate> v, hacky_internals::worldblock *wb):v(v),wb(wb){}
+  
   vector3<tile_coordinate> v;
-  hacky_internals::worldblock *wb;
+  hacky_internals::worldblock *wb; // invariant: nonnull
 };
 
 namespace std {
@@ -563,6 +577,8 @@ private:
   // Used only by world_building_gun
   void insert_rock_bypassing_checks(tile_location const& loc);
   void insert_water_bypassing_checks(tile_location const& loc);
+  // Used only by worldblock
+  void initialize_interiorness_and_exposure_to_collision(tile_location const& loc);
 };
 
 class robot : public mobile_object, public autonomous_object {
