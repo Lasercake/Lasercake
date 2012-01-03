@@ -29,9 +29,20 @@
 #include <boost/throw_exception.hpp>
 #include <stdexcept>
 
+#ifndef ATTRIBUTE_NORETURN
+// from http://www.boost.org/doc/libs/1_48_0/boost/exception/detail/attribute_noreturn.hpp
+#if defined(_MSC_VER)
+#define ATTRIBUTE_NORETURN __declspec(noreturn)
+#elif defined(__GNUC__)
+#define ATTRIBUTE_NORETURN __attribute__((noreturn))
+#else
+#define ATTRIBUTE_NORETURN
+#endif
+#endif
+
 // It's not polite for library functions to assert() because the library's users
 // misused a correct library; use these for that case.
-inline void logic_error(std::string error) {
+inline ATTRIBUTE_NORETURN void logic_error(std::string error) {
   // If exceptions prove worse for debugging than asserts/segfaults,
   // feel free to comment this out and use asserts/segfaults/breakpoints.
   boost::throw_exception(std::logic_error(error));
