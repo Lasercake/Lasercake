@@ -271,9 +271,6 @@ enum level_of_tile_realization_needed {
 
 class tile_location {
 public:
-  // this constructor should only be used when you know exactly what worldblock it's in!!
-  // TODO: It's bad that it's both public AND doesn't assert that condition
-  
   tile_location operator+(cardinal_direction dir)const;
   // Equivalent to operator+, except allowing you to specify the amount of realization needed.
   tile_location get_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
@@ -284,10 +281,12 @@ public:
 private:
   friend tile& mutable_stuff_at(tile_location const& loc);
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
-  //friend class ztree_entry;
+
+  // This constructor should only be used when you know exactly what worldblock it's in!!
   tile_location(vector3<tile_coordinate> v, hacky_internals::worldblock *wb):v(v),wb(wb){}
+  
   vector3<tile_coordinate> v;
-  hacky_internals::worldblock *wb;
+  hacky_internals::worldblock *wb; // invariant: nonnull
 };
 
 namespace std {
