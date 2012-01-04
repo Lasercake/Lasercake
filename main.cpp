@@ -199,6 +199,17 @@ const vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
 vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
   return vector3<GLfloat>(input - view_center) / tile_width;
 }
+
+tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_box b, vector3<fine_scalar> const& v) {
+  const fine_scalar xdist = (v.x < b.min.x) ? (b.min.x - v.x) : (v.x > b.max.x) ? (v.x - b.max.x) : 0;
+  const fine_scalar ydist = (v.y < b.min.y) ? (b.min.y - v.y) : (v.y > b.max.y) ? (v.y - b.max.y) : 0;
+  const fine_scalar zdist = (v.z < b.min.z) ? (b.min.z - v.z) : (v.z > b.max.z) ? (v.z - b.max.z) : 0;
+  // Like (xdist / tile_width + ydist / tile_width + zdist / tile_height) but more precise:
+  return (xdist + ydist + (zdist * tile_width / tile_height)) / tile_width;
+}
+
+
+
 static void mainLoop (std::string scenario)
 {
   SDL_Event event;
@@ -269,7 +280,12 @@ srand(time(NULL));
 
     vector3<fine_scalar> view_loc;
     vector3<fine_scalar> view_towards;
-    vertices_t vertices;
+
+    //The vertices_t's later in this vector are intended to be
+    //further away and rendered first (therefore covered up most
+    //by everything else that's closer).
+    std::vector<vertices_t> verticeses(1000);
+    
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
       view_towards = view_loc + vector3<fine_scalar>(
@@ -320,6 +336,7 @@ srand(time(NULL));
     ));
     
     for (auto p : w.laser_sfxes) {
+      vertices_t& vertices = verticeses[0];
       vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, p.first);
       vector3<GLfloat> locv2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
       //std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
@@ -345,6 +362,9 @@ srand(time(NULL));
     }
     
     for (object_or_tile_identifier const& id : tiles_to_draw) {
+      vertices_t& vertices = verticeses[
+        tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc)
+      ];
       if (object_identifier const* mid = id.get_object_identifier()) {
         shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(*mid)));
         const object_shapes_t::const_iterator blah = w.get_object_personal_space_shapes().find(*mid);
@@ -465,50 +485,64 @@ srand(time(NULL));
     gluLookAt(0,0,0, facing.x,facing.y,facing.z, 0,0,1);
     
     glEnableClientState(GL_VERTEX_ARRAY);
-    
-    /*glColor4f(0.2,0.4,0.0,1.0);
-    glVertexPointer(3, GL_FLOAT, 0, &ground_vertices[0]);
-    glDrawArrays(GL_QUADS, 0, ground_vertices.size());*/
-    
-    glColor4f(0.5,0.0,0.0,0.9);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices.rock[0]);
-    glDrawArrays(GL_QUADS, 0, vertices.rock.size());
-    
-    glColor4f(0.0, 0.0, 1.0, 0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices.sticky_water[0]);
-    glDrawArrays(GL_QUADS, 0, vertices.sticky_water.size());
-    
-    glColor4f(0.4, 0.4, 1.0, 0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices.free_water[0]);
-    glDrawArrays(GL_QUADS, 0, vertices.free_water.size());
-    
-    glColor4f(0.0, 1.0, 0.0, 0.5);
-    glLineWidth(1);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices.velocity[0]);
-    glDrawArrays(GL_LINES, 0, vertices.velocity.size());
-    
-    glColor4f(0.0, 0.0, 1.0, 0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices.progress[0]);
-    glDrawArrays(GL_LINES, 0, vertices.progress.size());
-    
-    /*glColor4f(0.0, 0.0, 0.0, 0.5);
-    glPointSize(3);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices.inactive_marker[0]);
-    glDrawArrays(GL_POINTS, 0, vertices.inactive_marker.size());*/
-    
-    glColor4f(0.0, 1.0, 0.0, 0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices.laserbeam[0]);
-    glDrawArrays(GL_QUADS, 0, vertices.laserbeam.size());
-    
-    glColor4f(0.5,0.5,0.5,0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
-    glDrawArrays(GL_QUADS, 0, vertices.object.size());
-    
-    glLineWidth(1);
-    glColor4f(1.0,1.0,1.0,0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
-    glDrawArrays(GL_LINES, 0, vertices.object.size());
-    
+
+    for(size_t i = verticeses.size()-1; i != size_t(-1); --i) {
+      vertices_t& vertices = verticeses[i];
+      
+      /*if(vertices.ground_vertices.size()) {
+        glColor4f(0.2,0.4,0.0,1.0);
+        glVertexPointer(3, GL_FLOAT, 0, &ground_vertices[0]);
+        glDrawArrays(GL_QUADS, 0, ground_vertices.size());
+      }*/
+      if(vertices.rock.size()) {
+        glColor4f(0.5,0.0,0.0,0.5);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.rock[0]);
+        glDrawArrays(GL_QUADS, 0, vertices.rock.size());
+      }
+      if(vertices.sticky_water.size()) {
+        glColor4f(0.0, 0.0, 1.0, 0.5);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.sticky_water[0]);
+        glDrawArrays(GL_QUADS, 0, vertices.sticky_water.size());
+      }
+      if(vertices.free_water.size()) {
+        glColor4f(0.4, 0.4, 1.0, 0.5);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.free_water[0]);
+        glDrawArrays(GL_QUADS, 0, vertices.free_water.size());
+      }
+      if(vertices.velocity.size()) {
+        glColor4f(0.0, 1.0, 0.0, 0.5);
+        glLineWidth(1);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.velocity[0]);
+        glDrawArrays(GL_LINES, 0, vertices.velocity.size());
+      }
+      if(vertices.progress.size()) {
+        glColor4f(0.0, 0.0, 1.0, 0.5);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.progress[0]);
+        glDrawArrays(GL_LINES, 0, vertices.progress.size());
+      }
+      /*if(vertices.inactive_marker.size()) {
+        glColor4f(0.0, 0.0, 0.0, 0.5);
+        glPointSize(3);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.inactive_marker[0]);
+        glDrawArrays(GL_POINTS, 0, vertices.inactive_marker.size());
+      }*/
+      if(vertices.laserbeam.size()) {
+        glColor4f(0.0, 1.0, 0.0, 0.5);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.laserbeam[0]);
+        glDrawArrays(GL_QUADS, 0, vertices.laserbeam.size());
+      }
+      if(vertices.object.size()) {
+        glColor4f(0.5,0.5,0.5,0.5);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
+        glDrawArrays(GL_QUADS, 0, vertices.object.size());
+      }
+      if(vertices.object.size()) {
+        glLineWidth(1);
+        glColor4f(1.0,1.0,1.0,0.5);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
+        glDrawArrays(GL_LINES, 0, vertices.object.size());
+      }
+    }
     
     
     glFinish();	
