@@ -57,6 +57,9 @@ struct bounding_box {
   void combine_with(bounding_box const& o);
   void restrict_to(bounding_box const& o);
 };
+inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
+  return os << '[' << bb.min << ',' << bb.max << ']';
+}
 
 struct line_segment {
   line_segment(std::array<vector3<int64_t>, 2> ends):ends(ends){}
