@@ -399,7 +399,7 @@ public:
   bool erase(object_or_tile_identifier id) {
     return detector.erase(id);
   }
-  bool exists(object_or_tile_identifier id) {
+  bool exists(object_or_tile_identifier id)const {
     return detector.exists(id);
   }
 private:
