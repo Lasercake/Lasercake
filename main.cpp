@@ -219,11 +219,10 @@ srand(time(NULL));
   vector3<fine_scalar> view_loc_for_local_display = wc;
   enum { GLOBAL, LOCAL, ROBOT } view_type = GLOBAL;
   double view_direction = 0;
-  
-  double view_x_for_global_display = 5*tile_width,
-         view_y_for_global_display = 5*tile_width,
-         view_z_for_global_display = 5*tile_width,
-         view_dist = 20;
+
+  vector3<fine_scalar> surveilled_by_global_display =
+        wc + vector3<fine_scalar>(5*tile_width, 5*tile_width, 5*tile_width);
+  fine_scalar globallocal_view_dist = 20*tile_width;
     
   while ( !done ) {
 
@@ -238,14 +237,14 @@ srand(time(NULL));
           
         case SDL_KEYDOWN:
           if(event.key.keysym.sym == SDLK_p) ++p_mode;
-          if(event.key.keysym.sym == SDLK_q) view_x_for_global_display += tile_width;
-          if(event.key.keysym.sym == SDLK_a) view_x_for_global_display -= tile_width;
-          if(event.key.keysym.sym == SDLK_w) view_y_for_global_display += tile_width;
-          if(event.key.keysym.sym == SDLK_s) view_y_for_global_display -= tile_width;
-          if(event.key.keysym.sym == SDLK_e) view_z_for_global_display += tile_width;
-          if(event.key.keysym.sym == SDLK_d) view_z_for_global_display -= tile_width;
-          if(event.key.keysym.sym == SDLK_r) ++view_dist;
-          if(event.key.keysym.sym == SDLK_f) --view_dist;
+          if(event.key.keysym.sym == SDLK_q) surveilled_by_global_display.x += tile_width;
+          if(event.key.keysym.sym == SDLK_a) surveilled_by_global_display.x -= tile_width;
+          if(event.key.keysym.sym == SDLK_w) surveilled_by_global_display.y += tile_width;
+          if(event.key.keysym.sym == SDLK_s) surveilled_by_global_display.y -= tile_width;
+          if(event.key.keysym.sym == SDLK_e) surveilled_by_global_display.z += tile_width;
+          if(event.key.keysym.sym == SDLK_d) surveilled_by_global_display.z -= tile_width;
+          if(event.key.keysym.sym == SDLK_r) globallocal_view_dist += tile_width;
+          if(event.key.keysym.sym == SDLK_f) globallocal_view_dist -= tile_width;
           if(event.key.keysym.sym == SDLK_l) view_type = LOCAL;
           if(event.key.keysym.sym == SDLK_o) view_type = GLOBAL;
           if(event.key.keysym.sym == SDLK_i) view_type = ROBOT;
@@ -267,10 +266,16 @@ srand(time(NULL));
     int before_drawing = SDL_GetTicks();
 
     vector3<fine_scalar> view_loc;
+    vector3<fine_scalar> view_towards;
     //drawing code here
     vertices_t vertices;
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
+      view_towards = view_loc + vector3<fine_scalar>(
+        globallocal_view_dist * std::cos(view_direction),
+        globallocal_view_dist * std::sin(view_direction),
+        0
+      );
       if (keystate[SDLK_u]) {
         view_loc_for_local_display += vector3<fine_scalar>(
         fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
@@ -291,12 +296,16 @@ srand(time(NULL));
     else if (view_type == ROBOT) {
       bounding_box b = w.get_object_personal_space_shapes().find(robot_id)->second.bounds();
       view_loc = ((b.min + b.max) / 2);
+      vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(robot_id)->second)->get_facing();
+      view_towards = view_loc + facing;
     }
     else {
-      view_loc = wc;
-      view_loc.x += view_x_for_global_display + tile_width * view_dist * std::cos((double)frame / 40.0);
-      view_loc.y += view_y_for_global_display + tile_width * view_dist * std::sin((double)frame / 40.0);
-      view_loc.z += view_z_for_global_display + tile_width * ((view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0));
+      view_towards = surveilled_by_global_display;
+      view_loc = surveilled_by_global_display + vector3<fine_scalar>(
+        globallocal_view_dist * std::cos((double)frame / 40.0),
+        globallocal_view_dist * std::sin((double)frame / 40.0),
+        (globallocal_view_dist / 2) + (globallocal_view_dist / 4) * std::sin((double)frame / 60.0)
+      );
     }
     
     unordered_set<object_or_tile_identifier> tiles_to_draw;
@@ -450,25 +459,8 @@ srand(time(NULL));
     frame += 1;
     glLoadIdentity();
     gluPerspective(80, 1, 0.1, 100);
-    if (view_type == LOCAL) {
-      //vector3<GLfloat> foo = vector3<GLfloat>(view_loc - wc) / tile_width;
-      gluLookAt(0, 0, 0,
-        view_dist*std::cos(view_direction), view_dist*std::sin(view_direction), 0,
-        0,0,1);
-    }
-    else if (view_type == ROBOT) {
-      vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(robot_id)->second)->get_facing();
-      vector3<GLfloat> bar = vector3<GLfloat>(facing) / (tile_width);
-      //std::cerr << foo.x << ", " << foo.y << ", " << foo.z << ", " << bar.x << ", " << bar.y << ", " << bar.z << ", \n";
-      gluLookAt(0, 0, 0,
-        bar.x, bar.y, 0,
-        0,0,1);
-    }
-    else {
-      gluLookAt(0, 0, 0,
-      -view_dist * std::cos((double)frame / 40.0),-view_dist * std::sin((double)frame / 40.0),-(view_dist / 2) + -(view_dist / 4) * std::sin((double)frame / 60.0),
-      0,0,1);
-    }
+    vector3<GLfloat> facing(view_towards - view_loc); facing /= tile_width;
+    gluLookAt(0,0,0, facing.x,facing.y,facing.z, 0,0,1);
     
     glEnableClientState(GL_VERTEX_ARRAY);
     
