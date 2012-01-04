@@ -265,9 +265,10 @@ srand(time(NULL));
     if(p_mode > 1)--p_mode;
     int before_drawing = SDL_GetTicks();
 
+    //drawing code here
+
     vector3<fine_scalar> view_loc;
     vector3<fine_scalar> view_towards;
-    //drawing code here
     vertices_t vertices;
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
