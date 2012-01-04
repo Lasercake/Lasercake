@@ -383,41 +383,38 @@ srand(time(NULL));
           convert_coordinates_to_GL(view_loc, upper_bound_in_fine_units(loc.coords()))
         }};
 
-        // Only output the 1/2 of the faces that are nearer to the viewer.
-        // TODO: if you're inside a tile, should it really be invisible to you?
-        // or alignedly to the side of a translucent tile, should all of the side-
-        // tile, 
-        if(glb[0].z > view_loc.z) {
+        // Only output the faces that are not interior to a single kind of material.
+        if(loc.get_neighbor(cdir_zminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()) {
           push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
           push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
           push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
           push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
         }
-        if(glb[1].z < view_loc.z){
+        if(loc.get_neighbor(cdir_zplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
           push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
           push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
           push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
           push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
         }
-        if(glb[0].x > view_loc.x){
+        if(loc.get_neighbor(cdir_xminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
           push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
           push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
           push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
           push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
         }
-        if(glb[1].x < view_loc.x){
+        if(loc.get_neighbor(cdir_xplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
           push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
           push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
           push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
           push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
         }
-        if(glb[0].y > view_loc.y){
+        if(loc.get_neighbor(cdir_yminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
           push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
           push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
           push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
           push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
         }
-        if(glb[1].y < view_loc.y){
+        if(loc.get_neighbor(cdir_yplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
           push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
           push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
           push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
