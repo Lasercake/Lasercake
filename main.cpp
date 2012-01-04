@@ -183,6 +183,16 @@ struct vertex_entry { GLfloat x, y, z; };
 void push_vertex(vector<vertex_entry> &v, GLfloat x, GLfloat y, GLfloat z) {
   v.push_back((vertex_entry){x,y,z});
 }
+struct vertices_t {
+    vector<vertex_entry> rock;
+    vector<vertex_entry> sticky_water;
+    vector<vertex_entry> free_water;
+    vector<vertex_entry> velocity;
+    vector<vertex_entry> progress;
+    //vector<vertex_entry> inactive_marker;
+    vector<vertex_entry> laserbeam;
+    vector<vertex_entry> object;
+};
 
 const vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
 
@@ -255,9 +265,7 @@ srand(time(NULL));
 
     vector3<fine_scalar> view_loc;
     //drawing code here
-    vector<vertex_entry> rock_vertices;
-    vector<vertex_entry> sticky_water_vertices;
-    vector<vertex_entry> free_water_vertices;
+    vertices_t vertices;
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
       if (keystate[SDLK_u]) {
@@ -287,11 +295,6 @@ srand(time(NULL));
       view_loc.y += view_y_for_global_display * tile_width;
       view_loc.z += view_z_for_global_display * tile_width;
     }
-    vector<vertex_entry> velocity_vertices;
-    vector<vertex_entry> progress_vertices;
-    //vector<vertex_entry> inactive_marker_vertices;
-    vector<vertex_entry> laserbeam_vertices;
-    vector<vertex_entry> object_vertices;
     
     unordered_set<object_or_tile_identifier> tiles_to_draw;
     /*w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(
@@ -308,20 +311,20 @@ srand(time(NULL));
       vector3<GLfloat> locv2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
       //std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
       //std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
-      push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z+0.5);
-      push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z-0.5);
+      push_vertex(vertices.laserbeam, locv.x, locv.y, locv.z+0.5);
+      push_vertex(vertices.laserbeam, locv.x, locv.y, locv.z-0.5);
       //push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z);
       //push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z + 0.1);
       GLfloat length = 50; //(locv2 - locv).magnitude_within_32_bits();
       for (int i = 0; i < length; ++i) {
         vector3<GLfloat> locv3 = (locv + (((locv2 - locv) * i) / length));
-        push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z);
-        push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z + 0.1);
-        push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z + 0.1);
-        push_vertex(laserbeam_vertices, locv3.x, locv3.y, locv3.z);
+        push_vertex(vertices.laserbeam, locv3.x, locv3.y, locv3.z);
+        push_vertex(vertices.laserbeam, locv3.x, locv3.y, locv3.z + 0.1);
+        push_vertex(vertices.laserbeam, locv3.x, locv3.y, locv3.z + 0.1);
+        push_vertex(vertices.laserbeam, locv3.x, locv3.y, locv3.z);
       }
-      push_vertex(laserbeam_vertices, locv2.x, locv2.y, locv2.z);
-      push_vertex(laserbeam_vertices, locv2.x, locv2.y, locv2.z+0.1);
+      push_vertex(vertices.laserbeam, locv2.x, locv2.y, locv2.z);
+      push_vertex(vertices.laserbeam, locv2.x, locv2.y, locv2.z+0.1);
     }
     
     for (object_or_tile_identifier const& id : tiles_to_draw) {
@@ -332,10 +335,10 @@ srand(time(NULL));
         for (convex_polygon const& bar : foo) {
           for (vector3<int64_t> const& baz : bar.get_vertices()) {
             vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, baz);
-            push_vertex(object_vertices, locv.x, locv.y, locv.z);
+            push_vertex(vertices.object, locv.x, locv.y, locv.z);
             
-          push_vertex(velocity_vertices, locv.x, locv.y, locv.z);
-          push_vertex(velocity_vertices,
+          push_vertex(vertices.velocity, locv.x, locv.y, locv.z);
+          push_vertex(vertices.velocity,
               locv.x + ((GLfloat)objp->velocity.x / (tile_width)),
               locv.y + ((GLfloat)objp->velocity.y / (tile_width)),
               locv.z + ((GLfloat)objp->velocity.z / (tile_width)));
@@ -352,9 +355,9 @@ srand(time(NULL));
       
       vector<vertex_entry> *vect;
       
-           if(t.contents() == ROCK) vect = &        rock_vertices;
-      else if(t.is_sticky_water() ) vect = &sticky_water_vertices;
-      else if(t.is_free_water  () ) vect = &  free_water_vertices;
+           if(t.contents() == ROCK) vect = &        vertices.rock;
+      else if(t.is_sticky_water() ) vect = &vertices.sticky_water;
+      else if(t.is_free_water  () ) vect = &  vertices.free_water;
       else assert(false);
       
       {
@@ -411,8 +414,8 @@ srand(time(NULL));
       
       if (t.contents() == WATER) {
         if (water_movement_info *water = w.get_active_water_tile(loc)) {
-          push_vertex(velocity_vertices, locv.x+0.5, locv.y+0.5, locv.z + 0.1);
-          push_vertex(velocity_vertices,
+          push_vertex(vertices.velocity, locv.x+0.5, locv.y+0.5, locv.z + 0.1);
+          push_vertex(vertices.velocity,
               locv.x + 0.5 + ((GLfloat)water->velocity.x / (tile_width)),
               locv.y + 0.5 + ((GLfloat)water->velocity.y / (tile_width)),
               locv.z + 0.1 + ((GLfloat)water->velocity.z / (tile_width)));
@@ -422,8 +425,8 @@ srand(time(NULL));
             if (prog > 0) {
               vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary(dir);
 
-              push_vertex(progress_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
-              push_vertex(progress_vertices,
+              push_vertex(vertices.progress, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
+              push_vertex(vertices.progress,
                   locv.x + 0.5 + directed_prog.x,
                   locv.y + 0.5 + directed_prog.y,
                   locv.z + 0.1 + directed_prog.z);
@@ -470,44 +473,44 @@ srand(time(NULL));
     glVertexPointer(3, GL_FLOAT, 0, &ground_vertices[0]);
     glDrawArrays(GL_QUADS, 0, ground_vertices.size());*/
     
-    glColor4f(0.5,0.0,0.0,0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &rock_vertices[0]);
-    glDrawArrays(GL_QUADS, 0, rock_vertices.size());
+    glColor4f(0.5,0.0,0.0,0.9);
+    glVertexPointer(3, GL_FLOAT, 0, &vertices.rock[0]);
+    glDrawArrays(GL_QUADS, 0, vertices.rock.size());
     
     glColor4f(0.0, 0.0, 1.0, 0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &sticky_water_vertices[0]);
-    glDrawArrays(GL_QUADS, 0, sticky_water_vertices.size());
+    glVertexPointer(3, GL_FLOAT, 0, &vertices.sticky_water[0]);
+    glDrawArrays(GL_QUADS, 0, vertices.sticky_water.size());
     
     glColor4f(0.4, 0.4, 1.0, 0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &free_water_vertices[0]);
-    glDrawArrays(GL_QUADS, 0, free_water_vertices.size());
+    glVertexPointer(3, GL_FLOAT, 0, &vertices.free_water[0]);
+    glDrawArrays(GL_QUADS, 0, vertices.free_water.size());
     
     glColor4f(0.0, 1.0, 0.0, 0.5);
     glLineWidth(1);
-    glVertexPointer(3, GL_FLOAT, 0, &velocity_vertices[0]);
-    glDrawArrays(GL_LINES, 0, velocity_vertices.size());
+    glVertexPointer(3, GL_FLOAT, 0, &vertices.velocity[0]);
+    glDrawArrays(GL_LINES, 0, vertices.velocity.size());
     
     glColor4f(0.0, 0.0, 1.0, 0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &progress_vertices[0]);
-    glDrawArrays(GL_LINES, 0, progress_vertices.size());
+    glVertexPointer(3, GL_FLOAT, 0, &vertices.progress[0]);
+    glDrawArrays(GL_LINES, 0, vertices.progress.size());
     
     /*glColor4f(0.0, 0.0, 0.0, 0.5);
     glPointSize(3);
-    glVertexPointer(3, GL_FLOAT, 0, &inactive_marker_vertices[0]);
-    glDrawArrays(GL_POINTS, 0, inactive_marker_vertices.size());*/
+    glVertexPointer(3, GL_FLOAT, 0, &vertices.inactive_marker[0]);
+    glDrawArrays(GL_POINTS, 0, vertices.inactive_marker.size());*/
     
     glColor4f(0.0, 1.0, 0.0, 0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &laserbeam_vertices[0]);
-    glDrawArrays(GL_QUADS, 0, laserbeam_vertices.size());
+    glVertexPointer(3, GL_FLOAT, 0, &vertices.laserbeam[0]);
+    glDrawArrays(GL_QUADS, 0, vertices.laserbeam.size());
     
     glColor4f(0.5,0.5,0.5,0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &object_vertices[0]);
-    glDrawArrays(GL_QUADS, 0, object_vertices.size());
+    glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
+    glDrawArrays(GL_QUADS, 0, vertices.object.size());
     
     glLineWidth(1);
     glColor4f(1.0,1.0,1.0,0.5);
-    glVertexPointer(3, GL_FLOAT, 0, &object_vertices[0]);
-    glDrawArrays(GL_LINES, 0, object_vertices.size());
+    glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
+    glDrawArrays(GL_LINES, 0, vertices.object.size());
     
     
     
