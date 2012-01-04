@@ -29,7 +29,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <boost/scoped_ptr.hpp>
-#include "utils.hpp" /* for caller_correct_if */
+#include "utils.hpp"
 
 using std::unordered_map;
 using std::unordered_set;
@@ -308,6 +308,10 @@ public:
     delete_object(objects_tree, id, bbox_iter->second);
     bboxes_by_object.erase(bbox_iter);
     return true;
+  }
+
+  bounding_box const* find_bounding_box(ObjectIdentifier const& id)const {
+    return find_as_pointer(bboxes_by_object, id);
   }
   
   void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {

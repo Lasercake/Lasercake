@@ -32,7 +32,18 @@ void world_building_gun::operator()(tile_contents new_contents, vector3<tile_coo
   else assert("YOU CAN ONLY PLACE ROCK AND WATER" && false);
 }
 
-
+bounding_box world::get_bounding_box_of_object_or_tile(object_or_tile_identifier id)const {
+  if (tile_location const* tlocp = id.get_tile_location()) {
+    return fine_bounding_box_of_tile(tlocp->coords());
+  }
+  if (object_identifier const* oidp = id.get_object_identifier()) {
+    //TODO is this impl a hack? and what about non-mobile objects?
+    bounding_box result = things_exposed_to_collision.find_bounding_box(*oidp);
+    //TODO this assert is failing! assert(result.is_anywhere);
+    return result;
+  }
+  assert(false);
+}
 shape world::get_personal_space_shape_of_object_or_tile(object_or_tile_identifier id)const {
   if (tile_location const* tlocp = id.get_tile_location()) {
     return tile_shape(tlocp->coords());

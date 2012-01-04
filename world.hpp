@@ -386,6 +386,16 @@ private:
     b.size[2] = bb.max.z + 1 - bb.min.z;
     return b;
   }
+  static bounding_box convert_bb(internal_t::bounding_box const& b) {
+    bounding_box bb;
+    bb.min.x = b.min[0];
+    bb.min.y = b.min[1];
+    bb.min.z = b.min[2];
+    bb.max.x = b.size[0] - 1 + b.min[0];
+    bb.max.y = b.size[1] - 1 + b.min[1];
+    bb.max.z = b.size[2] - 1 + b.min[2];
+    return bb;
+  }
 public:
   world_collision_detector(){}
   
@@ -401,6 +411,12 @@ public:
   }
   bool exists(object_or_tile_identifier id)const {
     return detector.exists(id);
+  }
+  // Returns bounding_box() (i.e. !is_anywhere) iff the id isn't in the detector.
+  bounding_box find_bounding_box(object_or_tile_identifier id)const {
+    const internal_t::bounding_box* bb = detector.find_bounding_box(id);
+    if(bb) return convert_bb(*bb);
+    else return bounding_box();
   }
 private:
   internal_t detector;
@@ -533,7 +549,8 @@ public:
     laser_sfxes.push_back(make_pair(laser_source, laser_delta));
   }
   std::vector<std::pair<vector3<fine_scalar>, vector3<fine_scalar>>> laser_sfxes;
-  
+
+  bounding_box get_bounding_box_of_object_or_tile(object_or_tile_identifier id)const;
   shape get_personal_space_shape_of_object_or_tile(object_or_tile_identifier id)const;
   shape get_detail_shape_of_object_or_tile(object_or_tile_identifier id)const;
   
