@@ -323,6 +323,7 @@ srand(time(NULL));
       vector3<GLfloat> locv2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
       //std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
       //std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
+      //begin quad
       push_vertex(vertices.laserbeam, locv.x, locv.y, locv.z+0.5);
       push_vertex(vertices.laserbeam, locv.x, locv.y, locv.z-0.5);
       //push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z);
@@ -332,11 +333,14 @@ srand(time(NULL));
         vector3<GLfloat> locv3 = (locv + (((locv2 - locv) * i) / length));
         push_vertex(vertices.laserbeam, locv3.x, locv3.y, locv3.z);
         push_vertex(vertices.laserbeam, locv3.x, locv3.y, locv3.z + 0.1);
+        //end quad
+        //begin quad
         push_vertex(vertices.laserbeam, locv3.x, locv3.y, locv3.z + 0.1);
         push_vertex(vertices.laserbeam, locv3.x, locv3.y, locv3.z);
       }
       push_vertex(vertices.laserbeam, locv2.x, locv2.y, locv2.z);
       push_vertex(vertices.laserbeam, locv2.x, locv2.y, locv2.z+0.1);
+      //end quad
     }
     
     for (object_or_tile_identifier const& id : tiles_to_draw) {
