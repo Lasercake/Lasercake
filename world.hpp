@@ -73,21 +73,22 @@ const fine_scalar velocity_scale_factor = (fine_scalar(1) << 6);
 const tile_coordinate world_center_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 1));
 const vector3<tile_coordinate> world_center_coords(world_center_coord, world_center_coord, world_center_coord);
 
-const sub_tile_distance min_convincing_speed = 20 * velocity_scale_factor;
-const sub_tile_distance gravity_acceleration_magnitude = 1 * velocity_scale_factor;
+const sub_tile_distance min_convincing_speed           = velocity_scale_factor * tile_width / 50;
+const sub_tile_distance gravity_acceleration_magnitude = velocity_scale_factor * tile_width / 1000;
 const vector3<sub_tile_distance> gravity_acceleration(0, 0, -gravity_acceleration_magnitude); // in mini-units per frame squared
-const sub_tile_distance friction_amount = (velocity_scale_factor * 3 / 5);
+const sub_tile_distance friction_amount                = velocity_scale_factor * tile_width / 1800;
 
+const sub_tile_distance pressure_constant = 100;
 // as in 1 + d2 (except with the random based at zero, but who cares)
-const sub_tile_distance pressure_motion_factor = 16 * velocity_scale_factor;
-const sub_tile_distance pressure_motion_factor_random = 8 * velocity_scale_factor;
+const sub_tile_distance pressure_motion_factor         = 16 * velocity_scale_factor;
+const sub_tile_distance pressure_motion_factor_random  = 8 * velocity_scale_factor;
 const sub_tile_distance extra_downward_speed_for_sticky_water = 20 * velocity_scale_factor;
 
 const sub_tile_distance air_resistance_constant = (10000 * velocity_scale_factor * velocity_scale_factor);
 const sub_tile_distance idle_progress_reduction_rate = 20 * velocity_scale_factor;
 const sub_tile_distance sticky_water_velocity_reduction_rate = 1 * velocity_scale_factor;
 
-const vector3<sub_tile_distance> inactive_water_velocity(0, 0, -min_convincing_speed);
+const vector3<sub_tile_distance> inactive_fluid_velocity(0, 0, -min_convincing_speed);
 
 const fine_scalar max_object_speed_through_water = tile_width * velocity_scale_factor / 16;
 
@@ -187,24 +188,22 @@ This is a one-way dictation - the latter things don't affect the former things a
 enum tile_contents {
   AIR = 0,
   ROCK,
-  WATER,
+  UNGROUPABLE_WATER,
+  GROUPABLE_WATER,
   RUBBLE
-  // it matters that there are no more than four of these, currently
 };
 
 bool is_fluid(tile_contents t) {
-  return (t == WATER) || (t == RUBBLE);
+  return (t >= UNGROUPABLE_WATER) && (t <= RUBBLE);
+}
+bool is_water(tile_contents t) {
+  return (t >= UNGROUPABLE_WATER) && (t <= GROUPABLE_WATER);
 }
 
 class tile {
 public:
   tile():data(0){}
-
-  bool is_sticky_water  ()const{ return contents() == WATER &&  is_sticky_bit()                      ; }
-  bool is_free_water    ()const{ return contents() == WATER && !is_sticky_bit()                      ; }
-  bool is_interior_water()const{ return contents() == WATER &&  is_sticky_bit() &&  is_interior_bit(); }
-  bool is_membrane_water()const{ return contents() == WATER &&  is_sticky_bit() && !is_interior_bit(); }
-  bool is_interior_rock ()const{ return contents() == ROCK  &&                      is_interior_bit(); }
+  
   
   // For tile based physics (e.g. water movement)
   // This is so that we don't have to search the collision-detector for relevant objects at every tile.
@@ -213,15 +212,11 @@ public:
   
   void set_contents(tile_contents new_contents){ data = (data & ~contents_mask) | (uint8_t(new_contents) & contents_mask); }
   void set_whether_there_is_an_object_here_that_affects_the_tile_based_physics(bool b){ data = (data & ~there_is_an_object_here_that_affects_the_tile_based_physics_mask) | (b ? there_is_an_object_here_that_affects_the_tile_based_physics_mask : uint8_t(0)); }
-  void set_water_stickyness(bool b){ data = (data & ~sticky_bit_mask) | (b ? sticky_bit_mask : uint8_t(0)); }
-  void set_water_interiorness(bool b){ assert(contents() == WATER); data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
-  void set_rock_interiorness(bool b){ assert(contents() == ROCK); data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
+  void set_interiorness(bool b){ data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
 private:
-  static const uint8_t contents_mask = 0x3;
-  static const uint8_t sticky_bit_mask = (1<<2);
+  static const uint8_t contents_mask = 0x7;
   static const uint8_t interior_bit_mask = (1<<3);
   static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask = (1<<4);
-  bool is_sticky_bit()const{ return data & sticky_bit_mask; }
   bool is_interior_bit()const{ return data & interior_bit_mask; }
   uint8_t data;
 };
@@ -230,6 +225,18 @@ private:
 inline sub_tile_distance progress_necessary(cardinal_direction dir) {
   return tile_size[dir.which_dimension()] * velocity_scale_factor;
 }
+
+struct active_fluid_tile_info {
+  // Constructing one of these in the default way yields the natural inactive state
+  active_fluid_tile_info();
+  bool is_in_inactive_state()const;
+  
+  vector3<sub_tile_distance> velocity;
+  value_for_each_cardinal_direction<sub_tile_distance> progress;
+  value_for_each_cardinal_direction<sub_tile_distance> blockage_amount_this_frame;
+
+  //int frames_until_can_become_groupable = 0;
+};
 
 struct water_movement_info {
   vector3<sub_tile_distance> velocity;
