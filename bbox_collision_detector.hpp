@@ -184,7 +184,7 @@ private:
     return result;
   }
   
-  static void insert_box(ztree_node_ptr& tree, ObjectIdentifier obj, zbox box) {
+  static void insert_box(ztree_node_ptr& tree, ObjectIdentifier const& obj, zbox box) {
     if (!tree) {
       tree.reset(new ztree_node(box));
       tree->objects_here.insert(obj);
@@ -216,7 +216,7 @@ private:
     }
   }
   
-  static void delete_object(ztree_node_ptr& tree, ObjectIdentifier obj, bounding_box const& bbox) {
+  static void delete_object(ztree_node_ptr& tree, ObjectIdentifier const& obj, bounding_box const& bbox) {
     if (!tree) return;
     if (tree->here.get_bbox().overlaps(bbox)) {
       tree->objects_here.erase(obj);
@@ -258,7 +258,7 @@ private:
   
 public:
 
-  void insert(ObjectIdentifier id, bounding_box const& bbox) {
+  void insert(ObjectIdentifier const& id, bounding_box const& bbox) {
     caller_correct_if(
       bboxes_by_object.find(id) == bboxes_by_object.end(),
       "bbox_collision_detector::insert() requires for your safety that the id "
@@ -298,11 +298,11 @@ public:
     }
   }
   
-  bool exists(ObjectIdentifier id) {
+  bool exists(ObjectIdentifier const& id)const {
     return (bboxes_by_object.find(id) != bboxes_by_object.end());
   }
   
-  bool erase(ObjectIdentifier id) {
+  bool erase(ObjectIdentifier const& id) {
     auto bbox_iter = bboxes_by_object.find(id);
     if (bbox_iter == bboxes_by_object.end()) return false;
     delete_object(objects_tree, id, bbox_iter->second);
