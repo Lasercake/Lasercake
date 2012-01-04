@@ -220,7 +220,10 @@ srand(time(NULL));
   enum { GLOBAL, LOCAL, ROBOT } view_type = GLOBAL;
   double view_direction = 0;
   
-  double view_x_for_global_display = 5, view_y_for_global_display = 5, view_z_for_global_display = 5, view_dist = 20;
+  double view_x_for_global_display = 5*tile_width,
+         view_y_for_global_display = 5*tile_width,
+         view_z_for_global_display = 5*tile_width,
+         view_dist = 20;
     
   while ( !done ) {
 
@@ -235,12 +238,12 @@ srand(time(NULL));
           
         case SDL_KEYDOWN:
           if(event.key.keysym.sym == SDLK_p) ++p_mode;
-          if(event.key.keysym.sym == SDLK_q) ++view_x_for_global_display;
-          if(event.key.keysym.sym == SDLK_a) --view_x_for_global_display;
-          if(event.key.keysym.sym == SDLK_w) ++view_y_for_global_display;
-          if(event.key.keysym.sym == SDLK_s) --view_y_for_global_display;
-          if(event.key.keysym.sym == SDLK_e) ++view_z_for_global_display;
-          if(event.key.keysym.sym == SDLK_d) --view_z_for_global_display;
+          if(event.key.keysym.sym == SDLK_q) view_x_for_global_display += tile_width;
+          if(event.key.keysym.sym == SDLK_a) view_x_for_global_display -= tile_width;
+          if(event.key.keysym.sym == SDLK_w) view_y_for_global_display += tile_width;
+          if(event.key.keysym.sym == SDLK_s) view_y_for_global_display -= tile_width;
+          if(event.key.keysym.sym == SDLK_e) view_z_for_global_display += tile_width;
+          if(event.key.keysym.sym == SDLK_d) view_z_for_global_display -= tile_width;
           if(event.key.keysym.sym == SDLK_r) ++view_dist;
           if(event.key.keysym.sym == SDLK_f) --view_dist;
           if(event.key.keysym.sym == SDLK_l) view_type = LOCAL;
@@ -291,9 +294,9 @@ srand(time(NULL));
     }
     else {
       view_loc = wc;
-      view_loc.x += view_x_for_global_display * tile_width;
-      view_loc.y += view_y_for_global_display * tile_width;
-      view_loc.z += view_z_for_global_display * tile_width;
+      view_loc.x += view_x_for_global_display + tile_width * view_dist * std::cos((double)frame / 40.0);
+      view_loc.y += view_y_for_global_display + tile_width * view_dist * std::sin((double)frame / 40.0);
+      view_loc.z += view_z_for_global_display + tile_width * ((view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0));
     }
     
     unordered_set<object_or_tile_identifier> tiles_to_draw;
@@ -462,8 +465,8 @@ srand(time(NULL));
         0,0,1);
     }
     else {
-      gluLookAt(view_dist * std::cos((double)frame / 40.0),view_dist * std::sin((double)frame / 40.0),(view_dist / 2) + (view_dist / 4) * std::sin((double)frame / 60.0),
-      0,0,0,
+      gluLookAt(0, 0, 0,
+      -view_dist * std::cos((double)frame / 40.0),-view_dist * std::sin((double)frame / 40.0),-(view_dist / 2) + -(view_dist / 4) * std::sin((double)frame / 60.0),
       0,0,1);
     }
     
