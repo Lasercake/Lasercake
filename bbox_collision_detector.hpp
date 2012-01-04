@@ -284,9 +284,9 @@ public:
       if (!(bbox.min[i] & base_box_size)) ++dimensions_we_can_double;
       else break;
     }
-#ifdef ZTREE_TESTING
+    #ifdef ZTREE_TESTING
     std::cerr << dimensions_we_can_single << "... " << dimensions_we_can_double << "...\n";
-#endif
+    #endif
     for (int i = 0; i < (1 << ((NumDimensions - dimensions_we_can_single) - dimensions_we_can_double)); ++i) {
       std::array<Coordinate, NumDimensions> coords = bbox.min;
       for (num_coordinates_type j = dimensions_we_can_double; j < NumDimensions - dimensions_we_can_single; ++j) {
