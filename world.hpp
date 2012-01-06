@@ -550,6 +550,10 @@ public:
   }
   std::vector<std::pair<vector3<fine_scalar>, vector3<fine_scalar>>> laser_sfxes;
 
+  // TODO: Either
+  // 1) split this function into a personal_space version and a detail version, or
+  // 2) make it explicit that it's the bounding box including both (that's what it is currently, or at least what it SHOULD be currently), or
+  // 3) remove it / come up with something different to replace it with
   bounding_box get_bounding_box_of_object_or_tile(object_or_tile_identifier id)const;
   shape get_personal_space_shape_of_object_or_tile(object_or_tile_identifier id)const;
   shape get_detail_shape_of_object_or_tile(object_or_tile_identifier id)const;
