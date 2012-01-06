@@ -394,6 +394,7 @@ private:
     bb.max.x = b.size[0] - 1 + b.min[0];
     bb.max.y = b.size[1] - 1 + b.min[1];
     bb.max.z = b.size[2] - 1 + b.min[2];
+    bb.is_anywhere = true;
     return bb;
   }
 public:
