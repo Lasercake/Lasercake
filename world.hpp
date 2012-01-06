@@ -191,6 +191,7 @@ enum tile_contents {
   UNGROUPABLE_WATER,
   GROUPABLE_WATER,
   RUBBLE
+  // NOTE: we currently rely on these fitting into three bits
 };
 
 bool is_fluid(tile_contents t) {
@@ -198,6 +199,9 @@ bool is_fluid(tile_contents t) {
 }
 bool is_water(tile_contents t) {
   return (t >= UNGROUPABLE_WATER) && (t <= GROUPABLE_WATER);
+}
+bool interiorness_checking_type(tile_contents t) {
+  return (t == GROUPABLE_WATER) ? UNGROUPABLE_WATER : t;
 }
 
 class tile {
@@ -208,6 +212,7 @@ public:
   // For tile based physics (e.g. water movement)
   // This is so that we don't have to search the collision-detector for relevant objects at every tile.
   bool there_is_an_object_here_that_affects_the_tile_based_physics()const { return data & there_is_an_object_here_that_affects_the_tile_based_physics_mask; }
+  bool is_interior()const { return is_interior_bit(); }
   tile_contents contents()const{ return (tile_contents)(data & contents_mask); }
   
   void set_contents(tile_contents new_contents){ data = (data & ~contents_mask) | (uint8_t(new_contents) & contents_mask); }
@@ -268,9 +273,6 @@ enum level_of_tile_realization_needed {
 
 class tile_location {
 public:
-  // this constructor should only be used when you know exactly what worldblock it's in!!
-  // TODO: It's bad that it's both public AND doesn't assert that condition
-  
   tile_location operator+(cardinal_direction dir)const;
   // Equivalent to operator+, except allowing you to specify the amount of realization needed.
   tile_location get_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
@@ -281,7 +283,8 @@ public:
 private:
   friend tile& mutable_stuff_at(tile_location const& loc);
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
-  //friend class ztree_entry;
+  
+  // this constructor should only be used when you know exactly what worldblock it's in!
   tile_location(vector3<tile_coordinate> v, hacky_internals::worldblock *wb):v(v),wb(wb){}
   vector3<tile_coordinate> v;
   hacky_internals::worldblock *wb;
@@ -294,8 +297,6 @@ namespace std {
     }
   };
 }
-
-bool should_be_sticky(tile_location loc);
 
 
 typedef uint64_t object_identifier;
