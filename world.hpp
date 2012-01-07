@@ -663,8 +663,6 @@ private:
   worldgen_function_t worldgen_function;
   
   
-  
-  tile_location make_barely_existing_tile_location(vector3<tile_coordinate> const& coords);
   hacky_internals::worldblock* ensure_realization_of_and_get_worldblock(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
   void ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded);
   
