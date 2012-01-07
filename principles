@@ -19,13 +19,11 @@ For proper data hiding, any large function of class world that uses private memb
 
 The-assigning-of-code-to-files:
 .cpp files should divide *systems*
-Things directly defining the water movement system go in water.cpp
+Things directly defining the tile-based physics system (fluid simulation, etc) go in tile_physics.cpp
 Things directly defining the objects-moving system go in mobile_objects.cpp
 Everything that makes reference to the worldblock system goes in the_decomposition_of_the_world_into_blocks.cpp (It's nice that the worldblock system can be hidden behind a relatively simple set of abstractions)
 
 polygon_collision_detection.cpp implements the polygon collision detection system (duh); it's independent of the world
-
-tile_changing_implementations.cpp is the only file that's allowed to change tile contents
 
 objects.cpp is currently a hodgepodge of implementations of leaf object types; I have no attachment to that fact
 disorganized_stuff.cpp houses the rest of the stuff that I haven't come up with a good way to categorize.

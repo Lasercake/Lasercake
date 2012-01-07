@@ -666,11 +666,6 @@ private:
   hacky_internals::worldblock* ensure_realization_of_and_get_worldblock(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
   void ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded);
   
-  void check_interiorness(tile_location const& loc);
-  void check_exposure_to_collision(tile_location const& loc);
-
-  void something_changed_at(tile_location const& loc);
-  
   // Used only by world_building_gun
   void insert_rock_bypassing_checks(tile_location const& loc);
   void insert_water_bypassing_checks(tile_location const& loc);

@@ -35,6 +35,11 @@
 // Current remaining major TODOs: making world stuff, and cache checking.
 // TODO remove suckable tiles when groupable water appears above them
 
+// This is the only file that's allowed to change the contents of tiles at locations.
+// Other files should change tile contents through replace_substance,
+// and shouldn't be in the business of altering tile caches at all.
+// (TODO: also add something for the there_is_an_object_here_that_affects_the_tile_based_physics thing)
+tile& mutable_stuff_at(tile_location const& loc) { return loc.wb->get_tile(loc.v); }
 
 tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_top() {
   map_t::reverse_iterator iter = data.rbegin();
@@ -455,7 +460,7 @@ void replace_substance_(
   // ==============================================================================
   // 2) Physically change us
   // ==============================================================================
-  mutable_stuff_at(loc).set_contents(new_substance_type); // TODO figure out how to integrate this with tile_changing_implementations.cpp
+  mutable_stuff_at(loc).set_contents(new_substance_type);
   if (!is_fluid(new_substance_type)) {
     active_fluids.erase(loc);
   }
