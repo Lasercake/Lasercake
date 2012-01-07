@@ -447,34 +447,127 @@ private:
 typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
 typedef unordered_map<tile_location, water_movement_info> active_water_tiles_t;
 typedef unordered_map<object_identifier, shape> object_shapes_t;
+typedef unordered_map<water_group_identifier, persistent_water_groups_t> persistent_water_groups_t;
+typedef unordered_map<tile_location, water_group_identifier> water_groups_by_location_t;
+typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
 template<typename ObjectSubtype>
 struct objects_map {
   typedef unordered_map<object_identifier, shared_ptr<ObjectSubtype>> type;
 };
 
-void update_water(world &w);
+class literally_random_access_removable_tiles_by_height {
+public:
+  typedef map<tile_coordinate, literally_random_access_removable_stuff<tile_location>> map_t;
+  
+  tile_location get_and_erase_random_from_the_top();
+  bool erase(tile_location const& loc);
+  void insert(tile_location const& loc);
+  bool any_above(tile_coordinate height)const;
+  bool any_below(tile_coordinate height)const;
+  
+  map_t const& as_map()const { return data; }
+private:
+  map_t data;
+};
+
+typedef uint64_t water_tile_count;
+typedef uint64_t water_group_identifier;
+water_group_identifier NO_WATER_GROUP = 0;
+
+
+struct persistent_water_group_info {
+  literally_random_access_removable_tiles_by_height suckable_tiles_by_height;
+  literally_random_access_removable_tiles_by_height pushable_tiles_by_height;
+  map<tile_coordinate, water_tile_count> num_tiles_by_height;
+  unordered_set<tile_location> surface_tiles;
+  
+  mutable map<tile_coordinate, fine_scalar> pressure_caches;
+  mutable map<tile_coordinate, water_tile_count> width_of_widest_level_so_far_caches;
+  
+  void recompute_num_tiles_by_height_from_surface_tiles(world &w);
+  fine_scalar get_pressure_at_height(tile_coordinate height)const;
+  
+  tile_location get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height);
+  
+  bool mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(world &w, tile_location const& loc);
+  bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(tile_location const& loc);
+};
+
+
+// We could easily keep lists of boundary tiles in all three dimensions
+// (Just uncomment the six commented lines below.)
+// The only reason we don't is because there's no need for any of the others right now.
+// (And it would take that much extra space (proportional to the that-dimension surface area)
+//   and time (proportional to how much the groupable-water landscape changes)).
+struct groupable_water_dimensional_boundaries_TODO_name_this_better_t {
+  set<tile_location, tile_compare_yzx> x_boundary_groupable_water_tiles;
+  //set<tile_location, tile_compare_zxy> y_boundary_groupable_water_tiles;
+  //set<tile_location, tile_compare_xyz> z_boundary_groupable_water_tiles;
+  void handle_tile_insertion(tile_location const& loc) {
+    handle_tile_insertion_in_dimension(x_boundary_groupable_water_tiles, loc, cdir_xplus);
+  //  handle_tile_insertion_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
+  //  handle_tile_insertion_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
+  }
+  void handle_tile_removal(tile_location const& loc) {
+    handle_tile_removal_in_dimension(x_boundary_groupable_water_tiles, loc, cdir_xplus);
+  //  handle_tile_removal_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
+  //  handle_tile_removal_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
+  }
+private:
+  template <typename Compare>
+  void handle_tile_removal_in_dimension(set<tile_location, Compare> boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
+    // This tile is no longer groupable at all, so it can't be a boundary tile
+    boundary_tiles_set.erase(loc);
+    
+    // If there are groupable tiles next to us, they must now be boundary tiles,
+    // because our deletion exposed them
+    const tile_location further_in_positive_direction_loc = loc + dir;
+    const tile_location further_in_negative_direction_loc = loc - dir;
+    if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
+      boundary_tiles_set.insert(further_in_positive_direction_loc);
+    }
+    if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
+      boundary_tiles_set.insert(further_in_negative_direction_loc);
+    }
+  }
+  template <typename Compare>
+  void handle_tile_insertion_in_dimension(set<tile_location, Compare> boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
+    // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
+    const tile_location further_in_positive_direction_loc = loc + dir;
+    const tile_location further_in_negative_direction_loc = loc - dir;
+    bool we_are_boundary_tile = false;
+    if (further_in_positive_direction_loc.stuff_at().contents == GROUPABLE_WATER) {
+      if ((further_in_positive_direction_loc + dir).stuff_at().contents == GROUPABLE_WATER) {
+        boundary_tiles_set.erase(further_in_positive_direction_loc);
+      }
+    }
+    else we_are_boundary_tile = true;
+    if (further_in_negative_direction_loc.stuff_at().contents == GROUPABLE_WATER) {
+      if ((further_in_negative_direction_loc + dir).stuff_at().contents == GROUPABLE_WATER) {
+        boundary_tiles_set.erase(further_in_negative_direction_loc);
+      }
+    }
+    else we_are_boundary_tile = true;
+    
+    if (we_are_boundary_tile) boundary_tiles_set.insert(loc);
+  }
+}
 
 class world {
 public:
   world(worldgen_function_t f):next_object_identifier(1),worldgen_function(f){}
   
   void update_moving_objects();
+  void update_fluids();
 
   inline void update() {
     laser_sfxes.clear();
-    update_water(*this); // TODO update_water to be a member
+    update_fluids();
     for (auto &obj : autonomously_active_objects) obj.second->update(*this, obj.first);
     update_moving_objects();
   }
   
-  // TODO replace these with const accessor functions...?
-  // The iterators are only valid until we activate any water tiles.
-  water_movement_info* get_active_water_tile(tile_location l) { return find_as_pointer(active_water_tiles, l); }
-  boost::iterator_range<active_water_tiles_t::iterator> active_water_tiles_range() {
-    return boost::make_iterator_range(active_water_tiles.begin(), active_water_tiles.end());
-  }
-  
-  // The iterators are only valid until we add any objects.
+  // I *think* this pointer is valid as long as the shared_ptr exists
   shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects, id); }
   /*boost::iterator_range<mobile_objects_map<mobile_object>::iterator> mobile_objects_range() {
     return boost::make_iterator_range(mobile_objects.begin(), mobile_objects.end());
@@ -494,14 +587,14 @@ public:
     things_exposed_to_collision.get_objects_overlapping(results, convert_to_fine_units(bounds));
   }
   
-  void delete_rock(tile_location const& loc);
-  void insert_rock(tile_location const& loc);
-  void delete_water(tile_location const& loc);
-  water_movement_info& insert_water(tile_location const& loc);
-  void deactivate_water(tile_location const& loc);
-  water_movement_info& activate_water(tile_location const& loc);
-  
-  void set_stickyness(tile_location const& loc, bool new_stickyness);
+  // old_substance_type doesn't actually do anything except give an assertion.
+  // However, it's imperative that your code not accidentally overwrite a cool
+  // type of substance that you weren't considering, so the assertion is built
+  // into the function call to make sure that you use it.
+  void world::replace_substance(
+     tile_location const& loc,
+     tile_contents old_substance_type,
+     tile_contents new_substance_type);
   
   object_identifier try_create_object(shared_ptr<object> obj) {
     // TODO: fail (and return NO_OBJECT) if there's something in the way
@@ -539,14 +632,21 @@ public:
   objects_map<object>::type const& get_objects()const { return objects; }
   object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes; }
   object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes; }
+  
+  water_group_identifier get_water_group_id_by_grouped_tile(tile_location const& loc)const;
+  persistent_water_group_info const& get_water_group_by_grouped_tile(tile_location const& loc)const;
 private:
   friend class world_building_gun;
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
   // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
   unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks; 
+
+  water_groups_by_location_t water_groups_by_surface_tile;
+  persistent_water_groups_t persistent_water_groups;
+  groupable_water_dimensional_boundaries_TODO_name_this_better_t groupable_water_dimensional_boundaries_TODO_name_this_better;
+  active_fluids_t active_fluids;
   
-  active_water_tiles_t active_water_tiles;
   objects_map<object>::type objects;
   objects_map<mobile_object>::type moving_objects;
   objects_map<autonomous_object>::type autonomously_active_objects;
