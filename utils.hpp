@@ -184,6 +184,7 @@ struct cardinal_direction {
   cardinal_direction(vector3<neighboring_tile_differential> v, cardinal_direction_index i):v(v),cardinal_direction_idx(i){}
   vector3<neighboring_tile_differential> v;
   cardinal_direction_index cardinal_direction_idx;
+  bool operator==(cardinal_direction other)const { return cardinal_direction_idx == other.cardinal_direction_idx; }
   cardinal_direction operator-()const;
   int which_dimension()const { return (int)(cardinal_direction_idx % 3); } // relies on the current order of the directions
 };
@@ -310,7 +311,7 @@ public:
     return stuffs_superset_vector[idx];
   }
   bool empty()const { return stuffs_set.empty(); }
-  std::unordered_set<Stuff> const& as_unordered_set() { return stuffs_set; }
+  std::unordered_set<Stuff> const& as_unordered_set()const { return stuffs_set; }
 private:
   std::vector<Stuff> stuffs_superset_vector;
   std::unordered_set<Stuff> stuffs_set;

@@ -268,6 +268,7 @@ public:
   tile_location get_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
   tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
   bool operator==(tile_location const& other)const { return v == other.v; }
+  bool operator!=(tile_location const& other)const { return v != other.v; }
   tile const& stuff_at()const;
   vector3<tile_coordinate> const& coords()const { return v; }
 private:
@@ -454,6 +455,8 @@ typedef uint64_t water_tile_count;
 typedef uint64_t water_group_identifier;
 water_group_identifier NO_WATER_GROUP = 0;
 
+typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
+
 struct persistent_water_group_info {
   literally_random_access_removable_tiles_by_height suckable_tiles_by_height;
   literally_random_access_removable_tiles_by_height pushable_tiles_by_height;
@@ -471,15 +474,14 @@ struct persistent_water_group_info {
   
   tile_location get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height);
   
-  bool mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(world &w, tile_location const& loc);
-  bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(tile_location const& loc);
+  bool mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(world &w, tile_location const& loc, active_fluids_t &active_fluids);
+  bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(world &w, tile_location const& loc, active_fluids_t &active_fluids);
 };
 
 typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
 typedef unordered_map<object_identifier, shape> object_shapes_t;
 typedef unordered_map<water_group_identifier, persistent_water_group_info> persistent_water_groups_t;
 typedef unordered_map<tile_location, water_group_identifier> water_groups_by_location_t;
-typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
 template<typename ObjectSubtype>
 struct objects_map {
   typedef unordered_map<object_identifier, shared_ptr<ObjectSubtype>> type;
@@ -552,7 +554,7 @@ private:
 
 class world {
 public:
-  world(worldgen_function_t f):next_object_identifier(1),worldgen_function(f){}
+  world(worldgen_function_t f):next_water_group_identifier(1),next_object_identifier(1),worldgen_function(f){}
   
   void update_moving_objects();
   void update_fluids();
@@ -632,6 +634,8 @@ public:
   
   water_group_identifier get_water_group_id_by_grouped_tile(tile_location const& loc)const;
   persistent_water_group_info const& get_water_group_by_grouped_tile(tile_location const& loc)const;
+  
+  groupable_water_dimensional_boundaries_TODO_name_this_better_t const& get_groupable_water_dimensional_boundaries_TODO_name_this_better()const { return groupable_water_dimensional_boundaries_TODO_name_this_better;}
 private:
   friend class world_building_gun;
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
@@ -639,6 +643,7 @@ private:
   // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
   unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks; 
 
+  water_group_identifier next_water_group_identifier;
   water_groups_by_location_t water_groups_by_surface_tile;
   persistent_water_groups_t persistent_water_groups;
   groupable_water_dimensional_boundaries_TODO_name_this_better_t groupable_water_dimensional_boundaries_TODO_name_this_better;
