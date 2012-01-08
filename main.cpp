@@ -115,7 +115,7 @@ struct world_building_func {
         else if (l.x < tower_lower_coord && l.y >= tower_lower_coord-1 && l.y <= tower_lower_coord+1 && l.z >= wc-1 && l.z <= wc+1)
           make(ROCK, l);
         else if (l.x >= tower_lower_coord && l.x < tower_upper_coord && l.y >= tower_lower_coord && l.y < tower_upper_coord && l.z >= wc && l.z < wc + tower_height)
-          make(WATER, l);
+          make(GROUPABLE_WATER, l);
         else if (l.x >= tower_lower_coord-1 && l.x < tower_upper_coord+1 && l.y >= tower_lower_coord-1 && l.y < tower_upper_coord+1 && l.z >= wc-1 && l.z < wc + tower_height+1)
           make(ROCK, l);
       }
@@ -132,7 +132,7 @@ struct world_building_func {
             if ((scenario.substr(0,5) == "tower") &&
                   x >= wc+4 && x <= wc+6 &&
                   y >= wc+4 && y <= wc+6 &&
-                  z >= wc+1) make(WATER, l);
+                  z >= wc+1) make(GROUPABLE_WATER, l);
             else if ((scenario == "tower2" || scenario == "tower3") &&
                   x >= wc+3 && x <= wc+7 &&
                   y >= wc+3 && y <= wc+7 &&
@@ -144,28 +144,28 @@ struct world_building_func {
                    if (z == wc+0 && x >= wc+5) make(ROCK, l);
               else if (z == wc+1 && x >= wc+10) make(ROCK, l);
               else if (z == wc+2 && x >= wc+15) make(ROCK, l);
-              else if (x == wc+19) make(WATER, l);
+              else if (x == wc+19) make(GROUPABLE_WATER, l);
             }
             if (scenario == "steep") {
               if (z < 20 - x) make(ROCK, l);
-              else if (z >= wc+15 && (wc + 20 - x) >= 15) make(WATER, l);
+              else if (z >= wc+15 && (wc + 20 - x) >= 15) make(GROUPABLE_WATER, l);
             }
             if (scenario == "tank") {
               if (z < wc+8 && x > wc+10) make(ROCK, l);
-              else if (x >= wc+12 && y <= wc+13 && y >= wc+7) make(WATER, l);
+              else if (x >= wc+12 && y <= wc+13 && y >= wc+7) make(GROUPABLE_WATER, l);
               else if (y != wc+10 && x > wc+10) make(ROCK, l);
               else if (z > wc+8 && x > wc+10 && x < wc+18) make(ROCK, l);
-              else if (x > wc+10) make(WATER, l);
+              else if (x > wc+10) make(GROUPABLE_WATER, l);
             }
             if (scenario == "tank2") {
               if (z < wc+8 && x > wc+10) make(ROCK, l);
-              else if (x >= wc+12 && y <= wc+13 && y >= wc+7) make(WATER, l);
+              else if (x >= wc+12 && y <= wc+13 && y >= wc+7) make(GROUPABLE_WATER, l);
               else if (y != wc+9 && y != wc+10 && x > wc+10) make(ROCK, l);
               else if (z > wc+9 && x > wc+10 && x < wc+18) make(ROCK, l);
-              else if (x > wc+10) make(WATER, l);
+              else if (x > wc+10) make(GROUPABLE_WATER, l);
             }
             if (scenario == "twisty") {
-              if (x == wc+0) make(WATER, l);
+              if (x == wc+0) make(GROUPABLE_WATER, l);
               else if (x == wc+1 && z > wc+0) make(ROCK, l);
               else if (x == wc+5) make(ROCK, l);
               else if (x == wc+2 && (z % 4) == 1) make(ROCK, l);
@@ -348,13 +348,13 @@ srand(time(NULL));
       vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
       
       // Hack - TODO remove
-      if (frame == 0 && t.contents() == WATER) w.activate_water(loc);
+      if (frame == 0 && t.contents() == GROUPABLE_WATER) w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
       
       vector<vertex_entry> *vect;
       
            if(t.contents() == ROCK) vect = &        rock_vertices;
-      else if(t.is_sticky_water() ) vect = &sticky_water_vertices;
-      else if(t.is_free_water  () ) vect = &  free_water_vertices;
+      else if(t.contents() == GROUPABLE_WATER) vect = &sticky_water_vertices;
+      else if(t.contents() == UNGROUPABLE_WATER) vect = &  free_water_vertices;
       else assert(false);
       
       const shape sh = tile_shape(loc.coords());
@@ -370,8 +370,8 @@ srand(time(NULL));
       push_vertex(*vect, locv.x + 1, locv.y + 1, locv.z + 0.5);
       push_vertex(*vect, locv.x,     locv.y + 1, locv.z + 0.5);*/
       
-      if (t.contents() == WATER) {
-        if (water_movement_info *water = w.get_active_water_tile(loc)) {
+      if (is_fluid(t.contents())) {
+        /*if (active_fluid_tile_info *water = w.get_active_water_tile(loc)) {
           push_vertex(velocity_vertices, locv.x+0.5, locv.y+0.5, locv.z + 0.1);
           push_vertex(velocity_vertices,
               locv.x + 0.5 + ((GLfloat)water->velocity.x / (tile_width)),
@@ -390,7 +390,7 @@ srand(time(NULL));
                   locv.z + 0.1 + directed_prog.z);
             }
           }
-        }
+        }*/
         /*else {
           push_vertex(inactive_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
         }*/
