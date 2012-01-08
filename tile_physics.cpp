@@ -761,8 +761,14 @@ void replace_substance_(
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const tile_location adj_loc = loc + dir;
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-        water_groups_by_surface_tile.insert(make_pair(adj_loc, water_group_id));
-        water_group->surface_tiles.insert(adj_loc);
+        auto existing_marker_iter = water_groups_by_surface_tile.find(adj_loc);
+        if (existing_marker_iter != water_groups_by_surface_tile.end()) {
+          assert(existing_marker_iter->second == water_group_id);
+        }
+        else {
+          water_groups_by_surface_tile.insert(make_pair(adj_loc, water_group_id));
+          water_group->surface_tiles.insert(adj_loc);
+        }
       }
     }
     
@@ -877,7 +883,9 @@ void replace_substance_(
           tile_location search_loc = frontier.front();
           frontier.pop();
           
-          assert(water_groups_by_surface_tile.find(search_loc)->second == water_group_id);
+          auto iter = water_groups_by_surface_tile.find(search_loc);
+          assert(iter != water_groups_by_surface_tile.end());
+          assert(iter->second == water_group_id);
           
           for (EACH_CARDINAL_DIRECTION(dir)) {
             tile_location adj_loc = search_loc + dir;
