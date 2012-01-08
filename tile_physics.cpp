@@ -46,7 +46,7 @@ water_group_identifier make_new_water_group(water_group_identifier &next_water_g
   return this_id;
 }
 
-// Debugging function:
+// Debugging functions:
 void dump_group_info(persistent_water_group_info const& g) {
   std::cerr << "Suckable tiles by height:\n";
   for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
@@ -78,6 +78,89 @@ void dump_group_info(persistent_water_group_info const& g) {
   for (auto const& foo : g.num_tiles_by_height) {
     std::cerr << "  " << foo.first << ": " << foo.second << "\n";
   }
+}
+
+// Hacky debugging function that duplicates code from elsewhere.
+void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_water_group_info const& g) {
+  persistent_water_group_info h;
+  // Scan from an arbitrary surface tile of g
+  if (g.surface_tiles.empty()) {
+    std::cerr << "Checking an empty group, why the hell...?";
+    return;
+  }
+  
+  struct group_collecting_info {
+    group_collecting_info(tile_location const& start_loc, persistent_water_group_info &new_group):new_group(new_group) {
+      try_collect_loc(start_loc);
+    }
+    
+    persistent_water_group_info &new_group;
+    std::vector<tile_location> frontier;
+    void try_collect_loc(tile_location const& loc) {
+      if (loc.stuff_at().contents() == GROUPABLE_WATER && !loc.stuff_at().is_interior() && new_group.surface_tiles.find(loc) == new_group.surface_tiles.end()) {
+        frontier.push_back(loc);
+        new_group.surface_tiles.insert(loc);
+        if ((loc.get_neighbor(cdir_zplus, CONTENTS_ONLY)).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(loc);
+      }
+    }
+  };
+  
+  group_collecting_info inf(*g.surface_tiles.begin(), h);
+  while(!inf.frontier.empty()) {
+    const tile_location search_loc = inf.frontier.back();
+    inf.frontier.pop_back();
+          
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const tile_location adj_loc = search_loc.get_neighbor(dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
+      inf.try_collect_loc(adj_loc);
+      
+      if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
+        for (EACH_CARDINAL_DIRECTION(d2)) {
+          if (d2.v.dot<neighboring_tile_differential>(dir.v) == 0) {
+            inf.try_collect_loc(adj_loc + d2);
+          }
+        }
+      }
+    }
+  }
+  
+  h.recompute_num_tiles_by_height_from_surface_tiles(w);
+  
+  bool check_succeeded = true;
+  
+  for (auto const& s : h.surface_tiles) {
+    if(g.surface_tiles.find(s) == g.surface_tiles.end()) {
+      std::cerr << "Missing surface tile: " << s.coords() << "\n";
+      check_succeeded = false;
+    }
+  }
+  for (auto const& s : g.surface_tiles) {
+    if(h.surface_tiles.find(s) == h.surface_tiles.end()) {
+      std::cerr << "Extra surface tile: " << s.coords() << "\n";
+      check_succeeded = false;
+    }
+  }
+  for (auto const& p : h.num_tiles_by_height) {
+    auto i = g.num_tiles_by_height.find(p.first);
+    if (i == g.num_tiles_by_height.end()) {
+      std::cerr << "Missing height listing: " << p.first << "\n";
+      check_succeeded = false;
+    }
+    else {
+      if (i->second != p.second) {
+        std::cerr << "Number of tiles at height " << p.first << " listed as " << i->second << " when it should be " << p.second << "\n";
+        check_succeeded = false;
+      }
+    }
+  }
+  for (auto const& p : g.num_tiles_by_height) {
+    auto i = h.num_tiles_by_height.find(p.first);
+    if (i == h.num_tiles_by_height.end()) {
+      std::cerr << "Extra height listing: " << p.first << "\n";
+      check_succeeded = false;
+    }
+  }
+  assert(check_succeeded);
 }
 
 // Initialization.
@@ -176,6 +259,8 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
   }
   
   new_group.recompute_num_tiles_by_height_from_surface_tiles(w);
+  
+  check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
 }
 
 void world::initialize_tile_contents(tile_location const& loc, tile_contents contents) {
@@ -593,6 +678,7 @@ void replace_substance_(
     // ==============================================================================
     water_group_id = w.get_water_group_id_by_grouped_tile(loc);
     water_group = &persistent_water_groups.find(water_group_id)->second;
+    check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
   }
   
   // For inserting water, we check group membership BEFORE
@@ -750,6 +836,7 @@ void replace_substance_(
     
     // Adding a tile at a specific height can change pressure at that height, but not anywhere above
     water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.lower_bound(loc.coords().z+1));
+    check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
   }
   
   if (old_substance_type == GROUPABLE_WATER && new_substance_type != GROUPABLE_WATER) {
@@ -878,6 +965,7 @@ void replace_substance_(
             iter->second -= p.second;
             if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
           }
+          check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
         }
         else {
           tile_location search_loc = frontier.front();
@@ -916,6 +1004,8 @@ void replace_substance_(
     // ==============================================================================
     //  End of flood-fill-based group-splitting algorithm
     // ==============================================================================
+    
+    check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
   }
 }
 
