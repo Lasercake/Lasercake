@@ -40,37 +40,6 @@
 // (TODO: also add something for the there_is_an_object_here_that_affects_the_tile_based_physics thing)
 tile& mutable_stuff_at(tile_location const& loc) { return loc.wb->get_tile(loc.v); }
 
-tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_top() {
-  map_t::reverse_iterator iter = data.rbegin();
-  tile_location result = iter->second.get_random();
-  iter->second.erase(result);
-  if (iter->second.empty()) data.erase(iter);
-  return result;
-}
-bool literally_random_access_removable_tiles_by_height::erase(tile_location const& loc) {
-  auto j = data.find(loc.coords().z);
-  if (j != data.end()) {
-    if (j->second.erase(loc)) {
-      if (j->second.empty()) {
-        data.erase(loc);
-      }
-      return true;
-    }
-  }
-  return false;
-}
-void literally_random_access_removable_tiles_by_height::insert(tile_location const& loc)const {
-  // Note: operator[] default-constructs an empty structure if there wasn't one
-  data[loc.coords().z].insert(loc);
-}
-
-bool literally_random_access_removable_tiles_by_height::any_above(tile_coordinate height)const {
-  return data.upper_bound(height) != data.end();
-}
-bool literally_random_access_removable_tiles_by_height::any_below(tile_coordinate height)const {
-  return (!data.empty()) && (data.begin()->first < height);
-}
-
 
 void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_tiles(world &w) {
   // Here's how we compute the total volume in less than linear time:

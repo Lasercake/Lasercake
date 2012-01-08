@@ -53,3 +53,35 @@ shape world::get_detail_shape_of_object_or_tile(object_or_tile_identifier id)con
 }
 
 
+tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_top() {
+  map_t::reverse_iterator iter = data.rbegin();
+  tile_location result = iter->second.get_random();
+  iter->second.erase(result);
+  if (iter->second.empty()) data.erase(iter);
+  return result;
+}
+bool literally_random_access_removable_tiles_by_height::erase(tile_location const& loc) {
+  auto j = data.find(loc.coords().z);
+  if (j != data.end()) {
+    if (j->second.erase(loc)) {
+      if (j->second.empty()) {
+        data.erase(loc);
+      }
+      return true;
+    }
+  }
+  return false;
+}
+void literally_random_access_removable_tiles_by_height::insert(tile_location const& loc)const {
+  // Note: operator[] default-constructs an empty structure if there wasn't one
+  data[loc.coords().z].insert(loc);
+}
+
+bool literally_random_access_removable_tiles_by_height::any_above(tile_coordinate height)const {
+  return data.upper_bound(height) != data.end();
+}
+bool literally_random_access_removable_tiles_by_height::any_below(tile_coordinate height)const {
+  return (!data.empty()) && (data.begin()->first < height);
+}
+
+
