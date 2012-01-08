@@ -113,7 +113,7 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
         frontier.push_back(loc);
         new_group.surface_tiles.insert(loc);
         water_groups_by_surface_tile.insert(make_pair(loc, new_group_id));
-        if ((loc + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(loc);
+        if ((loc.get_neighbor(cdir_zplus, CONTENTS_ONLY)).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(loc);
     
         // This DOES handle first-initialization properly; it makes some unnecessary checks, but
         // we're not worried about super speed here.
@@ -128,7 +128,7 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
     inf.frontier.pop_back();
           
     for (EACH_CARDINAL_DIRECTION(dir)) {
-      const tile_location adj_loc = search_loc + dir;
+      const tile_location adj_loc = search_loc.get_neighbor(dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
       inf.try_collect_loc(adj_loc);
       
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
@@ -208,6 +208,7 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
           ++surface_loc_iter;
           tile_location const& end_tile = *surface_loc_iter;
           assert(end_tile.coords().y == surface_loc.coords().y && end_tile.coords().z == surface_loc.coords().z);
+          assert(end_tile.coords().x > surface_loc.coords().x);
           assert(surface_tiles.find(end_tile) != surface_tiles.end());
           num_tiles_by_height[surface_loc.coords().z] += 1 + end_tile.coords().x - surface_loc.coords().x;
         }
@@ -381,6 +382,7 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
   }
   for (auto const& p : smaller_group.num_tiles_by_height) {
     // Note: the [] operator default-constructs a zero if there's nothing there
+    assert(p.second > 0);
     larger_group.num_tiles_by_height[p.first] += p.second;
   }
   for (auto const& l : smaller_group.surface_tiles) {
@@ -562,7 +564,7 @@ void replace_substance_(
         if (water_group_id == NO_WATER_GROUP) {
           water_group_id = iter->second;
         }
-        else {
+        else if (iter->second != water_group_id) {
           // Two groups we join! Merge them. merge_water_groups() automatically
           // handles the "merge the smaller one into the larger one" optimization
           // and returns the ID of the group that remains.
@@ -717,7 +719,11 @@ void replace_substance_(
     
     water_group->suckable_tiles_by_height.erase(loc);
     
-    --water_group->num_tiles_by_height[loc.coords().z];
+    auto iter = water_group->num_tiles_by_height.find(loc.coords().z);
+    assert(iter != water_group->num_tiles_by_height.end());
+    assert(iter->second > 0);
+    --iter->second;
+    if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
     
     // Removing a tile from a specific height can change pressure at that height, but not anywhere above
     water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.lower_bound(loc.coords().z+1));
@@ -810,7 +816,12 @@ void replace_substance_(
           }
           new_group.recompute_num_tiles_by_height_from_surface_tiles(w);
           for (auto const& p : new_group.num_tiles_by_height) {
-            water_group->num_tiles_by_height[p.first] -= p.second;
+            auto iter = water_group->num_tiles_by_height.find(p.first);
+            assert(iter != water_group->num_tiles_by_height.end());
+            assert(iter->second > 0);
+            assert(iter->second >= p.second);
+            iter->second -= p.second;
+            if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
           }
         }
         else {

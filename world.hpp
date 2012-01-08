@@ -532,8 +532,8 @@ private:
   template <typename Compare>
   void handle_tile_insertion_in_dimension(set<tile_location, Compare> boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
     // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
-    const tile_location further_in_positive_direction_loc = loc + dir;
-    const tile_location further_in_negative_direction_loc = loc - dir;
+    const tile_location further_in_positive_direction_loc = loc.get_neighbor( dir, CONTENTS_ONLY);
+    const tile_location further_in_negative_direction_loc = loc.get_neighbor(-dir, CONTENTS_ONLY);
     bool we_are_boundary_tile = false;
     if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
       if ((further_in_positive_direction_loc + dir).stuff_at().contents() == GROUPABLE_WATER) {
