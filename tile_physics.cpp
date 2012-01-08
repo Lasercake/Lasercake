@@ -33,7 +33,6 @@
 // (assuming that this code has at least a few bugs in it)
 
 // Current remaining major TODOs: making world stuff, and cache checking.
-// TODO remove suckable tiles when groupable water appears above them
 
 // This is the only file that's allowed to change the contents of tiles at locations.
 // Other files should change tile contents through replace_substance,
@@ -541,6 +540,10 @@ void replace_substance_(
   
   // For creating water, there are only a few more caches to update.
   if (new_substance_type == GROUPABLE_WATER && old_substance_type != GROUPABLE_WATER) {
+    // The tile below us, if any, is no longer suckable.
+    const location downloc = loc + cdir_zminus;
+    if (downloc.stuff_at().contents() == GROUPABLE_WATER) water_group->suckable_tiles_by_height.erase(downloc);
+    
     // We might need to designate ourself as a surface tile,
     // and we might need to designate neighbors as non-surface tiles,
     // if we've closed their last liberty (to use Go terms)
