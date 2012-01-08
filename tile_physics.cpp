@@ -47,6 +47,10 @@ water_group_identifier make_new_water_group(water_group_identifier &next_water_g
 }
 
 // Debugging functions:
+void dump_boundary_stuff(groupable_water_dimensional_boundaries_TODO_name_this_better_t &g) {
+  for (auto const& foo : g.x_boundary_groupable_water_tiles)
+    std::cerr << "  " << foo.coords() << "\n";
+}
 void dump_group_info(persistent_water_group_info const& g) {
   std::cerr << "Suckable tiles by height:\n";
   for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
@@ -117,7 +121,7 @@ void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
         for (EACH_CARDINAL_DIRECTION(d2)) {
           if (d2.v.dot<neighboring_tile_differential>(dir.v) == 0) {
-            inf.try_collect_loc(adj_loc + d2);
+            inf.try_collect_loc(adj_loc.get_neighbor(d2, CONTENTS_AND_LOCAL_CACHES_ONLY));
           }
         }
       }
@@ -251,7 +255,7 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
         for (EACH_CARDINAL_DIRECTION(d2)) {
           if (d2.v.dot<neighboring_tile_differential>(dir.v) == 0) {
-            inf.try_collect_loc(adj_loc + d2);
+            inf.try_collect_loc(adj_loc.get_neighbor(d2, CONTENTS_AND_LOCAL_CACHES_ONLY));
           }
         }
       }
