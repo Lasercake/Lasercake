@@ -228,24 +228,23 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
   auto const& groupable_water_dimensional_boundaries_TODO_name_this_better = w.get_groupable_water_dimensional_boundaries_TODO_name_this_better();
   
   for (tile_location const& surface_loc : surface_tiles) {
-    auto surface_loc_iter = groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.find(surface_loc);
-    if (surface_loc_iter != groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end()) {
-      // We're only interested in starting at low-x boundaries
-      const tile_location loc_less_x = surface_loc + cdir_xminus;
-      if (loc_less_x.stuff_at().contents() != GROUPABLE_WATER) {
-        // If we're *also* the high-x boundary, there's only one water tile in this row
-        const tile_location loc_more_x = surface_loc + cdir_xplus;
-        if (loc_more_x.stuff_at().contents() != GROUPABLE_WATER) {
-          num_tiles_by_height[surface_loc.coords().z] += 1;
-        }
-        else {
-          ++surface_loc_iter;
-          tile_location const& end_tile = *surface_loc_iter;
-          assert(end_tile.coords().y == surface_loc.coords().y && end_tile.coords().z == surface_loc.coords().z);
-          assert(end_tile.coords().x > surface_loc.coords().x);
-          assert(surface_tiles.find(end_tile) != surface_tiles.end());
-          num_tiles_by_height[surface_loc.coords().z] += 1 + end_tile.coords().x - surface_loc.coords().x;
-        }
+    // We're only interested in starting at low-x boundaries
+    if (surface_loc.get_neighbor(cdir_xminus, CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) {
+      // If we're *also* the high-x boundary, there's only one water tile in this row
+      if (surface_loc.get_neighbor(cdir_xplus, CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) {
+        num_tiles_by_height[surface_loc.coords().z] += 1;
+      }
+      else {
+        // Otherwise, we have to jump to the end of the row using the fancy sorted caches.
+        auto surface_loc_iter = groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.find(surface_loc);
+        assert (surface_loc_iter != groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end());
+        ++surface_loc_iter;
+        assert (surface_loc_iter != groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end());
+        tile_location const& end_tile = *surface_loc_iter;
+        assert(end_tile.coords().y == surface_loc.coords().y && end_tile.coords().z == surface_loc.coords().z);
+        assert(end_tile.coords().x > surface_loc.coords().x);
+        assert(surface_tiles.find(end_tile) != surface_tiles.end());
+        num_tiles_by_height[surface_loc.coords().z] += 1 + end_tile.coords().x - surface_loc.coords().x;
       }
     }
   }
