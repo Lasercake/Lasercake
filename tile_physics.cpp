@@ -306,6 +306,18 @@ void become_not_interior(tile_location const& loc, world_collision_detector &thi
   }
 }
 
+
+void replace_substance_(
+   tile_location const& loc,
+   tile_contents old_substance_type,
+   tile_contents new_substance_type,
+  
+   groupable_water_dimensional_boundaries_TODO_name_this_better_t &groupable_water_dimensional_boundaries_TODO_name_this_better,
+   active_fluids_t &active_fluids,
+   water_group_identifier &next_water_group_identifier,
+   persistent_water_groups_t &persistent_water_groups,
+   water_groups_by_location_t &water_groups_by_surface_tile);
+
 void world::replace_substance(
    tile_location const& loc,
    tile_contents old_substance_type,
