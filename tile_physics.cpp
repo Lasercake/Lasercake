@@ -546,6 +546,11 @@ void replace_substance_(
       water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(tile_pulled_from);
       persistent_water_group_info &group = persistent_water_groups.find(group_id)->second;
       
+      // Semi-hack - so that push_water_into_pushable_tile won't fail its assertion that it's
+      // pushing into air. (This feels hacky only because we don't do the other updates for it
+      // turning into air - one could say that it technically DOES become air instaneously before
+      // it's refilled.)
+      mutable_stuff_at(loc).set_contents(AIR);
       assert(group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(w, loc, active_fluids));
     }
     else {
