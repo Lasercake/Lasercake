@@ -564,6 +564,17 @@ void replace_substance_(
       }
     }
   }
+  // Or, if we've become non-air, pressure can no longer push water into us.
+  if (old_substance_type == AIR && new_substance_type != AIR) {
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const tile_location adj_loc = loc + dir;
+      if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
+        water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
+        persistent_water_group_info &group = persistent_water_groups.find(group_id)->second;
+        group.pushable_tiles_by_height.erase(loc);
+      }
+    }
+  }
   
   // old_substance_type and new_substance_type shouldn't change after this point
   
