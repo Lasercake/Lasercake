@@ -791,7 +791,8 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       for (EACH_CARDINAL_DIRECTION(dir)) {
         const tile_location adj_loc = loc + dir;
         if (adj_loc.stuff_at().contents == GROUPABLE_WATER) {
-          if ((loc - dir).stuff_at().contents == GROUPABLE_WATER) {
+          const tile_location opposite_loc = loc - dir;
+          if (opposite_loc.stuff_at().contents == GROUPABLE_WATER) {
             // Hack - if we have groupable water pushing from both sides, become groupable ASAP
             fluid.velocity -= project_onto_cardinal_direction(fluid.velocity, dir);
             //fluid.frames_until_can_become_groupable = 0;
@@ -799,7 +800,9 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
           else {
             persistent_water_group_info const& group = w.get_water_group_by_grouped_tile(adj_loc);
             const sub_tile_distance amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_distance>(-dir.v);
-            const sub_tile_distance deficiency_of_vel = i64sqrt(group.get_pressure_at_height(loc.coords().z)) - amount_of_vel_in_pressure_receiving_dir;
+            // This velocity pushes us towards opposite_loc, and pressure is a measure of how much water wants to
+            // *go to* the height pressure is being measured at, so we measure at opposite_loc.
+            const sub_tile_distance deficiency_of_vel = i64sqrt(group.get_pressure_at_height(opposite_loc.coords().z)) - amount_of_vel_in_pressure_receiving_dir;
             if (deficiency_of_vel > 0) {
               fluid.velocity += vector3<sub_tile_distance>(-dir.v) * deficiency_of_vel;
             }
