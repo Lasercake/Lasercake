@@ -46,6 +46,40 @@ water_group_identifier make_new_water_group(water_group_identifier &next_water_g
   return this_id;
 }
 
+// Debugging function:
+void dump_group_info(persistent_water_group_info const& g) {
+  std::cerr << "Suckable tiles by height:\n";
+  for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
+    std::cerr << "  At height " << foo.first << ":\n";
+    for(auto const& bar : foo.second.as_unordered_set()) {
+      std::cerr << "    " << bar.coords() << "\n";
+    }
+  }
+  std::cerr << "Pushable tiles by height:\n";
+  for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
+    std::cerr << "  At height " << foo.first << ":\n";
+    for(auto const& bar : foo.second.as_unordered_set()) {
+      std::cerr << "    " << bar.coords() << "\n";
+    }
+  }
+  std::cerr << "Surface tiles:\n";
+  for (auto const& foo : g.surface_tiles) {
+    std::cerr << "  " << foo.coords() << "\n";
+  }
+  std::cerr << "Width-of-widest-level-so-far caches:\n";
+  for (auto const& foo : g.width_of_widest_level_so_far_caches) {
+    std::cerr << "  " << foo.first << ": " << foo.second << "\n";
+  }
+  std::cerr << "Pressure caches:\n";
+  for (auto const& foo : g.pressure_caches) {
+    std::cerr << "  " << foo.first << ": " << foo.second << "\n";
+  }
+  std::cerr << "Num tiles by height:\n";
+  for (auto const& foo : g.num_tiles_by_height) {
+    std::cerr << "  " << foo.first << ": " << foo.second << "\n";
+  }
+}
+
 // Initialization.
 // When we initialize a tile...
 // If it's not groupable water, we only need to compute its interiorness.
