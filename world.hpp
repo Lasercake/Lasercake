@@ -536,13 +536,13 @@ private:
     const tile_location further_in_negative_direction_loc = loc.get_neighbor(-dir, CONTENTS_ONLY);
     bool we_are_boundary_tile = false;
     if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if ((further_in_positive_direction_loc + dir).stuff_at().contents() == GROUPABLE_WATER) {
+      if (further_in_positive_direction_loc.get_neighbor(dir, CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
         boundary_tiles_set.erase(further_in_positive_direction_loc);
       }
     }
     else we_are_boundary_tile = true;
     if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if ((further_in_negative_direction_loc + dir).stuff_at().contents() == GROUPABLE_WATER) {
+      if (further_in_negative_direction_loc.get_neighbor(-dir, CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
         boundary_tiles_set.erase(further_in_negative_direction_loc);
       }
     }

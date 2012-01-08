@@ -441,12 +441,15 @@ void push_water_into_pushable_tile(world &w,
    tile_location const& loc,
    active_fluids_t &active_fluids)
 {
-  // We always create ungroupable water at first due to pressure;
+  // We always create ungroupable water at first when it moves due to pressure;
   // creating groupable water runs the risk
   // of creating explosions where more and more water is drawn out.
   // The water will become groupable in its own time.
   // replace_substance automatically makes the tile no-longer-pushable.
-  w.replace_substance(loc, AIR, UNGROUPABLE_WATER);
+  //
+  // Semi-hack - we trust that this has been called on a reasonable tile,
+  // so we just copy the tile's contents into old_substance_type.
+  w.replace_substance(loc, loc.stuff_at().contents(), UNGROUPABLE_WATER);
       
   // Activate it.
   // The [] operator creates a default-constructed version.
@@ -619,7 +622,7 @@ void replace_substance_(
       const tile_location adj_loc = loc + dir;
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
         water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
-        persistent_water_group_info &group = persistent_water_groups.find(group_id)->second;
+        persistent_water_group_info const& group = persistent_water_groups.find(group_id)->second;
         if (group.suckable_tiles_by_height.any_above(loc.coords().z)) {
           adj_tiles_that_want_to_fill_us_via_pressure.push_back(adj_loc);
         }
@@ -631,11 +634,6 @@ void replace_substance_(
       water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(tile_pulled_from);
       persistent_water_group_info &group = persistent_water_groups.find(group_id)->second;
       
-      // Semi-hack - so that push_water_into_pushable_tile won't fail its assertion that it's
-      // pushing into air. (This feels hacky only because we don't do the other updates for it
-      // turning into air - one could say that it technically DOES become air instaneously before
-      // it's refilled.)
-      mutable_stuff_at(loc).set_contents(AIR);
       assert(group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(w, loc, active_fluids));
     }
     else {
@@ -677,7 +675,10 @@ void replace_substance_(
     //    (while we're still marked as water)
     // ==============================================================================
     water_group_id = w.get_water_group_id_by_grouped_tile(loc);
-    water_group = &persistent_water_groups.find(water_group_id)->second;
+    assert(water_group_id != NO_WATER_GROUP);
+    auto iter = persistent_water_groups.find(water_group_id);
+    assert(iter != persistent_water_groups.end());
+    water_group = &iter->second;
     check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
   }
   
