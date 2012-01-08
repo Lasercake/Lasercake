@@ -52,8 +52,8 @@ namespace hacky_internals {
       is_busy_realizing = false;
     }
     
-    if ((             realineeded >= CONTENTS_AND_STICKYNESS_ONLY) &&
-        (current_tile_realization <  CONTENTS_AND_STICKYNESS_ONLY)) {
+    if ((             realineeded >= CONTENTS_AND_LOCAL_CACHES_ONLY) &&
+        (current_tile_realization <  CONTENTS_AND_LOCAL_CACHES_ONLY)) {
     
       assert(!is_busy_realizing);
       is_busy_realizing = true;
@@ -62,15 +62,12 @@ namespace hacky_internals {
         for (tile_coordinate y = global_position.y; y < global_position.y + worldblock_dimension; ++y) {
           for (tile_coordinate z = global_position.z; z < global_position.z + worldblock_dimension; ++z) {
             tile_location loc(vector3<tile_coordinate>(x,y,z), this);
-            if (should_be_sticky(loc)) {
-              vector3<tile_coordinate> local_coords = loc.coords() - global_position;
-              tiles[local_coords.x][local_coords.y][local_coords.z].set_water_stickyness(true);
-            }
+            w->initialize_tile_local_caches(loc);
           }
         }
       }
       
-      current_tile_realization = CONTENTS_AND_STICKYNESS_ONLY;
+      current_tile_realization = CONTENTS_AND_LOCAL_CACHES_ONLY;
       is_busy_realizing = false;
     }
     
@@ -84,8 +81,7 @@ namespace hacky_internals {
         for (tile_coordinate y = global_position.y; y < global_position.y + worldblock_dimension; ++y) {
           for (tile_coordinate z = global_position.z; z < global_position.z + worldblock_dimension; ++z) {
             tile_location loc(vector3<tile_coordinate>(x,y,z), this);
-            w->check_interiorness(loc);
-            w->check_exposure_to_collision(loc);
+            w->initialize_tile_water_group_caches(loc);
           }
         }
       }

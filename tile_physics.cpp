@@ -32,7 +32,7 @@
 // TODO make a way to obsessively check the caches to find out exactly what code breaks them
 // (assuming that this code has at least a few bugs in it)
 
-// Current remaining major TODOs: Initialization and cache checking.
+// Current remaining major TODOs: cache checking.
 
 // This is the only file that's allowed to change the contents of tiles at locations.
 // Other files should change tile contents through replace_substance,
@@ -40,6 +40,140 @@
 // (TODO: also add something for the there_is_an_object_here_that_affects_the_tile_based_physics thing)
 tile& mutable_stuff_at(tile_location const& loc) { return loc.wb->get_tile(loc.v); }
 
+water_group_identifier make_new_water_group(water_group_identifier &next_water_group_identifier, persistent_water_groups_t &persistent_water_groups) {
+  water_group_identifier this_id = next_water_group_identifier++;
+  persistent_water_groups[this_id]; // operator[] inserts a default-constructed one
+  return this_id;
+}
+
+// Initialization.
+// When we initialize a tile...
+// If it's not groupable water, we only need to compute its interiorness.
+// If it is, then we need to make sure the caches of the group it's in are in order.
+// We can check whether the tile is in a group that's already been computed, but otherwise,
+// that means doing a flood-fill search to find the group's entire surface, then computing stuff about it.
+// The complication comes when the water tile in question is attached to an infinite ocean - we can't
+// flood-fill an entire infinite ocean.
+//
+// Infinite oceans simplify the group computations significantly. One thing they don't simplify is this:
+// If a tile, for some reason, disappears from the middle of an infinite ocean, then we still want to be
+// able to quickly find out which group it's part of, using the dimensional-boundary-tile thing.
+// Which means that *either* we need to make an arbitrary end-surface for infinity (and keep updating
+// it every time the player reaches a location that far away)... *or* we can make the infinite groups
+// not have a surface *at all*, so that if a tile searches for a surface and finds a badly-formed one,
+// then it knows it's part of an infinite group. (Or we could combine those - mark all the real surface
+// tiles - if you hit one, it tells you you're in the infinite group, and if you don't, you know from
+// that fact.)
+//
+// I haven't actually implemented infinite oceans yet - TODO do that sometime
+//
+// Technically, we don't have to initialize a group when it is generated - we only have to initialize it
+// when it would DO anything. That's a highly unnecessary optimization, considering that initalizing a
+// single group hardly takes any time.
+bool is_ungrouped_surface_tile(tile_location const& loc, water_groups_by_location_t const& water_groups_by_surface_tile) { return loc.stuff_at().contents() == GROUPABLE_WATER && !loc.stuff_at().is_interior() && water_groups_by_surface_tile.find(loc) == water_groups_by_surface_tile.end(); }
+
+void initialize_water_group_from_tile_if_necessary(world &w, tile_location const& loc,
+   groupable_water_dimensional_boundaries_TODO_name_this_better_t &groupable_water_dimensional_boundaries_TODO_name_this_better,
+   water_group_identifier &next_water_group_identifier,
+   persistent_water_groups_t &persistent_water_groups,
+   water_groups_by_location_t &water_groups_by_surface_tile) {
+  
+  if (w.get_water_group_id_by_grouped_tile(loc) != NO_WATER_GROUP) return;
+  
+  // Walk until we get a location on the surface.
+  // We *could* just ignore interior tiles and only do the initialization if we started from a surface
+  // tile, since we never initialize interior tiles without also initializing surface tiles... well,
+  // unless we started in the middle of a giant ocean or something. Anyway, it's cleaner to handle
+  // interior tiles, and the cost is trivial since we only ever do this once per group-initialization.
+  tile_location surface_loc = loc;
+  while (true) {
+    const tile_location next_loc = surface_loc.get_neighbor(cdir_zplus, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    if (next_loc.stuff_at().contents != GROUPABLE_WATER) break;
+    surface_loc = next_loc;
+  }
+  
+  // Flood-fill the surface tiles.
+  // This partially duplicates the "groups splitting" algorithm later in this file.
+  
+  const water_group_identifier new_group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
+  persistent_water_group_info &new_group = persistent_water_groups.find(new_group_id)->second;
+  
+  struct group_collecting_info {
+    std::vector<tile_location> frontier;
+    void try_collect_loc(tile_location const& loc) {
+      if (is_ungrouped_surface_tile(loc, water_groups_by_surface_tile)) {
+        frontier.push_back(loc);
+        new_group.surface_tiles.insert(search_loc);
+        water_groups_by_surface_tile.insert(make_pair(search_loc, new_group_id));
+        if ((search_loc + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(search_loc);
+    
+        // This DOES handle first-initialization properly; it makes some unnecessary checks, but
+        // we're not worried about super speed here.
+        groupable_water_dimensional_boundaries_TODO_name_this_better.handle_tile_insertion(search_loc);
+      }
+    }
+  }
+  
+  group_collecting_info inf;
+  inf.try_collect_loc(surface_loc);
+  while(!inf.frontier.empty()) {
+    const tile_location search_loc = inf.frontier.back();
+    inf.frontier.pop_back();
+          
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const tile_location adj_loc = search_loc + dir;
+      inf.try_collect_loc(adj_loc);
+      
+      if (adj_loc.stuff_at().is_interior_water()) {
+        for (EACH_CARDINAL_DIRECTION(d2)) {
+          if (d2.dot<neighboring_tile_differential>(dir) == 0) {
+            inf.try_collect_loc(adj_loc + d2);
+          }
+        }
+      }
+    }
+  }
+  
+  new_group.recompute_num_tiles_by_height_from_surface_tiles(w);
+}
+
+void world::initialize_tile_contents(tile_location const& loc, tile_contents contents) {
+  mutable_stuff_at(loc) = contents;
+}
+void initialize_tile_local_caches_(tile_location const& loc);
+
+void world::initialize_tile_local_caches(tile_location const& loc) {
+  bool should_be_interior = true;
+  for (EACH_CARDINAL_DIRECTION(dir)) {
+    const location adj_loc = loc.get_neighbor(dir, CONTENTS_ONLY);
+    if (interiorness_checking_type(adj_loc.stuff_at().contents()) != interiorness_checking_type(loc.stuff_at().contents())) {
+      // Between us and them is a 'different types' interface, so we're not interior:
+      should_be_interior = false;
+      break;
+    }
+  }
+  
+  // A tile is either interior or exposed to collision:
+  if (should_be_interior) {
+    mutable_stuff_at(loc).set_interiorness(true);
+  }
+  else {
+    // TODO: figure out whether surface air should be collision detected with
+    // (maybe there's something that detects contact with air? Sodium...?)
+    if (loc.stuff_at().contents() != AIR)
+      things_exposed_to_collision.insert(adj_loc);
+  }
+}
+
+void world::initialize_tile_water_group_caches(tile_location const& loc) {
+  if (loc.stuff_at().contents() == GROUPABLE_WATER) {
+    initialize_water_group_from_tile_if_necessary(*this, loc,
+       groupable_water_dimensional_boundaries_TODO_name_this_better,
+       next_water_group_identifier,
+       persistent_water_groups,
+       water_groups_by_surface_tile);
+  }
+}
 
 void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_tiles(world &w) {
   // Here's how we compute the total volume in less than linear time:
@@ -149,14 +283,6 @@ bool tile_compare_xyz(tile_location const& i, tile_location const& j) {
   return (c1.x < c2.x) || ((c1.x == c2.x) && ((c1.y < c2.y) || ((c1.y == c2.y) && (c1.z < c2.z))));
 }
 
-
-// ONLY to be called by replace_substance
-water_group_identifier make_new_water_group(water_group_identifier &next_water_group_identifier, persistent_water_groups_t &persistent_water_groups) {
-  water_group_identifier this_id = next_water_group_identifier++;
-  persistent_water_groups[this_id]; // operator[] inserts a default-constructed one
-  return this_id;
-}
-
 // ONLY to be called by replace_substance
 water_group_identifier merge_water_groups(water_group_identifier id_1, water_group_identifier id_2,
    persistent_water_groups_t &persistent_water_groups,
@@ -200,7 +326,14 @@ water_group_identifier world::get_water_group_id_by_grouped_tile(tile_location c
     // Crap, we don't know what group we're part of unless we find a surface tile!
     // Find the next surface tile in some arbitrary direction.
     // That tile will tell us what group we're in.
-    location const& surface_loc = *(groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.lower_bound(loc));
+    auto iter = groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.lower_bound(loc);
+    if (iter == groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end()) {
+      return NO_WATER_GROUP;
+    }
+    location const& surface_loc = *iter;
+    if (surface_loc.coords().y != loc.coords().y || surface_loc.coords().z != loc.coords().z) {
+      return NO_WATER_GROUP;
+    }
     return water_groups_by_surface_tile.find(surface_loc)->second;
   }
 }
@@ -291,7 +424,7 @@ void become_interior(tile_location const& loc, world_collision_detector &things_
   // (maybe there's something that detects contact with air? Sodium...?)
   if (loc.stuff_at().contents() != AIR) {
     assert(things_exposed_to_collision.exists(adj_loc));
-    things_exposed_to_collision.insert(adj_loc);
+    things_exposed_to_collision.erase(adj_loc);
   }
 }
 
@@ -484,7 +617,7 @@ void replace_substance_(
     bool we_are_now_interior = true;
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const location adj_loc = loc + dir;
-      if (interiorness_checking_type(adj_loc) != interiorness_checking_type(new_substance_type)) {
+      if (interiorness_checking_type(adj_loc.stuff_at().contents) != interiorness_checking_type(new_substance_type)) {
         // Between us and them is a 'different types' interface, so neither us nor them is interior:
         we_are_now_interior = false;
         if (adj_loc.stuff_at().is_interior()) {
@@ -496,7 +629,7 @@ void replace_substance_(
         if (!adj_loc.stuff_at().is_interior()) {
           bool they_should_be_interior = true;
           for (EACH_CARDINAL_DIRECTION(d2)) {
-            if (interiorness_checking_type((adj_loc + d2).stuff_at().contents()) != interiorness_checking_type(adj_loc.stuff_at())) {
+            if (interiorness_checking_type((adj_loc + d2).stuff_at().contents()) != interiorness_checking_type(adj_loc.stuff_at().contents())) {
               they_should_be_interior = false;
               break;
             }
@@ -599,8 +732,8 @@ void replace_substance_(
       // If one of the other collectors has claimed it, then we now know that those two are connected,
       //     so merge the two of them.
       // returns true if-and-only-if the operation should destroy the collector by merging it into another collector.
-      bool try_collect_loc(tile_location collector, tile_location collectee) {
-        if (collectee.stuff_at().is_membrane_water()) {
+      bool try_collect_loc(tile_location const& collector, tile_location const& collectee) {
+        if (collectee.stuff_at().contents() == GROUPABLE_WATER && !collectee.stuff_at().is_interior()) {
           unordered_map<tile_location, tile_location>::iterator iter = neighbors_by_collected_loc.find(collectee);
           
           if (iter == neighbors_by_collected_loc.end()) {
@@ -654,7 +787,7 @@ void replace_substance_(
           // separate group.
           destroy_this_frontier = true;
           
-          new_group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
+          const water_group_identifier new_group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
           
           persistent_water_group_info &new_group = persistent_water_groups.find(new_group_id)->second;
           for (location const& new_grouped_loc : collected_locs_by_neighbor[which_neighbor]) {
@@ -677,13 +810,13 @@ void replace_substance_(
           for (EACH_CARDINAL_DIRECTION(dir)) {
             tile_location adj_loc = search_loc + dir;
             
-            destroy_this_frontier = try_collect_loc(adj_loc));
+            destroy_this_frontier = inf.try_collect_loc(adj_loc));
             if (destroy_this_frontier) break;
             
             if (adj_loc.stuff_at().is_interior_water()) {
               for (EACH_CARDINAL_DIRECTION(d2)) {
                 if (d2.dot<neighboring_tile_differential>(dir) == 0) {
-                  destroy_this_frontier = try_collect_loc(adj_loc + d2);
+                  destroy_this_frontier = inf.try_collect_loc(adj_loc + d2);
                   if (destroy_this_frontier) break;
                 }
               }

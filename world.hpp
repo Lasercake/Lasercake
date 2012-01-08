@@ -200,8 +200,12 @@ bool is_fluid(tile_contents t) {
 bool is_water(tile_contents t) {
   return (t >= UNGROUPABLE_WATER) && (t <= GROUPABLE_WATER);
 }
-bool interiorness_checking_type(tile_contents t) {
-  return (t == GROUPABLE_WATER) ? UNGROUPABLE_WATER : t;
+tile_contents interiorness_checking_type(tile_contents t) {
+  // yes, we DO need to distinguish ungroupable water from groupable water -
+  // - mainly for the grouping code. Which makes "interiorness" have a slightly overloaded
+  // meaning, but that's acceptable for the gain in bit-packing.
+  return t;
+  //return (t == GROUPABLE_WATER) ? UNGROUPABLE_WATER : t;
 }
 
 class tile {
@@ -267,7 +271,7 @@ namespace hacky_internals {
 enum level_of_tile_realization_needed {
   COMPLETELY_IMAGINARY = 0,
   CONTENTS_ONLY = 1,
-  CONTENTS_AND_STICKYNESS_ONLY = 2,
+  CONTENTS_AND_LOCAL_CACHES_ONLY = 2,
   FULL_REALIZATION = 3
 };
 
@@ -484,6 +488,9 @@ struct persistent_water_group_info {
   mutable map<tile_coordinate, fine_scalar> pressure_caches;
   mutable map<tile_coordinate, water_tile_count> width_of_widest_level_so_far_caches;
   
+  //bool is_infinite;
+  //tile_coordinate infinite_ocean_height;
+  
   void recompute_num_tiles_by_height_from_surface_tiles(world &w);
   fine_scalar get_pressure_at_height(tile_coordinate height)const;
   
@@ -667,8 +674,10 @@ private:
   void ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded);
   
   // Used only by world_building_gun
-  void insert_rock_bypassing_checks(tile_location const& loc);
-  void insert_water_bypassing_checks(tile_location const& loc);
+  void initialize_tile_contents(tile_location const& loc, tile_contents contents);
+  // Used only in the worldblock stuff
+  void initialize_tile_local_caches(tile_location const& loc);
+  void initialize_tile_water_group_caches(tile_location const& loc);
 };
 
 class robot : public mobile_object, public autonomous_object {
