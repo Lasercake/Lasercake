@@ -877,6 +877,8 @@ void replace_substance_(
           tile_location search_loc = frontier.front();
           frontier.pop();
           
+          assert(water_groups_by_surface_tile.find(search_loc)->second == water_group_id);
+          
           for (EACH_CARDINAL_DIRECTION(dir)) {
             tile_location adj_loc = search_loc + dir;
             
