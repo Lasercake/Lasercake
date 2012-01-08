@@ -194,13 +194,13 @@ enum tile_contents {
   // NOTE: we currently rely on these fitting into three bits
 };
 
-bool is_fluid(tile_contents t) {
+inline bool is_fluid(tile_contents t) {
   return (t >= UNGROUPABLE_WATER) && (t <= RUBBLE);
 }
-bool is_water(tile_contents t) {
+inline bool is_water(tile_contents t) {
   return (t >= UNGROUPABLE_WATER) && (t <= GROUPABLE_WATER);
 }
-tile_contents interiorness_checking_type(tile_contents t) {
+inline tile_contents interiorness_checking_type(tile_contents t) {
   // yes, we DO need to distinguish ungroupable water from groupable water -
   // - mainly for the grouping code. Which makes "interiorness" have a slightly overloaded
   // meaning, but that's acceptable for the gain in bit-packing.
@@ -453,7 +453,7 @@ private:
 
 typedef uint64_t water_tile_count;
 typedef uint64_t water_group_identifier;
-water_group_identifier NO_WATER_GROUP = 0;
+const water_group_identifier NO_WATER_GROUP = 0;
 
 typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
 
