@@ -837,7 +837,7 @@ void replace_substance_(
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const tile_location adj_loc = loc + dir;
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-        inf.disconnected_frontiers[adj_loc].push(adj_loc);
+        inf.try_collect_loc(adj_loc, adj_loc);
       }
     }
     while(inf.disconnected_frontiers.size() > 1) {
