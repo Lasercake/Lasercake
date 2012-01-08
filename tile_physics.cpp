@@ -277,12 +277,6 @@ bool persistent_water_group_info::mark_tile_as_pushable_and_return_true_if_it_is
 }
 
 
-bool tile_compare_xyz(tile_location const& i, tile_location const& j) {
-  vector3<tile_coordinate> c1 = i.coords();
-  vector3<tile_coordinate> c2 = j.coords();
-  return (c1.x < c2.x) || ((c1.x == c2.x) && ((c1.y < c2.y) || ((c1.y == c2.y) && (c1.z < c2.z))));
-}
-
 // ONLY to be called by replace_substance
 water_group_identifier merge_water_groups(water_group_identifier id_1, water_group_identifier id_2,
    persistent_water_groups_t &persistent_water_groups,

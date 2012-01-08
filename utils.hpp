@@ -288,12 +288,12 @@ private:
 template<typename Stuff> struct literally_random_access_removable_stuff {
 public:
   void insert(Stuff const& stuff) {
-    if (stuffs_set.insert(stuff).first) {
+    if ((stuffs_set.insert(stuff)).second) {
       stuffs_superset_vector.push_back(stuff);
     }
   }
   bool erase(Stuff const& which) {
-    if (stuffs_set.erase(stuff).first) {
+    if (stuffs_set.erase(which)) {
       if (stuffs_set.size() * 2 <= stuffs_superset_vector.size()) {
         purge_nonexistent_stuffs();
       }
@@ -309,8 +309,8 @@ public:
     } while (stuffs_set.find(stuffs_superset_vector[idx]) == stuffs_set.end());
     return stuffs_superset_vector[idx];
   }
-  bool empty()const { return stuffs.empty(); }
-  unordered_set<Stuff> const& as_unordered_set() { return stuffs_set; }
+  bool empty()const { return stuffs_set.empty(); }
+  std::unordered_set<Stuff> const& as_unordered_set() { return stuffs_set; }
 private:
   std::vector<Stuff> stuffs_superset_vector;
   std::unordered_set<Stuff> stuffs_set;
@@ -320,7 +320,7 @@ private:
       stuffs_superset_vector[next_insert_idx] = st;
       ++next_insert_idx;
     }
-    stuffs.erase(stuffs.begin() + next_insert_idx, stuffs.end());
+    stuffs_superset_vector.erase(stuffs_superset_vector.begin() + next_insert_idx, stuffs_superset_vector.end());
   }
 };
 

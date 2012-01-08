@@ -247,20 +247,6 @@ struct active_fluid_tile_info {
   //int frames_until_can_become_groupable = 0;
 };
 
-struct water_movement_info {
-  vector3<sub_tile_distance> velocity;
-  value_for_each_cardinal_direction<sub_tile_distance> progress;
-  value_for_each_cardinal_direction<sub_tile_distance> blockage_amount_this_frame;
-  bool computed_sticky_last_frame;
-  
-  // Constructing one of these in the default way yields the natural inactive state:
-  water_movement_info():velocity(inactive_water_velocity),progress(0),blockage_amount_this_frame(0),computed_sticky_last_frame(false) { progress[cdir_zminus] = progress_necessary(cdir_zminus); }
-  
-  // This is not a general-purpose function. Only use it during the move-processing part of update_water.
-  void get_completely_blocked(cardinal_direction dir);
-  bool is_in_inactive_state()const;
-};
-
 
 class world;
 
@@ -448,17 +434,6 @@ private:
 };
 
 
-typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
-typedef unordered_map<tile_location, water_movement_info> active_water_tiles_t;
-typedef unordered_map<object_identifier, shape> object_shapes_t;
-typedef unordered_map<water_group_identifier, persistent_water_groups_t> persistent_water_groups_t;
-typedef unordered_map<tile_location, water_group_identifier> water_groups_by_location_t;
-typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
-template<typename ObjectSubtype>
-struct objects_map {
-  typedef unordered_map<object_identifier, shared_ptr<ObjectSubtype>> type;
-};
-
 class literally_random_access_removable_tiles_by_height {
 public:
   typedef map<tile_coordinate, literally_random_access_removable_stuff<tile_location>> map_t;
@@ -474,10 +449,10 @@ private:
   map_t data;
 };
 
+
 typedef uint64_t water_tile_count;
 typedef uint64_t water_group_identifier;
 water_group_identifier NO_WATER_GROUP = 0;
-
 
 struct persistent_water_group_info {
   literally_random_access_removable_tiles_by_height suckable_tiles_by_height;
@@ -500,6 +475,21 @@ struct persistent_water_group_info {
   bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(tile_location const& loc);
 };
 
+typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
+typedef unordered_map<object_identifier, shape> object_shapes_t;
+typedef unordered_map<water_group_identifier, persistent_water_group_info> persistent_water_groups_t;
+typedef unordered_map<tile_location, water_group_identifier> water_groups_by_location_t;
+typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
+template<typename ObjectSubtype>
+struct objects_map {
+  typedef unordered_map<object_identifier, shared_ptr<ObjectSubtype>> type;
+};
+
+
+
+struct tile_compare_xyz { bool operator()(tile_location const& i, tile_location const& j)const; };
+struct tile_compare_yzx { bool operator()(tile_location const& i, tile_location const& j)const; };
+struct tile_compare_zxy { bool operator()(tile_location const& i, tile_location const& j)const; };
 
 // We could easily keep lists of boundary tiles in all three dimensions
 // (Just uncomment the six commented lines below.)
@@ -543,14 +533,14 @@ private:
     const tile_location further_in_positive_direction_loc = loc + dir;
     const tile_location further_in_negative_direction_loc = loc - dir;
     bool we_are_boundary_tile = false;
-    if (further_in_positive_direction_loc.stuff_at().contents == GROUPABLE_WATER) {
-      if ((further_in_positive_direction_loc + dir).stuff_at().contents == GROUPABLE_WATER) {
+    if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
+      if ((further_in_positive_direction_loc + dir).stuff_at().contents() == GROUPABLE_WATER) {
         boundary_tiles_set.erase(further_in_positive_direction_loc);
       }
     }
     else we_are_boundary_tile = true;
-    if (further_in_negative_direction_loc.stuff_at().contents == GROUPABLE_WATER) {
-      if ((further_in_negative_direction_loc + dir).stuff_at().contents == GROUPABLE_WATER) {
+    if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
+      if ((further_in_negative_direction_loc + dir).stuff_at().contents() == GROUPABLE_WATER) {
         boundary_tiles_set.erase(further_in_negative_direction_loc);
       }
     }
@@ -558,7 +548,7 @@ private:
     
     if (we_are_boundary_tile) boundary_tiles_set.insert(loc);
   }
-}
+};
 
 class world {
 public:
@@ -598,7 +588,7 @@ public:
   // However, it's imperative that your code not accidentally overwrite a cool
   // type of substance that you weren't considering, so the assertion is built
   // into the function call to make sure that you use it.
-  void world::replace_substance(
+  void replace_substance(
      tile_location const& loc,
      tile_contents old_substance_type,
      tile_contents new_substance_type);

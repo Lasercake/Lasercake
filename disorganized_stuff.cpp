@@ -24,12 +24,12 @@
 void world_building_gun::operator()(tile_contents new_contents, vector3<tile_coordinate> locv) {
   assert(bounds.contains(locv));
   if (new_contents == ROCK) {
-    w->insert_rock_bypassing_checks(w->make_tile_location(locv, COMPLETELY_IMAGINARY));
+    w->initialize_tile_contents(w->make_tile_location(locv, COMPLETELY_IMAGINARY), ROCK);
   }
-  else if (new_contents == WATER) {
-    w->insert_water_bypassing_checks(w->make_tile_location(locv, COMPLETELY_IMAGINARY));
+  else if (new_contents == GROUPABLE_WATER) {
+    w->initialize_tile_contents(w->make_tile_location(locv, COMPLETELY_IMAGINARY), GROUPABLE_WATER);
   }
-  else assert("YOU CAN ONLY PLACE ROCK AND WATER" && false);
+  else assert("YOU CAN ONLY PLACE ROCK AND GROUPABLE WATER" && false);
 }
 
 
@@ -55,9 +55,9 @@ shape world::get_detail_shape_of_object_or_tile(object_or_tile_identifier id)con
 
 tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_top() {
   map_t::reverse_iterator iter = data.rbegin();
-  tile_location result = iter->second.get_random();
+  const tile_location result = iter->second.get_random();
   iter->second.erase(result);
-  if (iter->second.empty()) data.erase(iter);
+  if (iter->second.empty()) data.erase(iter->first);
   return result;
 }
 bool literally_random_access_removable_tiles_by_height::erase(tile_location const& loc) {
@@ -65,14 +65,14 @@ bool literally_random_access_removable_tiles_by_height::erase(tile_location cons
   if (j != data.end()) {
     if (j->second.erase(loc)) {
       if (j->second.empty()) {
-        data.erase(loc);
+        data.erase(j);
       }
       return true;
     }
   }
   return false;
 }
-void literally_random_access_removable_tiles_by_height::insert(tile_location const& loc)const {
+void literally_random_access_removable_tiles_by_height::insert(tile_location const& loc) {
   // Note: operator[] default-constructs an empty structure if there wasn't one
   data[loc.coords().z].insert(loc);
 }
@@ -84,4 +84,19 @@ bool literally_random_access_removable_tiles_by_height::any_below(tile_coordinat
   return (!data.empty()) && (data.begin()->first < height);
 }
 
+bool tile_compare_xyz::operator()(tile_location const& i, tile_location const& j)const {
+  vector3<tile_coordinate> c1 = i.coords();
+  vector3<tile_coordinate> c2 = j.coords();
+  return (c1.x < c2.x) || ((c1.x == c2.x) && ((c1.y < c2.y) || ((c1.y == c2.y) && (c1.z < c2.z))));
+}
+bool tile_compare_yzx::operator()(tile_location const& i, tile_location const& j)const {
+  vector3<tile_coordinate> c1 = i.coords();
+  vector3<tile_coordinate> c2 = j.coords();
+  return (c1.y < c2.y) || ((c1.y == c2.y) && ((c1.z < c2.z) || ((c1.z == c2.z) && (c1.x < c2.x))));
+}
+bool tile_compare_zxy::operator()(tile_location const& i, tile_location const& j)const {
+  vector3<tile_coordinate> c1 = i.coords();
+  vector3<tile_coordinate> c2 = j.coords();
+  return (c1.z < c2.z) || ((c1.z == c2.z) && ((c1.x < c2.x) || ((c1.x == c2.x) && (c1.y < c2.y))));
+}
 
