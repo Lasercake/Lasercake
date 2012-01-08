@@ -604,14 +604,14 @@ void replace_substance_(
           water_group_id = merge_water_groups(water_group_id, iter->second, persistent_water_groups, water_groups_by_surface_tile);
         }
       }
-      
-      // Now we're either adjacent to one water group or none. If none, we have to create a new one for ourself.
-      if (water_group_id == NO_WATER_GROUP) {
-        water_group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
-      }
-      
-      water_group = &persistent_water_groups.find(water_group_id)->second;
     }
+    
+    // Now we're either adjacent to one water group or none. If none, we have to create a new one for ourself.
+    if (water_group_id == NO_WATER_GROUP) {
+      water_group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
+    }
+    
+    water_group = &persistent_water_groups.find(water_group_id)->second;
   }
   
   // ==============================================================================
