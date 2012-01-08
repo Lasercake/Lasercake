@@ -1058,10 +1058,15 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     const tile_location dst = move.src + move.dir;
     tile const& src_tile = move.src.stuff_at();
     tile const& dst_tile = dst.stuff_at();
-    // in certain situations we shouldn't try to move water more than once
+    // Avoid making stupid situations where we do things like trying to move water more than once
+    // (which would actually be moving DIFFERENT water, quite incorrectly)
     if (disturbed_tiles.find(move.src) != disturbed_tiles.end()) continue;
-    // anything where the water was yanked away should have been marked "disturbed"
-    assert(is_water(src_tile.contents()));
+    // It's also possible that our moves caused other water to be sucked away due to the
+    // group-pressure rules.
+    if (!is_fluid(src_tile.contents())) {
+      disturbed_tiles.insert(move.src);
+      continue;
+    }
     
     active_fluid_tile_info &src_fluid = active_fluids.find(move.src)->second;
     
