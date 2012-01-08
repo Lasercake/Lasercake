@@ -345,9 +345,14 @@ fine_scalar persistent_water_group_info::get_pressure_at_height(tile_coordinate 
   tile_coordinate current_height = 0;
   fine_scalar current_pressure = 0;
   if (iter == pressure_caches.end()) {
-    current_height = num_tiles_by_height.rbegin()->first;
-    pressure_caches[current_height] = 0;
-    width_of_widest_level_so_far_caches[current_height] = num_tiles_by_height.find(current_height-1)->second;
+    auto foo = num_tiles_by_height.rbegin();
+    assert(foo != num_tiles_by_height.rend());
+    current_height = foo->first;
+    if (height > current_height) return 0;
+    pressure_caches.insert(make_pair(current_height, 0));
+    // TODO make less stupid
+    width_of_widest_level_so_far_caches.erase(current_height);
+    width_of_widest_level_so_far_caches.insert(make_pair(current_height, foo->second));
   }
   else {
     current_height = iter->first;
@@ -356,9 +361,12 @@ fine_scalar persistent_water_group_info::get_pressure_at_height(tile_coordinate 
   while (current_height != height) {
     --current_height;
     water_tile_count last_count = width_of_widest_level_so_far_caches.find(current_height+1)->second;
-    water_tile_count new_count = (width_of_widest_level_so_far_caches[current_height] = std::max(last_count, num_tiles_by_height.find(current_height-1)->second));
+    auto foo = num_tiles_by_height.find(current_height);
+    water_tile_count new_count = std::max(last_count, (foo != num_tiles_by_height.end()) ? foo->second : 0);
+    width_of_widest_level_so_far_caches.erase(current_height);
+    width_of_widest_level_so_far_caches.insert(make_pair(current_height, new_count));
     current_pressure = (current_pressure + pressure_constant) * std::min(new_count, last_count) / new_count;
-    pressure_caches[current_height] = current_pressure;
+    pressure_caches.insert(make_pair(current_height, current_pressure));
   }
   return current_pressure;
 }
@@ -367,13 +375,13 @@ tile_location persistent_water_group_info::get_and_erase_random_pushable_tile_be
   // It's annoying that this is as bad as linear in the height of the group;
   // I think I could do better, but it would be more complicated.
   fine_scalar total_weight = 0;
-  for (auto p = pushable_tiles_by_height.as_map().begin(); p != pushable_tiles_by_height.as_map().upper_bound(height); ++p) {
+  for (auto p = pushable_tiles_by_height.as_map().begin(); p != pushable_tiles_by_height.as_map().lower_bound(height); ++p) {
     // Caution: duplicate definition of "weight" (see below)
     const fine_scalar weight = i64sqrt(get_pressure_at_height(p->first)) * p->second.as_unordered_set().size();
     total_weight += weight;
   }
   fine_scalar choice = rand()%total_weight;
-  for (auto p = pushable_tiles_by_height.as_map().begin(); p != pushable_tiles_by_height.as_map().upper_bound(height); ++p) {
+  for (auto p = pushable_tiles_by_height.as_map().begin(); p != pushable_tiles_by_height.as_map().lower_bound(height); ++p) {
     // Caution: duplicate definition of "weight" (see above)
     const fine_scalar weight = i64sqrt(get_pressure_at_height(p->first)) * p->second.as_unordered_set().size();
     choice -= weight;
@@ -418,6 +426,7 @@ void suck_out_suckable_water(world &w,
     auto down_af_iter = active_fluids.find(downward_loc);
     active_fluid_tile_info here_info = ((here_af_iter == active_fluids.end()) ? active_fluid_tile_info() : here_af_iter->second);
     here_info.progress[cdir_zminus] -= progress_necessary(cdir_zminus); // The usual effect of moving downwards
+    assert(here_info.progress[cdir_zminus] >= 0);
     if (down_af_iter == active_fluids.end()) {
       active_fluids.insert(make_pair(downward_loc, here_info));
     }
@@ -428,7 +437,7 @@ void suck_out_suckable_water(world &w,
       // I feel like it would invite weird corner cases.
       down_af_iter->second = here_info;
     }
-    active_fluids.erase(here_af_iter);
+    if (here_af_iter != active_fluids.end()) active_fluids.erase(here_af_iter);
   }
   else {
     // If there's no groupable water below us, then we've gotten to the bottom of the barrel
@@ -515,7 +524,7 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
     water_groups_by_surface_tile[l] = remaining_group_id;
   }
   
-  larger_group.pressure_caches.erase(larger_group.pressure_caches.begin(), larger_group.pressure_caches.lower_bound(smaller_group.num_tiles_by_height.rbegin()->first + 1));
+  larger_group.pressure_caches.erase(larger_group.pressure_caches.begin(), larger_group.pressure_caches.upper_bound(smaller_group.num_tiles_by_height.rbegin()->first));
   
   persistent_water_groups.erase(destroyed_group_id);
   
@@ -544,30 +553,6 @@ water_group_identifier world::get_water_group_id_by_grouped_tile(tile_location c
 }
 persistent_water_group_info const& world::get_water_group_by_grouped_tile(tile_location const& loc)const {
   return persistent_water_groups.find(get_water_group_id_by_grouped_tile(loc))->second;
-}
-
-
-
-void become_interior(tile_location const& loc, world_collision_detector &things_exposed_to_collision) {
-  mutable_stuff_at(loc).set_interiorness(true);
-  // Now interior: remove us from the collision detection.
-  // TODO: figure out whether surface air should be collision detected with
-  // (maybe there's something that detects contact with air? Sodium...?)
-  if (loc.stuff_at().contents() != AIR) {
-    assert(things_exposed_to_collision.exists(loc));
-    things_exposed_to_collision.erase(loc);
-  }
-}
-
-void become_not_interior(tile_location const& loc, world_collision_detector &things_exposed_to_collision) {
-  mutable_stuff_at(loc).set_interiorness(false);
-  // No longer interior! Unless you're air, add to the collision detection struct.
-  // TODO: figure out whether surface air should be collision detected with
-  // (maybe there's something that detects contact with air? Sodium...?)
-  assert(!things_exposed_to_collision.exists(loc));
-  if (loc.stuff_at().contents() != AIR) {
-    things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
-  }
 }
 
 
@@ -639,6 +624,8 @@ void replace_substance_(
       persistent_water_group_info &group = persistent_water_groups.find(group_id)->second;
       
       assert(group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(w, loc, active_fluids));
+      // That function will have run the body of replace_substance on this tile; we don't need to.
+      return;
     }
     else {
       for (EACH_CARDINAL_DIRECTION(dir)) {
@@ -662,8 +649,6 @@ void replace_substance_(
       }
     }
   }
-  
-  // old_substance_type and new_substance_type shouldn't change after this point
   
   // If we're removing water, we have complicated computations to do. We do it in this order:
   // 1) Gather as much information as possible BEFORE physically changing anything (while we're still marked as water)
@@ -772,7 +757,14 @@ void replace_substance_(
         // Between us and them is a 'different types' interface, so neither us nor them is interior:
         we_are_now_interior = false;
         if (adj_loc.stuff_at().is_interior()) {
-          become_not_interior(adj_loc, things_exposed_to_collision);
+          mutable_stuff_at(adj_loc).set_interiorness(false);
+          // No longer interior! Unless you're air, add to the collision detection struct.
+          // TODO: figure out whether surface air should be collision detected with
+          // (maybe there's something that detects contact with air? Sodium...?)
+          assert(!things_exposed_to_collision.exists(adj_loc));
+          if (adj_loc.stuff_at().contents() != AIR) {
+            things_exposed_to_collision.insert(adj_loc, convert_to_fine_units(tile_bounding_box(adj_loc.coords())));
+          }
         }
       }
       else {
@@ -786,16 +778,28 @@ void replace_substance_(
             }
           }
           if (they_should_be_interior) {
-            become_interior(adj_loc, things_exposed_to_collision);
+            mutable_stuff_at(adj_loc).set_interiorness(true);
+            // Now interior: remove us from the collision detection.
+            // TODO: figure out whether surface air should be collision detected with
+            // (maybe there's something that detects contact with air? Sodium...?)
+            if (adj_loc.stuff_at().contents() != AIR) {
+              assert(things_exposed_to_collision.exists(adj_loc));
+              things_exposed_to_collision.erase(adj_loc);
+            }
           }
         }
       }
     }
-    if (we_are_now_interior && !loc.stuff_at().is_interior()) {
-      become_interior(loc, things_exposed_to_collision);
+    bool should_be_collidable = (!we_are_now_interior && !new_substance_type == AIR);
+    bool should_have_been_collidable = (!loc.stuff_at().is_interior() && !old_substance_type == AIR);
+    mutable_stuff_at(loc).set_interiorness(we_are_now_interior);
+    if (should_be_collidable && !should_have_been_collidable) {
+      assert(!things_exposed_to_collision.exists(loc));
+      things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
     }
-    if (!we_are_now_interior && loc.stuff_at().is_interior()) {
-      become_not_interior(loc, things_exposed_to_collision);
+    if (!should_be_collidable && should_have_been_collidable) {
+      assert(things_exposed_to_collision.exists(loc));
+      things_exposed_to_collision.erase(loc);
     }
   }
   
@@ -840,7 +844,7 @@ void replace_substance_(
     ++water_group->num_tiles_by_height[loc.coords().z];
     
     // Adding a tile at a specific height can change pressure at that height, but not anywhere above
-    water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.lower_bound(loc.coords().z+1));
+    water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(loc.coords().z));
     check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
   }
   
@@ -873,7 +877,7 @@ void replace_substance_(
     if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
     
     // Removing a tile from a specific height can change pressure at that height, but not anywhere above
-    water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.lower_bound(loc.coords().z+1));
+    water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(loc.coords().z));
     
     // Our disappearance might have split the group.
     // If we *did* split the group, we're going to have to flood-fill along the surfaces of all the components in order to divide the groups from each other.
@@ -1187,14 +1191,19 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     // Avoid making stupid situations where we do things like trying to move water more than once
     // (which would actually be moving DIFFERENT water, quite incorrectly)
     if (disturbed_tiles.find(move.src) != disturbed_tiles.end()) continue;
+    disturbed_tiles.insert(move.src);
     // It's also possible that our moves caused other water to be sucked away due to the
     // group-pressure rules.
     if (!is_fluid(src_tile.contents())) {
-      disturbed_tiles.insert(move.src);
       continue;
     }
     
     active_fluid_tile_info &src_fluid = active_fluids.find(move.src)->second;
+    // Hack - we also might have been overwritten by the sucking rules, in which case we shouldn't move.
+    // TODO - find a better way to invalidate sucked tiles.
+    if (src_fluid.progress[move.dir] != progress_necessary(move.dir)) {
+      continue;
+    }
     
     // Rubble is 'heavier' than water and basically ignores it, while water has to yield to rubble.
     int src_weight = obstructiveness(src_tile.contents());
@@ -1221,7 +1230,6 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       temp_data.erase(move.src);
       
       if (dst_was_active_fluid) src_fluid = dst_info_store;
-      disturbed_tiles.insert(move.src);
       disturbed_tiles.insert(dst);
       
       // If a tile moves, we're now content to assume that it was moving because it had a realistic velocity in that direction, so we should continue with that assumption.
@@ -1323,7 +1331,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // the one directly below, the ones cardinally-horizontally, and the ones horizontally-and-below.
       // at the 2-diagonals. This comment is duplicated one one other place in this file.
       const tile_location downloc = loc + cdir_zminus;
-      if (!(downloc.stuff_at().contents() == GROUPABLE_WATER || downloc.stuff_at().contents() == ROCK)) continue;
+      if (!(downloc.stuff_at().contents() == GROUPABLE_WATER || downloc.stuff_at().contents() == ROCK)) goto fake_continue;
 
       // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
       for (EACH_CARDINAL_DIRECTION(dir)) {

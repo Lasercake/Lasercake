@@ -78,7 +78,8 @@ const sub_tile_distance gravity_acceleration_magnitude = velocity_scale_factor *
 const vector3<sub_tile_distance> gravity_acceleration(0, 0, -gravity_acceleration_magnitude); // in mini-units per frame squared
 const sub_tile_distance friction_amount                = velocity_scale_factor * tile_width / 1800;
 
-const sub_tile_distance pressure_constant = 100;
+// TODO: Get some of these constants out of the header that everyone includes
+const sub_tile_distance pressure_constant = 10000;
 // as in 1 + d2 (except with the random based at zero, but who cares)
 const sub_tile_distance pressure_motion_factor         = 16 * velocity_scale_factor;
 const sub_tile_distance pressure_motion_factor_random  = 8 * velocity_scale_factor;
@@ -566,6 +567,8 @@ public:
     update_moving_objects();
   }
   
+  // Right now this is just a hack to expose the velocity to the display.
+  active_fluid_tile_info const* get_active_fluid_info(tile_location const& loc)const { return find_as_pointer(active_fluids, loc); }
   // I *think* this pointer is valid as long as the shared_ptr exists
   shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects, id); }
   /*boost::iterator_range<mobile_objects_map<mobile_object>::iterator> mobile_objects_range() {
