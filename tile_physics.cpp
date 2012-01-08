@@ -32,7 +32,7 @@
 // TODO make a way to obsessively check the caches to find out exactly what code breaks them
 // (assuming that this code has at least a few bugs in it)
 
-// Current remaining major TODOs: making world stuff, and cache checking.
+// Current remaining major TODOs: Initialization and cache checking.
 
 // This is the only file that's allowed to change the contents of tiles at locations.
 // Other files should change tile contents through replace_substance,
