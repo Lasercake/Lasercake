@@ -469,7 +469,7 @@ struct persistent_water_group_info {
   //bool is_infinite;
   //tile_coordinate infinite_ocean_height;
   
-  void recompute_num_tiles_by_height_from_surface_tiles(world &w);
+  void recompute_num_tiles_by_height_from_surface_tiles(world const& w);
   fine_scalar get_pressure_at_height(tile_coordinate height)const;
   
   tile_location get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height);

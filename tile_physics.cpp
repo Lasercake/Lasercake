@@ -216,7 +216,7 @@ void world::initialize_tile_water_group_caches(tile_location const& loc) {
   }
 }
 
-void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_tiles(world &w) {
+void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_tiles(world const& w) {
   // Here's how we compute the total volume in less than linear time:
   // We take each contiguous row of surface tiles and compute its total length by
   // using a cleverly sorted set, so that we can start with a tile at the beginning
