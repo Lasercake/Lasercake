@@ -79,7 +79,7 @@ void update_moving_objects_(
     
     // Check any tile it happens to be in for whether there's water there.
     // If the object is *partially* in water, it'll crash into a surface water on its first step, which will make this same adjustment.
-    if (w.make_tile_location(get_containing_tile_coordinates(personal_space_shapes[p.first].get_polygons()[0].get_vertices()[0]), CONTENTS_ONLY).stuff_at().contents() == WATER) {
+    if (is_water(w.make_tile_location(get_containing_tile_coordinates(personal_space_shapes[p.first].get_polygons()[0].get_vertices()[0]), CONTENTS_ONLY).stuff_at().contents())) {
       const fine_scalar current_speed = p.second->velocity.magnitude_within_32_bits();
       if (current_speed > max_object_speed_through_water) {
         p.second->velocity = p.second->velocity * max_object_speed_through_water / current_speed;
@@ -196,7 +196,7 @@ void update_moving_objects_(
     for (object_or_tile_identifier const& them : this_overlaps) {
       if (them != id) {
         tile_location const* locp = them.get_tile_location();
-        if (locp && locp->stuff_at().contents() == WATER) {
+        if (locp && is_water(locp->stuff_at().contents())) {
           const fine_scalar current_speed = objp->velocity.magnitude_within_32_bits();
           if (current_speed > max_object_speed_through_water) {
             objp->velocity = objp->velocity * max_object_speed_through_water / current_speed;
