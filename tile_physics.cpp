@@ -882,6 +882,7 @@ void replace_substance_(
       unordered_map<tile_location, unordered_set<tile_location>> collected_locs_by_neighbor;
       unordered_map<tile_location, tile_location> neighbors_by_collected_loc;
       unordered_map<tile_location, std::queue<tile_location>> disconnected_frontiers;
+      unordered_set<tile_location> defunct_frontiers;
       
       // Try to collect a location into one of the fills.
       // If no one has claimed it, claim it and add it to your frontier.
@@ -917,6 +918,7 @@ void replace_substance_(
                 disconnected_frontiers[bigger_collector].push(disconnected_frontiers[smaller_collector].front());
                 disconnected_frontiers[smaller_collector].pop();
               }
+              defunct_frontiers.insert(smaller_collector);
               
               return (!this_collector_is_bigger);
             }
@@ -937,13 +939,14 @@ void replace_substance_(
       for (auto p = inf.disconnected_frontiers.begin(); p != inf.disconnected_frontiers.end(); ) {
         tile_location const& which_neighbor = p->first;
         std::queue<tile_location> &frontier = p->second;
-        bool destroy_this_frontier = false;
+        bool destroy_this_frontier = (inf.defunct_frontiers.find(which_neighbor) != inf.defunct_frontiers.end());
         
-        if (frontier.empty()) {
+        if (!destroy_this_frontier && frontier.empty()) {
           // If the frontier is empty, that means this route has finished its search and not found any
           // connections to the rest of the water. Therefore, we need to mark this frontier off as a
           // separate group.
           destroy_this_frontier = true;
+          inf.defunct_frontiers.insert(which_neighbor);
           
           const water_group_identifier new_group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
           
@@ -967,9 +970,8 @@ void replace_substance_(
           }
           check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
         }
-        else {
+        else if (!destroy_this_frontier) {
           tile_location search_loc = frontier.front();
-          frontier.pop();
           
           auto iter = water_groups_by_surface_tile.find(search_loc);
           assert(iter != water_groups_by_surface_tile.end());
@@ -979,27 +981,35 @@ void replace_substance_(
             tile_location adj_loc = search_loc + dir;
             
             destroy_this_frontier = inf.try_collect_loc(which_neighbor, adj_loc);
-            if (destroy_this_frontier) break;
+            if (destroy_this_frontier) goto fake_continue;
             
             if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
               for (EACH_CARDINAL_DIRECTION(d2)) {
                 if (d2.v.dot<neighboring_tile_differential>(dir.v) == 0) {
                   destroy_this_frontier = inf.try_collect_loc(which_neighbor, adj_loc + d2);
-                  if (destroy_this_frontier) break;
+                  if (destroy_this_frontier) goto fake_continue;
                 }
               }
             }
           }
+          frontier.pop();
         }
-          
+        
+        fake_continue:
+        
         if (destroy_this_frontier) {
+          // Hack - if we're merging the last two frontiers, just bail.
+          if (inf.disconnected_frontiers.size() <= 2) goto doublebreak;
+          assert(inf.defunct_frontiers.find(which_neighbor) != inf.defunct_frontiers.end());
           inf.disconnected_frontiers.erase(p++);
         }
         else {
+          assert(inf.defunct_frontiers.find(which_neighbor) == inf.defunct_frontiers.end());
           ++p;
         }
       }
     }
+    doublebreak:
   
     // ==============================================================================
     //  End of flood-fill-based group-splitting algorithm
