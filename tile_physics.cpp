@@ -277,7 +277,7 @@ fine_scalar persistent_water_group_info::get_pressure_at_height(tile_coordinate 
 tile_location persistent_water_group_info::get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height) {
   // It's annoying that this is as bad as linear in the height of the group;
   // I think I could do better, but it would be more complicated.
-  fine_scalar total_weight;
+  fine_scalar total_weight = 0;
   for (auto p = pushable_tiles_by_height.as_map().begin(); p != pushable_tiles_by_height.as_map().upper_bound(height); ++p) {
     // Caution: duplicate definition of "weight" (see below)
     const fine_scalar weight = i64sqrt(get_pressure_at_height(p->first)) * p->second.as_unordered_set().size();
