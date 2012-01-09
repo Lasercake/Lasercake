@@ -1505,7 +1505,19 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     }
     
     fake_continue:
-    if (can_deactivate) active_fluids.erase(i++);
+    if (can_deactivate) {
+      const tile_location loc_preserved = loc;
+      active_fluids.erase(i++);
+      
+      // Hack: What if, in a single frame, we become groupable and then deactivate?
+      // Then we missed the check for becoming a suckable tile because we were ungroupable,
+      // but the following frame, we won't make the check because we'll be inactive!
+      // Semi-hack: Cover for that scenario here.
+      // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
+      if ((loc_preserved + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER) {
+        persistent_water_groups.find(w.get_water_group_id_by_grouped_tile(loc_preserved))->second.mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, loc_preserved, active_fluids);
+      }
+    }
     else ++i;
   }
 }
