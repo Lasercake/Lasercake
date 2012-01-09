@@ -264,7 +264,7 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
   
   new_group.recompute_num_tiles_by_height_from_surface_tiles(w);
   
-  check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
+  //check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
 }
 
 void world::initialize_tile_contents(tile_location const& loc, tile_contents contents) {
@@ -668,7 +668,7 @@ void replace_substance_(
     auto iter = persistent_water_groups.find(water_group_id);
     assert(iter != persistent_water_groups.end());
     water_group = &iter->second;
-    check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
+    //check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
   }
   
   // For inserting water, we check group membership BEFORE
@@ -845,7 +845,7 @@ void replace_substance_(
     
     // Adding a tile at a specific height can change pressure at that height, but not anywhere above
     water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(loc.coords().z));
-    check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
+    //check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
     
     // Our surfaces are now pushable surfaces.
     std::vector<cardinal_direction> directions;
@@ -995,7 +995,7 @@ void replace_substance_(
             iter->second -= p.second;
             if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
           }
-          check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
+          //check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
         }
         else if (!destroy_this_frontier) {
           tile_location search_loc = frontier.front();
@@ -1042,7 +1042,7 @@ void replace_substance_(
     //  End of flood-fill-based group-splitting algorithm
     // ==============================================================================
     
-    check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
+    //check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
     
     // Our surfaces are no longer pushable surfaces.
     for (EACH_CARDINAL_DIRECTION(dir)) {
