@@ -371,7 +371,7 @@ fine_scalar persistent_water_group_info::get_pressure_at_height(tile_coordinate 
   return current_pressure;
 }
   
-tile_location persistent_water_group_info::get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height) {
+/*tile_location persistent_water_group_info::get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height) {
   // It's annoying that this is as bad as linear in the height of the group;
   // I think I could do better, but it would be more complicated.
   fine_scalar total_weight = 0;
@@ -392,7 +392,7 @@ tile_location persistent_water_group_info::get_and_erase_random_pushable_tile_be
     }
   }
   assert(false);
-}
+}*/
 
 
 void suck_out_suckable_water(world &w,
@@ -459,6 +459,7 @@ void push_water_into_pushable_tile(world &w,
   // of creating explosions where more and more water is drawn out.
   // The water will become groupable in its own time.
   // replace_substance automatically makes the tile no-longer-pushable.
+  // (Or maybe the tile was already made non-pushable by what called this.)
   //
   // Semi-hack - we trust that this has been called on a reasonable tile,
   // so we just copy the tile's contents into old_substance_type.
@@ -479,7 +480,7 @@ bool persistent_water_group_info::mark_tile_as_suckable_and_return_true_if_it_is
     suckable_tiles_by_height.insert(loc);
     return false;
   }
-  const tile_location pushed_tile = get_and_erase_random_pushable_tile_below_weighted_by_pressure(loc.coords().z);
+  const tile_location pushed_tile = pushable_tiles_by_height.get_and_erase_random_from_the_bottom();
   suck_out_suckable_water(w, loc, active_fluids);
   push_water_into_pushable_tile(w, pushed_tile, active_fluids);
   return true;
@@ -493,6 +494,14 @@ bool persistent_water_group_info::mark_tile_as_pushable_and_return_true_if_it_is
   suck_out_suckable_water(w, sucked_tile, active_fluids);
   push_water_into_pushable_tile(w, loc, active_fluids);
   return true;
+}
+void correct_all_suckable_pushable_pairs(world &w, persistent_water_group_info &g, active_fluids_t &active_fluids) {
+  while (!g.suckable_tiles_by_height.as_map().empty() && !g.pushable_tiles_by_height.as_map().empty() && g.suckable_tiles_by_height.as_map().rbegin()->first > g.pushable_tiles_by_height.as_map().begin()->first) {
+    const tile_location sucked_tile = g.suckable_tiles_by_height.get_and_erase_random_from_the_top();
+    const tile_location pushed_tile = g.pushable_tiles_by_height.get_and_erase_random_from_the_bottom();
+    suck_out_suckable_water      (w, sucked_tile, active_fluids);
+    push_water_into_pushable_tile(w, pushed_tile, active_fluids);
+  }
 }
 
 
@@ -516,6 +525,7 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
   }
   for (auto const& s : smaller_group.pushable_tiles_by_height.as_map()) {
     for (auto const& t : s.second.as_unordered_set()) {
+      assert(t.stuff_at().contents() == AIR);
       larger_group.pushable_tiles_by_height.insert(t);
     }
   }
@@ -853,13 +863,10 @@ void replace_substance_(
     //check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
     
     // Our surfaces are now pushable surfaces.
-    std::vector<cardinal_direction> directions;
-    for (EACH_CARDINAL_DIRECTION(dir)) directions.push_back(dir);
-    std::random_shuffle(directions.begin(), directions.end());
-    for (auto dir : directions) {
+    for (EACH_CARDINAL_DIRECTION(dir)) {
       const tile_location adj_loc = loc + dir;
       if (adj_loc.stuff_at().contents() == AIR) {
-        water_group->mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(w, adj_loc, active_fluids);
+        water_group->pushable_tiles_by_height.insert(adj_loc);
       }
     }
     // If the tile above us was idle groupable water, it's now suckable...
@@ -868,6 +875,7 @@ void replace_substance_(
     if (uploc.stuff_at().contents() == GROUPABLE_WATER && (uploc + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER && active_fluids.find(uploc) == active_fluids.end()) {
       water_group->mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, uploc, active_fluids);
     }
+    correct_all_suckable_pushable_pairs(w, *water_group, active_fluids);
   }
   
   if (old_substance_type == GROUPABLE_WATER && new_substance_type != GROUPABLE_WATER) {
@@ -988,8 +996,32 @@ void replace_substance_(
           const water_group_identifier new_group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
           
           persistent_water_group_info &new_group = persistent_water_groups.find(new_group_id)->second;
+          
+          unordered_set<tile_location> original_pushable_tiles_removed;
+          for (auto const& ph : water_group->pushable_tiles_by_height.as_map()) {
+            for(auto const& p : ph.second.as_unordered_set()) {
+              assert(p.stuff_at().contents() == AIR);
+              bool is_pushable_for_original_group = false;
+              for (EACH_CARDINAL_DIRECTION(dir)) {
+                const tile_location adj_loc = loc + dir;
+                if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
+                  const water_group_identifier pushable_having_group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
+                  if (pushable_having_group_id == water_group_id) is_pushable_for_original_group = true;
+                  else {
+                    auto foo = persistent_water_groups.find(pushable_having_group_id);
+                    assert(foo != persistent_water_groups.end());
+                    foo->second.pushable_tiles_by_height.insert(p);
+                  }
+                }
+              }
+              if (!is_pushable_for_original_group) original_pushable_tiles_removed.insert(p);
+            }
+          }
+          for (auto const& p : original_pushable_tiles_removed) {
+            water_group->pushable_tiles_by_height.erase(p);
+          }
+          
           for (tile_location const& new_grouped_loc : inf.collected_locs_by_neighbor[which_neighbor]) {
-          // TODO handle pushable surfaces
             water_groups_by_surface_tile[new_grouped_loc] = new_group_id;
             new_group.surface_tiles.insert(new_grouped_loc);
             water_group->surface_tiles.erase(new_grouped_loc);

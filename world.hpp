@@ -436,6 +436,7 @@ public:
   typedef map<tile_coordinate, literally_random_access_removable_stuff<tile_location>> map_t;
   
   tile_location get_and_erase_random_from_the_top();
+  tile_location get_and_erase_random_from_the_bottom();
   bool erase(tile_location const& loc);
   void insert(tile_location const& loc);
   bool any_above(tile_coordinate height)const;

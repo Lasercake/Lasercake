@@ -57,7 +57,14 @@ tile_location literally_random_access_removable_tiles_by_height::get_and_erase_r
   map_t::reverse_iterator iter = data.rbegin();
   const tile_location result = iter->second.get_random();
   iter->second.erase(result);
-  if (iter->second.empty()) data.erase(iter->first);
+  if (iter->second.empty()) data.erase(iter->first); // can't erase from a reverse_iterator
+  return result;
+}
+tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_bottom() {
+  map_t::iterator iter = data.begin();
+  const tile_location result = iter->second.get_random();
+  iter->second.erase(result);
+  if (iter->second.empty()) data.erase(iter);
   return result;
 }
 bool literally_random_access_removable_tiles_by_height::erase(tile_location const& loc) {
