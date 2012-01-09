@@ -1264,7 +1264,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
               // *go to* the height pressure is being measured at, so we measure at opposite_loc.
               const sub_tile_distance deficiency_of_vel = i64sqrt(pressure) - amount_of_vel_in_pressure_receiving_dir;
               if (deficiency_of_vel > 0) {
-                //fluid.velocity += vector3<sub_tile_distance>(-dir.v) * deficiency_of_vel;
+                fluid.velocity += vector3<sub_tile_distance>(-dir.v) * deficiency_of_vel;
               }
             }
           }
