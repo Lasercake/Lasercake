@@ -1345,13 +1345,13 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       //--fluid.frames_until_can_become_groupable;
       //if (fluid.frames_until_can_become_groupable <= 0) {
       //  fluid.frames_until_can_become_groupable = 0;
-        if (!fluid.velocity.magnitude_within_32_bits_is_greater_than(min_convincing_speed)) {
+        if (!(fluid.velocity - inactive_fluid_velocity).magnitude_within_32_bits_is_greater_than(min_convincing_speed/2)) {
           w.replace_substance(loc, UNGROUPABLE_WATER, GROUPABLE_WATER);
         }
       //}
     }
     if (t.contents() == GROUPABLE_WATER) {
-      if (fluid.velocity.magnitude_within_32_bits_is_greater_than(min_convincing_speed)) {
+      if ((fluid.velocity - inactive_fluid_velocity).magnitude_within_32_bits_is_greater_than(min_convincing_speed/2)) {
         w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
       }
     }
