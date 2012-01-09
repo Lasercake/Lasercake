@@ -311,13 +311,13 @@ srand(time(NULL));
       for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
         for(auto const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
-          push_vertex(suckable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+          push_vertex(suckable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
         }
       }
       for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
         for(auto const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
-          push_vertex(pushable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+          push_vertex(pushable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
         }
       }
     }
@@ -411,7 +411,7 @@ srand(time(NULL));
           }
         }
         /*else {
-          push_vertex(inactive_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+          push_vertex(inactive_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
         }*/
       }
      }
