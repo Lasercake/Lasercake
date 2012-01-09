@@ -292,6 +292,8 @@ srand(time(NULL));
     //vector<vertex_entry> inactive_marker_vertices;
     vector<vertex_entry> laserbeam_vertices;
     vector<vertex_entry> object_vertices;
+    vector<vertex_entry> pushable_marker_vertices;
+    vector<vertex_entry> suckable_marker_vertices;
     
     unordered_set<object_or_tile_identifier> tiles_to_draw;
     /*w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(
@@ -302,6 +304,23 @@ srand(time(NULL));
       view_loc - vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50),
       view_loc + vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50)
     ));
+    
+    for (auto const& p : w.get_persistent_water_groups()) {
+      persistent_water_group_info const& g = p.second;
+      
+      for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
+        for(auto const& bar : foo.second.as_unordered_set()) {
+          vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
+          push_vertex(suckable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+        }
+      }
+      for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
+        for(auto const& bar : foo.second.as_unordered_set()) {
+          vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
+          push_vertex(pushable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.5);
+        }
+      }
+    }
     
     for (auto p : w.laser_sfxes) {
       vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, p.first);
@@ -469,6 +488,16 @@ srand(time(NULL));
     glColor4f(1.0,1.0,1.0,0.5);
     glVertexPointer(3, GL_FLOAT, 0, &object_vertices[0]);
     glDrawArrays(GL_LINES, 0, object_vertices.size());
+    
+    glColor4f(1.0, 0.0, 1.0, 0.5);
+    glPointSize(3);
+    glVertexPointer(3, GL_FLOAT, 0, &suckable_marker_vertices[0]);
+    glDrawArrays(GL_POINTS, 0, suckable_marker_vertices.size());
+    
+    glColor4f(1.0, 0.5, 0.0, 0.5);
+    glPointSize(3);
+    glVertexPointer(3, GL_FLOAT, 0, &pushable_marker_vertices[0]);
+    glDrawArrays(GL_POINTS, 0, pushable_marker_vertices.size());
     
     
     

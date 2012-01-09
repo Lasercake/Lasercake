@@ -637,6 +637,7 @@ public:
   
   water_group_identifier get_water_group_id_by_grouped_tile(tile_location const& loc)const;
   persistent_water_group_info const& get_water_group_by_grouped_tile(tile_location const& loc)const;
+  persistent_water_groups_t const& get_persistent_water_groups()const { return persistent_water_groups; }
   
   groupable_water_dimensional_boundaries_TODO_name_this_better_t const& get_groupable_water_dimensional_boundaries_TODO_name_this_better()const { return groupable_water_dimensional_boundaries_TODO_name_this_better;}
 private:
