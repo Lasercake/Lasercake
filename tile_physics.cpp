@@ -514,6 +514,11 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
       larger_group.suckable_tiles_by_height.insert(t);
     }
   }
+  for (auto const& s : smaller_group.pushable_tiles_by_height.as_map()) {
+    for (auto const& t : s.second.as_unordered_set()) {
+      larger_group.pushable_tiles_by_height.insert(t);
+    }
+  }
   for (auto const& p : smaller_group.num_tiles_by_height) {
     // Note: the [] operator default-constructs a zero if there's nothing there
     assert(p.second > 0);
@@ -892,6 +897,12 @@ void replace_substance_(
     assert(iter->second > 0);
     --iter->second;
     if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
+    
+    if (water_group->num_tiles_by_height.empty()) {
+      persistent_water_groups.erase(water_group_id);
+      // TODO figure out a more elegant way to avoid the following computations than a return
+      return;
+    }
     
     // Removing a tile from a specific height can change pressure at that height, but not anywhere above
     water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(loc.coords().z));
