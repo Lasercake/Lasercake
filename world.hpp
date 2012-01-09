@@ -80,14 +80,9 @@ const sub_tile_distance friction_amount                = velocity_scale_factor *
 
 // TODO: Get some of these constants out of the header that everyone includes
 const sub_tile_distance pressure_constant = 10000;
-// as in 1 + d2 (except with the random based at zero, but who cares)
-const sub_tile_distance pressure_motion_factor         = 16 * velocity_scale_factor;
-const sub_tile_distance pressure_motion_factor_random  = 8 * velocity_scale_factor;
-const sub_tile_distance extra_downward_speed_for_sticky_water = 20 * velocity_scale_factor;
 
 const sub_tile_distance air_resistance_constant = (10000 * velocity_scale_factor * velocity_scale_factor);
 const sub_tile_distance idle_progress_reduction_rate = 20 * velocity_scale_factor;
-const sub_tile_distance sticky_water_velocity_reduction_rate = 1 * velocity_scale_factor;
 
 const vector3<sub_tile_distance> inactive_fluid_velocity(0, 0, -min_convincing_speed);
 
