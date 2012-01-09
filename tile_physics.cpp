@@ -232,8 +232,8 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
     void try_collect_loc(tile_location const& loc) {
       if (is_ungrouped_surface_tile(loc, water_groups_by_surface_tile)) {
         frontier.push_back(loc);
-        new_group.surface_tiles.insert(loc);
-        water_groups_by_surface_tile.insert(make_pair(loc, new_group_id));
+        assert(new_group.surface_tiles.insert(loc).second);
+        assert(water_groups_by_surface_tile.insert(make_pair(loc, new_group_id)).second);
         if ((loc.get_neighbor(cdir_zplus, CONTENTS_ONLY)).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(loc);
     
         // This DOES handle first-initialization properly; it makes some unnecessary checks, but
@@ -535,8 +535,11 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
     larger_group.num_tiles_by_height[p.first] += p.second;
   }
   for (auto const& l : smaller_group.surface_tiles) {
-    larger_group.surface_tiles.insert(l);
-    water_groups_by_surface_tile[l] = remaining_group_id;
+    assert(larger_group.surface_tiles.insert(l).second);
+    auto foo = water_groups_by_surface_tile.find(l);
+    assert(foo != water_groups_by_surface_tile.end());
+    assert(foo->second == destroyed_group_id);
+    foo->second = remaining_group_id;
   }
   
   larger_group.pressure_caches.erase(larger_group.pressure_caches.begin(), larger_group.pressure_caches.upper_bound(smaller_group.num_tiles_by_height.rbegin()->first));
@@ -547,24 +550,25 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
 }
 
 water_group_identifier world::get_water_group_id_by_grouped_tile(tile_location const& loc)const {
-  auto i = water_groups_by_surface_tile.find(loc);
-  if (i != water_groups_by_surface_tile.end()) {
-    return i->second;
-  }
-  else {
-    // Crap, we don't know what group we're part of unless we find a surface tile!
-    // Find the next surface tile in some arbitrary direction.
-    // That tile will tell us what group we're in.
-    auto iter = groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.lower_bound(loc);
-    if (iter == groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end()) {
-      return NO_WATER_GROUP;
+  {
+    water_groups_by_location_t::const_iterator i = water_groups_by_surface_tile.find(loc);
+    if (i != water_groups_by_surface_tile.end()) {
+      return i->second;
     }
-    tile_location const& surface_loc = *iter;
-    if (surface_loc.coords().y != loc.coords().y || surface_loc.coords().z != loc.coords().z) {
-      return NO_WATER_GROUP;
-    }
-    return water_groups_by_surface_tile.find(surface_loc)->second;
   }
+  
+  // Crap, we don't know what group we're part of unless we find a surface tile!
+  // Find the next surface tile in some arbitrary direction.
+  // That tile will tell us what group we're in.
+  auto iter = groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.lower_bound(loc);
+  if (iter == groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end()) {
+    return NO_WATER_GROUP;
+  }
+  tile_location const& surface_loc = *iter;
+  if (surface_loc.coords().y != loc.coords().y || surface_loc.coords().z != loc.coords().z) {
+    return NO_WATER_GROUP;
+  }
+  return water_groups_by_surface_tile.find(surface_loc)->second;
 }
 persistent_water_group_info const& world::get_water_group_by_grouped_tile(tile_location const& loc)const {
   return persistent_water_groups.find(get_water_group_id_by_grouped_tile(loc))->second;
@@ -659,10 +663,16 @@ void replace_substance_(
       const tile_location adj_loc = loc + dir;
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
         water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
-        persistent_water_group_info &group = persistent_water_groups.find(group_id)->second;
+        assert(group_id != NO_WATER_GROUP);
+        auto foo = persistent_water_groups.find(group_id);
+        assert(foo != persistent_water_groups.end());
+        persistent_water_group_info &group = foo->second;
         group.pushable_tiles_by_height.erase(loc);
       }
     }
+      const tile_location uploc = loc + cdir_zplus;
+    // Hack: make sure we're not a pushable tile of any other groups either...
+    for (auto &foo : persistent_water_groups) assert(!foo.second.pushable_tiles_by_height.erase(loc));
   }
   
   // If we're removing water, we have complicated computations to do. We do it in this order:
@@ -699,7 +709,7 @@ void replace_substance_(
     // constitutes a merger of those two groups, so we execute that.
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const tile_location adj_loc = loc + dir;
-      auto iter = water_groups_by_surface_tile.find(adj_loc);
+      water_groups_by_location_t::const_iterator iter = water_groups_by_surface_tile.find(adj_loc);
       if (iter != water_groups_by_surface_tile.end()) {
         if (water_group_id == NO_WATER_GROUP) {
           water_group_id = iter->second;
@@ -843,8 +853,8 @@ void replace_substance_(
           }
         }
         if (!adjacent_tile_has_any_adjacent_tiles_that_are_not_groupable_water) {
-          water_groups_by_surface_tile.erase(adj_loc);
-          water_group->surface_tiles.erase(adj_loc);
+          if (water_group->surface_tiles.erase(adj_loc))
+            assert(water_groups_by_surface_tile.erase(adj_loc));
         }
       }
       else {
@@ -852,8 +862,8 @@ void replace_substance_(
       }
     }
     if (there_are_any_adjacent_tiles_that_are_not_groupable_water) {
-      water_groups_by_surface_tile.insert(make_pair(loc, water_group_id));
-      water_group->surface_tiles.insert(loc);
+      if (water_group->surface_tiles.insert(loc).second)
+        assert(water_groups_by_surface_tile.insert(make_pair(loc, water_group_id)).second);
     }
     
     ++water_group->num_tiles_by_height[loc.coords().z];
@@ -880,20 +890,20 @@ void replace_substance_(
   
   if (old_substance_type == GROUPABLE_WATER && new_substance_type != GROUPABLE_WATER) {
     // If we were a surface tile of the group, we are no longer.
-    water_groups_by_surface_tile.erase(loc);
-    water_group->surface_tiles.erase(loc);
+    if (water_group->surface_tiles.erase(loc))
+      assert(water_groups_by_surface_tile.erase(loc));
     
     // We may have exposed other group tiles, which now need to be marked as the group surface.
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const tile_location adj_loc = loc + dir;
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-        auto existing_marker_iter = water_groups_by_surface_tile.find(adj_loc);
+        water_groups_by_location_t::const_iterator existing_marker_iter = water_groups_by_surface_tile.find(adj_loc);
         if (existing_marker_iter != water_groups_by_surface_tile.end()) {
           assert(existing_marker_iter->second == water_group_id);
         }
         else {
-          water_groups_by_surface_tile.insert(make_pair(adj_loc, water_group_id));
-          water_group->surface_tiles.insert(adj_loc);
+          if (water_group->surface_tiles.insert(adj_loc).second)
+            assert(water_groups_by_surface_tile.insert(make_pair(adj_loc, water_group_id)).second);
         }
       }
     }
@@ -997,6 +1007,27 @@ void replace_substance_(
           
           persistent_water_group_info &new_group = persistent_water_groups.find(new_group_id)->second;
           
+          for (tile_location const& new_grouped_loc : inf.collected_locs_by_neighbor[which_neighbor]) {
+            auto foo = water_groups_by_surface_tile.find(new_grouped_loc);
+            assert(foo != water_groups_by_surface_tile.end());
+            assert(foo->second == water_group_id);
+            foo->second = new_group_id;
+            assert(new_group.surface_tiles.insert(new_grouped_loc).second);
+            assert(water_group->surface_tiles.erase(new_grouped_loc));
+            if (water_group->suckable_tiles_by_height.erase(new_grouped_loc)) {
+              new_group.suckable_tiles_by_height.insert(new_grouped_loc);
+            }
+          }
+          new_group.recompute_num_tiles_by_height_from_surface_tiles(w);
+          for (auto const& p : new_group.num_tiles_by_height) {
+            auto iter = water_group->num_tiles_by_height.find(p.first);
+            assert(iter != water_group->num_tiles_by_height.end());
+            assert(iter->second > 0);
+            assert(iter->second >= p.second);
+            iter->second -= p.second;
+            if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
+          }
+          
           unordered_set<tile_location> original_pushable_tiles_removed;
           for (auto const& ph : water_group->pushable_tiles_by_height.as_map()) {
             for(auto const& p : ph.second.as_unordered_set()) {
@@ -1020,32 +1051,16 @@ void replace_substance_(
           for (auto const& p : original_pushable_tiles_removed) {
             water_group->pushable_tiles_by_height.erase(p);
           }
-          
-          for (tile_location const& new_grouped_loc : inf.collected_locs_by_neighbor[which_neighbor]) {
-            water_groups_by_surface_tile[new_grouped_loc] = new_group_id;
-            new_group.surface_tiles.insert(new_grouped_loc);
-            water_group->surface_tiles.erase(new_grouped_loc);
-            if (water_group->suckable_tiles_by_height.erase(new_grouped_loc)) {
-              new_group.suckable_tiles_by_height.insert(new_grouped_loc);
-            }
-          }
-          new_group.recompute_num_tiles_by_height_from_surface_tiles(w);
-          for (auto const& p : new_group.num_tiles_by_height) {
-            auto iter = water_group->num_tiles_by_height.find(p.first);
-            assert(iter != water_group->num_tiles_by_height.end());
-            assert(iter->second > 0);
-            assert(iter->second >= p.second);
-            iter->second -= p.second;
-            if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
-          }
           //check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
         }
         else if (!destroy_this_frontier) {
           tile_location search_loc = frontier.front();
           
-          auto iter = water_groups_by_surface_tile.find(search_loc);
-          assert(iter != water_groups_by_surface_tile.end());
-          assert(iter->second == water_group_id);
+          {
+            water_groups_by_location_t::const_iterator iter = water_groups_by_surface_tile.find(search_loc);
+            assert(iter != water_groups_by_surface_tile.end());
+            assert(iter->second == water_group_id);
+          }
           
           for (EACH_CARDINAL_DIRECTION(dir)) {
             tile_location adj_loc = search_loc + dir;
@@ -1095,7 +1110,7 @@ void replace_substance_(
         for (EACH_CARDINAL_DIRECTION(d2)) {
           const tile_location adj_adj_loc = adj_loc + d2;
           if (adj_adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-            auto foo = water_groups_by_surface_tile.find(adj_adj_loc);
+            water_groups_by_location_t::const_iterator foo = water_groups_by_surface_tile.find(adj_adj_loc);
             if (foo != water_groups_by_surface_tile.end() && foo->second == water_group_id) {
               can_be_pushable = true;
               break;
