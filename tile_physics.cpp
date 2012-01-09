@@ -698,8 +698,8 @@ void replace_substance_(
         assert(false);
       }
     }
+    check_pushable_tiles_sanity(w);
   }
-  check_pushable_tiles_sanity(w);
   
   // If we're removing water, we have complicated computations to do. We do it in this order:
   // 1) Gather as much information as possible BEFORE physically changing anything (while we're still marked as water)
@@ -756,7 +756,6 @@ void replace_substance_(
     
     water_group = &persistent_water_groups.find(water_group_id)->second;
   }
-  check_pushable_tiles_sanity(w);
   
   // ==============================================================================
   // 2) Physically change us
@@ -855,7 +854,6 @@ void replace_substance_(
     }
   }
   
-  check_pushable_tiles_sanity(w);
   // ==============================================================================
   // 4) Update the relatively-interconnected cached info of water groups
   // ==============================================================================
@@ -907,6 +905,8 @@ void replace_substance_(
         water_group->pushable_tiles_by_height.insert(adj_loc);
       }
     }
+    check_pushable_tiles_sanity(w);
+    
     // If the tile above us was idle groupable water, it's now suckable...
     // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
     const tile_location uploc = loc + cdir_zplus;
