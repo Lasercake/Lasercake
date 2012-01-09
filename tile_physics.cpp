@@ -83,6 +83,30 @@ void dump_group_info(persistent_water_group_info const& g) {
     std::cerr << "  " << foo.first << ": " << foo.second << "\n";
   }
 }
+void dump_all_groups(world &w) {
+  for (auto const& p : w.get_persistent_water_groups()) {
+    std::cerr << "\n==GROUP "<< p.first<<"==\n";
+    dump_group_info(p.second);
+  }
+}
+
+void check_pushable_tiles_sanity(world &w) {
+  for (auto const& p : w.get_persistent_water_groups()) {
+    auto const& g = p.second;
+    for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
+      for(auto const& bar : foo.second.as_unordered_set()) {
+        bool sane = false;
+        for(EACH_CARDINAL_DIRECTION(dir)) {
+          if(g.surface_tiles.find(bar + dir) != g.surface_tiles.end()) {
+            sane = true;
+            break;
+          }
+        }
+        assert(sane);
+      }
+    }
+  }
+}
 
 // Hacky debugging function that duplicates code from elsewhere.
 void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_water_group_info const& g) {
@@ -572,24 +596,6 @@ water_group_identifier world::get_water_group_id_by_grouped_tile(tile_location c
 }
 persistent_water_group_info const& world::get_water_group_by_grouped_tile(tile_location const& loc)const {
   return persistent_water_groups.find(get_water_group_id_by_grouped_tile(loc))->second;
-}
-
-void check_pushable_tiles_sanity(world &w) {
-  for (auto const& p : w.get_persistent_water_groups()) {
-    auto const& g = p.second;
-    for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
-      for(auto const& bar : foo.second.as_unordered_set()) {
-        bool sane = false;
-        for(EACH_CARDINAL_DIRECTION(dir)) {
-          if(g.surface_tiles.find(bar + dir) != g.surface_tiles.end()) {
-            sane = true;
-            break;
-          }
-        }
-        assert(sane);
-      }
-    }
-  }
 }
 
 
@@ -1243,18 +1249,23 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
             walking_loc = walking_loc - dir;
           }
           if (pinned_between_obstacles) {
+            // Hack? If we have obstructions on both sides, do nothing
+            // formerly:
             // Hack? - if we have obstructions on both sides, just stop
-            fluid.velocity -= project_onto_cardinal_direction(fluid.velocity, dir);
+            // fluid.velocity -= project_onto_cardinal_direction(fluid.velocity, dir);
             //fluid.frames_until_can_become_groupable = 0;
           }
           else {
             persistent_water_group_info const& group = w.get_water_group_by_grouped_tile(adj_loc);
-            const sub_tile_distance amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_distance>(-dir.v);
-            // This velocity pushes us towards opposite_loc, and pressure is a measure of how much water wants to
-            // *go to* the height pressure is being measured at, so we measure at opposite_loc.
-            const sub_tile_distance deficiency_of_vel = i64sqrt(group.get_pressure_at_height(opposite_loc.coords().z)) - amount_of_vel_in_pressure_receiving_dir;
-            if (deficiency_of_vel > 0) {
-              fluid.velocity += vector3<sub_tile_distance>(-dir.v) * deficiency_of_vel;
+            const fine_scalar pressure = group.get_pressure_at_height(opposite_loc.coords().z);
+            if (pressure > 0) { // Hack - TODO examine the fact that "0 pressure" forces velocity to be at least 0 away from the tile (incorrect behavior for tiles directly above the group) and if that also causes subtler problems.
+              const sub_tile_distance amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_distance>(-dir.v);
+              // This velocity pushes us towards opposite_loc, and pressure is a measure of how much water wants to
+              // *go to* the height pressure is being measured at, so we measure at opposite_loc.
+              const sub_tile_distance deficiency_of_vel = i64sqrt(pressure) - amount_of_vel_in_pressure_receiving_dir;
+              if (deficiency_of_vel > 0) {
+                //fluid.velocity += vector3<sub_tile_distance>(-dir.v) * deficiency_of_vel;
+              }
             }
           }
         }
@@ -1409,9 +1420,10 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
         // (Unless we're slower than min_convincing_speed, which is a kludge that's important for the "fall off pillars" rule.)
         src_fluid.blockage_amount_this_frame[move.dir] = move.excess_progress;
         
-        sub_tile_distance dst_vel_in_movement_dir = 0;
+        sub_tile_distance dst_vel_in_movement_dir;
         auto i = active_fluids.find(dst);
-        if (i != active_fluids.end()) dst_vel_in_movement_dir = i->second.velocity.dot<sub_tile_distance>(move.dir.v);
+        if (i == active_fluids.end()) dst_vel_in_movement_dir = inactive_fluid_velocity.dot<sub_tile_distance>(move.dir.v);
+        else                          dst_vel_in_movement_dir = i->second.velocity     .dot<sub_tile_distance>(move.dir.v);
         const sub_tile_distance acceptable_remaining_vel_for_us = std::max(dst_vel_in_movement_dir - gravity_acceleration_magnitude * 2, min_convincing_speed);
         const sub_tile_distance our_vel_in_movement_dir = src_fluid.velocity.dot<sub_tile_distance>(move.dir.v);
         const sub_tile_distance excess_vel = our_vel_in_movement_dir - acceptable_remaining_vel_for_us;
