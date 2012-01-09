@@ -857,6 +857,12 @@ void replace_substance_(
         water_group->mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(w, adj_loc, active_fluids);
       }
     }
+    // If the tile above us was idle groupable water, it's now suckable...
+    // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
+    const tile_location uploc = loc + cdir_zplus;
+    if (uploc.stuff_at().contents() == GROUPABLE_WATER && (uploc + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER && active_fluids.find(uploc) == active_fluids.end()) {
+      water_group->mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, uploc, active_fluids);
+    }
   }
   
   if (old_substance_type == GROUPABLE_WATER && new_substance_type != GROUPABLE_WATER) {
