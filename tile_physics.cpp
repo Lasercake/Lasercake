@@ -574,6 +574,24 @@ persistent_water_group_info const& world::get_water_group_by_grouped_tile(tile_l
   return persistent_water_groups.find(get_water_group_id_by_grouped_tile(loc))->second;
 }
 
+void check_pushable_tiles_sanity(world &w) {
+  for (auto const& p : w.get_persistent_water_groups()) {
+    auto const& g = p.second;
+    for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
+      for(auto const& bar : foo.second.as_unordered_set()) {
+        bool sane = false;
+        for(EACH_CARDINAL_DIRECTION(dir)) {
+          if(g.surface_tiles.find(bar + dir) != g.surface_tiles.end()) {
+            sane = true;
+            break;
+          }
+        }
+        assert(sane);
+      }
+    }
+  }
+}
+
 
 void replace_substance_(
    world &w,
@@ -611,6 +629,7 @@ void replace_substance_(
   tile const& t = loc.stuff_at();
   
   assert(t.contents() == old_substance_type);
+  check_pushable_tiles_sanity(w);
   
   if (old_substance_type != AIR && new_substance_type == AIR) {
     // We might have moved away from a tile that was trying to push water into us.
@@ -672,8 +691,15 @@ void replace_substance_(
     }
       const tile_location uploc = loc + cdir_zplus;
     // Hack: make sure we're not a pushable tile of any other groups either...
-    for (auto &foo : persistent_water_groups) assert(!foo.second.pushable_tiles_by_height.erase(loc));
+    for (auto &foo : persistent_water_groups) {
+      if (foo.second.pushable_tiles_by_height.erase(loc)) {
+        std::cerr << uploc.coords() << ", " << foo.first << ", " << water_groups_by_surface_tile.find(uploc)->second << "\n";
+        assert(foo.second.surface_tiles.find(uploc) != foo.second.surface_tiles.end());
+        assert(false);
+      }
+    }
   }
+  check_pushable_tiles_sanity(w);
   
   // If we're removing water, we have complicated computations to do. We do it in this order:
   // 1) Gather as much information as possible BEFORE physically changing anything (while we're still marked as water)
@@ -730,6 +756,7 @@ void replace_substance_(
     
     water_group = &persistent_water_groups.find(water_group_id)->second;
   }
+  check_pushable_tiles_sanity(w);
   
   // ==============================================================================
   // 2) Physically change us
@@ -828,6 +855,7 @@ void replace_substance_(
     }
   }
   
+  check_pushable_tiles_sanity(w);
   // ==============================================================================
   // 4) Update the relatively-interconnected cached info of water groups
   // ==============================================================================
@@ -925,6 +953,26 @@ void replace_substance_(
     // Removing a tile from a specific height can change pressure at that height, but not anywhere above
     water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(loc.coords().z));
     
+    // Our surfaces are no longer pushable surfaces.
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const tile_location adj_loc = loc + dir;
+      if (adj_loc.stuff_at().contents() == AIR) {
+        bool can_be_pushable = false;
+        for (EACH_CARDINAL_DIRECTION(d2)) {
+          const tile_location adj_adj_loc = adj_loc + d2;
+          if (adj_adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
+            water_groups_by_location_t::const_iterator foo = water_groups_by_surface_tile.find(adj_adj_loc);
+            if (foo != water_groups_by_surface_tile.end() && foo->second == water_group_id) {
+              can_be_pushable = true;
+              break;
+            }
+          }
+        }
+        if (!can_be_pushable) water_group->pushable_tiles_by_height.erase(adj_loc);
+      }
+    }
+    check_pushable_tiles_sanity(w);
+    
     // Our disappearance might have split the group.
     // If we *did* split the group, we're going to have to flood-fill along the surfaces of all the components in order to divide the groups from each other.
     // If we *didn't*, and we start a breadth-first flood fill from the adjacent tiles, then the fill groups will probably run into each other almost immediately. When that happens, we know that the adjacent tiles are connected.
@@ -997,6 +1045,7 @@ void replace_substance_(
         bool destroy_this_frontier = (inf.defunct_frontiers.find(which_neighbor) != inf.defunct_frontiers.end());
         
         if (!destroy_this_frontier && frontier.empty()) {
+          check_pushable_tiles_sanity(w);
           // If the frontier is empty, that means this route has finished its search and not found any
           // connections to the rest of the water. Therefore, we need to mark this frontier off as a
           // separate group.
@@ -1034,10 +1083,12 @@ void replace_substance_(
               assert(p.stuff_at().contents() == AIR);
               bool is_pushable_for_original_group = false;
               for (EACH_CARDINAL_DIRECTION(dir)) {
-                const tile_location adj_loc = loc + dir;
+                const tile_location adj_loc = p + dir;
                 if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
                   const water_group_identifier pushable_having_group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
-                  if (pushable_having_group_id == water_group_id) is_pushable_for_original_group = true;
+                  if (pushable_having_group_id == water_group_id) {
+                    is_pushable_for_original_group = true;
+                  }
                   else {
                     auto foo = persistent_water_groups.find(pushable_having_group_id);
                     assert(foo != persistent_water_groups.end());
@@ -1052,6 +1103,7 @@ void replace_substance_(
             water_group->pushable_tiles_by_height.erase(p);
           }
           //check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
+          check_pushable_tiles_sanity(w);
         }
         else if (!destroy_this_frontier) {
           tile_location search_loc = frontier.front();
@@ -1094,33 +1146,15 @@ void replace_substance_(
         }
       }
     }
-    doublebreak:
+    doublebreak: ;
   
     // ==============================================================================
     //  End of flood-fill-based group-splitting algorithm
     // ==============================================================================
     
     //check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
-    
-    // Our surfaces are no longer pushable surfaces.
-    for (EACH_CARDINAL_DIRECTION(dir)) {
-      const tile_location adj_loc = loc + dir;
-      if (adj_loc.stuff_at().contents() == AIR) {
-        bool can_be_pushable = false;
-        for (EACH_CARDINAL_DIRECTION(d2)) {
-          const tile_location adj_adj_loc = adj_loc + d2;
-          if (adj_adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-            water_groups_by_location_t::const_iterator foo = water_groups_by_surface_tile.find(adj_adj_loc);
-            if (foo != water_groups_by_surface_tile.end() && foo->second == water_group_id) {
-              can_be_pushable = true;
-              break;
-            }
-          }
-        }
-        if (!can_be_pushable) water_group->pushable_tiles_by_height.erase(adj_loc);
-      }
-    }
   }
+  check_pushable_tiles_sanity(w);
 }
 
 
