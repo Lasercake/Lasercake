@@ -541,9 +541,9 @@ public:
   }
   
   // If objects overlap with the new position, returns their IDs. If not, changes the shape and returns an empty set.
-  unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape(object_identifier id, shape const& new_shape);
+  //unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape(object_identifier id, shape const& new_shape);
   // Objects can't fail to change their detail shape, but it may cause effects (like blocking a laser beam)
-  void change_detail_shape(object_identifier id, shape const& new_shape);
+  //void change_detail_shape(object_identifier id, shape const& new_shape);
   
   void add_laser_sfx(vector3<fine_scalar> laser_source, vector3<fine_scalar> laser_delta) {
     laser_sfxes.push_back(make_pair(laser_source, laser_delta));
