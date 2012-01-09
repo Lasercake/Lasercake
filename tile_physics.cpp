@@ -846,6 +846,17 @@ void replace_substance_(
     // Adding a tile at a specific height can change pressure at that height, but not anywhere above
     water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(loc.coords().z));
     check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
+    
+    // Our surfaces are now pushable surfaces.
+    std::vector<cardinal_direction> directions;
+    for (EACH_CARDINAL_DIRECTION(dir)) directions.push_back(dir);
+    std::random_shuffle(directions.begin(), directions.end());
+    for (auto dir : directions) {
+      const tile_location adj_loc = loc + dir;
+      if (adj_loc.stuff_at().contents() == AIR) {
+        water_group->mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(w, adj_loc, active_fluids);
+      }
+    }
   }
   
   if (old_substance_type == GROUPABLE_WATER && new_substance_type != GROUPABLE_WATER) {
@@ -961,6 +972,7 @@ void replace_substance_(
           
           persistent_water_group_info &new_group = persistent_water_groups.find(new_group_id)->second;
           for (tile_location const& new_grouped_loc : inf.collected_locs_by_neighbor[which_neighbor]) {
+          // TODO handle pushable surfaces
             water_groups_by_surface_tile[new_grouped_loc] = new_group_id;
             new_group.surface_tiles.insert(new_grouped_loc);
             water_group->surface_tiles.erase(new_grouped_loc);
@@ -1025,6 +1037,25 @@ void replace_substance_(
     // ==============================================================================
     
     check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
+    
+    // Our surfaces are no longer pushable surfaces.
+    for (EACH_CARDINAL_DIRECTION(dir)) {
+      const tile_location adj_loc = loc + dir;
+      if (adj_loc.stuff_at().contents() == AIR) {
+        bool can_be_pushable = false;
+        for (EACH_CARDINAL_DIRECTION(d2)) {
+          const tile_location adj_adj_loc = adj_loc + d2;
+          if (adj_adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
+            auto foo = water_groups_by_surface_tile.find(adj_adj_loc);
+            if (foo != water_groups_by_surface_tile.end() && foo->second == water_group_id) {
+              can_be_pushable = true;
+              break;
+            }
+          }
+        }
+        if (!can_be_pushable) water_group->pushable_tiles_by_height.erase(adj_loc);
+      }
+    }
   }
 }
 
@@ -1099,8 +1130,22 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
         const tile_location adj_loc = loc + dir;
         if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
           const tile_location opposite_loc = loc - dir;
-          if (opposite_loc.stuff_at().contents() == GROUPABLE_WATER) {
-            // Hack - if we have groupable water pushing from both sides, become groupable ASAP
+          tile_location walking_loc = opposite_loc;
+          bool pinned_between_obstacles;
+          while(true) {
+            tile_contents contents_there = walking_loc.stuff_at().contents();
+            if (contents_there == GROUPABLE_WATER || obstructiveness(contents_there) > obstructiveness(GROUPABLE_WATER)) {
+              pinned_between_obstacles = true;
+              break;
+            }
+            if (contents_there == AIR) {
+              pinned_between_obstacles = false;
+              break;
+            }
+            walking_loc = walking_loc - dir;
+          }
+          if (pinned_between_obstacles) {
+            // Hack? - if we have obstructions on both sides, just stop
             fluid.velocity -= project_onto_cardinal_direction(fluid.velocity, dir);
             //fluid.frames_until_can_become_groupable = 0;
           }
