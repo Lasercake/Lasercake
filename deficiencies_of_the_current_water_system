@@ -1,0 +1,12 @@
+All of these carry an implicit "TODO, fix this, at least if there's a clean way to do so".
+
+"Does the wrong thing"-type deficiencies:
+
+- Inactive grouped water tiles next to air don't get activated when the group starts having pressure that would push them.
+- Water moves in the six cardinal directions a little too much. (scenarios "tower2" and "tower3" illustrate this especially).
+- Water going up an initially-empty tunnel moves oddly, by stages (see scenario "pressure_tunnel"). It should be possible to fix this by tweaking the rules about when a tile becomes groupable.
+- If a tile vanishes in the middle of an ocean, it doesn't activate the tile directly below it (though it should)
+
+"Doesn't do something it could be able to"-type deficiencies:
+
+- We don't have infinite oceans yet.

@@ -23,6 +23,8 @@
 #define LASERCAKE_UTILS_HPP__
 
 #include <array>
+#include <unordered_set>
+#include <vector>
 #include <cmath>
 #include <inttypes.h>
 #include <boost/functional/hash.hpp>
@@ -236,6 +238,7 @@ struct cardinal_direction {
   cardinal_direction(vector3<neighboring_tile_differential> v, cardinal_direction_index i):v(v),cardinal_direction_idx(i){}
   vector3<neighboring_tile_differential> v;
   cardinal_direction_index cardinal_direction_idx;
+  bool operator==(cardinal_direction other)const { return cardinal_direction_idx == other.cardinal_direction_idx; }
   cardinal_direction operator-()const;
   int which_dimension()const { return (int)(cardinal_direction_idx % 3); } // relies on the current order of the directions
 };
@@ -333,6 +336,45 @@ public:
   operator int()const{ return value; }
 private:
   int value;
+};
+
+template<typename Stuff> struct literally_random_access_removable_stuff {
+public:
+  void insert(Stuff const& stuff) {
+    if ((stuffs_set.insert(stuff)).second) {
+      stuffs_superset_vector.push_back(stuff);
+    }
+  }
+  bool erase(Stuff const& which) {
+    if (stuffs_set.erase(which)) {
+      if (stuffs_set.size() * 2 <= stuffs_superset_vector.size()) {
+        purge_nonexistent_stuffs();
+      }
+      return true;
+    }
+    return false;
+  }
+  Stuff const& get_random()const {
+    assert(!stuffs_set.empty());
+    size_t idx;
+    do {
+      idx = (size_t)(rand()%(stuffs_superset_vector.size()));
+    } while (stuffs_set.find(stuffs_superset_vector[idx]) == stuffs_set.end());
+    return stuffs_superset_vector[idx];
+  }
+  bool empty()const { return stuffs_set.empty(); }
+  std::unordered_set<Stuff> const& as_unordered_set()const { return stuffs_set; }
+private:
+  std::vector<Stuff> stuffs_superset_vector;
+  std::unordered_set<Stuff> stuffs_set;
+  void purge_nonexistent_stuffs() {
+    size_t next_insert_idx = 0;
+    for (Stuff const& st : stuffs_set) {
+      stuffs_superset_vector[next_insert_idx] = st;
+      ++next_insert_idx;
+    }
+    stuffs_superset_vector.erase(stuffs_superset_vector.begin() + next_insert_idx, stuffs_superset_vector.end());
+  }
 };
 
 #endif
