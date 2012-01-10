@@ -300,7 +300,7 @@ void world::initialize_tile_local_caches(tile_location const& loc) {
   bool should_be_interior = true;
   for (EACH_CARDINAL_DIRECTION(dir)) {
     const tile_location adj_loc = loc.get_neighbor(dir, CONTENTS_ONLY);
-    if (interiorness_checking_type(adj_loc.stuff_at().contents()) != interiorness_checking_type(loc.stuff_at().contents())) {
+    if (!interiorness_equivalent(adj_loc.stuff_at().contents(), loc.stuff_at().contents())) {
       // Between us and them is a 'different types' interface, so we're not interior:
       should_be_interior = false;
       break;
@@ -806,11 +806,11 @@ void replace_substance_(
       }
     }
   }
-  if (interiorness_checking_type(new_substance_type) != interiorness_checking_type(old_substance_type)) {
+  if (!interiorness_equivalent(new_substance_type, old_substance_type)) {
     bool we_are_now_interior = true;
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const tile_location adj_loc = loc + dir;
-      if (interiorness_checking_type(adj_loc.stuff_at().contents()) != interiorness_checking_type(new_substance_type)) {
+      if (!interiorness_equivalent(adj_loc.stuff_at().contents(), new_substance_type)) {
         // Between us and them is a 'different types' interface, so neither us nor them is interior:
         we_are_now_interior = false;
         if (adj_loc.stuff_at().is_interior()) {
@@ -829,7 +829,7 @@ void replace_substance_(
         if (!adj_loc.stuff_at().is_interior()) {
           bool they_should_be_interior = true;
           for (EACH_CARDINAL_DIRECTION(d2)) {
-            if (interiorness_checking_type((adj_loc + d2).stuff_at().contents()) != interiorness_checking_type(adj_loc.stuff_at().contents())) {
+            if (!interiorness_equivalent((adj_loc + d2).stuff_at().contents(), adj_loc.stuff_at().contents())) {
               they_should_be_interior = false;
               break;
             }
