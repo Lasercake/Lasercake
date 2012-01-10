@@ -1249,8 +1249,10 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
             walking_loc = walking_loc - dir;
           }
           if (pinned_between_obstacles) {
+            // Hack? - if we're pinned between obstructions, just become groupable immediately
+            fluid.velocity = inactive_fluid_velocity;
             // Hack? - if we have obstructions on both sides, just stop... unless it's vertical, in which case stop to the inactive level:
-            fluid.velocity -= project_onto_cardinal_direction(fluid.velocity - inactive_fluid_velocity, dir);
+            //fluid.velocity -= project_onto_cardinal_direction(fluid.velocity - inactive_fluid_velocity, dir);
             //fluid.frames_until_can_become_groupable = 0;
           }
           else {
