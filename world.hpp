@@ -79,7 +79,7 @@ const vector3<sub_tile_distance> gravity_acceleration(0, 0, -gravity_acceleratio
 const sub_tile_distance friction_amount                = velocity_scale_factor * tile_width / 1800;
 
 // TODO: Get some of these constants out of the header that everyone includes
-const sub_tile_distance pressure_constant = 10000;
+const sub_tile_distance pressure_constant = 500 * velocity_scale_factor * velocity_scale_factor;
 
 const sub_tile_distance air_resistance_constant = (10000 * velocity_scale_factor * velocity_scale_factor);
 const sub_tile_distance idle_progress_reduction_rate = 20 * velocity_scale_factor;
