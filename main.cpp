@@ -248,8 +248,8 @@ srand(time(NULL));
     }
     
     Uint8 *keystate = SDL_GetKeyState(NULL);
-	
-    if(p_mode == 1)continue;
+    
+    bool pd_this_time = (p_mode == 1);
     if(p_mode > 1)--p_mode;
     int before_drawing = SDL_GetTicks();
 
@@ -289,7 +289,7 @@ srand(time(NULL));
     }
     vector<vertex_entry> velocity_vertices;
     vector<vertex_entry> progress_vertices;
-    //vector<vertex_entry> inactive_marker_vertices;
+    vector<vertex_entry> inactive_marker_vertices;
     vector<vertex_entry> laserbeam_vertices;
     vector<vertex_entry> object_vertices;
     vector<vertex_entry> pushable_marker_vertices;
@@ -311,13 +311,13 @@ srand(time(NULL));
       for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
         for(auto const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
-          push_vertex(suckable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
+          push_vertex(suckable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.15);
         }
       }
       for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
         for(auto const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
-          push_vertex(pushable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
+          push_vertex(pushable_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.15);
         }
       }
     }
@@ -402,17 +402,17 @@ srand(time(NULL));
             if (prog > 0) {
               vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary(dir);
 
-              push_vertex(progress_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
+              push_vertex(progress_vertices, locv.x + 0.51, locv.y + 0.5, locv.z + 0.1);
               push_vertex(progress_vertices,
-                  locv.x + 0.5 + directed_prog.x,
+                  locv.x + 0.51 + directed_prog.x,
                   locv.y + 0.5 + directed_prog.y,
                   locv.z + 0.1 + directed_prog.z);
             }
           }
         }
-        /*else {
+        else {
           push_vertex(inactive_marker_vertices, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
-        }*/
+        }
       }
      }
     }
@@ -471,10 +471,10 @@ srand(time(NULL));
     glVertexPointer(3, GL_FLOAT, 0, &progress_vertices[0]);
     glDrawArrays(GL_LINES, 0, progress_vertices.size());
     
-    /*glColor4f(0.0, 0.0, 0.0, 0.5);
+    glColor4f(0.0, 0.0, 0.0, 0.5);
     glPointSize(3);
     glVertexPointer(3, GL_FLOAT, 0, &inactive_marker_vertices[0]);
-    glDrawArrays(GL_POINTS, 0, inactive_marker_vertices.size());*/
+    glDrawArrays(GL_POINTS, 0, inactive_marker_vertices.size());
     
     glColor4f(0.0, 1.0, 0.0, 0.5);
     glVertexPointer(3, GL_FLOAT, 0, &laserbeam_vertices[0]);
@@ -507,7 +507,7 @@ srand(time(NULL));
     int before_processing = SDL_GetTicks();
     
     //doing stuff code here
-    w.update();
+    if (!pd_this_time) w.update();
     
     int after = SDL_GetTicks();
     std::cerr << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";
