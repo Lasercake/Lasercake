@@ -1059,7 +1059,6 @@ void replace_substance_(
           inf.defunct_frontiers.insert(which_neighbor);
           
           const water_group_identifier new_group_id = make_new_water_group(next_water_group_identifier, persistent_water_groups);
-          
           persistent_water_group_info &new_group = persistent_water_groups.find(new_group_id)->second;
           
           for (tile_location const& new_grouped_loc : inf.collected_locs_by_neighbor[which_neighbor]) {
@@ -1082,6 +1081,7 @@ void replace_substance_(
             iter->second -= p.second;
             if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
           }
+          water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(new_group.num_tiles_by_height.rbegin()->first));
           
           unordered_set<tile_location> original_pushable_tiles_removed;
           for (auto const& ph : water_group->pushable_tiles_by_height.as_map()) {
