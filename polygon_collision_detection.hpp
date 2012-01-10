@@ -57,6 +57,13 @@ struct bounding_box {
   void combine_with(bounding_box const& o);
   void restrict_to(bounding_box const& o);
 };
+inline bool operator==(bounding_box const& b1, bounding_box const& b2) {
+  return (b1.is_anywhere == false && b2.is_anywhere == false) ||
+    (b1.is_anywhere == b2.is_anywhere && b1.min == b2.min && b1.max == b2.max);
+}
+inline bool operator!=(bounding_box const& b1, bounding_box const& b2) {
+  return !(b1 == b2);
+}
 inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
   return os << '[' << bb.min << ',' << bb.max << ']';
 }
