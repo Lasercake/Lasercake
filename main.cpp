@@ -341,7 +341,7 @@ srand(time(NULL));
       persistent_water_group_info const& g = p.second;
       
       for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
-        for(auto const& bar : foo.second.as_unordered_set()) {
+        for(tile_location const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
           vertices_t& vertices = verticeses[
             tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc)
@@ -350,7 +350,7 @@ srand(time(NULL));
         }
       }
       for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
-        for(auto const& bar : foo.second.as_unordered_set()) {
+        for(tile_location const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
           vertices_t& vertices = verticeses[
             tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc)
