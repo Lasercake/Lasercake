@@ -1456,7 +1456,11 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     }
     if (t.contents() == GROUPABLE_WATER) {
       if ((fluid.velocity - inactive_fluid_velocity).magnitude_within_32_bits_is_greater_than(min_convincing_speed/2)) {
-        w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
+        // HACK: Water with groupable water directly under it doesn't stop being groupable due to high velocity,
+        // purely to facilitate the water-being-sucked-out-very-fast situation.
+        // TODO: find a cleaner way to facilitate that if possible.
+        if ((loc + cdir_zminus).stuff_at().contents() != GROUPABLE_WATER)
+          w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
       }
     }
   }
