@@ -22,6 +22,7 @@ void collect_collisions_if_object_personal_space_is_at(world& w, unordered_set<o
   }
 }
 
+/*
 void actually_change_personal_space_shape(
    object_identifier id, shape const& new_shape,
    object_shapes_t           &personal_space_shapes,
@@ -30,6 +31,7 @@ void actually_change_personal_space_shape(
   things_exposed_to_collision.erase(id);
   things_exposed_to_collision.insert(id, new_shape.bounds());
 }
+*/
 
 cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& velocity, bounding_box const& my_bounds, bounding_box const& other_bounds) {
   bounding_box overlapping_bounds(my_bounds);
@@ -225,7 +227,14 @@ void update_moving_objects_(
       // don't update last_step_time - it will compute another step at current_time
     }
     else {
-      actually_change_personal_space_shape(id, new_shape, personal_space_shapes, things_exposed_to_collision);
+      // Hack: We put ourselves in the tree with only our personal space shape, not
+      // the combined bounds of that and the detail shape. I think this is just to save
+      // complication and time (since we currently have no reason to consider the
+      // detail shape during movement/collisions.)
+      personal_space_shapes[id] = new_shape;
+      things_exposed_to_collision.erase(id);
+      things_exposed_to_collision.insert(id, new_shape.bounds());
+      
       info.accumulated_displacement += wanted_displacement_this_step;
       info.remaining_displacement -= wanted_displacement_this_step;
       info.last_step_time = times.current_time;
@@ -266,6 +275,11 @@ void update_moving_objects_(
     else {
       detail_shapes[p.first].translate(trajinfo[p.first].accumulated_displacement);
     }
+      
+    bounding_box new_bounds = personal_space_shapes[p.first].bounds();
+    new_bounds.combine_with(detail_shapes[p.first].bounds());
+    things_exposed_to_collision.erase(p.first);
+    things_exposed_to_collision.insert(p.first, new_bounds);
   }
 }
 
@@ -273,6 +287,7 @@ void world::update_moving_objects() {
   update_moving_objects_(*this, moving_objects, object_personal_space_shapes, object_detail_shapes, things_exposed_to_collision);
 }
 
+#if 0
 // If objects overlap with the new position, returns their IDs. If not, changes the shape and returns an empty set.
 unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape_(world &w, object_shapes_t &personal_space_shapes, world_collision_detector &things_exposed_to_collision, object_identifier id, shape const& new_shape) {
   unordered_set<object_or_tile_identifier> collisions;
@@ -309,4 +324,5 @@ void world::change_detail_shape(object_identifier id, shape const& new_shape) {
     }
   }*/
 }
+#endif
 
