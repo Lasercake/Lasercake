@@ -25,14 +25,179 @@
 
 /*
 
-- Only water (not other fluids) behaves as groups
+This file describes the tile-based physics system.
+
+We use a 3D grid of tiles for some parts of our physics.
+The main tile-based part of the physics is FLUID MOTION.
+
+Real-life fluid motion is very complicated, so we use a wide variety of
+simplifications in order to simulate it quickly on a large scale.
+There are also many rules to cover specific situations; this comment will be
+a general overview, not a complete description. Comments elsewhere in the file
+describe the nature and purpose of some of those specific rules.
+
+=== OVERVIEW ===
+
+Each tile is a solid mass of some type of substance (rock, water, air, etc);
+When they move, they move by exactly an entire tile at a time, and swap with
+whatever substance was in the other tile.
+
+Fluid tiles carry a "velocity" with them, which is fairly self-explanatory.
+In order to reconcile the fine-grained velocity with the granular tile movement,
+fluid tiles also carry "progress" in each direction - when the progress exceeds
+a certain threshold, the tile makes a step in that direction. A tile can have
+'progress' in two opposite directions at once.
+
+When a tile runs into something that it can't pass, it gets blocked, and loses
+most of its velocity in that direction.[1] Also, if there's room for it to
+go past the blocking tile diagonally, then the amount of excess "progress"
+that was blocked gets added to its "progress" in the perpendicular directions.
+Tiles can't actually move diagonally, but the perpendicular progress will
+eventually build up to be enough to move it into the corner, whereupon
+its original velocity/progress in the original direction will carry it around
+the corner. I call this rule the "fall off pillars" rule, because its original
+purpose was to make it so that a stack of single tiles of water wouldn't
+stay stacked.
+
+For some fluids, that's it. Sand is considered a fluid, and it obeys only
+the above rules. It falls down due to gravity, and pours off shallow slopes,
+but even if there's a huge pile of sand in one side of a J tube, it won't
+go up the other side of the J tube, because it doesn't consider pressure.
+
+The main exception is water, which has lots of special rules to deal with
+pressure. We mark some water as "groupable", and we keep caches of water
+"groups" - masses of "groupable water" that are conneced through direct
+cardinal-direction adjacency. And we compute the "pressure" at each level
+from the depth of tiles in the group, and at each open surface, we push
+water out, and at the top surfaces, we pull water in to replace it.
+
+For optimization, we merely keep a list (actually a hash table from
+location to active fluid info) of the active fluid tiles, with their velocity
+and progress and stuff. And we carefully remove tiles from the list when
+they become inactive, so that our basic computations are no slower than
+linear in the number of tiles that are *actually* moving.
+
+=== GROUPS AND PRESSURE: RULES ===
+
+Tiles at the top of a group, which have fallen enough to run into the
+next tile down, are considered "suckable".
+
+Air tiles just outside the mass of a group are considered "pushable".
+
+Whenever a single group has pushable and suckable tiles at the same time,
+if the pushable tiles are at a lower height than the suckable tiles,
+it immediately teleports the topmost suckable waters to the locations of the
+bottommost pushable tiles until it's in a stable situation again.
+
+If there's a tile that *would* be pushable but has a fluid tile in it, that
+fluid tile gets a velocity related to the pressure at its height.
+(This is actually done in the external fluid tile's computation, not the
+group's computation. In fact, groups themselves never do any computation per
+frame; they just react to things that happen around them.)
+
+There's one catch here: If all water was groupable all the time, a weird
+thing would happen when you tried to dump a large lake through a small tube
+into an open area. When it first came out of the small tube, it would move
+slowly, because the tube only had a small surface area. But when it had gotten
+out a little, it would suddenly have more surface area, and shed water much
+faster. So there would be a slowly building explosion, which is nothing like
+the way water works in real life.
+
+To avoid that, we make it so that water that's *moving* fast enough
+is marked not-groupable. So as it pours out of a hole, it becomes ungroupable
+until later, and never allows the group to dump its high pressure onto any
+tile except the ones right at the mouth of the tube.
+
+So, in the J-tube situation, here's what happens.
+The lower end has pushable tiles, and the higher end has suckable tiles,
+so it pushes a lot of water out the lower end. That water is probably moving
+quickly upwards. So it's not groupable right away. As soon as it moves one
+tile upwards, though, it frees up the space it was at, and if there are
+suckable tiles left, those spaces are refilled again. And the water moving
+upwards eventually stops due to gravity and becomes groupable. This continues
+until the tube has levelled off.
+
+
+=== GROUPS AND PRESSURE: HOW THE CACHING WORKS ===
+
+We don't keep a cache of all the internal tiles of a group. In fact, our
+algorithms are designed so that we never have to do any computation for
+the interior tiles at all; the worst-case computation issues are only
+proportional to the surface area (including water-to-rock surfaces) of
+the group. Typical-use cases are proportional to the surface area in
+water-to-air surfaces that are actually moving.
+
+For each group, we DO keep a cache of all the tiles in the group. In fact,
+each surface tile is stored in two hash tables - one that gets the group ID
+from the surface tile, and one that gets all the surface tiles for each group.
+
+When a new groupable-water tile appears, if it's next to an existing surface,
+it joins that group. If it isn't, then it makes its own new group.
+("A groupable water tile appears" describes situations in which one appears
+from thin air, or one moves from one tile to another, or an existing tile
+becomes groupable. Actually, we currently never allow water to remain
+groupable when it moves, but anyway.)
+
+When a groupable-water tile disappears, it removes itself from its group.
+
+So, in most cases, a tile moving only takes constant time to compute, and we
+never actually have to iterate through all the surface tiles of a group -
+just handle the local situation when individual tiles move.
+
+However, there are two problem cases:
+
+1) When a tile is added next to TWO DIFFERENT groups. In this case, we have
+to merge the groups; this operation takes time proportional to the surface
+area of the smaller group, because we have to update the cached group info
+for all of those surface tiles, to have them join the larger group.
+
+2) When a tile is removed in such a way that it SPLITS a group. In fact, when
+we remove a tile, we CAN'T IMMEDIATELY KNOW whether the group is being split.
+In this case, we use a flood-fill algorithm from each adjacent tile, over
+group surface tiles, to figure out the total area of the split groups (and if
+the flood-fills run into each other, then we know that the group is still
+in one piece.) Under normal circumstances, the group isn't split, and the
+flood-fills run into each other almost immediately, so removing a tile is still
+no worse than constant time. When the group actually DOES split, we have to take
+time proportional to the total surface area of the *smaller* group. (It also
+takes time proportional to the size of the group in certain ugly cases, like
+when there's a circle of water that splits at one side - it's technically still
+the same group, but you have to look all the way around to discover that.
+
+=== INFINITE OCEANS ===
+
+(Infinite oceans aren't implemented yet, but this will be correct once they are.)
+
+Both of those cases have a worst-case scenario that takes the size of the
+SMALLER group - which means that water merging or joining with an infinite ocean
+does not take infinite time! And since an ocean is almost entirely inactive,
+we don't need to do infinite computations to figure out how it moves each frame,
+either.
+
+But what about the "pushable" and "suckable" tiles? For infinite oceans, we just
+assume that they have infinitely many pushable tiles at their surface height,
+height, and infinitely many suckable tiles at their surface height. This actually
+makes computations *simpler* for the rest of the group - you never have to check
+for the real pushable or suckable tiles, just the assumed ones - and since they're,
+on average, infinitely far away, you don't have to figure out what actually happens
+at their locations - just pull water out of thin air, or push it into nonexistence.
+
+In fact, if you know that a tile is connected to an infinite ocean, you don't need
+ANY of its other group information at all - because of the way the pressure is
+computed, its pressure is directly proportional to its depth from the ocean height.
+This also solves the "two infinite oceans split from each other" case that could
+take infinite time if we didn't handle it specially - if two groups are connected
+to an infinite ocean, we can just assume that that means they're connected to each
+other, because the group info doesn't matter.
+
+So how do we learn, when we're pathfinding over a group, whether it's connected to
+an infinite ocean, without looking infinitely far?
+
+TODO: Figure out a good way to do that (I can think of some, but they all have
+worst-case scenarios that get really bad in the case of an infinitely long dike
+dividing two infinite oceans.)
 
 */
-
-// TODO make a way to obsessively check the caches to find out exactly what code breaks them
-// (assuming that this code has at least a few bugs in it)
-
-// Current remaining major TODOs: cache checking.
 
 // This is the only file that's allowed to change the contents of tiles at locations.
 // Other files should change tile contents through replace_substance,
@@ -1547,136 +1712,5 @@ bool active_fluid_tile_info::is_in_inactive_state()const {
   }
   return velocity == inactive_fluid_velocity;
 }
-
-/*
-
-Eli says: The following is a description of how the water rules work,
-written by Isaac and slightly edited by myself. I'm not terribly
-satisfied with it, but it's waaaay better than not having a description at all.
-I want to write my own description of the water rules, but I'm too busy!
-Remind me to do that sometime.
-
-* * * * *
-
-Water is simulated something like this:
-
-Water is tile-based.  There's a 3D grid of tiles, and each of them
-either is water or something else (like rock or air).  Tiles are significantly
-shorter than they are wide; nothing relies on the exact tile width and tile height,
-but they affect the physics. (It takes longer to move vertically by a tile
-if the height is greater - I don't think there are any other rules that refer to the
-width and height right now.)
-
-Each water tile can be "sticky" or "free" water.  This affects
-how it behaves.  Water is generally "free" water if more than one of the
-six adjacent tiles is air; otherwise it's sticky.
-
-"free" water tiles move individually based on velocity, and "sticky" water tiles
-are computed as contiguous groups of sticky water. Contiguousness is measured in the
-six orthogonal directions.
-
-A water's freeness or stickiness has a special 1-frame delay between when it meets
-the conditions for freeness/stickyness (the amount of air nearby) and when it becomes
-free/sticky. This makes sticky water flow more smoothly (it doesn't lose its group
-properties by snapping to free water in some situations.)
-
-Imagine it were 2D.
-
-W=water, #=rock, space=air:
-
- W     W
-## WWW
-##WWWWWW#
-##WWWWWW#
-###WWWW##
-#########
-
-That's, F=free water, S=sticky water,
-
- F     F
-## FSF
-##SSSSSS#
-##SSSSSS#
-###SSSS##
-#########
-
-[[[[
-As an optimization, we also define "interior water" as that sticky water
-which has sticky water on all six sides ("I" below) :
-
- F     F
-## FSF
-##SSISSS#
-##SIIIIS#
-###SSSS##
-#########
-
-Air/rock/water/free/sticky/interior are stored in the tile's byte.
-Interior is just a cache that is updated whenever an interior tile
-or any of its neighbors changes.
-]]]]
-
-Sticky-water groups exert pressure on their neighbors.  This pressure
-is similar to z_top - z, where z_top is the top z coordinate in the
-water group, and z is the particular neighbor's z coordinate.
-Pressure outward from the edge of a group causes a water tile to
-make "progress" in that direction (a water can make progress in
-several contradictory-seeming directions at once).  Then if a water
-tile has made sufficient progress in a direction, and sees an air in that direction,
-it "flows" into that direction.  To "flow" means that a water tile teleports
-from a random one of the highest (in z) water-tiles in this group,
-to this air location. The more pressure, the more velocity a
-free water has when it comes out. If a sticky water tile makes sufficient
-progress in a direction but there's free water in the way, it pushes that
-free water away from it (by setting that free water's velocity).
-
-Free water velocity also moves by incrementing 'progress'
-in the direction(s) it's moving.
-
-There are special rules for free and sticky water to slide off the
-edges of tiles (in the above example, the top left free-water will
-slide towards the lake despite comfortably sitting still on top
-of a nice rectangular rock).  Free water has slight air resistance in air,
-and significant friction when it's running into something.
-
-[[[[
-As another optimization, we define "active water" as water which might
-plausibly do something.  Water starts out presumed to be active, and
-we must (for performance reasons) make sure that any water that reaches
-a stable state becomes inactive.  "Active water" is stored in world as a
-hash from tile_location to active_water_temporary_data; the temporary data
-can be discarded for water which reaches a stable state.
-
-Free water becomes inactive when it has zero x/y velocity, rock/water below it,
-and the stable amount of down-velocity caused by gravity and the thing below
-it pushing back against gravity.
-
-Sticky water becomes inactive when it isn't exerting pressure in any direction.
-Sticky water doesn't use its own velocity, but we have it keep any velocity it
-had as free water for a little while so that it doesn't get weird if a tile
-becomes sticky and quickly becomes free again. Sticky water stays "active" until
-its lingering velocity goes away.
-]]]]
-
-Because of the group rules, water can flow efficiently down tunnels; only in some cases
-is it slowed down by being forced through a particularly narrow hole/tunnel
-Basically, it's slowed down in those cases where the exit-surface is narrow.
-This is one reason that it's important that water tend to become free when it
-spurts out a small hole, so that it can't easily, right outside the hole,
-form part of a large exit-surface for the large water group.
-
-These shenanigans make the water tend to be more realistic,
-and don't add high simulation cost.
-
-Water without the grouping/pressure mechanic flows far too slowly. If we
-only had water propagate pressure/velocity to adjacent tiles each frame, then it
-would have terrible difficulty flowing down long, thin tunnels.
-The grouping/pressure mechanism does admirably at handling a wide variety of cases,
-and also is able to completely skip simulating the "interior" water-tiles that might
-make up the mainstay of the volume of a lake.
-
-*/
-
-
 
 
