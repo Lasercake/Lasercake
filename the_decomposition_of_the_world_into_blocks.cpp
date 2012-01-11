@@ -122,7 +122,7 @@ namespace hacky_internals {
       neighbor->ensure_realization(realineeded);
       return tile_location(new_coords, neighbor);
     }
-    return tile_location(
+    else return tile_location(
       new_coords,
       (
         neighbors[dir] =
