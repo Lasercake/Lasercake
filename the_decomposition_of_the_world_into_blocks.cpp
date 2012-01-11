@@ -52,8 +52,8 @@ namespace hacky_internals {
       is_busy_realizing = false;
     }
     
-    if ((             realineeded >= CONTENTS_AND_STICKYNESS_ONLY) &&
-        (current_tile_realization <  CONTENTS_AND_STICKYNESS_ONLY)) {
+    if ((             realineeded >= CONTENTS_AND_LOCAL_CACHES_ONLY) &&
+        (current_tile_realization <  CONTENTS_AND_LOCAL_CACHES_ONLY)) {
     
       assert(!is_busy_realizing);
       is_busy_realizing = true;
@@ -61,16 +61,13 @@ namespace hacky_internals {
       for (tile_coordinate x = global_position.x; x < global_position.x + worldblock_dimension; ++x) {
         for (tile_coordinate y = global_position.y; y < global_position.y + worldblock_dimension; ++y) {
           for (tile_coordinate z = global_position.z; z < global_position.z + worldblock_dimension; ++z) {
-            const vector3<tile_coordinate> coords(x,y,z);
-            tile& here = this->get_tile(coords);
-            if (here.contents() == WATER && should_be_sticky(tile_location(coords, this))) {
-              here.set_water_stickyness(true);
-            }
+            tile_location loc(vector3<tile_coordinate>(x,y,z), this);
+            w->initialize_tile_local_caches(loc);
           }
         }
       }
       
-      current_tile_realization = CONTENTS_AND_STICKYNESS_ONLY;
+      current_tile_realization = CONTENTS_AND_LOCAL_CACHES_ONLY;
       is_busy_realizing = false;
     }
     
@@ -83,8 +80,14 @@ namespace hacky_internals {
       for (tile_coordinate x = global_position.x; x < global_position.x + worldblock_dimension; ++x) {
         for (tile_coordinate y = global_position.y; y < global_position.y + worldblock_dimension; ++y) {
           for (tile_coordinate z = global_position.z; z < global_position.z + worldblock_dimension; ++z) {
-            tile_location loc(vector3<tile_coordinate>(x,y,z), this);
-            w->initialize_interiorness_and_exposure_to_collision(loc);
+            const vector3<tile_coordinate> coords(x,y,z);
+            tile& here = this->get_tile(coords);
+            // Checking contents() here: significant speed improvement.
+            // (Some from the inlining, some from not having to construct a tile_location if not GROUPABLE_WATER,
+            // I believe.) --Isaac
+            if (here.contents() == GROUPABLE_WATER) {
+              w->initialize_tile_water_group_caches(tile_location(coords, this));
+            }
           }
         }
       }
@@ -119,7 +122,7 @@ namespace hacky_internals {
       neighbor->ensure_realization(realineeded);
       return tile_location(new_coords, neighbor);
     }
-    return tile_location(
+    else return tile_location(
       new_coords,
       (
         neighbors[dir] =

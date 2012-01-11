@@ -23,6 +23,8 @@
 #define LASERCAKE_UTILS_HPP__
 
 #include <array>
+#include <unordered_set>
+#include <vector>
 #include <cmath>
 #include <inttypes.h>
 #include <boost/functional/hash.hpp>
@@ -230,14 +232,22 @@ namespace std {
 }
 
 typedef int8_t neighboring_tile_differential;
-typedef int8_t cardinal_direction_index;
-const cardinal_direction_index num_cardinal_directions = 6;
+typedef int8_t cardinal_direction_index; //TODO perhaps enum cardinal_direction_index : int8_t { ... };?
+enum { cdiridx_xminus, cdiridx_yminus, cdiridx_zminus, cdiridx_xplus, cdiridx_yplus, cdiridx_zplus };
+const int num_cardinal_directions = 6;
+// These are macros (not inline functions) so they can be used in constant expressions:
+// 'constexpr' support in compilers isn't quite functional yet.
+#define which_dimension_is_cardinal_direction_index(idx) (int(idx) % 3)
+#define opposite_cardinal_direction_index(idx) (cardinal_direction_index((int(idx) + 3) % 6))
+#define is_a_positive_directional_cardinal_direction_index(idx) (int(idx) >= 3)
+
 struct cardinal_direction {
   cardinal_direction(vector3<neighboring_tile_differential> v, cardinal_direction_index i):v(v),cardinal_direction_idx(i){}
   vector3<neighboring_tile_differential> v;
   cardinal_direction_index cardinal_direction_idx;
+  bool operator==(cardinal_direction other)const { return cardinal_direction_idx == other.cardinal_direction_idx; }
   cardinal_direction operator-()const;
-  int which_dimension()const { return (int)(cardinal_direction_idx % 3); } // relies on the current order of the directions
+  int which_dimension()const { return which_dimension_is_cardinal_direction_index(cardinal_direction_idx); }
 };
 
 template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_direction(vector3<ScalarType> src, cardinal_direction dir) {
@@ -247,16 +257,19 @@ template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_d
 const vector3<neighboring_tile_differential> xunitv(1, 0, 0);
 const vector3<neighboring_tile_differential> yunitv(0, 1, 0);
 const vector3<neighboring_tile_differential> zunitv(0, 0, 1);
-// the order of this must be in sync with the order of hacky_vector_indexing_internals::cardinal_direction_vector_to_index
-const cardinal_direction cdir_xminus = cardinal_direction(-xunitv, 0);
-const cardinal_direction cdir_yminus = cardinal_direction(-yunitv, 1);
-const cardinal_direction cdir_zminus = cardinal_direction(-zunitv, 2);
-const cardinal_direction cdir_xplus = cardinal_direction(xunitv, 3);
-const cardinal_direction cdir_yplus = cardinal_direction(yunitv, 4);
-const cardinal_direction cdir_zplus = cardinal_direction(zunitv, 5);
+const cardinal_direction cdir_xminus = cardinal_direction(-xunitv, cdiridx_xminus);
+const cardinal_direction cdir_yminus = cardinal_direction(-yunitv, cdiridx_yminus);
+const cardinal_direction cdir_zminus = cardinal_direction(-zunitv, cdiridx_zminus);
+const cardinal_direction cdir_xplus = cardinal_direction(xunitv, cdiridx_xplus);
+const cardinal_direction cdir_yplus = cardinal_direction(yunitv, cdiridx_yplus);
+const cardinal_direction cdir_zplus = cardinal_direction(zunitv, cdiridx_zplus);
+// This ordering must match the dir ordering above.
+// Sadly C++ isn't supporting C99's = { [cdiridx_xminus] = cdir_xminus, [...] };.
 const cardinal_direction cardinal_directions[num_cardinal_directions] = { cdir_xminus, cdir_yminus, cdir_zminus, cdir_xplus, cdir_yplus, cdir_zplus };
 #define EACH_CARDINAL_DIRECTION(varname) cardinal_direction varname : cardinal_directions
-inline cardinal_direction cardinal_direction::operator-()const { return cardinal_directions[(cardinal_direction_idx + 3)%6]; }
+inline cardinal_direction cardinal_direction::operator-()const {
+  return cardinal_directions[opposite_cardinal_direction_index(cardinal_direction_idx)];
+}
 
 template<typename ValueType> class value_for_each_cardinal_direction {
 public:
@@ -333,6 +346,45 @@ public:
   operator int()const{ return value; }
 private:
   int value;
+};
+
+template<typename Stuff> struct literally_random_access_removable_stuff {
+public:
+  void insert(Stuff const& stuff) {
+    if ((stuffs_set.insert(stuff)).second) {
+      stuffs_superset_vector.push_back(stuff);
+    }
+  }
+  bool erase(Stuff const& which) {
+    if (stuffs_set.erase(which)) {
+      if (stuffs_set.size() * 2 <= stuffs_superset_vector.size()) {
+        purge_nonexistent_stuffs();
+      }
+      return true;
+    }
+    return false;
+  }
+  Stuff const& get_random()const {
+    assert(!stuffs_set.empty());
+    size_t idx;
+    do {
+      idx = (size_t)(rand()%(stuffs_superset_vector.size()));
+    } while (stuffs_set.find(stuffs_superset_vector[idx]) == stuffs_set.end());
+    return stuffs_superset_vector[idx];
+  }
+  bool empty()const { return stuffs_set.empty(); }
+  std::unordered_set<Stuff> const& as_unordered_set()const { return stuffs_set; }
+private:
+  std::vector<Stuff> stuffs_superset_vector;
+  std::unordered_set<Stuff> stuffs_set;
+  void purge_nonexistent_stuffs() {
+    size_t next_insert_idx = 0;
+    for (Stuff const& st : stuffs_set) {
+      stuffs_superset_vector[next_insert_idx] = st;
+      ++next_insert_idx;
+    }
+    stuffs_superset_vector.erase(stuffs_superset_vector.begin() + next_insert_idx, stuffs_superset_vector.end());
+  }
 };
 
 #endif
