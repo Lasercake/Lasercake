@@ -97,12 +97,14 @@ void laser_emitter::update(world &w, object_identifier my_id) {
     unordered_set<object_or_tile_identifier> possible_hits;
     w.collect_things_exposed_to_collision_intersecting(possible_hits, laser_line.bounds());
     std::pair<bool, boost::rational<int64_t>> best_inters(false, 0);
+    object_or_tile_identifier best_id /*no default-constructor so pick something arbitrary*/ = my_id;
     for (object_or_tile_identifier const& id : possible_hits) {
       if (id != my_id) {
         shape other_shape = w.get_detail_shape_of_object_or_tile(id);
         std::pair<bool, boost::rational<int64_t>> inters = other_shape.first_intersection(laser_line);
         if (inters.first && (!best_inters.first || inters.second < best_inters.second)) {
           best_inters = inters;
+          best_id = id;
         }
       }
     }
@@ -110,6 +112,11 @@ void laser_emitter::update(world &w, object_identifier my_id) {
     if (best_inters.first) {
       // TODO do I have to worry about overflow?
       w.add_laser_sfx(location, facing * i + facing * best_inters.second.numerator() / best_inters.second.denominator());
+      if(tile_location const* locp = best_id.get_tile_location()) {
+        if(rand()%100 == 0) {
+          w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+        }
+      }
       return;
     }
     laser_line.translate(facing);
