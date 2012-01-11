@@ -212,18 +212,14 @@ inline bool is_water(tile_contents t) {
   return (t >= UNGROUPABLE_WATER) && (t <= GROUPABLE_WATER);
 }
 
-// There's an equivalence relation between tiles.
-// A tile in the same equivalence class as all its neighbors is
-// an interior tile of that equivalence class.
-inline tile_contents interiorness_equivalence_class_representative(tile_contents t) {
-  // yes, we DO need to distinguish ungroupable water from groupable water -
-  // - mainly for the grouping code. Which makes "interiorness" have a slightly overloaded
-  // meaning, but that's acceptable for the gain in bit-packing.
-  return t;
-  //return (t == GROUPABLE_WATER) ? UNGROUPABLE_WATER : t;
+// This could be an equivalence relation other than equality someday.
+inline bool these_tile_contents_are_identical_regarding_interiorness(tile_contents t1, tile_contents t2) {
+  return t1 == t2;
 }
-inline bool interiorness_equivalent(tile_contents t1, tile_contents t2) {
-  return interiorness_equivalence_class_representative(t1) == interiorness_equivalence_class_representative(t2);
+// These tiles, when next to each other, are different enough to form
+// an imaginary membrane.
+inline bool neighboring_tiles_with_these_contents_are_not_interior(tile_contents t1, tile_contents t2) {
+  return t1 != t2;
 }
 
 class tile {
