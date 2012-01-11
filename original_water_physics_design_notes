@@ -47,5 +47,3 @@ That is true if each side is evenly distrubiting its pressure across all surface
 Dead end filling?
 
 
-
-Current things missing: make more randomness in the velocity-only water mechanics; water is sometimes a little too perfect in the direction that it goes (lots of 4-pointed and 8-pointed stars); can we smooth out the 'progress' of pressure-moved water the way we do for velocity-moved water?; cache groups
