@@ -134,7 +134,7 @@ struct tile_bounding_box {
             v.z >= min.z && v.z <= min.z + (size.z - 1));
   }
   
-  class iterator : public boost::iterator_facade<iterator, pair<vector3<tile_coordinate>, tile_bounding_box*>, boost::forward_traversal_tag, vector3<tile_coordinate>>
+  class iterator : public boost::iterator_facade<iterator, vector3<tile_coordinate>, boost::forward_traversal_tag, vector3<tile_coordinate>>
   {
     public:
       iterator(){}
