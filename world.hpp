@@ -551,7 +551,7 @@ struct groupable_water_dimensional_boundaries_TODO_name_this_better_t {
   }
 private:
   template <typename Compare>
-  void handle_tile_removal_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
+  static void handle_tile_removal_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
     // This tile is no longer groupable at all, so it can't be a boundary tile
     boundary_tiles_set.erase(loc);
     
@@ -567,7 +567,7 @@ private:
     }
   }
   template <typename Compare>
-  void handle_tile_insertion_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
+  static void handle_tile_insertion_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
     // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
     const tile_location further_in_positive_direction_loc = loc.get_neighbor( dir, CONTENTS_ONLY);
     const tile_location further_in_negative_direction_loc = loc.get_neighbor(-dir, CONTENTS_ONLY);
