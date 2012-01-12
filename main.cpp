@@ -100,12 +100,65 @@ static void createSurface (int fullscreen)
 }
 
 
+const int max_simple_hill_width = 20;
+
+namespace std {
+  template<> struct hash<pair<tile_coordinate, tile_coordinate>> {
+    inline size_t operator()(pair<tile_coordinate, tile_coordinate> const& v) const {
+      size_t seed = 0;
+      boost::hash_combine(seed, v.first);
+      boost::hash_combine(seed, v.second);
+      return seed;
+    }
+  };
+}
+
+int get_hill(unordered_map<std::pair<tile_coordinate, tile_coordinate>, int> &hills_map, pair<tile_coordinate, tile_coordinate> loc) {
+  auto iter = hills_map.find(loc);
+  if (iter == hills_map.end()) {
+    int hill = (rand()&255) ? 0 : (1 + (rand()%max_simple_hill_width));
+    hills_map.insert(make_pair(loc, hill));
+    return hill;
+  }
+  else return iter->second;
+}
+tile_coordinate get_height(unordered_map<std::pair<tile_coordinate, tile_coordinate>, tile_coordinate> &height_map, unordered_map<std::pair<tile_coordinate, tile_coordinate>, int> &hills_map, pair<tile_coordinate, tile_coordinate> loc) {
+  auto iter = height_map.find(loc);
+  if (iter == height_map.end()) {
+    tile_coordinate height = world_center_coord - 100;
+    const tile_coordinate x = loc.first;
+    const tile_coordinate y = loc.second;
+    for (tile_coordinate x2 = x - max_simple_hill_width; x2 <= x + max_simple_hill_width; ++x2) {
+      for (tile_coordinate y2 = y - max_simple_hill_width; y2 <= y + max_simple_hill_width; ++y2) {
+        height += std::max(0, get_hill(hills_map, make_pair(x2, y2)) - (int)i64sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y)));
+      }
+    }
+    height_map.insert(make_pair(loc, height));
+    return height;
+  }
+  else return iter->second;
+}
 
 struct world_building_func {
   world_building_func(std::string scenario):scenario(scenario){}
   std::string scenario;
+  unordered_map<std::pair<tile_coordinate, tile_coordinate>, int> hills_map;
+  unordered_map<std::pair<tile_coordinate, tile_coordinate>, tile_coordinate> height_map;
+  
   void operator()(world_building_gun make, tile_bounding_box bounds) {
     const tile_coordinate wc = world_center_coord;
+    if (scenario == "simple_hills") {
+      for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
+        for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
+          tile_coordinate height = get_height(height_map, hills_map, make_pair(x, y));
+          for (tile_coordinate z = bounds.min.z; z < std::min(height, bounds.min.z + bounds.size.z); ++z) {
+            vector3<tile_coordinate> l(x,y,z);
+            make(ROCK, l);
+          }
+        }
+      }
+      return;
+    }
     if (scenario.substr(0,15) == "pressure_tunnel") {
       for(vector3<tile_coordinate> l : bounds) {
         const tile_coordinate tower_lower_coord = wc;
