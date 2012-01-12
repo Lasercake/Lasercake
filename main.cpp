@@ -404,6 +404,7 @@ srand(time(NULL));
         const object_shapes_t::const_iterator blah = w.get_object_personal_space_shapes().find(*mid);
         std::vector<convex_polygon> const& foo = blah->second.get_polygons();
         for (convex_polygon const& bar : foo) {
+          assert(bar.get_vertices().size() == 4); //TODO haven't implemented this for other face shapes. Eventually will do that via GL_TRIANGLES and splitting each face into triangles.
           for (vector3<int64_t> const& baz : bar.get_vertices()) {
             vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, baz);
             push_vertex(vertices.object, locv.x, locv.y, locv.z);
