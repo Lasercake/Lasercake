@@ -164,10 +164,10 @@ struct world_building_func {
               else if (z > wc+9 && x > wc+10 && x < wc+18) make(ROCK, l);
               else if (x > wc+10) make(GROUPABLE_WATER, l);
             }
-            if (scenario == "twisty") {
+            if (scenario.substr(0,6) == "twisty") {
               if (x == wc+0) make(GROUPABLE_WATER, l);
               else if (x == wc+1 && z > wc+0) make(ROCK, l);
-              else if (x == wc+5) make(ROCK, l);
+              else if (x == wc+5) make(scenario == "twistyrubble" ? RUBBLE : ROCK, l);
               else if (x == wc+2 && (z % 4) == 1) make(ROCK, l);
               else if (x == wc+3 && (z % 2) == 1) make(ROCK, l);
               else if (x == wc+4 && (z % 4) == 3) make(ROCK, l);
