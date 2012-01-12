@@ -44,20 +44,24 @@ whatever substance was in the other tile.
 
 Fluid tiles carry a "velocity" with them, which is fairly self-explanatory.
 In order to reconcile the fine-grained velocity with the granular tile movement,
-fluid tiles also carry "progress" in each direction - when the progress exceeds
-a certain threshold, the tile makes a step in that direction. A tile can have
-'progress' in two opposite directions at once.
+fluid tiles also carry "progress" in each of the six directions - when the
+progress exceeds a certain threshold, the tile makes a step in that direction.
+A tile can have 'progress' in two opposite directions at once.
 
 When a tile runs into something that it can't pass, it gets blocked, and loses
-most of its velocity in that direction.[1] Also, if there's room for it to
+most of its velocity in that direction. Also, if there's room for it to
 go past the blocking tile diagonally, then the amount of excess "progress"
-that was blocked gets added to its "progress" in the perpendicular directions.
-Tiles can't actually move diagonally, but the perpendicular progress will
-eventually build up to be enough to move it into the corner, whereupon
+that was blocked gets added to its "progress" in each of the four perpendicular
+directions. Tiles can't actually move diagonally, but the perpendicular progress
+will eventually build up to be enough to move it into the corner, whereupon
 its original velocity/progress in the original direction will carry it around
 the corner. I call this rule the "fall off pillars" rule, because its original
 purpose was to make it so that a stack of single tiles of water wouldn't
 stay stacked.
+
+When a tile makes a step in a direction, the threshold amount is subtracted
+from its progress in that direction. Lingering progress in unused directions
+decays over time.
 
 For some fluids, that's it. Sand is considered a fluid, and it obeys only
 the above rules. It falls down due to gravity, and pours off shallow slopes,
@@ -127,9 +131,20 @@ proportional to the surface area (including water-to-rock surfaces) of
 the group. Typical-use cases are proportional to the surface area in
 water-to-air surfaces that are actually moving.
 
-For each group, we DO keep a cache of all the tiles in the group. In fact,
-each surface tile is stored in two hash tables - one that gets the group ID
-from the surface tile, and one that gets all the surface tiles for each group.
+For each group, we DO keep a cache of all the surface tiles of the group.
+(i.e. tiles that are groupable water but have a neighbor which is not;
+that is the meaning of "surface tile" wherever we use that phrase.)
+In fact, each surface tile is stored in 2-3 places, for different purposes.
+There's a hash table that maps surface tiles to group IDs, so that you can
+look up the groups by surface tile. The group info (which you can look up
+by ID) contains a hashset of surface tiles, so that you can look up surface
+tiles by group. There's a third set that takes the tiles that are surfaces
+specifically in the X dimension, and is ordered within each row, so that
+we can take an arbitrary interior tile and find the "next" surface tile,
+in order to look up what group the interior tile is in, in log(n) time even
+if the interior tile is a long way from any surface. That set also allows us
+to measure the volume of a group in less-than-linear-in-the-total-volume
+time (there's a comment later in the file describing how that works.)
 
 When a new groupable-water tile appears, if it's next to an existing surface,
 it joins that group. If it isn't, then it makes its own new group.
@@ -176,7 +191,7 @@ either.
 
 But what about the "pushable" and "suckable" tiles? For infinite oceans, we just
 assume that they have infinitely many pushable tiles at their surface height,
-height, and infinitely many suckable tiles at their surface height. This actually
+and infinitely many suckable tiles at their surface height. This actually
 makes computations *simpler* for the rest of the group - you never have to check
 for the real pushable or suckable tiles, just the assumed ones - and since they're,
 on average, infinitely far away, you don't have to figure out what actually happens
