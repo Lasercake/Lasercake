@@ -113,8 +113,11 @@ void laser_emitter::update(world &w, object_identifier my_id) {
       // TODO do I have to worry about overflow?
       w.add_laser_sfx(location, facing * i + facing * best_inters.second.numerator() / best_inters.second.denominator());
       if(tile_location const* locp = best_id.get_tile_location()) {
-        if(rand()%100 == 0) {
+        /*if(rand()%100 == 0) {
           w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+        }*/
+        if (locp->stuff_at().contents() == ROCK) {
+          w.replace_substance(*locp, ROCK, RUBBLE);
         }
       }
       return;
