@@ -81,7 +81,8 @@ const sub_tile_distance friction_amount                = velocity_scale_factor *
 // TODO: Get some of these constants out of the header that everyone includes
 const sub_tile_distance pressure_constant = 500 * velocity_scale_factor * velocity_scale_factor;
 
-const sub_tile_distance air_resistance_constant = (10000 * velocity_scale_factor * velocity_scale_factor);
+// I believe this value makes it so that the terminal velocity of falling fluid is "half a vertical tile per frame".
+const sub_tile_distance air_resistance_constant = tile_height * tile_height * velocity_scale_factor * velocity_scale_factor / gravity_acceleration_magnitude / 2;
 const sub_tile_distance idle_progress_reduction_rate = 20 * velocity_scale_factor;
 
 const vector3<sub_tile_distance> inactive_fluid_velocity(0, 0, -min_convincing_speed);
