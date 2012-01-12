@@ -74,12 +74,12 @@ const tile_coordinate world_center_coord = (tile_coordinate(1) << (8*sizeof(tile
 const vector3<tile_coordinate> world_center_coords(world_center_coord, world_center_coord, world_center_coord);
 
 const sub_tile_distance min_convincing_speed           = velocity_scale_factor * tile_width / 50;
-const sub_tile_distance gravity_acceleration_magnitude = velocity_scale_factor * tile_width / 1000;
+const sub_tile_distance gravity_acceleration_magnitude = velocity_scale_factor * tile_width / 200;
 const vector3<sub_tile_distance> gravity_acceleration(0, 0, -gravity_acceleration_magnitude); // in mini-units per frame squared
 const sub_tile_distance friction_amount                = velocity_scale_factor * tile_width / 1800;
 
 // TODO: Get some of these constants out of the header that everyone includes
-const sub_tile_distance pressure_constant = 500 * velocity_scale_factor * velocity_scale_factor;
+const sub_tile_distance pressure_per_depth_in_tile_heights = gravity_acceleration_magnitude * tile_height * velocity_scale_factor;
 
 // I believe this value makes it so that the terminal velocity of falling fluid is "half a vertical tile per frame".
 const sub_tile_distance air_resistance_constant = tile_height * tile_height * velocity_scale_factor * velocity_scale_factor / gravity_acceleration_magnitude / 2;
