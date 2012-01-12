@@ -1530,6 +1530,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     if (src_weight > dst_weight) {
       bool dst_was_active_fluid = false;
       active_fluid_tile_info dst_info_store;
+      tile_contents src_old_contents = src_tile.contents();
       tile_contents dst_old_contents = dst_tile.contents();
       auto i = active_fluids.find(dst);
       if (i != active_fluids.end()) {
@@ -1542,8 +1543,8 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       active_fluid_tile_info &dst_fluid = (active_fluids[dst] = src_fluid);
       
       // Water always becomes ungroupable when it moves
-      w.replace_substance(dst, AIR, UNGROUPABLE_WATER);
-      w.replace_substance(move.src, src_tile.contents(), dst_old_contents);
+      w.replace_substance(dst, dst_old_contents, src_old_contents == GROUPABLE_WATER ? UNGROUPABLE_WATER : src_old_contents);
+      w.replace_substance(move.src, src_old_contents, dst_old_contents);
       
       temp_data[dst] = temp_data[move.src];
       temp_data.erase(move.src);
@@ -1633,7 +1634,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
   for (auto i = active_fluids.begin(); i != active_fluids.end(); ) {
     tile_location const& loc = i->first;
     active_fluid_tile_info const& fluid = i->second;
-    //tile const& t = loc.stuff_at();
+    tile const& t = loc.stuff_at();
     
     bool can_deactivate = false;
     if (fluid.is_in_inactive_state()) {
@@ -1676,6 +1677,8 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     fake_continue:
     if (can_deactivate) {
       const tile_location loc_preserved = loc;
+      assert(t.contents() != UNGROUPABLE_WATER); // we assume that any inactive water must be groupable
+      bool is_groupable_water = t.contents() == GROUPABLE_WATER;
       active_fluids.erase(i++);
       
       // Hack: What if, in a single frame, we become groupable and then deactivate?
@@ -1683,7 +1686,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // but the following frame, we won't make the check because we'll be inactive!
       // Semi-hack: Cover for that scenario here.
       // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
-      if ((loc_preserved + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER) {
+      if (is_groupable_water && (loc_preserved + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER) {
         persistent_water_groups.find(w.get_water_group_id_by_grouped_tile(loc_preserved))->second.mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, loc_preserved, active_fluids);
       }
     }

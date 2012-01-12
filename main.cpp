@@ -164,10 +164,10 @@ struct world_building_func {
               else if (z > wc+9 && x > wc+10 && x < wc+18) make(ROCK, l);
               else if (x > wc+10) make(GROUPABLE_WATER, l);
             }
-            if (scenario == "twisty") {
+            if (scenario.substr(0,6) == "twisty") {
               if (x == wc+0) make(GROUPABLE_WATER, l);
               else if (x == wc+1 && z > wc+0) make(ROCK, l);
-              else if (x == wc+5) make(ROCK, l);
+              else if (x == wc+5) make(scenario == "twistyrubble" ? RUBBLE : ROCK, l);
               else if (x == wc+2 && (z % 4) == 1) make(ROCK, l);
               else if (x == wc+3 && (z % 2) == 1) make(ROCK, l);
               else if (x == wc+4 && (z % 4) == 3) make(ROCK, l);
@@ -185,6 +185,7 @@ void push_vertex(vector<vertex_entry> &v, GLfloat x, GLfloat y, GLfloat z) {
 }
 struct vertices_t {
     vector<vertex_entry> rock;
+    vector<vertex_entry> rubble;
     vector<vertex_entry> sticky_water;
     vector<vertex_entry> free_water;
     vector<vertex_entry> velocity;
@@ -428,6 +429,7 @@ srand(time(NULL));
       vector<vertex_entry> *vect;
       
            if(t.contents() == ROCK             ) vect = &vertices.rock;
+      else if(t.contents() == RUBBLE  ) vect = &vertices.rubble;
       else if(t.contents() == GROUPABLE_WATER  ) vect = &vertices.sticky_water;
       else if(t.contents() == UNGROUPABLE_WATER) vect = &vertices.free_water;
       else assert(false);
@@ -533,6 +535,11 @@ srand(time(NULL));
         glColor4f(0.5,0.0,0.0,0.5);
         glVertexPointer(3, GL_FLOAT, 0, &vertices.rock[0]);
         glDrawArrays(GL_QUADS, 0, vertices.rock.size());
+      }
+      if(vertices.rubble.size()) {
+        glColor4f(1.0,1.0,0.0,0.5);
+        glVertexPointer(3, GL_FLOAT, 0, &vertices.rubble[0]);
+        glDrawArrays(GL_QUADS, 0, vertices.rubble.size());
       }
       if(vertices.sticky_water.size()) {
         glColor4f(0.0, 0.0, 1.0, 0.5);

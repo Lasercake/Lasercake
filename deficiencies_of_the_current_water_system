@@ -6,6 +6,7 @@ All of these carry an implicit "TODO, fix this, at least if there's a clean way 
 - Water moves in the six cardinal directions a little too much. (scenarios "tower2" and "tower3" illustrate this especially).
 - Water going up an initially-empty tunnel moves oddly, by stages (see scenario "pressure_tunnel"). It should be possible to fix this by tweaking the rules about when a tile becomes groupable. The tweak should also handle the J-tube case (I believe water in a J-tube would rise by stages, with gravity serving the same role friction does in pressure_tunnel)
 - If a tile vanishes in the middle of an ocean, it doesn't activate the tile directly below it (though it should)
+- Rubble shouldn't just swap with water - it should prefer pushing it out of the way in other directions.
 
 "Doesn't do something it could be able to"-type deficiencies:
 
