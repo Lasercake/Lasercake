@@ -23,13 +23,10 @@
 
 void world_building_gun::operator()(tile_contents new_contents, vector3<tile_coordinate> locv) {
   assert(bounds.contains(locv));
-  if (new_contents == ROCK) {
-    w->initialize_tile_contents(w->make_tile_location(locv, COMPLETELY_IMAGINARY), ROCK);
+  if (new_contents == ROCK || new_contents == GROUPABLE_WATER || new_contents == RUBBLE) {
+    w->initialize_tile_contents(w->make_tile_location(locv, COMPLETELY_IMAGINARY), new_contents);
   }
-  else if (new_contents == GROUPABLE_WATER) {
-    w->initialize_tile_contents(w->make_tile_location(locv, COMPLETELY_IMAGINARY), GROUPABLE_WATER);
-  }
-  else assert("YOU CAN ONLY PLACE ROCK AND GROUPABLE WATER" && false);
+  else assert("YOU CAN ONLY PLACE ROCK AND GROUPABLE WATER AND RUBBLE" && false);
 }
 
 bounding_box world::get_bounding_box_of_object_or_tile(object_or_tile_identifier id)const {
