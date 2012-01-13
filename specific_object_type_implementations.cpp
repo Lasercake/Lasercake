@@ -47,7 +47,7 @@ void robot::update(world &w, object_identifier my_id) {
     // goal: decay towards levitating...
     fine_scalar target_height = (lower_bound_in_fine_units(l.coords().z, 2) + tile_height * 5 / 4);
     fine_scalar deficiency = target_height - shape_bounds.min.z;
-    fine_scalar target_vel = deficiency * velocity_scale_factor / 8;
+    fine_scalar target_vel = gravity_acceleration_magnitude + deficiency * velocity_scale_factor / 8;
     if (velocity.z < target_vel) {
       velocity.z = std::min(velocity.z + gravity_acceleration_magnitude * 5, target_vel);
     }
@@ -55,8 +55,8 @@ void robot::update(world &w, object_identifier my_id) {
     
   // TODO HAAAAAACK
   Uint8 *keystate = SDL_GetKeyState(NULL);
-  velocity.x -= velocity.x / 10;
-  velocity.y -= velocity.y / 10;
+  velocity.x -= velocity.x / 2;
+  velocity.y -= velocity.y / 2;
   if (keystate[SDLK_UP]) {
     velocity.x = facing.x;
     velocity.y = facing.y;
