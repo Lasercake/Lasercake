@@ -198,6 +198,10 @@ struct world_building_func {
   }
 };
 
+vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
+  return vector3<GLfloat>(input - view_center) / tile_width;
+}
+
 // These are to be passed as part of arrays to OpenGL.
 // Thus their data format/layout makes a difference.
 struct vertex {
@@ -304,15 +308,28 @@ void push_quad(gl_collection& coll,
   push_vertex(coll.quads, v4, c4);
 }
 
-// TODO maybe write push_convex_polygon instead of implementing it below
-// specifically for 'object's?
-
+// TODO allow choosing each polygon vertex's color?
+void push_convex_polygon(vector3<fine_scalar> const& view_loc,
+                         gl_collection& coll,
+                         std::vector<vector3<int64_t> > const& vertices,
+                         color const& c) {
+  if(vertices.size() >= 3) {
+    // draw convex polygon via (sides - 2) triangles
+    std::vector< vector3<int64_t> >::const_iterator vertices_i = vertices.begin();
+    const std::vector< vector3<int64_t> >::const_iterator vertices_end = vertices.end();
+    const vertex first_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));
+    ++vertices_i;
+    vertex prev_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));
+    ++vertices_i;
+    for (; vertices_i != vertices_end; ++vertices_i) {
+      const vertex this_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));
+      push_triangle(coll, first_vertex, prev_vertex, this_vertex, c);
+      prev_vertex = this_vertex;
+    }
+  }
+}
 
 const vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
-
-vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
-  return vector3<GLfloat>(input - view_center) / tile_width;
-}
 
 tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_box b, vector3<fine_scalar> const& v) {
   const fine_scalar xdist = (v.x < b.min.x) ? (b.min.x - v.x) : (v.x > b.max.x) ? (v.x - b.max.x) : 0;
@@ -508,18 +525,9 @@ srand(time(NULL));
         std::vector<convex_polygon> const& foo = blah->second.get_polygons();
         for (convex_polygon const& bar : foo) {
           assert(bar.get_vertices().size() >= 3);
-          // draw convex polygon via (sides - 2) triangles
-          std::vector< vector3<int64_t> >::const_iterator vertices_i = bar.get_vertices().begin();
-          const std::vector< vector3<int64_t> >::const_iterator vertices_end = bar.get_vertices().end();
-          const vector3<GLfloat> first_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
-          ++vertices_i;
-          vector3<GLfloat> prev_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
-          ++vertices_i;
-          for (; vertices_i != vertices_end; ++vertices_i) {
-            const vector3<GLfloat> this_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
-            push_triangle(coll, first_vertex_locv, prev_vertex_locv, this_vertex_locv, color(0x77777777));
-            prev_vertex_locv = this_vertex_locv;
-          }
+
+          push_convex_polygon(view_loc, coll, bar.get_vertices(), color(0x77777777));
+
           // TODO so many redundant velocity vectors!!
           for(auto const& this_vertex : bar.get_vertices()) {
             const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
