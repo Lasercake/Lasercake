@@ -482,11 +482,11 @@ srand(time(NULL));
             vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, baz);
             push_vertex(vertices.object, locv.x, locv.y, locv.z);
             
-          push_vertex(vertices.velocity, locv.x, locv.y, locv.z);
-          push_vertex(vertices.velocity,
-              locv.x + ((GLfloat)objp->velocity.x / (tile_width)),
-              locv.y + ((GLfloat)objp->velocity.y / (tile_width)),
-              locv.z + ((GLfloat)objp->velocity.z / (tile_width)));
+            push_vertex(vertices.velocity, locv.x, locv.y, locv.z);
+            push_vertex(vertices.velocity,
+                locv.x + ((GLfloat)objp->velocity.x / (tile_width)),
+                locv.y + ((GLfloat)objp->velocity.y / (tile_width)),
+                locv.z + ((GLfloat)objp->velocity.z / (tile_width)));
           }
         }
       }
