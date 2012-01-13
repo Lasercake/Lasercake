@@ -569,34 +569,11 @@ fine_scalar persistent_water_group_info::get_pressure_at_height(tile_coordinate 
     water_tile_count new_count = std::max(last_count, (foo != num_tiles_by_height.end()) ? foo->second : 0);
     width_of_widest_level_so_far_caches.erase(current_height);
     width_of_widest_level_so_far_caches.insert(make_pair(current_height, new_count));
-    current_pressure = (current_pressure + pressure_constant) * std::min(new_count, last_count) / new_count;
+    current_pressure = (current_pressure + pressure_per_depth_in_tile_heights) * std::min(new_count, last_count) / new_count;
     pressure_caches.insert(make_pair(current_height, current_pressure));
   }
   return current_pressure;
 }
-  
-/*tile_location persistent_water_group_info::get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height) {
-  // It's annoying that this is as bad as linear in the height of the group;
-  // I think I could do better, but it would be more complicated.
-  fine_scalar total_weight = 0;
-  for (auto p = pushable_tiles_by_height.as_map().begin(); p != pushable_tiles_by_height.as_map().lower_bound(height); ++p) {
-    // Caution: duplicate definition of "weight" (see below)
-    const fine_scalar weight = i64sqrt(get_pressure_at_height(p->first)) * p->second.as_unordered_set().size();
-    total_weight += weight;
-  }
-  fine_scalar choice = rand()%total_weight;
-  for (auto p = pushable_tiles_by_height.as_map().begin(); p != pushable_tiles_by_height.as_map().lower_bound(height); ++p) {
-    // Caution: duplicate definition of "weight" (see above)
-    const fine_scalar weight = i64sqrt(get_pressure_at_height(p->first)) * p->second.as_unordered_set().size();
-    choice -= weight;
-    if (choice < 0) {
-      tile_location result = p->second.get_random();
-      pushable_tiles_by_height.erase(result);
-      return result;
-    }
-  }
-  assert(false);
-}*/
 
 
 void suck_out_suckable_water(world &w,
@@ -1442,7 +1419,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
               const sub_tile_distance amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_distance>(-dir.v);
               // This velocity pushes us towards opposite_loc, and pressure is a measure of how much water wants to
               // *go to* the height pressure is being measured at, so we measure at opposite_loc.
-              const sub_tile_distance deficiency_of_vel = i64sqrt(pressure) - amount_of_vel_in_pressure_receiving_dir;
+              const sub_tile_distance deficiency_of_vel = i64sqrt(2*pressure) - amount_of_vel_in_pressure_receiving_dir;
               if (deficiency_of_vel > 0) {
                 fluid.velocity += vector3<sub_tile_distance>(-dir.v) * deficiency_of_vel;
               }
@@ -1656,7 +1633,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // Be a little paranoid about making sure fluids obeys all the proper conditions of inactivity
       for (EACH_CARDINAL_DIRECTION(dir)) {
         if (dir.v.z < 0) {
-          if (fluid.blockage_amount_this_frame[dir] != min_convincing_speed + (-gravity_acceleration.z)) {
+          if (fluid.blockage_amount_this_frame[dir] > min_convincing_speed + (-gravity_acceleration.z) || fluid.blockage_amount_this_frame[dir] < min_convincing_speed) {
             goto fake_continue;
           }
         }
@@ -1671,7 +1648,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // the one directly below, the ones cardinally-horizontally, and the ones horizontally-and-below.
       // at the 2-diagonals. This comment is duplicated one one other place in this file.
       const tile_location downloc = loc + cdir_zminus;
-      if (!(downloc.stuff_at().contents() == GROUPABLE_WATER || downloc.stuff_at().contents() == ROCK)) goto fake_continue;
+      if (obstructiveness(downloc.stuff_at().contents()) < obstructiveness(t.contents())) goto fake_continue;
 
       // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
       for (EACH_CARDINAL_DIRECTION(dir)) {
