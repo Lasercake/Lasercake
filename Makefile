@@ -1,6 +1,6 @@
 CC=g++
 OPTFLAGS=-O3
-CXXFLAGS=-std=gnu++0x -ggdb -Wall -Wextra -O0 -fmax-errors=15 -I/usr/include/SDL/ -lSDL -lGL -lGLU
+CXXFLAGS=-std=gnu++0x -ggdb -Wall -Wextra -O0 -fmax-errors=15 -I/usr/include/SDL/ -lSDL -lGL -lGLU -lrt
 
 ODIR=output
 ODIR_OPTIMIZED=output/optimized

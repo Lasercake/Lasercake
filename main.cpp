@@ -19,6 +19,8 @@
 
 */
 
+#include <sys/resource.h>
+#include <time.h>
    
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +34,33 @@
 #include <iostream>
 
 #include "world.hpp"
+
+typedef int64_t microseconds_t;
+/* didn't have enough precision, at least on this Linux (3.3333 millisecond resolution)
+ * microseconds_t rusage_to_microseconds(struct rusage const& r) {
+  return (microseconds_t)r.ru_utime.tv_sec * 1000000 + (microseconds_t)r.ru_utime.tv_usec
+       + (microseconds_t)r.ru_stime.tv_sec * 1000000 + (microseconds_t)r.ru_stime.tv_usec;
+}*/
+// TODO these functions are probably not portable but are useful to help
+// avoid introducing performance regressions.
+struct rusage get_this_process_rusage() {
+  struct rusage ret;
+  getrusage(RUSAGE_SELF, &ret);
+  return ret;
+}
+microseconds_t get_this_process_microseconds() {
+  struct timespec ts;
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+  return (microseconds_t)ts.tv_sec * 1000000 + (microseconds_t)ts.tv_nsec / 1000;
+}
+microseconds_t get_monotonic_microseconds() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (microseconds_t)ts.tv_sec * 1000000 + (microseconds_t)ts.tv_nsec / 1000;
+}
+void debug_print_microseconds(microseconds_t us) {
+  std::cerr << (us / 1000) << '.' << (us / 100 % 10);
+}
 
 static SDL_Surface *gScreen;
 
@@ -292,6 +321,7 @@ srand(time(NULL));
   fine_scalar globallocal_view_dist = 20*tile_width;
     
   while ( !done ) {
+    microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
 
     /* Check for events */
     while ( SDL_PollEvent (&event) ) {
@@ -330,7 +360,9 @@ srand(time(NULL));
     
     bool pd_this_time = (p_mode == 1);
     if(p_mode > 1)--p_mode;
-    int before_drawing = SDL_GetTicks();
+
+    // microseconds_this_program_has_used_so_far
+    microseconds_t microseconds_before_drawing = get_this_process_microseconds();
 
     //drawing code here
 
@@ -563,8 +595,9 @@ srand(time(NULL));
       }
      }
     }
-    
-    int before_GL = SDL_GetTicks();
+
+    microseconds_t microseconds_before_GL = get_this_process_microseconds();
+    microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
 
     //glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
@@ -654,14 +687,32 @@ srand(time(NULL));
     
     glFinish();	
     SDL_GL_SwapBuffers();
-   
-    int before_processing = SDL_GetTicks();
+
+    microseconds_t monotonic_microseconds_after_GL = get_monotonic_microseconds();
+    microseconds_t microseconds_before_processing = get_this_process_microseconds();
     
     //doing stuff code here
     if (!pd_this_time) w.update();
-    
-    int after = SDL_GetTicks();
-    std::cerr << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";
+
+    microseconds_t microseconds_after = get_this_process_microseconds();
+    microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
+
+    // TODO does the GL code use up "CPU time"? Maybe measure both monotonic and CPU?
+    microseconds_t microseconds_for_processing = microseconds_after - microseconds_before_processing;
+    microseconds_t microseconds_for_drawing = microseconds_before_GL - microseconds_before_drawing;
+    microseconds_t microseconds_for_GL = microseconds_before_processing - microseconds_before_GL;
+    microseconds_t monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
+    microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
+    double fps = 1000000.0 / monotonic_microseconds_for_frame;
+
+    debug_print_microseconds(microseconds_for_processing);
+    std::cerr << ", ";
+    debug_print_microseconds(microseconds_for_drawing);
+    std::cerr << ", ";
+    debug_print_microseconds(microseconds_for_GL);
+    std::cerr << "–";
+    debug_print_microseconds(monotonic_microseconds_for_GL);
+    std::cerr << " ms; " << fps << " fps; " << get_this_process_rusage().ru_maxrss / 1024 << "MiB\n";
 
 //    SDL_Delay(50);
   }
