@@ -460,11 +460,12 @@ srand(time(NULL));
             bounding_box(p.first + (p.second * i / length), p.first + (p.second * (i+1) / length)),
             view_loc)
         ];
+        const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
         push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z);
         push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z + 0.1);
-        locvf = locvf1 + dlocvf_per_step * (i+1);
-        push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z + 0.1);
-        push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z);
+        push_vertex(vertices.laserbeam, locvf_next.x, locvf_next.y, locvf_next.z + 0.1);
+        push_vertex(vertices.laserbeam, locvf_next.x, locvf_next.y, locvf_next.z);
+        locvf = locvf_next;
       }
     }
     
