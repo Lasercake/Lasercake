@@ -322,9 +322,7 @@ tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_b
   return (xdist + ydist + (zdist * tile_width / tile_height)) / tile_width;
 }
 
-} /* end anonymous namespace */
-
-static void mainLoop (std::string scenario)
+void mainLoop (std::string scenario)
 {
   SDL_Event event;
   int done = 0;
@@ -786,6 +784,8 @@ static void createSurface (int fullscreen)
 }
 
 
+
+} /* end anonymous namespace */
 
 
 int main(int argc, char *argv[])
