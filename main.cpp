@@ -602,108 +602,108 @@ srand(time(NULL));
           }
         }
       }
-     if (tile_location const* locp = id.get_tile_location()) {
-      tile_location const& loc = *locp;
-      tile const& t = loc.stuff_at();
-      vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
-      
-      // Hack - TODO remove
-      if (frame == 0 && t.contents() == GROUPABLE_WATER) w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
+      if (tile_location const* locp = id.get_tile_location()) {
+        tile_location const& loc = *locp;
+        tile const& t = loc.stuff_at();
+        vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
 
-      {
-        const color tile_color =
-          t.contents() ==              ROCK ? color(0x77000077) :
-          t.contents() ==            RUBBLE ? color(0xffff0077) :
-          t.contents() ==   GROUPABLE_WATER ? color(0x0000ff77) :
-          t.contents() == UNGROUPABLE_WATER ? color(0x6666ff77) :
-          (assert(false), (/*hack to make this compile*/0?color(0):throw 0xdeadbeef));
-      
-        const std::array<vector3<GLfloat>, 2> glb = {{
-          convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords())),
-          convert_coordinates_to_GL(view_loc, upper_bound_in_fine_units(loc.coords()))
-        }};
+        // Hack - TODO remove
+        if (frame == 0 && t.contents() == GROUPABLE_WATER) w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
 
-        // Only output the faces that are not interior to a single kind of material.
-        if(loc.get_neighbor(cdir_zminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()) {
-          push_quad(coll,
-                    vertex(glb[0].x, glb[0].y, glb[0].z),
-                    vertex(glb[1].x, glb[0].y, glb[0].z),
-                    vertex(glb[1].x, glb[1].y, glb[0].z),
-                    vertex(glb[0].x, glb[1].y, glb[0].z),
-                    tile_color);
-        }
-        if(loc.get_neighbor(cdir_zplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_quad(coll,
-                    vertex(glb[0].x, glb[0].y, glb[1].z),
-                    vertex(glb[1].x, glb[0].y, glb[1].z),
-                    vertex(glb[1].x, glb[1].y, glb[1].z),
-                    vertex(glb[0].x, glb[1].y, glb[1].z),
-                    tile_color);
-        }
-        if(loc.get_neighbor(cdir_xminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_quad(coll,
-                    vertex(glb[0].x, glb[0].y, glb[0].z),
-                    vertex(glb[0].x, glb[1].y, glb[0].z),
-                    vertex(glb[0].x, glb[1].y, glb[1].z),
-                    vertex(glb[0].x, glb[0].y, glb[1].z),
-                    tile_color);
-        }
-        if(loc.get_neighbor(cdir_xplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_quad(coll,
-                    vertex(glb[1].x, glb[0].y, glb[0].z),
-                    vertex(glb[1].x, glb[1].y, glb[0].z),
-                    vertex(glb[1].x, glb[1].y, glb[1].z),
-                    vertex(glb[1].x, glb[0].y, glb[1].z),
-                    tile_color);
-        }
-        if(loc.get_neighbor(cdir_yminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_quad(coll,
-                    vertex(glb[0].x, glb[0].y, glb[0].z),
-                    vertex(glb[0].x, glb[0].y, glb[1].z),
-                    vertex(glb[1].x, glb[0].y, glb[1].z),
-                    vertex(glb[1].x, glb[0].y, glb[0].z),
-                    tile_color);
-        }
-        if(loc.get_neighbor(cdir_yplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_quad(coll,
-                    vertex(glb[0].x, glb[1].y, glb[0].z),
-                    vertex(glb[0].x, glb[1].y, glb[1].z),
-                    vertex(glb[1].x, glb[1].y, glb[1].z),
-                    vertex(glb[1].x, glb[1].y, glb[0].z),
-                    tile_color);
-        }
-      }
-      
-      if (is_fluid(t.contents())) {
-        if (active_fluid_tile_info const* fluid = w.get_active_fluid_info(loc)) {
-          push_line(coll,
-                    vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
-                    vertex(
-                      locv.x + 0.5 + ((GLfloat)fluid->velocity.x / (tile_width)),
-                      locv.y + 0.5 + ((GLfloat)fluid->velocity.y / (tile_width)),
-                      locv.z + 0.1 + ((GLfloat)fluid->velocity.z / (tile_width))),
-                    color(0x00ff0077));
-          
-          for (EACH_CARDINAL_DIRECTION(dir)) {
-            const sub_tile_distance prog = fluid->progress[dir];
-            if (prog > 0) {
-              vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary(dir);
+        {
+          const color tile_color =
+            t.contents() ==              ROCK ? color(0x77000077) :
+            t.contents() ==            RUBBLE ? color(0xffff0077) :
+            t.contents() ==   GROUPABLE_WATER ? color(0x0000ff77) :
+            t.contents() == UNGROUPABLE_WATER ? color(0x6666ff77) :
+            (assert(false), (/*hack to make this compile*/0?color(0):throw 0xdeadbeef));
 
-              push_line(coll,
-                          vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
-                          vertex(
-                            locv.x + 0.51 + directed_prog.x,
-                            locv.y + 0.5 + directed_prog.y,
-                            locv.z + 0.1 + directed_prog.z),
-                          color(0x0000ff77));
-            }
+          const std::array<vector3<GLfloat>, 2> glb = {{
+            convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords())),
+            convert_coordinates_to_GL(view_loc, upper_bound_in_fine_units(loc.coords()))
+          }};
+
+          // Only output the faces that are not interior to a single kind of material.
+          if(loc.get_neighbor(cdir_zminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()) {
+            push_quad(coll,
+                      vertex(glb[0].x, glb[0].y, glb[0].z),
+                      vertex(glb[1].x, glb[0].y, glb[0].z),
+                      vertex(glb[1].x, glb[1].y, glb[0].z),
+                      vertex(glb[0].x, glb[1].y, glb[0].z),
+                      tile_color);
+          }
+          if(loc.get_neighbor(cdir_zplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+            push_quad(coll,
+                      vertex(glb[0].x, glb[0].y, glb[1].z),
+                      vertex(glb[1].x, glb[0].y, glb[1].z),
+                      vertex(glb[1].x, glb[1].y, glb[1].z),
+                      vertex(glb[0].x, glb[1].y, glb[1].z),
+                      tile_color);
+          }
+          if(loc.get_neighbor(cdir_xminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+            push_quad(coll,
+                      vertex(glb[0].x, glb[0].y, glb[0].z),
+                      vertex(glb[0].x, glb[1].y, glb[0].z),
+                      vertex(glb[0].x, glb[1].y, glb[1].z),
+                      vertex(glb[0].x, glb[0].y, glb[1].z),
+                      tile_color);
+          }
+          if(loc.get_neighbor(cdir_xplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+            push_quad(coll,
+                      vertex(glb[1].x, glb[0].y, glb[0].z),
+                      vertex(glb[1].x, glb[1].y, glb[0].z),
+                      vertex(glb[1].x, glb[1].y, glb[1].z),
+                      vertex(glb[1].x, glb[0].y, glb[1].z),
+                      tile_color);
+          }
+          if(loc.get_neighbor(cdir_yminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+            push_quad(coll,
+                      vertex(glb[0].x, glb[0].y, glb[0].z),
+                      vertex(glb[0].x, glb[0].y, glb[1].z),
+                      vertex(glb[1].x, glb[0].y, glb[1].z),
+                      vertex(glb[1].x, glb[0].y, glb[0].z),
+                      tile_color);
+          }
+          if(loc.get_neighbor(cdir_yplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+            push_quad(coll,
+                      vertex(glb[0].x, glb[1].y, glb[0].z),
+                      vertex(glb[0].x, glb[1].y, glb[1].z),
+                      vertex(glb[1].x, glb[1].y, glb[1].z),
+                      vertex(glb[1].x, glb[1].y, glb[0].z),
+                      tile_color);
           }
         }
-        else {
-          push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.1), color(0x00000077));
+
+        if (is_fluid(t.contents())) {
+          if (active_fluid_tile_info const* fluid = w.get_active_fluid_info(loc)) {
+            push_line(coll,
+                      vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
+                      vertex(
+                        locv.x + 0.5 + ((GLfloat)fluid->velocity.x / (tile_width)),
+                        locv.y + 0.5 + ((GLfloat)fluid->velocity.y / (tile_width)),
+                        locv.z + 0.1 + ((GLfloat)fluid->velocity.z / (tile_width))),
+                      color(0x00ff0077));
+
+            for (EACH_CARDINAL_DIRECTION(dir)) {
+              const sub_tile_distance prog = fluid->progress[dir];
+              if (prog > 0) {
+                vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary(dir);
+
+                push_line(coll,
+                            vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
+                            vertex(
+                              locv.x + 0.51 + directed_prog.x,
+                              locv.y + 0.5 + directed_prog.y,
+                              locv.z + 0.1 + directed_prog.z),
+                            color(0x0000ff77));
+              }
+            }
+          }
+          else {
+            push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.1), color(0x00000077));
+          }
         }
       }
-     }
     }
 
     microseconds_t microseconds_before_GL = get_this_process_microseconds();
