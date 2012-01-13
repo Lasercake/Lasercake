@@ -609,8 +609,14 @@ srand(time(NULL));
     
     glEnableClientState(GL_VERTEX_ARRAY);
 
+    std::vector<size_t> verticeses_order;
     for(auto const& p : verticeses) {
-      vertices_t const& vertices = p.second;
+      verticeses_order.push_back(p.first);
+    }
+    //sort in descending order
+    std::sort(verticeses_order.rbegin(), verticeses_order.rend());
+    for(size_t i : verticeses_order) {
+      vertices_t const& vertices = verticeses[i];
       
       /*if(vertices.ground_vertices.size()) {
         glColor4f(0.2,0.4,0.0,1.0);
