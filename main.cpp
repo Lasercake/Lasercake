@@ -580,7 +580,8 @@ srand(time(NULL));
           // 1,1,1 as a vertex.
           
           // Only output the faces that are not interior to a single kind of material.
-          if(loc.get_neighbor(cdir_zplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+          if(loc.get_neighbor((z_close_idx == 0 ? cdir_zplus : cdir_zminus), CONTENTS_ONLY)
+                    .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[0].x, glb[0].y, glb[1].z),
                       vertex(glb[1].x, glb[0].y, glb[1].z),
@@ -588,7 +589,8 @@ srand(time(NULL));
                       vertex(glb[0].x, glb[1].y, glb[1].z),
                       tile_color);
           }
-          if(loc.get_neighbor(cdir_xplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+          if(loc.get_neighbor((x_close_idx == 0 ? cdir_xplus : cdir_xminus), CONTENTS_ONLY)
+                    .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[1].x, glb[0].y, glb[0].z),
                       vertex(glb[1].x, glb[1].y, glb[0].z),
@@ -596,7 +598,8 @@ srand(time(NULL));
                       vertex(glb[1].x, glb[0].y, glb[1].z),
                       tile_color);
           }
-          if(loc.get_neighbor(cdir_yplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+          if(loc.get_neighbor((y_close_idx == 0 ? cdir_yplus : cdir_yminus), CONTENTS_ONLY)
+                    .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[0].x, glb[1].y, glb[0].z),
                       vertex(glb[0].x, glb[1].y, glb[1].z),
@@ -604,7 +607,8 @@ srand(time(NULL));
                       vertex(glb[1].x, glb[1].y, glb[0].z),
                       tile_color);
           }
-          if(loc.get_neighbor(cdir_zminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()) {
+          if(loc.get_neighbor((z_close_idx == 0 ? cdir_zminus : cdir_zplus), CONTENTS_ONLY)
+                    .stuff_at().contents() != t.contents()) {
             push_quad(coll,
                       vertex(glb[0].x, glb[0].y, glb[0].z),
                       vertex(glb[1].x, glb[0].y, glb[0].z),
@@ -612,7 +616,8 @@ srand(time(NULL));
                       vertex(glb[0].x, glb[1].y, glb[0].z),
                       tile_color);
           }
-          if(loc.get_neighbor(cdir_xminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+          if(loc.get_neighbor((x_close_idx == 0 ? cdir_xminus : cdir_xplus), CONTENTS_ONLY)
+                    .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[0].x, glb[0].y, glb[0].z),
                       vertex(glb[0].x, glb[1].y, glb[0].z),
@@ -620,7 +625,8 @@ srand(time(NULL));
                       vertex(glb[0].x, glb[0].y, glb[1].z),
                       tile_color);
           }
-          if(loc.get_neighbor(cdir_yminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
+          if(loc.get_neighbor((y_close_idx == 0 ? cdir_yminus : cdir_yplus), CONTENTS_ONLY)
+                    .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[0].x, glb[0].y, glb[0].z),
                       vertex(glb[0].x, glb[0].y, glb[1].z),
