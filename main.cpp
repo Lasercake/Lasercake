@@ -447,38 +447,25 @@ srand(time(NULL));
     }
     
     for (auto p : w.laser_sfxes) {
-      vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, p.first);
-      vector3<GLfloat> locv2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
-      //std::cerr << locv.x << " !l " << locv.y << " !l " << locv.z << "\n";
-      //std::cerr << locv2.x << " !l " << locv2.y << " !l " << locv2.z << "\n";
-      GLfloat length = 50; //(locv2 - locv).magnitude_within_32_bits();
-      vertices_t* vertices = &verticeses[
-        tile_manhattan_distance_to_bounding_box_rounding_down(
-          bounding_box(p.first, p.first + (p.second / length)),
-          view_loc)
-      ];
-      //begin quad
-      push_vertex(vertices->laserbeam, locv.x, locv.y, locv.z+0.5);
-      push_vertex(vertices->laserbeam, locv.x, locv.y, locv.z-0.5);
-      //push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z);
-      //push_vertex(laserbeam_vertices, locv.x, locv.y, locv.z + 0.1);
-      for (int i = 0; i < length; ++i) {
-        vector3<GLfloat> locv3 = (locv + (((locv2 - locv) * i) / length));
-        push_vertex(vertices->laserbeam, locv3.x, locv3.y, locv3.z);
-        push_vertex(vertices->laserbeam, locv3.x, locv3.y, locv3.z + 0.1);
-        //end quad
-        vertices = &verticeses[
+      const vector3<GLfloat> locvf1 = convert_coordinates_to_GL(view_loc, p.first);
+      const vector3<GLfloat> locvf2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
+      const vector3<GLfloat> dlocvf = locvf2 - locvf1;
+      GLfloat length = 50; //(locvf2 - locvf1).magnitude_within_32_bits();
+      const vector3<GLfloat> dlocvf_per_step = dlocvf / length;
+      vector3<GLfloat> locvf = locvf1;
+      
+      for (int i = 0; i <= length; ++i) {
+        vertices_t& vertices = verticeses[
           tile_manhattan_distance_to_bounding_box_rounding_down(
             bounding_box(p.first + (p.second * i / length), p.first + (p.second * (i+1) / length)),
             view_loc)
         ];
-        //begin quad
-        push_vertex(vertices->laserbeam, locv3.x, locv3.y, locv3.z + 0.1);
-        push_vertex(vertices->laserbeam, locv3.x, locv3.y, locv3.z);
+        push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z);
+        push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z + 0.1);
+        locvf = locvf1 + dlocvf_per_step * (i+1);
+        push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z + 0.1);
+        push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z);
       }
-      push_vertex(vertices->laserbeam, locv2.x, locv2.y, locv2.z);
-      push_vertex(vertices->laserbeam, locv2.x, locv2.y, locv2.z+0.1);
-      //end quad
     }
     
     for (object_or_tile_identifier const& id : tiles_to_draw) {
