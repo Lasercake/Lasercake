@@ -477,11 +477,24 @@ srand(time(NULL));
         const object_shapes_t::const_iterator blah = w.get_object_personal_space_shapes().find(*mid);
         std::vector<convex_polygon> const& foo = blah->second.get_polygons();
         for (convex_polygon const& bar : foo) {
-          assert(bar.get_vertices().size() == 4); //TODO haven't implemented this for other face shapes. Eventually will do that via GL_TRIANGLES and splitting each face into triangles.
-          for (vector3<int64_t> const& baz : bar.get_vertices()) {
-            vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, baz);
-            push_vertex(vertices.object, locv.x, locv.y, locv.z);
-            
+          assert(bar.get_vertices().size() >= 3);
+          // draw convex polygon via (sides - 2) triangles
+          std::vector< vector3<int64_t> >::const_iterator vertices_i = bar.get_vertices().begin();
+          const std::vector< vector3<int64_t> >::const_iterator vertices_end = bar.get_vertices().end();
+          const vector3<GLfloat> first_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
+          ++vertices_i;
+          vector3<GLfloat> prev_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
+          ++vertices_i;
+          for (; vertices_i != vertices_end; ++vertices_i) {
+            const vector3<GLfloat> this_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
+            push_vertex(vertices.object, first_vertex_locv.x, first_vertex_locv.y, first_vertex_locv.z);
+            push_vertex(vertices.object,  prev_vertex_locv.x,  prev_vertex_locv.y,  prev_vertex_locv.z);
+            push_vertex(vertices.object,  this_vertex_locv.x,  this_vertex_locv.y,  this_vertex_locv.z);
+            prev_vertex_locv = this_vertex_locv;
+          }
+          // TODO so many redundant velocity vectors!!
+          for(auto const& this_vertex : bar.get_vertices()) {
+            const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
             push_vertex(vertices.velocity, locv.x, locv.y, locv.z);
             push_vertex(vertices.velocity,
                 locv.x + ((GLfloat)objp->velocity.x / (tile_width)),
@@ -655,14 +668,14 @@ srand(time(NULL));
       if(vertices.object.size()) {
         glColor4f(0.5,0.5,0.5,0.5);
         glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
-        glDrawArrays(GL_QUADS, 0, vertices.object.size());
+        glDrawArrays(GL_TRIANGLES, 0, vertices.object.size());
       }
-      if(vertices.object.size()) {
+      /*if(vertices.object.size()) {
         glLineWidth(1);
         glColor4f(1.0,1.0,1.0,0.5);
         glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
         glDrawArrays(GL_LINES, 0, vertices.object.size());
-      }
+      }*/
       if(vertices.suckable_marker.size()) {
         glColor4f(1.0, 0.0, 1.0, 0.5);
         glPointSize(3);
