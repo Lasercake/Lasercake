@@ -372,7 +372,7 @@ srand(time(NULL));
     //The vertices_t's later in this vector are intended to be
     //further away and rendered first (therefore covered up most
     //by everything else that's closer).
-    std::vector<vertices_t> verticeses(1000);
+    std::unordered_map<size_t, vertices_t> verticeses;
     
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
@@ -609,8 +609,8 @@ srand(time(NULL));
     
     glEnableClientState(GL_VERTEX_ARRAY);
 
-    for(size_t i = verticeses.size()-1; i != size_t(-1); --i) {
-      vertices_t& vertices = verticeses[i];
+    for(auto const& p : verticeses) {
+      vertices_t const& vertices = p.second;
       
       /*if(vertices.ground_vertices.size()) {
         glColor4f(0.2,0.4,0.0,1.0);
