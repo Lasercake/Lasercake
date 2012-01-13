@@ -245,6 +245,11 @@ struct gl_collection {
   gl_call_data quads;
 };
 
+//The gl_collection:s with higher indices here are intended to be
+//further away and rendered first (therefore covered up most
+//by everything else that's closer).
+typedef std::unordered_map<size_t, gl_collection> gl_collectionplex;
+
 
 void push_vertex(gl_call_data& data, vertex const& v, color const& c) {
   data.vertices.push_back(v);
@@ -416,10 +421,7 @@ srand(time(NULL));
     vector3<fine_scalar> view_loc;
     vector3<fine_scalar> view_towards;
 
-    //The gl_collection:s with higher indices here are intended to be
-    //further away and rendered first (therefore covered up most
-    //by everything else that's closer).
-    std::unordered_map<size_t, gl_collection> gl_collections_by_distance;
+    gl_collectionplex gl_collections_by_distance;
     
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
