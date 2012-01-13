@@ -563,6 +563,9 @@ srand(time(NULL));
           // viewer is aligned with the tile in a dimension, then which close corner
           // is picked won't change the order of any faces that are actually going to
           // overlap in the display.
+          // Actually, TODO, if you're aligned in one or two of the dimensions,
+          // how will this make the closest tile to you be drawn first and the farthest
+          // drawn last?  This code can't do that currently. Hmm.
           const int x_close_idx = (view_loc.x < fine[0].x) ? 0 : 1;
           const int y_close_idx = (view_loc.y < fine[0].y) ? 0 : 1;
           const int z_close_idx = (view_loc.z < fine[0].z) ? 0 : 1;
