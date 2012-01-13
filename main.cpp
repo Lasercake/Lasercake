@@ -204,6 +204,9 @@ vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vec
 
 // These are to be passed as part of arrays to OpenGL.
 // Thus their data format/layout makes a difference.
+// TODO maybe make vector3<GLfloat> and vertex the same thing?
+// Is vector3<GLfloat>'s layout required to be the same as that of
+// this struct? I believe so.  typedef vector3<GLfloat> vertex; ?
 struct vertex {
   vertex(GLfloat x, GLfloat y, GLfloat z) : x(x), y(y), z(z) {}
   /* implicit conversion */ vertex(vector3<GLfloat> const& v) : x(v.x), y(v.y), z(v.z) {}
