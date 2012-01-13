@@ -35,6 +35,8 @@
 
 #include "world.hpp"
 
+namespace /* anonymous */ {
+
 typedef int64_t microseconds_t;
 /* didn't have enough precision, at least on this Linux (3.3333 millisecond resolution)
  * microseconds_t rusage_to_microseconds(struct rusage const& r) {
@@ -131,6 +133,7 @@ static void createSurface (int fullscreen)
 
 const int max_simple_hill_width = 20;
 
+}
 namespace std {
   template<> struct hash<pair<tile_coordinate, tile_coordinate>> {
     inline size_t operator()(pair<tile_coordinate, tile_coordinate> const& v) const {
@@ -141,6 +144,7 @@ namespace std {
     }
   };
 }
+namespace {
 
 int get_hill(unordered_map<std::pair<tile_coordinate, tile_coordinate>, int> &hills_map, pair<tile_coordinate, tile_coordinate> loc) {
   auto iter = hills_map.find(loc);
@@ -261,23 +265,115 @@ struct world_building_func {
   }
 };
 
-struct vertex_entry { GLfloat x, y, z; };
-void push_vertex(vector<vertex_entry> &v, GLfloat x, GLfloat y, GLfloat z) {
-  v.push_back((vertex_entry){x,y,z});
-}
-struct vertices_t {
-    vector<vertex_entry> rock;
-    vector<vertex_entry> rubble;
-    vector<vertex_entry> sticky_water;
-    vector<vertex_entry> free_water;
-    vector<vertex_entry> velocity;
-    vector<vertex_entry> progress;
-    vector<vertex_entry> inactive_marker;
-    vector<vertex_entry> laserbeam;
-    vector<vertex_entry> object;
-    vector<vertex_entry> pushable_marker;
-    vector<vertex_entry> suckable_marker;
+// These are to be passed as part of arrays to OpenGL.
+// Thus their data format/layout makes a difference.
+struct vertex {
+  vertex(GLfloat x, GLfloat y, GLfloat z) : x(x), y(y), z(z) {}
+  /* implicit conversion */ vertex(vector3<GLfloat> const& v) : x(v.x), y(v.y), z(v.z) {}
+  
+  GLfloat x, y, z;
 };
+struct color {
+  
+  // Use hex RGBA values as familiar from e.g. CSS.
+  // e.g. 0x00ff0077 is pure green at 50% opacity.
+  explicit color(uint32_t rgba)
+   : r(GLubyte(rgba >> 24)), g(GLubyte(rgba >> 16)), b(GLubyte(rgba >> 8)), a(GLubyte(rgba)) {}
+   
+  color(GLubyte r, GLubyte g, GLubyte b, GLubyte a) : r(r), g(g), b(b), a(a) {}
+  
+  // random Web forums thought a factor of 255.0 was correct, but is it exactly the right conversion?
+  color(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
+   : r(GLubyte(r*255)), g(GLubyte(g*255)), b(GLubyte(b*255)), a(GLubyte(a*255)) {}
+   
+  GLubyte r, g, b, a;
+};
+struct gl_call_data {
+  vector<vertex> vertices;
+  vector<color> colors;
+};
+
+struct gl_collection {
+  // Points and lines are for debugging, because they don't change size at distance,
+  // and TODO can be represented reasonably by triangles.
+  // Triangles are legit.
+  // Quads are TODO OpenGL prefers you to use triangles (esp. OpenGL ES) and
+  // they'll be converted at some point.
+  gl_call_data points;
+  gl_call_data lines;
+  gl_call_data triangles;
+  gl_call_data quads;
+};
+
+
+void push_vertex(gl_call_data& data, vertex const& v, color const& c) {
+  data.vertices.push_back(v);
+  data.colors.push_back(c);
+}
+
+// There are versions of these with one color passed for all vertices to share (for convenience),
+// and with the ability to specify one color per vertex,
+
+void push_point(gl_collection& coll,
+                vertex const& v, color const& c) {
+  push_vertex(coll.points, v, c);
+}
+
+void push_line(gl_collection& coll,
+               vertex const& v1,
+               vertex const& v2, color const& c) {
+  push_vertex(coll.lines, v1, c);
+  push_vertex(coll.lines, v2, c);
+}
+void push_line(gl_collection& coll,
+               vertex const& v1, color const& c1,
+               vertex const& v2, color const& c2) {
+  push_vertex(coll.lines, v1, c1);
+  push_vertex(coll.lines, v2, c2);
+}
+
+void push_triangle(gl_collection& coll,
+               vertex const& v1,
+               vertex const& v2,
+               vertex const& v3, color const& c) {
+  push_vertex(coll.triangles, v1, c);
+  push_vertex(coll.triangles, v2, c);
+  push_vertex(coll.triangles, v3, c);
+}
+void push_triangle(gl_collection& coll,
+               vertex const& v1, color const& c1,
+               vertex const& v2, color const& c2,
+               vertex const& v3, color const& c3) {
+  push_vertex(coll.triangles, v1, c1);
+  push_vertex(coll.triangles, v2, c2);
+  push_vertex(coll.triangles, v3, c3);
+}
+
+// TODO make push_quad push two triangles
+void push_quad(gl_collection& coll,
+               vertex const& v1,
+               vertex const& v2,
+               vertex const& v3,
+               vertex const& v4, color const& c) {
+  push_vertex(coll.quads, v1, c);
+  push_vertex(coll.quads, v2, c);
+  push_vertex(coll.quads, v3, c);
+  push_vertex(coll.quads, v4, c);
+}
+void push_quad(gl_collection& coll,
+               vertex const& v1, color const& c1,
+               vertex const& v2, color const& c2,
+               vertex const& v3, color const& c3,
+               vertex const& v4, color const& c4) {
+  push_vertex(coll.quads, v1, c1);
+  push_vertex(coll.quads, v2, c2);
+  push_vertex(coll.quads, v3, c3);
+  push_vertex(coll.quads, v4, c4);
+}
+
+// TODO maybe write push_convex_polygon instead of implementing it below
+// specifically for 'object's?
+
 
 const vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
 
@@ -293,7 +389,7 @@ tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_b
   return (xdist + ydist + (zdist * tile_width / tile_height)) / tile_width;
 }
 
-
+} /* end anonymous namespace */
 
 static void mainLoop (std::string scenario)
 {
@@ -369,10 +465,10 @@ srand(time(NULL));
     vector3<fine_scalar> view_loc;
     vector3<fine_scalar> view_towards;
 
-    //The vertices_t's later in this vector are intended to be
+    //The gl_collection:s with higher indices here are intended to be
     //further away and rendered first (therefore covered up most
     //by everything else that's closer).
-    std::unordered_map<size_t, vertices_t> verticeses;
+    std::unordered_map<size_t, gl_collection> gl_collections_by_distance;
     
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
@@ -429,19 +525,19 @@ srand(time(NULL));
       for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
         for(tile_location const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
-          vertices_t& vertices = verticeses[
+          gl_collection& coll = gl_collections_by_distance[
             tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc)
           ];
-          push_vertex(vertices.suckable_marker, locv.x + 0.5, locv.y + 0.5, locv.z + 0.15);
+          push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
         }
       }
       for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
         for(tile_location const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
-          vertices_t& vertices = verticeses[
+          gl_collection& coll = gl_collections_by_distance[
             tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc)
           ];
-          push_vertex(vertices.pushable_marker, locv.x + 0.5, locv.y + 0.5, locv.z + 0.15);
+          push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
         }
       }
     }
@@ -455,22 +551,24 @@ srand(time(NULL));
       vector3<GLfloat> locvf = locvf1;
       
       for (int i = 0; i <= length; ++i) {
-        vertices_t& vertices = verticeses[
+        gl_collection& coll = gl_collections_by_distance[
           tile_manhattan_distance_to_bounding_box_rounding_down(
             bounding_box(p.first + (p.second * i / length), p.first + (p.second * (i+1) / length)),
             view_loc)
         ];
         const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
-        push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z);
-        push_vertex(vertices.laserbeam, locvf.x, locvf.y, locvf.z + 0.1);
-        push_vertex(vertices.laserbeam, locvf_next.x, locvf_next.y, locvf_next.z + 0.1);
-        push_vertex(vertices.laserbeam, locvf_next.x, locvf_next.y, locvf_next.z);
+        push_quad(coll,
+                  vertex(locvf.x, locvf.y, locvf.z),
+                  vertex(locvf.x, locvf.y, locvf.z + 0.1),
+                  vertex(locvf_next.x, locvf_next.y, locvf_next.z + 0.1),
+                  vertex(locvf_next.x, locvf_next.y, locvf_next.z),
+                  color(0x00ff0077));
         locvf = locvf_next;
       }
     }
     
     for (object_or_tile_identifier const& id : tiles_to_draw) {
-      vertices_t& vertices = verticeses[
+      gl_collection& coll = gl_collections_by_distance[
         tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc)
       ];
       if (object_identifier const* mid = id.get_object_identifier()) {
@@ -488,19 +586,19 @@ srand(time(NULL));
           ++vertices_i;
           for (; vertices_i != vertices_end; ++vertices_i) {
             const vector3<GLfloat> this_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
-            push_vertex(vertices.object, first_vertex_locv.x, first_vertex_locv.y, first_vertex_locv.z);
-            push_vertex(vertices.object,  prev_vertex_locv.x,  prev_vertex_locv.y,  prev_vertex_locv.z);
-            push_vertex(vertices.object,  this_vertex_locv.x,  this_vertex_locv.y,  this_vertex_locv.z);
+            push_triangle(coll, first_vertex_locv, prev_vertex_locv, this_vertex_locv, color(0x77777777));
             prev_vertex_locv = this_vertex_locv;
           }
           // TODO so many redundant velocity vectors!!
           for(auto const& this_vertex : bar.get_vertices()) {
             const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
-            push_vertex(vertices.velocity, locv.x, locv.y, locv.z);
-            push_vertex(vertices.velocity,
-                locv.x + ((GLfloat)objp->velocity.x / (tile_width)),
-                locv.y + ((GLfloat)objp->velocity.y / (tile_width)),
-                locv.z + ((GLfloat)objp->velocity.z / (tile_width)));
+            push_line(coll,
+                      vertex(locv.x, locv.y, locv.z),
+                      vertex(
+                        locv.x + ((GLfloat)objp->velocity.x / (tile_width)),
+                        locv.y + ((GLfloat)objp->velocity.y / (tile_width)),
+                        locv.z + ((GLfloat)objp->velocity.z / (tile_width))),
+                      color(0x00ff0077));
           }
         }
       }
@@ -511,16 +609,15 @@ srand(time(NULL));
       
       // Hack - TODO remove
       if (frame == 0 && t.contents() == GROUPABLE_WATER) w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
-      
-      vector<vertex_entry> *vect;
-      
-           if(t.contents() == ROCK             ) vect = &vertices.rock;
-      else if(t.contents() == RUBBLE  ) vect = &vertices.rubble;
-      else if(t.contents() == GROUPABLE_WATER  ) vect = &vertices.sticky_water;
-      else if(t.contents() == UNGROUPABLE_WATER) vect = &vertices.free_water;
-      else assert(false);
-      
+
       {
+        const color tile_color =
+          t.contents() ==              ROCK ? color(0x77000077) :
+          t.contents() ==            RUBBLE ? color(0xffff0077) :
+          t.contents() ==   GROUPABLE_WATER ? color(0x0000ff77) :
+          t.contents() == UNGROUPABLE_WATER ? color(0x6666ff77) :
+          (assert(false), (/*hack to make this compile*/0?color(0):throw 0xdeadbeef));
+      
         const std::array<vector3<GLfloat>, 2> glb = {{
           convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords())),
           convert_coordinates_to_GL(view_loc, upper_bound_in_fine_units(loc.coords()))
@@ -528,70 +625,82 @@ srand(time(NULL));
 
         // Only output the faces that are not interior to a single kind of material.
         if(loc.get_neighbor(cdir_zminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()) {
-          push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
-          push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
-          push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
-          push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
+          push_quad(coll,
+                    vertex(glb[0].x, glb[0].y, glb[0].z),
+                    vertex(glb[1].x, glb[0].y, glb[0].z),
+                    vertex(glb[1].x, glb[1].y, glb[0].z),
+                    vertex(glb[0].x, glb[1].y, glb[0].z),
+                    tile_color);
         }
         if(loc.get_neighbor(cdir_zplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
-          push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
-          push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
-          push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
+          push_quad(coll,
+                    vertex(glb[0].x, glb[0].y, glb[1].z),
+                    vertex(glb[1].x, glb[0].y, glb[1].z),
+                    vertex(glb[1].x, glb[1].y, glb[1].z),
+                    vertex(glb[0].x, glb[1].y, glb[1].z),
+                    tile_color);
         }
         if(loc.get_neighbor(cdir_xminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
-          push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
-          push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
-          push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
+          push_quad(coll,
+                    vertex(glb[0].x, glb[0].y, glb[0].z),
+                    vertex(glb[0].x, glb[1].y, glb[0].z),
+                    vertex(glb[0].x, glb[1].y, glb[1].z),
+                    vertex(glb[0].x, glb[0].y, glb[1].z),
+                    tile_color);
         }
         if(loc.get_neighbor(cdir_xplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
-          push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
-          push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
-          push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
+          push_quad(coll,
+                    vertex(glb[1].x, glb[0].y, glb[0].z),
+                    vertex(glb[1].x, glb[1].y, glb[0].z),
+                    vertex(glb[1].x, glb[1].y, glb[1].z),
+                    vertex(glb[1].x, glb[0].y, glb[1].z),
+                    tile_color);
         }
         if(loc.get_neighbor(cdir_yminus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_vertex(*vect, glb[0].x, glb[0].y, glb[0].z);
-          push_vertex(*vect, glb[0].x, glb[0].y, glb[1].z);
-          push_vertex(*vect, glb[1].x, glb[0].y, glb[1].z);
-          push_vertex(*vect, glb[1].x, glb[0].y, glb[0].z);
+          push_quad(coll,
+                    vertex(glb[0].x, glb[0].y, glb[0].z),
+                    vertex(glb[0].x, glb[0].y, glb[1].z),
+                    vertex(glb[1].x, glb[0].y, glb[1].z),
+                    vertex(glb[1].x, glb[0].y, glb[0].z),
+                    tile_color);
         }
         if(loc.get_neighbor(cdir_yplus, CONTENTS_ONLY).stuff_at().contents() != t.contents()){
-          push_vertex(*vect, glb[0].x, glb[1].y, glb[0].z);
-          push_vertex(*vect, glb[0].x, glb[1].y, glb[1].z);
-          push_vertex(*vect, glb[1].x, glb[1].y, glb[1].z);
-          push_vertex(*vect, glb[1].x, glb[1].y, glb[0].z);
+          push_quad(coll,
+                    vertex(glb[0].x, glb[1].y, glb[0].z),
+                    vertex(glb[0].x, glb[1].y, glb[1].z),
+                    vertex(glb[1].x, glb[1].y, glb[1].z),
+                    vertex(glb[1].x, glb[1].y, glb[0].z),
+                    tile_color);
         }
       }
-      /*push_vertex(*vect, locv.x,     locv.y,     locv.z + 0.5);
-      push_vertex(*vect, locv.x + 1, locv.y,     locv.z + 0.5);
-      push_vertex(*vect, locv.x + 1, locv.y + 1, locv.z + 0.5);
-      push_vertex(*vect, locv.x,     locv.y + 1, locv.z + 0.5);*/
       
       if (is_fluid(t.contents())) {
         if (active_fluid_tile_info const* fluid = w.get_active_fluid_info(loc)) {
-          push_vertex(vertices.velocity, locv.x+0.5, locv.y+0.5, locv.z + 0.1);
-          push_vertex(vertices.velocity,
-              locv.x + 0.5 + ((GLfloat)fluid->velocity.x / (tile_width)),
-              locv.y + 0.5 + ((GLfloat)fluid->velocity.y / (tile_width)),
-              locv.z + 0.1 + ((GLfloat)fluid->velocity.z / (tile_width)));
+          push_line(coll,
+                    vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
+                    vertex(
+                      locv.x + 0.5 + ((GLfloat)fluid->velocity.x / (tile_width)),
+                      locv.y + 0.5 + ((GLfloat)fluid->velocity.y / (tile_width)),
+                      locv.z + 0.1 + ((GLfloat)fluid->velocity.z / (tile_width))),
+                    color(0x00ff0077));
           
           for (EACH_CARDINAL_DIRECTION(dir)) {
             const sub_tile_distance prog = fluid->progress[dir];
             if (prog > 0) {
               vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary(dir);
 
-              push_vertex(vertices.progress, locv.x + 0.51, locv.y + 0.5, locv.z + 0.1);
-              push_vertex(vertices.progress,
-                  locv.x + 0.51 + directed_prog.x,
-                  locv.y + 0.5 + directed_prog.y,
-                  locv.z + 0.1 + directed_prog.z);
+              push_line(coll,
+                          vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
+                          vertex(
+                            locv.x + 0.51 + directed_prog.x,
+                            locv.y + 0.5 + directed_prog.y,
+                            locv.z + 0.1 + directed_prog.z),
+                          color(0x0000ff77));
             }
           }
         }
         else {
-          push_vertex(vertices.inactive_marker, locv.x + 0.5, locv.y + 0.5, locv.z + 0.1);
+          push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.1), color(0x00000077));
         }
       }
      }
@@ -609,85 +718,35 @@ srand(time(NULL));
     gluLookAt(0,0,0, facing.x,facing.y,facing.z, 0,0,1);
     
     glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
 
-    std::vector<size_t> verticeses_order;
-    for(auto const& p : verticeses) {
-      verticeses_order.push_back(p.first);
+    std::vector<size_t> gl_collections_by_distance_order;
+    for(auto const& p : gl_collections_by_distance) {
+      gl_collections_by_distance_order.push_back(p.first);
     }
     //sort in descending order
-    std::sort(verticeses_order.rbegin(), verticeses_order.rend());
-    for(size_t i : verticeses_order) {
-      vertices_t const& vertices = verticeses[i];
-      
-      /*if(vertices.ground_vertices.size()) {
-        glColor4f(0.2,0.4,0.0,1.0);
-        glVertexPointer(3, GL_FLOAT, 0, &ground_vertices[0]);
-        glDrawArrays(GL_QUADS, 0, ground_vertices.size());
-      }*/
-      if(vertices.rock.size()) {
-        glColor4f(0.5,0.0,0.0,0.5);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.rock[0]);
-        glDrawArrays(GL_QUADS, 0, vertices.rock.size());
+    std::sort(gl_collections_by_distance_order.rbegin(), gl_collections_by_distance_order.rend());
+    for(size_t i : gl_collections_by_distance_order) {
+      gl_collection const& coll = gl_collections_by_distance[i];
+      if(const size_t count = coll.quads.vertices.size()) {
+        glVertexPointer(3, GL_FLOAT, 0, &coll.quads.vertices[0]);
+        glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.quads.colors[0]);
+        glDrawArrays(GL_QUADS, 0, count);
       }
-      if(vertices.rubble.size()) {
-        glColor4f(1.0,1.0,0.0,0.5);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.rubble[0]);
-        glDrawArrays(GL_QUADS, 0, vertices.rubble.size());
+      if(const size_t count = coll.triangles.vertices.size()) {
+        glVertexPointer(3, GL_FLOAT, 0, &coll.triangles.vertices[0]);
+        glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.triangles.colors[0]);
+        glDrawArrays(GL_TRIANGLES, 0, count);
       }
-      if(vertices.sticky_water.size()) {
-        glColor4f(0.0, 0.0, 1.0, 0.5);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.sticky_water[0]);
-        glDrawArrays(GL_QUADS, 0, vertices.sticky_water.size());
+      if(const size_t count = coll.lines.vertices.size()) {
+        glVertexPointer(3, GL_FLOAT, 0, &coll.lines.vertices[0]);
+        glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.lines.colors[0]);
+        glDrawArrays(GL_LINES, 0, count);
       }
-      if(vertices.free_water.size()) {
-        glColor4f(0.4, 0.4, 1.0, 0.5);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.free_water[0]);
-        glDrawArrays(GL_QUADS, 0, vertices.free_water.size());
-      }
-      if(vertices.velocity.size()) {
-        glColor4f(0.0, 1.0, 0.0, 0.5);
-        glLineWidth(1);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.velocity[0]);
-        glDrawArrays(GL_LINES, 0, vertices.velocity.size());
-      }
-      if(vertices.progress.size()) {
-        glColor4f(0.0, 0.0, 1.0, 0.5);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.progress[0]);
-        glDrawArrays(GL_LINES, 0, vertices.progress.size());
-      }
-      if(vertices.inactive_marker.size()) {
-        glColor4f(0.0, 0.0, 0.0, 0.5);
-        glPointSize(3);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.inactive_marker[0]);
-        glDrawArrays(GL_POINTS, 0, vertices.inactive_marker.size());
-      }
-      if(vertices.laserbeam.size()) {
-        glColor4f(0.0, 1.0, 0.0, 0.5);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.laserbeam[0]);
-        glDrawArrays(GL_QUADS, 0, vertices.laserbeam.size());
-      }
-      if(vertices.object.size()) {
-        glColor4f(0.5,0.5,0.5,0.5);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
-        glDrawArrays(GL_TRIANGLES, 0, vertices.object.size());
-      }
-      /*if(vertices.object.size()) {
-        glLineWidth(1);
-        glColor4f(1.0,1.0,1.0,0.5);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.object[0]);
-        glDrawArrays(GL_LINES, 0, vertices.object.size());
-      }*/
-      if(vertices.suckable_marker.size()) {
-        glColor4f(1.0, 0.0, 1.0, 0.5);
-        glPointSize(3);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.suckable_marker[0]);
-        glDrawArrays(GL_POINTS, 0, vertices.suckable_marker.size());
-      }
-      if(vertices.pushable_marker.size()) {
-        glColor4f(1.0, 0.5, 0.0, 0.5);
-        glPointSize(3);
-        glVertexPointer(3, GL_FLOAT, 0, &vertices.pushable_marker[0]);
-        glDrawArrays(GL_POINTS, 0, vertices.pushable_marker.size());
+      if(const size_t count = coll.points.vertices.size()) {
+        glVertexPointer(3, GL_FLOAT, 0, &coll.points.vertices[0]);
+        glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.points.colors[0]);
+        glDrawArrays(GL_POINTS, 0, count);
       }
     }
     
