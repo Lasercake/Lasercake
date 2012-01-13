@@ -539,7 +539,9 @@ srand(time(NULL));
         vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
 
         // Hack - TODO remove
-        if (frame == 0 && t.contents() == GROUPABLE_WATER) w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
+        if (frame == 0 && t.contents() == GROUPABLE_WATER) {
+          w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
+        }
 
         {
           const color tile_color =
