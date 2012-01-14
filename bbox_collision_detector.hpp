@@ -80,6 +80,7 @@ private:
     std::array<Coordinate, NumDimensions> coords;
     std::array<Coordinate, NumDimensions> interleaved_bits;
     num_bits_type num_low_bits_ignored;
+    bounding_box bbox;
     
     zbox():num_low_bits_ignored(total_bits){ for (num_coordinates_type i = 0; i < NumDimensions; ++i) interleaved_bits[i] = 0; }
     
@@ -101,13 +102,14 @@ private:
       return (num_low_bits_ignored + (NumDimensions - 1) - dim) / NumDimensions;
     }
     // note: gives "size=0" for max-sized things
-    bounding_box get_bbox()const {
-      bounding_box result;
-      result.min = coords;
+    void compute_bbox() {
+      bbox.min = coords;
       for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-        result.size[i] = safe_left_shift_one(num_bits_ignored_by_dimension(i));
+        bbox.size[i] = safe_left_shift_one(num_bits_ignored_by_dimension(i));
       }
-      return result;
+    }
+    bounding_box const& get_bbox()const {
+      return bbox;
     }
   };
   
@@ -141,6 +143,10 @@ private:
     }
   };
   
+  // TODO: Can we make these functions be constructors of zbox,
+  // and make zbox's members private? zbox could REALLY use some
+  // data hiding (right now it's pretty clear-cut who's allowed to
+  // edit zbox data, but it isn't enforced.)
   static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
     zbox new_box;
     const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored, zb2.num_low_bits_ignored);
@@ -156,12 +162,14 @@ private:
                            == (zb2.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1)));
           new_box.coords[j] = zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1);
         }
+        new_box.compute_bbox();
         return new_box;
       }
     }
     new_box.num_low_bits_ignored = max_ignored;
     assert(zb1.coords == zb2.coords);
     new_box.coords = zb1.coords;
+    new_box.compute_bbox();
     return new_box;
   }
   
@@ -181,6 +189,7 @@ private:
       assert(bit_idx_within_coordinates >= result.num_bits_ignored_by_dimension(which_coordinate));
       result.interleaved_bits[interleaved_bit_array_idx] |= ((coords[which_coordinate] >> bit_idx_within_coordinates) & 1) << interleaved_bit_local_idx;
     }
+    result.compute_bbox();
     return result;
   }
   
