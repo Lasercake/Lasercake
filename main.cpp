@@ -545,7 +545,7 @@ srand(time(NULL));
 
         {
           const color tile_color =
-            t.contents() ==              ROCK ? color(0x77000077) :
+            t.contents() ==              ROCK ? color(0x33000077 + (rand()&(0x77000000))) :
             t.contents() ==            RUBBLE ? color(0xffff0077) :
             t.contents() ==   GROUPABLE_WATER ? color(0x0000ff77) :
             t.contents() == UNGROUPABLE_WATER ? color(0x6666ff77) :
