@@ -792,7 +792,7 @@ void replace_substance_(
   tile const& t = loc.stuff_at();
   
   assert(t.contents() == old_substance_type);
-  check_pushable_tiles_sanity(w);
+  //check_pushable_tiles_sanity(w);
   
   if (old_substance_type != AIR && new_substance_type == AIR) {
     // We might have moved away from a tile that was trying to push water into us.
@@ -861,7 +861,7 @@ void replace_substance_(
         assert(false);
       }
     }
-    check_pushable_tiles_sanity(w);
+    //check_pushable_tiles_sanity(w);
   }
   
   // If we're removing water, we have complicated computations to do. We do it in this order:
@@ -1069,7 +1069,7 @@ void replace_substance_(
         water_group->pushable_tiles_by_height.insert(adj_loc);
       }
     }
-    check_pushable_tiles_sanity(w);
+    //check_pushable_tiles_sanity(w);
     
     // If the tile above us was idle groupable water, it's now suckable...
     // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
@@ -1135,7 +1135,7 @@ void replace_substance_(
         if (!can_be_pushable) water_group->pushable_tiles_by_height.erase(adj_loc);
       }
     }
-    check_pushable_tiles_sanity(w);
+    //check_pushable_tiles_sanity(w);
     
     // Our disappearance might have split the group.
     // If we *did* split the group, we're going to have to flood-fill along the surfaces of all the components in order to divide the groups from each other.
@@ -1209,7 +1209,7 @@ void replace_substance_(
         bool destroy_this_frontier = (inf.defunct_frontiers.find(which_neighbor) != inf.defunct_frontiers.end());
         
         if (!destroy_this_frontier && frontier.empty()) {
-          check_pushable_tiles_sanity(w);
+          //check_pushable_tiles_sanity(w);
           // If the frontier is empty, that means this route has finished its search and not found any
           // connections to the rest of the water. Therefore, we need to mark this frontier off as a
           // separate group.
@@ -1267,7 +1267,7 @@ void replace_substance_(
             water_group->pushable_tiles_by_height.erase(p);
           }
           //check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
-          check_pushable_tiles_sanity(w);
+          //check_pushable_tiles_sanity(w);
         }
         else if (!destroy_this_frontier) {
           tile_location search_loc = frontier.front();
@@ -1318,7 +1318,7 @@ void replace_substance_(
     
     //check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
   }
-  check_pushable_tiles_sanity(w);
+  //check_pushable_tiles_sanity(w);
 }
 
 
