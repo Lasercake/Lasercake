@@ -125,6 +125,11 @@ void laser_emitter::update(world &w, object_identifier my_id) {
   bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
   vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
   location = middle;
+  do {
+    facing.x = (rand()&2047) - 1024;
+    facing.y = (rand()&2047) - 1024;
+    facing.z = (rand()&2047) - 1024;
+  } while (facing.magnitude_within_32_bits_is_greater_than(1023) || facing.magnitude_within_32_bits_is_less_than(512));
   facing = facing * tile_width * 2 / facing.magnitude_within_32_bits();
   
   beam_first_contact_finder finder(w, line_segment(location, location + facing * 50));
