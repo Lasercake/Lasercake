@@ -86,7 +86,50 @@ namely... 64/4 bits, or 16 bits.
 
 */
 
+/*
+
+And for 2d line vs. line collisions...
+
+skew the 'object' line onto an axis...
+put ol1 at 0,0
+
+skewing onto the x axis,
+skew(x, y) = (x, y + ax)
+a*ol2x + ol2y = 0
+a = -(ol2y/ol2x)
+D = ol2x
+A = a*D = -ol2y
+
+Dy1 = (D*skew(sl1))y = D*sl1y + A*sl1x
+Dy2 = (D*skew(sl2))y = D*sl2y + A*sl2x
+
+loc on x axis = lt = ((0 - y1) / (y2 - y1)) sl2x + ((y2 - 0) / (y2 - y1)) sl1x
+lt*(Dy2 - Dy1) = sl1x * ol2x*y2 - sl2x * ol2x*y1
+
+*/
+
 #include "polygon_collision_detection.hpp"
+
+std::pair<bool, boost::rational<int64_t>> get_intersection(int64_t sl1x, int64_t sl1y, int64_t sl2x, int64_t sl2y, int64_t ol1x, int64_t ol1y, int64_t ol2x, int64_t ol2y) {
+  // assume ol1 is (0, 0)
+  ol2x -= ol1x;
+  sl1x -= ol1x;
+  sl2x -= ol1x;
+  ol2y -= ol1y;
+  sl1y -= ol1y;
+  sl2y -= ol1y;
+  if (ol2x == 0) {
+    return get_intersection(sl1y, sl1x, sl2y, sl2x, 0, 0, ol2y, ol2x);
+  }
+  const int64_t D = ol2x;
+  const int64_t A = -ol2y;
+  const int64_t Dy1 = D*sl1y + A*sl1x;
+  const int64_t Dy2 = D*sl2y + A*sl2x;
+  const int64_t Dy2mDy1 = Dy2 - Dy1;
+  const int64_t ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
+  if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return std::make_pair(false, 1);
+  else                                               return std::make_pair(true, boost::rational<int64_t>(Dy1, Dy1 - Dy2));
+}
 
 bool bounding_box::contains(vector3<int64_t> const& v)const {
   if (!is_anywhere) return false;
@@ -239,8 +282,17 @@ std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment l, conve
       return std::make_pair(false, 1);
     }
     else {
-      std::cerr << "Ack! A coplanar line! Fail!\n";
-      return std::make_pair(false, 1);
+      // Now, we need to do 2D line vs. polygon collisions, which are just a bunch of 2D line vs. line collisions.
+      // We just ignore the z values for these purposes.
+      std::pair<bool, boost::rational<int64_t>> result(false, 1);
+      for (size_t i = 0; i < c.adjusted_vertices.size(); ++i) {
+        const int next_i = (i + 1) % c.adjusted_vertices.size();
+        std::pair<bool, boost::rational<int64_t>> here = get_intersection(l.ends[0].x, l.ends[0].y, l.ends[1].x, l.ends[1].y, c.adjusted_vertices[i].x, c.adjusted_vertices[i].y, c.adjusted_vertices[next_i].x, c.adjusted_vertices[next_i].y);
+        if (here.first && (!result.first || here.second < result.second)) {
+          result = here;
+        }
+      }
+      return result;
     }
   }
   
