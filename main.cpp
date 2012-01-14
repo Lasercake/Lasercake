@@ -225,6 +225,7 @@ void mainLoop (std::string scenario)
   int done = 0;
   int frame = 0;
   int p_mode = 0;
+  bool drawing = true;
 srand(time(NULL));
 
   world w(make_world_building_func(scenario));
@@ -258,6 +259,7 @@ srand(time(NULL));
           
         case SDL_KEYDOWN:
           if(event.key.keysym.sym == SDLK_p) ++p_mode;
+          if(event.key.keysym.sym == SDLK_z) drawing = !drawing;
           if(event.key.keysym.sym == SDLK_q) surveilled_by_global_display.x += tile_width;
           if(event.key.keysym.sym == SDLK_a) surveilled_by_global_display.x -= tile_width;
           if(event.key.keysym.sym == SDLK_w) surveilled_by_global_display.y += tile_width;
@@ -339,6 +341,8 @@ srand(time(NULL));
       vector3<tile_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50),
       vector3<tile_coordinate>(101,101,101)
     ));*/
+    // this is a bloody stupid hack, TODO do something different
+    if (drawing)
     w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box(
       view_loc - vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50),
       view_loc + vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50)
