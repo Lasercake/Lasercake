@@ -947,6 +947,7 @@ void replace_substance_(
     // Here, that means we need to check the opposite - the tiles horizontally, above, and above-horizontally.
     // Water is activated-if-necessary by calling unordered_set::operator[], which default-constructs one
     // if there isn't one there already.
+    if (is_fluid(new_substance_type)) active_fluids[loc];
     const tile_location uploc = loc + cdir_zplus;
     if (is_fluid(uploc.stuff_at().contents())) active_fluids[uploc];
     
@@ -1633,7 +1634,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // Be a little paranoid about making sure fluids obeys all the proper conditions of inactivity
       for (EACH_CARDINAL_DIRECTION(dir)) {
         if (dir.v.z < 0) {
-          if (fluid.blockage_amount_this_frame[dir] > min_convincing_speed + (-gravity_acceleration.z) || fluid.blockage_amount_this_frame[dir] < min_convincing_speed) {
+          if (fluid.blockage_amount_this_frame[dir] > min_convincing_speed + (-gravity_acceleration.z) || fluid.blockage_amount_this_frame[dir] <= min_convincing_speed) {
             goto fake_continue;
           }
         }
