@@ -310,6 +310,7 @@ typedef uint64_t object_identifier;
 const object_identifier NO_OBJECT = 0;
 
 struct object_or_tile_identifier {
+  object_or_tile_identifier():data(NO_OBJECT){}
   object_or_tile_identifier(tile_location const& loc):data(loc){}
   object_or_tile_identifier(object_identifier id):data(id){}
   tile_location const* get_tile_location()const { return boost::get<tile_location>(&data); }
@@ -381,9 +382,11 @@ public:
 class world_collision_detector {
 private:
   typedef bbox_collision_detector<object_or_tile_identifier, 64, 3> internal_t;
-  static internal_t::bounding_box convert_bb(bounding_box const& bb) {
+  typedef internal_t::generalized_object_collection_handler igoch;
+  typedef internal_t::bounding_box ibb;
+  static ibb convert_bb(bounding_box const& bb) {
     assert(bb.is_anywhere);
-    internal_t::bounding_box b;
+    ibb b;
     b.min[0] = bb.min.x;
     b.min[1] = bb.min.y;
     b.min[2] = bb.min.z;
@@ -392,7 +395,7 @@ private:
     b.size[2] = bb.max.z + 1 - bb.min.z;
     return b;
   }
-  static bounding_box convert_bb(internal_t::bounding_box const& b) {
+  static bounding_box convert_bb(ibb const& b) {
     bounding_box bb;
     bb.min.x = b.min[0];
     bb.min.y = b.min[1];
@@ -421,10 +424,38 @@ public:
   }
   // Returns bounding_box() (i.e. !is_anywhere) iff the id isn't in the detector.
   bounding_box find_bounding_box(object_or_tile_identifier id)const {
-    const internal_t::bounding_box* bb = detector.find_bounding_box(id);
+    const ibb* bb = detector.find_bounding_box(id);
     if(bb) return convert_bb(*bb);
     else return bounding_box();
   }
+  
+  class generalized_object_collection_handler {
+  public:
+    generalized_object_collection_handler():intermediary_(this){}
+    virtual void handle_new_find(object_or_tile_identifier) {}
+    virtual bool should_be_considered__static(bounding_box const&)const { return true; }
+    virtual bool should_be_considered__dynamic(bounding_box const&)const { return true; }
+    virtual bool bbox_ordering(bounding_box const& bb1, bounding_box const& bb2)const { return bb1.min < bb2.min; }
+    virtual bool done()const { return false; }
+    unordered_set<object_or_tile_identifier> const& get_found_objects()const { return intermediary_.get_found_objects(); }
+  private:
+    friend class world_collision_detector;
+    struct impl_ : public igoch {
+      world_collision_detector::generalized_object_collection_handler *outer;
+      impl_(world_collision_detector::generalized_object_collection_handler *outer):outer(outer){}
+      void handle_new_find(object_or_tile_identifier id) { outer->handle_new_find(id); }
+      bool should_be_considered__static(ibb const& bb)const { return outer->should_be_considered__static(convert_bb(bb)); }
+      bool should_be_considered__dynamic(ibb const& bb)const { return outer->should_be_considered__dynamic(convert_bb(bb)); }
+      bool bbox_ordering(ibb const& bb1, ibb const& bb2)const { return outer->bbox_ordering(convert_bb(bb1), convert_bb(bb2)); }
+      bool done()const { return outer->done(); }
+    };
+    impl_ intermediary_;
+  };
+  
+  void get_objects_generalized(generalized_object_collection_handler *handler)const {
+    detector.get_objects_generalized(&handler->intermediary_);
+  }
+  
 private:
   internal_t detector;
 };
@@ -676,6 +707,7 @@ public:
   water_group_identifier get_water_group_id_by_grouped_tile(tile_location const& loc)const;
   persistent_water_group_info const& get_water_group_by_grouped_tile(tile_location const& loc)const;
   persistent_water_groups_t const& get_persistent_water_groups()const { return persistent_water_groups; }
+  world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision; }
   
   groupable_water_dimensional_boundaries_TODO_name_this_better_t const& get_groupable_water_dimensional_boundaries_TODO_name_this_better()const { return groupable_water_dimensional_boundaries_TODO_name_this_better;}
 private:

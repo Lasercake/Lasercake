@@ -24,6 +24,41 @@
 // TODO HAAAAACK
 #include "SDL/SDL.h"
 
+
+struct beam_first_contact_finder : world_collision_detector::generalized_object_collection_handler {
+  beam_first_contact_finder(world const& w, line_segment beam):w(w),beam(beam),best_intercept_point(false, 1){}
+  world const& w;
+  line_segment beam;
+  std::pair<bool, boost::rational<int64_t>> best_intercept_point;
+  unordered_set<object_or_tile_identifier> ignores;
+  object_or_tile_identifier thing_hit;
+  
+  void handle_new_find(object_or_tile_identifier id) {
+    if (ignores.find(id) != ignores.end()) return;
+    
+    // TODO : long beams, overflow?
+    std::pair<bool, boost::rational<int64_t>> result = w.get_detail_shape_of_object_or_tile(id).first_intersection(beam);
+    if (result.first) {
+      if (!best_intercept_point.first || result.second < best_intercept_point.second) {
+        best_intercept_point = result;
+        thing_hit = id;
+      }
+    }
+  }
+  virtual bool should_be_considered__dynamic(bounding_box const& bb)const {
+    std::pair<bool, boost::rational<int64_t>> result = shape(bb).first_intersection(beam);
+    return result.first && (!best_intercept_point.first || result.second < best_intercept_point.second);
+  }
+  virtual bool bbox_ordering(bounding_box const& bb1, bounding_box const& bb2)const {
+    // TODO do this in a more efficient way
+    std::pair<bool, boost::rational<int64_t>> result1 = shape(bb1).first_intersection(beam);
+    std::pair<bool, boost::rational<int64_t>> result2 = shape(bb2).first_intersection(beam);
+    // Hack: This will never be relevant if the bools are false
+    return (result1.second < result2.second);
+  }
+};
+
+
 shape robot::get_initial_personal_space_shape()const {
   return shape(bounding_box(
     location - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
@@ -92,6 +127,25 @@ void laser_emitter::update(world &w, object_identifier my_id) {
   location = middle;
   facing = facing * tile_width * 2 / facing.magnitude_within_32_bits();
   
+  beam_first_contact_finder finder(w, line_segment(location, location + facing * 50));
+  finder.ignores.insert(my_id);
+  w.get_things_exposed_to_collision().get_objects_generalized(&finder);
+  
+  if (finder.best_intercept_point.first) {
+    // TODO do I have to worry about overflow?
+    w.add_laser_sfx(location, facing * 50 * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
+    if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
+      if (locp->stuff_at().contents() == ROCK) {
+        w.replace_substance(*locp, ROCK, RUBBLE);
+      }
+    }
+  }
+  else {
+    w.add_laser_sfx(location, facing * 50);
+  }
+  
+  
+  #if 0
   line_segment laser_line(location, location + facing);
   for (int i = 0; i < 50; ++i) {
     unordered_set<object_or_tile_identifier> possible_hits;
@@ -126,6 +180,7 @@ void laser_emitter::update(world &w, object_identifier my_id) {
   }
   w.add_laser_sfx(location, facing * 50);
   return;
+  #endif
   
   /*struct laser_path_calculator {
     struct cross {

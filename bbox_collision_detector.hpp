@@ -326,7 +326,103 @@ public:
   void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
     zget_objects_overlapping(objects_tree.get(), results, bbox);
   }
+  
+private:
+  struct generalized_object_collection_walker;
 
+public:
+  class generalized_object_collection_handler {
+  public:
+    virtual void handle_new_find(ObjectIdentifier) {}
+    
+    // Any bbox for which this one of these functions returns false is ignored.
+    // The static one is checked only once for each box; the dynamic one is checked
+    // both before the box is added to the frontier and when it comes up.
+    virtual bool should_be_considered__static(bounding_box const&)const { return true; }
+    virtual bool should_be_considered__dynamic(bounding_box const&)const { return true; }
+    
+    // returns "true" if the first one should be considered first, "false" otherwise.
+    // This is primarily intended to allow the caller to run through objects in a specific
+    // in-space order to get the first collision in some direction. One can combine it with
+    // a dynamic should_be_considered function to stop looking in boxes that are entirely
+    // after the first known collision.
+    //
+    // This function must be a Strict Weak Ordering and not change its behavior.
+    // This function is only a heuristic; we don't guarantee that the boxes will be handled
+    // exactly in the given order.
+    virtual bool bbox_ordering(bounding_box const&, bounding_box const&)const { return false; } // arbitrary order
+    
+    // This is called often (specifically, every time we call a non-const function of handler);
+    // if it returns true, we stop right away.
+    // Some handlers might know they're done looking before the should_be_considered boxes
+    // run out; this just makes that more efficient.
+    virtual bool done()const { return false; }
+    
+    unordered_set<ObjectIdentifier> const& get_found_objects()const { return found_objects; }
+  private:
+    unordered_set<ObjectIdentifier> found_objects;
+    friend class generalized_object_collection_walker;
+  };
+
+private:
+  struct generalized_object_collection_walker {
+    generalized_object_collection_handler *handler;
+    unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object;
+    generalized_object_collection_walker(generalized_object_collection_handler *handler, unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object):handler(handler),bboxes_by_object(bboxes_by_object),frontier(set_compare(handler)){}
+    
+    struct set_compare {
+      generalized_object_collection_handler *handler;
+      set_compare(generalized_object_collection_handler *handler):handler(handler){}
+      
+      bool operator()(ztree_node const* z1, ztree_node const* z2)const {
+        return handler->bbox_ordering(z1->here.bbox, z2->here.bbox);
+      }
+    };
+    
+    // will only contain nonnull pointers (since it would be a waste of time to
+    // insert null pointers into the set).
+    //
+    // TODO: we can probably find a more optimal data structure to use here than std::set.
+    std::set<ztree_node const*, set_compare> frontier;
+    
+    void try_add(ztree_node *z) {
+      if (z && handler->should_be_considered__static(z->here.bbox) && handler->should_be_considered__dynamic(z->here.bbox)) {
+        frontier.insert(z);
+      }
+    }
+      
+    bool process_next() {
+      if (frontier.empty()) return false;
+      
+      ztree_node const* next = *frontier.begin();
+      frontier.erase(frontier.begin());
+      
+      if (handler->should_be_considered__dynamic(next->here.bbox)) {
+        for (const ObjectIdentifier obj : next->objects_here) {
+          auto bbox_iter = bboxes_by_object.find(obj);
+          assert(bbox_iter != bboxes_by_object.end());
+          if (handler->should_be_considered__static(bbox_iter->second) && handler->should_be_considered__dynamic(bbox_iter->second)) {
+            if (handler->found_objects.insert(obj).second) {
+              handler->handle_new_find(obj);
+              if (handler->done()) return false;
+            }
+          }
+        }
+        try_add(next->child0.get());
+        try_add(next->child1.get());
+      }
+      
+      return true;
+    }
+  };
+    
+public:
+  void get_objects_generalized(generalized_object_collection_handler *handler)const {
+    generalized_object_collection_walker data(handler, bboxes_by_object);
+    
+    data.try_add(objects_tree.get());
+    while(data.process_next()){}
+  }
 };
 
 /*

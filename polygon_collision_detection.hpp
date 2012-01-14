@@ -69,6 +69,7 @@ inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
   return os << '[' << bb.min << ',' << bb.max << ']';
 }
 
+// TODO: rays and lines
 struct line_segment {
   line_segment(std::array<vector3<int64_t>, 2> ends):ends(ends){}
   line_segment(vector3<int64_t> end1, vector3<int64_t> end2):ends({{end1, end2}}){}
