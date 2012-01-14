@@ -81,6 +81,8 @@ struct vertex {
   
   GLfloat x, y, z;
 };
+static_assert(sizeof(vertex) == 3*sizeof(GLfloat), "OpenGL needs this data layout.");
+
 struct color {
   
   // Use hex RGBA values as familiar from e.g. CSS.
@@ -96,6 +98,8 @@ struct color {
    
   GLubyte r, g, b, a;
 };
+static_assert(sizeof(color) == 4*sizeof(GLubyte), "OpenGL needs this data layout.");
+
 struct gl_call_data {
   vector<vertex> vertices;
   vector<color> colors;
