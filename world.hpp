@@ -305,6 +305,17 @@ namespace std {
   };
 }
 
+inline std::array<tile_location, num_cardinal_directions> get_all_neighbors(tile_location const& loc, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
+  return std::array<tile_location, num_cardinal_directions>({{
+    loc.get_neighbor(cardinal_directions[0], realineeded),
+    loc.get_neighbor(cardinal_directions[1], realineeded),
+    loc.get_neighbor(cardinal_directions[2], realineeded),
+    loc.get_neighbor(cardinal_directions[3], realineeded),
+    loc.get_neighbor(cardinal_directions[4], realineeded),
+    loc.get_neighbor(cardinal_directions[5], realineeded)
+  }});
+}
+
 
 typedef uint64_t object_identifier;
 const object_identifier NO_OBJECT = 0;
