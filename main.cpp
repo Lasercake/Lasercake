@@ -34,6 +34,7 @@
 #include <iostream>
 
 #include "world.hpp"
+#include "specific_worlds.hpp"
 
 namespace /* anonymous */ {
 
@@ -64,142 +65,16 @@ void debug_print_microseconds(microseconds_t us) {
   std::cerr << (us / 1000) << '.' << (us / 100 % 10);
 }
 
-const int max_simple_hill_width = 20;
 
+vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
+  return vector3<GLfloat>(input - view_center) / tile_width;
 }
-namespace std {
-  template<> struct hash<pair<tile_coordinate, tile_coordinate>> {
-    inline size_t operator()(pair<tile_coordinate, tile_coordinate> const& v) const {
-      size_t seed = 0;
-      boost::hash_combine(seed, v.first);
-      boost::hash_combine(seed, v.second);
-      return seed;
-    }
-  };
-}
-namespace {
-
-int get_hill(unordered_map<std::pair<tile_coordinate, tile_coordinate>, int> &hills_map, pair<tile_coordinate, tile_coordinate> loc) {
-  auto iter = hills_map.find(loc);
-  if (iter == hills_map.end()) {
-    int hill = (rand()&255) ? 0 : (1 + (rand()%max_simple_hill_width));
-    hills_map.insert(make_pair(loc, hill));
-    return hill;
-  }
-  else return iter->second;
-}
-tile_coordinate get_height(unordered_map<std::pair<tile_coordinate, tile_coordinate>, tile_coordinate> &height_map, unordered_map<std::pair<tile_coordinate, tile_coordinate>, int> &hills_map, pair<tile_coordinate, tile_coordinate> loc) {
-  auto iter = height_map.find(loc);
-  if (iter == height_map.end()) {
-    tile_coordinate height = world_center_coord - 100;
-    const tile_coordinate x = loc.first;
-    const tile_coordinate y = loc.second;
-    for (tile_coordinate x2 = x - max_simple_hill_width; x2 <= x + max_simple_hill_width; ++x2) {
-      for (tile_coordinate y2 = y - max_simple_hill_width; y2 <= y + max_simple_hill_width; ++y2) {
-        height += std::max(0, get_hill(hills_map, make_pair(x2, y2)) - (int)i64sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y)));
-      }
-    }
-    height_map.insert(make_pair(loc, height));
-    return height;
-  }
-  else return iter->second;
-}
-
-struct world_building_func {
-  world_building_func(std::string scenario):scenario(scenario){}
-  std::string scenario;
-  unordered_map<std::pair<tile_coordinate, tile_coordinate>, int> hills_map;
-  unordered_map<std::pair<tile_coordinate, tile_coordinate>, tile_coordinate> height_map;
-  
-  void operator()(world_building_gun make, tile_bounding_box bounds) {
-    const tile_coordinate wc = world_center_coord;
-    if (scenario == "simple_hills") {
-      for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
-        for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
-          tile_coordinate height = get_height(height_map, hills_map, make_pair(x, y));
-          for (tile_coordinate z = bounds.min.z; z < std::min(height, bounds.min.z + bounds.size.z); ++z) {
-            vector3<tile_coordinate> l(x,y,z);
-            make(ROCK, l);
-          }
-        }
-      }
-      return;
-    }
-    if (scenario.substr(0,15) == "pressure_tunnel") {
-      for(vector3<tile_coordinate> l : bounds) {
-        const tile_coordinate tower_lower_coord = wc;
-        const tile_coordinate tower_upper_coord = wc+10;
-        const tile_coordinate tower_height = 200;
-        if (l.x < tower_lower_coord && l.y >= tower_lower_coord && l.y <= tower_lower_coord && l.z >= wc && l.z <= wc) {}
-        else if (l.x < tower_lower_coord && l.y >= tower_lower_coord-1 && l.y <= tower_lower_coord+1 && l.z >= wc-1 && l.z <= wc+1)
-          make(ROCK, l);
-        else if (l.x >= tower_lower_coord && l.x < tower_upper_coord && l.y >= tower_lower_coord && l.y < tower_upper_coord && l.z >= wc && l.z < wc + tower_height)
-          make(GROUPABLE_WATER, l);
-        else if (l.x >= tower_lower_coord-1 && l.x < tower_upper_coord+1 && l.y >= tower_lower_coord-1 && l.y < tower_upper_coord+1 && l.z >= wc-1 && l.z < wc + tower_height+1)
-          make(ROCK, l);
-      }
-      return;
-    }
-    for (tile_coordinate x = std::max(world_center_coord-1, bounds.min.x); x < std::min(world_center_coord+21, bounds.min.x + bounds.size.x); ++x) {
-      for (tile_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
-        for (tile_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {
-          vector3<tile_coordinate> l(x,y,z);
-          if (x == world_center_coord-1 || x == world_center_coord+20 || y == world_center_coord-1 || y == world_center_coord+20 || z == world_center_coord-1 /*|| z == world_center_coord+20*/) {
-            make(ROCK, l);
-          }
-          else {
-            if ((scenario.substr(0,5) == "tower") &&
-                  x >= wc+4 && x <= wc+6 &&
-                  y >= wc+4 && y <= wc+6 &&
-                  z >= wc+1) make(GROUPABLE_WATER, l);
-            else if ((scenario == "tower2" || scenario == "tower3") &&
-                  x >= wc+3 && x <= wc+7 &&
-                  y >= wc+3 && y <= wc+7 &&
-                  z >= wc+1) make(ROCK, l);
-            else if (scenario == "tower3" && z < wc+3 && (
-                  x == wc+1 || x == wc+9 || y == wc+1 || wc+y == 9)) make(ROCK, l);
-                  
-            if (scenario == "shallow") {
-                   if (z == wc+0 && x >= wc+5) make(ROCK, l);
-              else if (z == wc+1 && x >= wc+10) make(ROCK, l);
-              else if (z == wc+2 && x >= wc+15) make(ROCK, l);
-              else if (x == wc+19) make(GROUPABLE_WATER, l);
-            }
-            if (scenario == "steep") {
-              if (z < 20 - x) make(ROCK, l);
-              else if (z >= wc+15 && (wc + 20 - x) >= 15) make(GROUPABLE_WATER, l);
-            }
-            if (scenario == "tank") {
-              if (z < wc+8 && x > wc+10) make(ROCK, l);
-              else if (x >= wc+12 && y <= wc+13 && y >= wc+7) make(GROUPABLE_WATER, l);
-              else if (y != wc+10 && x > wc+10) make(ROCK, l);
-              else if (z > wc+8 && x > wc+10 && x < wc+18) make(ROCK, l);
-              else if (x > wc+10) make(GROUPABLE_WATER, l);
-            }
-            if (scenario == "tank2") {
-              if (z < wc+8 && x > wc+10) make(ROCK, l);
-              else if (x >= wc+12 && y <= wc+13 && y >= wc+7) make(GROUPABLE_WATER, l);
-              else if (y != wc+9 && y != wc+10 && x > wc+10) make(ROCK, l);
-              else if (z > wc+9 && x > wc+10 && x < wc+18) make(ROCK, l);
-              else if (x > wc+10) make(GROUPABLE_WATER, l);
-            }
-            if (scenario.substr(0,6) == "twisty") {
-              if (x == wc+0) make(GROUPABLE_WATER, l);
-              else if (x == wc+1 && z > wc+0) make(ROCK, l);
-              else if (x == wc+5) make(scenario == "twistyrubble" ? RUBBLE : ROCK, l);
-              else if (x == wc+2 && (z % 4) == 1) make(ROCK, l);
-              else if (x == wc+3 && (z % 2) == 1) make(ROCK, l);
-              else if (x == wc+4 && (z % 4) == 3) make(ROCK, l);
-            }
-          }
-        }
-      }
-    }
-  }
-};
 
 // These are to be passed as part of arrays to OpenGL.
 // Thus their data format/layout makes a difference.
+// TODO maybe make vector3<GLfloat> and vertex the same thing?
+// Is vector3<GLfloat>'s layout required to be the same as that of
+// this struct? I believe so.  typedef vector3<GLfloat> vertex; ?
 struct vertex {
   vertex(GLfloat x, GLfloat y, GLfloat z) : x(x), y(y), z(z) {}
   /* implicit conversion */ vertex(vector3<GLfloat> const& v) : x(v.x), y(v.y), z(v.z) {}
@@ -237,6 +112,11 @@ struct gl_collection {
   gl_call_data triangles;
   gl_call_data quads;
 };
+
+//The gl_collection:s with higher indices here are intended to be
+//further away and rendered first (therefore covered up most
+//by everything else that's closer).
+typedef std::unordered_map<size_t, gl_collection> gl_collectionplex;
 
 
 void push_vertex(gl_call_data& data, vertex const& v, color const& c) {
@@ -304,15 +184,28 @@ void push_quad(gl_collection& coll,
   push_vertex(coll.quads, v4, c4);
 }
 
-// TODO maybe write push_convex_polygon instead of implementing it below
-// specifically for 'object's?
-
+// TODO allow choosing each polygon vertex's color?
+void push_convex_polygon(vector3<fine_scalar> const& view_loc,
+                         gl_collection& coll,
+                         std::vector<vector3<int64_t> > const& vertices,
+                         color const& c) {
+  if(vertices.size() >= 3) {
+    // draw convex polygon via (sides - 2) triangles
+    std::vector< vector3<int64_t> >::const_iterator vertices_i = vertices.begin();
+    const std::vector< vector3<int64_t> >::const_iterator vertices_end = vertices.end();
+    const vertex first_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));
+    ++vertices_i;
+    vertex prev_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));
+    ++vertices_i;
+    for (; vertices_i != vertices_end; ++vertices_i) {
+      const vertex this_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));
+      push_triangle(coll, first_vertex, prev_vertex, this_vertex, c);
+      prev_vertex = this_vertex;
+    }
+  }
+}
 
 const vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
-
-vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
-  return vector3<GLfloat>(input - view_center) / tile_width;
-}
 
 tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_box b, vector3<fine_scalar> const& v) {
   const fine_scalar xdist = (v.x < b.min.x) ? (b.min.x - v.x) : (v.x > b.max.x) ? (v.x - b.max.x) : 0;
@@ -330,7 +223,7 @@ void mainLoop (std::string scenario)
   int p_mode = 0;
 srand(time(NULL));
 
-  world w( (worldgen_function_t(world_building_func(scenario))) );
+  world w(make_world_building_func(scenario));
   vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
   shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
@@ -396,10 +289,7 @@ srand(time(NULL));
     vector3<fine_scalar> view_loc;
     vector3<fine_scalar> view_towards;
 
-    //The gl_collection:s with higher indices here are intended to be
-    //further away and rendered first (therefore covered up most
-    //by everything else that's closer).
-    std::unordered_map<size_t, gl_collection> gl_collections_by_distance;
+    gl_collectionplex gl_collections_by_distance;
     
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
@@ -508,18 +398,9 @@ srand(time(NULL));
         std::vector<convex_polygon> const& foo = blah->second.get_polygons();
         for (convex_polygon const& bar : foo) {
           assert(bar.get_vertices().size() >= 3);
-          // draw convex polygon via (sides - 2) triangles
-          std::vector< vector3<int64_t> >::const_iterator vertices_i = bar.get_vertices().begin();
-          const std::vector< vector3<int64_t> >::const_iterator vertices_end = bar.get_vertices().end();
-          const vector3<GLfloat> first_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
-          ++vertices_i;
-          vector3<GLfloat> prev_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
-          ++vertices_i;
-          for (; vertices_i != vertices_end; ++vertices_i) {
-            const vector3<GLfloat> this_vertex_locv = convert_coordinates_to_GL(view_loc, *vertices_i);
-            push_triangle(coll, first_vertex_locv, prev_vertex_locv, this_vertex_locv, color(0x77777777));
-            prev_vertex_locv = this_vertex_locv;
-          }
+
+          push_convex_polygon(view_loc, coll, bar.get_vertices(), color(0x77777777));
+
           // TODO so many redundant velocity vectors!!
           for(auto const& this_vertex : bar.get_vertices()) {
             const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
