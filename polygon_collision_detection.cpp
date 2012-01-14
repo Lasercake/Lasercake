@@ -110,27 +110,6 @@ lt*(Dy2 - Dy1) = sl1x * ol2x*y2 - sl2x * ol2x*y1
 
 #include "polygon_collision_detection.hpp"
 
-std::pair<bool, boost::rational<int64_t>> get_intersection(int64_t sl1x, int64_t sl1y, int64_t sl2x, int64_t sl2y, int64_t ol1x, int64_t ol1y, int64_t ol2x, int64_t ol2y) {
-  // assume ol1 is (0, 0)
-  ol2x -= ol1x;
-  sl1x -= ol1x;
-  sl2x -= ol1x;
-  ol2y -= ol1y;
-  sl1y -= ol1y;
-  sl2y -= ol1y;
-  if (ol2x == 0) {
-    return get_intersection(sl1y, sl1x, sl2y, sl2x, 0, 0, ol2y, ol2x);
-  }
-  const int64_t D = ol2x;
-  const int64_t A = -ol2y;
-  const int64_t Dy1 = D*sl1y + A*sl1x;
-  const int64_t Dy2 = D*sl2y + A*sl2x;
-  const int64_t Dy2mDy1 = Dy2 - Dy1;
-  const int64_t ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
-  if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return std::make_pair(false, 1);
-  else                                               return std::make_pair(true, boost::rational<int64_t>(Dy1, Dy1 - Dy2));
-}
-
 bool bounding_box::contains(vector3<int64_t> const& v)const {
   if (!is_anywhere) return false;
   return (v.x >= min.x && v.x <= max.x &&
@@ -169,6 +148,7 @@ void bounding_box::restrict_to(bounding_box const& o) {
   }
 }
 
+/*
 shape::shape(bounding_box const& init): bounds_cache_is_valid(true) {
   bounds_cache = init;
   if (!init.is_anywhere) return;
@@ -192,6 +172,7 @@ shape::shape(bounding_box const& init): bounds_cache_is_valid(true) {
     polygons.push_back(convex_polygon(vertices2));
   }
 }
+*/
   
 void convex_polygon::setup_cache_if_needed()const {
   if (cache.is_valid) return;
@@ -225,6 +206,10 @@ void convex_polygon::setup_cache_if_needed()const {
   // and because of that, hereafter we just don't need to refer to the z coordinates at all.
 }
 
+void bounding_box::translate(vector3<int64_t> t) {
+  min += t; max += t;
+}
+
 void line_segment::translate(vector3<int64_t> t) {
   for (vector3<int64_t> &v : ends) v += t;
 }
@@ -237,6 +222,7 @@ void convex_polygon::translate(vector3<int64_t> t) {
 void shape::translate(vector3<int64_t> t) {
   for (  line_segment &l : segments) l.translate(t);
   for (convex_polygon &p : polygons) p.translate(t);
+  for (  bounding_box &b : boxes   ) b.translate(t);
   if (bounds_cache_is_valid && bounds_cache.is_anywhere) {
     bounds_cache.min += t;
     bounds_cache.max += t;
@@ -261,8 +247,67 @@ bounding_box shape::bounds()const {
   bounds_cache = bounding_box();
   for (  line_segment const& l : segments) bounds_cache.combine_with(l.bounds());
   for (convex_polygon const& p : polygons) bounds_cache.combine_with(p.bounds());
+  for (  bounding_box const& b : boxes   ) bounds_cache.combine_with(b         );
   bounds_cache_is_valid = true;
   return bounds_cache;
+}
+
+vector3<int64_t> shape::arbitrary_interior_point()const {
+  if (!segments.empty()) return segments[0].ends[0];
+  if (!polygons.empty()) return polygons[0].get_vertices()[0];
+  for (bounding_box const& bb : boxes) { if (bb.is_anywhere) { return bb.min; }}
+  caller_error("Trying to get an arbitrary interior point of a shape that contains no points");
+}
+
+std::pair<bool, boost::rational<int64_t>> get_intersection(int64_t sl1x, int64_t sl1y, int64_t sl2x, int64_t sl2y, int64_t ol1x, int64_t ol1y, int64_t ol2x, int64_t ol2y) {
+  // assume ol1 is (0, 0)
+  ol2x -= ol1x;
+  sl1x -= ol1x;
+  sl2x -= ol1x;
+  ol2y -= ol1y;
+  sl1y -= ol1y;
+  sl2y -= ol1y;
+  if (ol2x == 0) {
+    return get_intersection(sl1y, sl1x, sl2y, sl2x, 0, 0, ol2y, ol2x);
+  }
+  const int64_t D = ol2x;
+  const int64_t A = -ol2y;
+  const int64_t Dy1 = D*sl1y + A*sl1x;
+  const int64_t Dy2 = D*sl2y + A*sl2x;
+  const int64_t Dy2mDy1 = Dy2 - Dy1;
+  const int64_t ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
+  if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return std::make_pair(false, 1);
+  else                                               return std::make_pair(true, boost::rational<int64_t>(Dy1, Dy1 - Dy2));
+}
+
+std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment const& l, bounding_box const& bb) {
+  if (!bb.is_anywhere) return std::make_pair(false, 1);
+  if (bb.contains(l.ends[0])) return std::make_pair(true, 0);
+  
+  boost::rational<int64_t> intersecting_min(0);
+  boost::rational<int64_t> intersecting_max(1);
+  
+#define CHECK(minormax, maxormin, compare, dimension) \
+  if (l.ends[0].dimension == l.ends[1].dimension) { \
+    if (l.ends[0].dimension compare bb.minormax.dimension) return std::make_pair(false, 1); \
+  } \
+  else { \
+    const boost::rational<int64_t> checkval((l.ends[1].dimension > l.ends[0].dimension ? bb.minormax.dimension : bb.maxormin.dimension) - l.ends[0].dimension, l.ends[1].dimension - l.ends[0].dimension); \
+    if (intersecting_##minormax compare checkval) { \
+      intersecting_##minormax = checkval; \
+      if (intersecting_min > intersecting_max) return std::make_pair(false, 1); \
+    } \
+  }
+  
+  CHECK(min, max, <, x)
+  CHECK(min, max, <, y)
+  CHECK(min, max, <, z)
+  CHECK(max, min, >, x)
+  CHECK(max, min, >, y)
+  CHECK(max, min, >, z)
+#undef CHECK
+  
+  return std::make_pair(true, intersecting_min);
 }
 
 std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment l, convex_polygon const& p) {
@@ -339,12 +384,43 @@ bool nonshape_intersects(convex_polygon const& p1, convex_polygon const& p2) {
   return (nonshape_intersects_onesided(p1,p2) || nonshape_intersects_onesided(p2,p1));
 }
 
+bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
+  if (!bb.is_anywhere) return false;
+  
+  std::vector<vector3<int64_t>> const& vs = p.get_vertices();
+  if (bb.contains(vs[0])) return true;
+  for (size_t i = 0; i < vs.size(); ++i) {
+    const int next_i = (i + 1) % vs.size();
+    if (get_intersection(line_segment(vs[i], vs[next_i]), bb).first) return true;
+  }
+  // TODO: come up with a nicer, generalizable way to do something for every edge of a bounding box
+  for (int x = 0; x < 2; ++x) { for (int y = 0; y < 2; ++y) { for (int z = 0; z < 2; ++z) {
+    vector3<int64_t> base(x ? bb.min.x : bb.max.x, y ? bb.min.y : bb.max.y, z ? bb.min.z : bb.max.z);
+    if (x == 0) {
+      vector3<int64_t> other = base; other.x = bb.max.x;
+      if (get_intersection(line_segment(base, other), p).first) return true;
+    }
+    if (y == 0) {
+      vector3<int64_t> other = base; other.y = bb.max.y;
+      if (get_intersection(line_segment(base, other), p).first) return true;
+    }
+    if (z == 0) {
+      vector3<int64_t> other = base; other.z = bb.max.z;
+      if (get_intersection(line_segment(base, other), p).first) return true;
+    }
+  }}}
+  return false;
+}
+
 bool shape::intersects(shape const& other)const {
   if (!bounds().overlaps(other.bounds())) return false;
   
   for (line_segment const& l : segments) {
     for (convex_polygon const& p2 : other.polygons) {
       if (get_intersection(l, p2).first) return true;
+    }
+    for (bounding_box const& b2 : other.boxes) {
+      if (get_intersection(l, b2).first) return true;
     }
   }
 
@@ -355,14 +431,35 @@ bool shape::intersects(shape const& other)const {
     for (convex_polygon const& p2 : other.polygons) {
       if (nonshape_intersects(p1, p2)) return true;
     }
+    for (bounding_box const& b2 : other.boxes) {
+      if (nonshape_intersects(p1, b2)) return true;
+    }
+  }
+
+  for (bounding_box const& b1 : boxes) {
+    for (line_segment const& l : other.segments) {
+      if (get_intersection(l, b1).first) return true;
+    }
+    for (convex_polygon const& p2 : other.polygons) {
+      if (nonshape_intersects(p2, b1)) return true;
+    }
+    for (bounding_box const& b2 : other.boxes) {
+      if (b1.overlaps(b2)) return true;
+    }
   }
   return false;
 }
 
 std::pair<bool, boost::rational<int64_t>> shape::first_intersection(line_segment const& other)const {
-  std::pair<bool, boost::rational<int64_t>> result(false, boost::rational<int64_t>(1));
+  std::pair<bool, boost::rational<int64_t>> result(false, 1);
   for (convex_polygon const& p : polygons) {
     std::pair<bool, boost::rational<int64_t>> here = get_intersection(other, p);
+    if (here.first && (!result.first || here.second < result.second)) {
+      result = here;
+    }
+  }
+  for (bounding_box const& bb : boxes) {
+    std::pair<bool, boost::rational<int64_t>> here = get_intersection(other, bb);
     if (here.first && (!result.first || here.second < result.second)) {
       result = here;
     }

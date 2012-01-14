@@ -56,6 +56,7 @@ struct bounding_box {
   bool overlaps(bounding_box const& o)const;
   void combine_with(bounding_box const& o);
   void restrict_to(bounding_box const& o);
+  void translate(vector3<int64_t> t);
 };
 inline bool operator==(bounding_box const& b1, bounding_box const& b2) {
   return (b1.is_anywhere == false && b2.is_anywhere == false) ||
@@ -80,7 +81,7 @@ struct line_segment {
 struct convex_polygon {
   // The structure simply trusts that you will provide a convex, coplanar sequence of points. Failure to do so will result in undefined behavior.
   void setup_cache_if_needed()const;
-  convex_polygon(std::vector<vector3<int64_t>> const& vertices):vertices(vertices){ assert(vertices.size() >= 3); }
+  convex_polygon(std::vector<vector3<int64_t>> const& vertices):vertices(vertices){ caller_error_if(vertices.size() < 3, "Trying to construct a polygon with fewer than three vertices"); } // And there's also something wrong with a polygon where all the points are collinear, but it's more complicated to check that.
   polygon_collision_info_cache const& get_cache()const { return cache; }
   std::vector<vector3<int64_t>> const& get_vertices()const { return vertices; }
   void translate(vector3<int64_t> t);
@@ -95,10 +96,10 @@ public:
   shape(                                       ): bounds_cache_is_valid(false)                {}
   shape(               line_segment const& init): bounds_cache_is_valid(false)                { segments.push_back(init); }
   shape(             convex_polygon const& init): bounds_cache_is_valid(false)                { polygons.push_back(init); }
+  shape(               bounding_box const& init): bounds_cache_is_valid(false)                { boxes   .push_back(init); }
   shape(std::vector<convex_polygon> const& init): bounds_cache_is_valid(false), polygons(init){}
-  shape(               bounding_box const& init);
   
-  shape(shape const& o):bounds_cache(o.bounds_cache),bounds_cache_is_valid(o.bounds_cache_is_valid),segments(o.segments),polygons(o.polygons) {}
+  shape(shape const& o):bounds_cache(o.bounds_cache),bounds_cache_is_valid(o.bounds_cache_is_valid),segments(o.segments),polygons(o.polygons),boxes(o.boxes) {}
   
   void translate(vector3<int64_t> t);
   
@@ -106,15 +107,18 @@ public:
   // returns (was there an intersection?, what fraction of the length of the line segment was the first)
   std::pair<bool, boost::rational<int64_t>> first_intersection(line_segment const& other)const;
   bounding_box bounds()const;
+  vector3<int64_t> arbitrary_interior_point()const;
   
   std::vector<  line_segment> const& get_segments()const { return segments; }
   std::vector<convex_polygon> const& get_polygons()const { return polygons; }
+  std::vector<  bounding_box> const& get_boxes   ()const { return boxes   ; }
 private:
   mutable bounding_box bounds_cache;
   mutable bool bounds_cache_is_valid;
   
   std::vector<  line_segment> segments;
   std::vector<convex_polygon> polygons;
+  std::vector<  bounding_box> boxes   ;
 };
 
 /*bool intersects(line_segment l, convex_polygon const& p);
