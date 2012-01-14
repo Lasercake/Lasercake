@@ -104,20 +104,15 @@ namespace hacky_internals {
     return tiles[local_coords.x][local_coords.y][local_coords.z];
   }
 
-  tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded) {
+  template<cardinal_direction Dir> tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded) {
     ensure_realization(realineeded);
     // this could be made more effecient, but I'm not sure how
-    vector3<tile_coordinate> new_coords = old_coords + dir.v;
-    if (new_coords.x < global_position.x) return get_loc_across_boundary(new_coords, cdir_xminus, realineeded);
-    if (new_coords.y < global_position.y) return get_loc_across_boundary(new_coords, cdir_yminus, realineeded);
-    if (new_coords.z < global_position.z) return get_loc_across_boundary(new_coords, cdir_zminus, realineeded);
-    if (new_coords.x >= global_position.x + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_xplus, realineeded);
-    if (new_coords.y >= global_position.y + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_yplus, realineeded);
-    if (new_coords.z >= global_position.z + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_zplus, realineeded);
-    return tile_location(new_coords, this);
+    vector3<tile_coordinate> new_coords = cdir_info<Dir>::add_to(old_coords);
+    if (/*TODO check whether we crossed the boundary, via templates*/) return get_loc_across_boundary<Dir>(new_coords, realineeded);
+    else return tile_location(new_coords, this);
   }
 
-  tile_location worldblock::get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded) {
+  template<cardinal_direction Dir> tile_location worldblock::get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded) {
     if (worldblock* neighbor = neighbors[dir]) {
       neighbor->ensure_realization(realineeded);
       return tile_location(new_coords, neighbor);
@@ -141,11 +136,8 @@ namespace hacky_internals {
 }
 
 
-tile_location tile_location::operator+(cardinal_direction dir)const {
-  return wb->get_neighboring_loc(v, dir, FULL_REALIZATION);
-}
-tile_location tile_location::get_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded)const {
-  return wb->get_neighboring_loc(v, dir, realineeded);
+template<cardinal_direction Dir> tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
+  return wb->get_neighboring_loc<Dir>(v, realineeded);
 }
 tile const& tile_location::stuff_at()const { return wb->get_tile(v); }
 

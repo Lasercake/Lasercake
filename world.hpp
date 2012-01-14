@@ -246,8 +246,8 @@ private:
 };
 
 // "progress" is measured in the smaller, velocity units.
-inline sub_tile_distance progress_necessary(cardinal_direction dir) {
-  return tile_size[dir.which_dimension()] * velocity_scale_factor;
+template<cardinal_direction Dir> constexpr sub_tile_distance progress_necessary() {
+  return tile_size[cdir_info<Dir>::dimension] * velocity_scale_factor;
 }
 
 struct active_fluid_tile_info {
@@ -278,10 +278,10 @@ enum level_of_tile_realization_needed {
 
 class tile_location {
 public:
-  tile_location operator+(cardinal_direction dir)const;
+  //tile_location operator+(cardinal_direction dir)const;
   // Equivalent to operator+, except allowing you to specify the amount of realization needed.
-  tile_location get_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
-  tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
+  template<cardinal_direction Dir> tile_location get_neighbor(level_of_tile_realization_needed realineeded)const;
+  //tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
   bool operator==(tile_location const& other)const { return v == other.v; }
   bool operator!=(tile_location const& other)const { return v != other.v; }
   tile const& stuff_at()const;
@@ -474,10 +474,10 @@ public:
     // Only to be used in tile_location::stuff_at():
     tile& get_tile(vector3<tile_coordinate> global_coords);
   
-    // Only to be used in tile_location::operator+(cardinal_direction) and tile_location::get_neighbor:
-    tile_location get_neighboring_loc(vector3<tile_coordinate> const& old_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded);
+    // Only to be used in tile_location::get_neighbor:
+    template<cardinal_direction Dir> tile_location get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
   
-    tile_location get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded);
+    template<cardinal_direction Dir> tile_location get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded);
     tile_location get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords);
 private:
     std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles;
@@ -568,25 +568,25 @@ struct groupable_water_dimensional_boundaries_TODO_name_this_better_t {
   //set<tile_location, tile_compare_zxy> y_boundary_groupable_water_tiles;
   //set<tile_location, tile_compare_xyz> z_boundary_groupable_water_tiles;
   void handle_tile_insertion(tile_location const& loc) {
-    handle_tile_insertion_in_dimension(x_boundary_groupable_water_tiles, loc, cdir_xplus);
+    handle_tile_insertion_in_dimension<xplus>(x_boundary_groupable_water_tiles, loc);
   //  handle_tile_insertion_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
   //  handle_tile_insertion_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
   }
   void handle_tile_removal(tile_location const& loc) {
-    handle_tile_removal_in_dimension(x_boundary_groupable_water_tiles, loc, cdir_xplus);
+    handle_tile_removal_in_dimension<xplus>(x_boundary_groupable_water_tiles, loc);
   //  handle_tile_removal_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
   //  handle_tile_removal_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
   }
 private:
-  template <typename Compare>
-  static void handle_tile_removal_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
+  template <typename Compare, cardinal_direction Dir>
+  static void handle_tile_removal_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc) {
     // This tile is no longer groupable at all, so it can't be a boundary tile
     boundary_tiles_set.erase(loc);
     
     // If there are groupable tiles next to us, they must now be boundary tiles,
     // because our deletion exposed them
-    const tile_location further_in_positive_direction_loc = loc + dir;
-    const tile_location further_in_negative_direction_loc = loc - dir;
+    const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
+    const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);
     if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
       boundary_tiles_set.insert(further_in_positive_direction_loc);
     }
@@ -594,20 +594,20 @@ private:
       boundary_tiles_set.insert(further_in_negative_direction_loc);
     }
   }
-  template <typename Compare>
+  template <typename Compare, cardinal_direction Dir>
   static void handle_tile_insertion_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
     // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
-    const tile_location further_in_positive_direction_loc = loc.get_neighbor( dir, CONTENTS_ONLY);
-    const tile_location further_in_negative_direction_loc = loc.get_neighbor(-dir, CONTENTS_ONLY);
+    const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
+    const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);
     bool we_are_boundary_tile = false;
     if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if (further_in_positive_direction_loc.get_neighbor(dir, CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
+      if (further_in_positive_direction_loc.get_neighbor<Dir                     >(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
         boundary_tiles_set.erase(further_in_positive_direction_loc);
       }
     }
     else we_are_boundary_tile = true;
     if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if (further_in_negative_direction_loc.get_neighbor(-dir, CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
+      if (further_in_negative_direction_loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
         boundary_tiles_set.erase(further_in_negative_direction_loc);
       }
     }

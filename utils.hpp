@@ -232,8 +232,16 @@ namespace std {
 }
 
 typedef int8_t neighboring_tile_differential;
-typedef int8_t cardinal_direction_index; //TODO perhaps enum cardinal_direction_index : int8_t { ... };?
-enum { cdiridx_xminus, cdiridx_yminus, cdiridx_zminus, cdiridx_xplus, cdiridx_yplus, cdiridx_zplus };
+enum cardinal_direction : int8_t { xminus, yminus, zminus, xplus, yplus, zplus };
+
+template <cardinal_direction Dir> struct cardinal_direction_info;
+template<> struct cdir_info<xminus> {
+  static const cardinal_direction opposite = xplus;
+  static const int dimension = 0;
+  static const vector3<neighboring_tile_differential> as_vector(-1, 0, 0);
+  template<class ThingWithCoordinates> void add_to(ThingWithCoordinates &t) { --t.x; }
+};
+
 const int num_cardinal_directions = 6;
 // These are macros (not inline functions) so they can be used in constant expressions:
 // 'constexpr' support in compilers isn't quite functional yet.
@@ -253,7 +261,7 @@ struct cardinal_direction {
 template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_direction(vector3<ScalarType> src, cardinal_direction dir) {
   return vector3<ScalarType>(src.x * std::abs((ScalarType)dir.v.x), src.y * std::abs((ScalarType)dir.v.y), src.z * std::abs((ScalarType)dir.v.z));
 }
-
+/*
 const vector3<neighboring_tile_differential> xunitv(1, 0, 0);
 const vector3<neighboring_tile_differential> yunitv(0, 1, 0);
 const vector3<neighboring_tile_differential> zunitv(0, 0, 1);
@@ -269,13 +277,17 @@ const cardinal_direction cardinal_directions[num_cardinal_directions] = { cdir_x
 #define EACH_CARDINAL_DIRECTION(varname) cardinal_direction varname : cardinal_directions
 inline cardinal_direction cardinal_direction::operator-()const {
   return cardinal_directions[opposite_cardinal_direction_index(cardinal_direction_idx)];
-}
+}*/
+
+
 
 template<typename ValueType> class value_for_each_cardinal_direction {
 public:
   explicit value_for_each_cardinal_direction(ValueType const& iv/*initial_value*/) : data({{iv,iv,iv,iv,iv,iv}}) { static_assert(num_cardinal_directions == 6, "fix {{iv,iv,...}} to have the right number"); }
-  ValueType      & operator[](cardinal_direction const& dir) { return data[dir.cardinal_direction_idx]; }
-  ValueType const& operator[](cardinal_direction const& dir)const { return data[dir.cardinal_direction_idx]; }
+  template<cardinal_direction Dir> ValueType      & get()      { return data[Dir]; }
+  template<cardinal_direction Dir> ValueType const& get()const { return data[Dir]; }
+  ValueType      & operator[](cardinal_direction const& dir)      { return data[dir]; }
+  ValueType const& operator[](cardinal_direction const& dir)const { return data[dir]; }
 private:
   typedef std::array<ValueType, num_cardinal_directions> internal_array;
 public:
