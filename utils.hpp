@@ -299,39 +299,8 @@ template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_d
   return result;
 }
 
-/*
-struct cardinal_direction {
-  cardinal_direction(vector3<neighboring_tile_differential> v, cardinal_direction_index i):v(v),cardinal_direction_idx(i){}
-  vector3<neighboring_tile_differential> v;
-  cardinal_direction_index cardinal_direction_idx;
-  bool operator==(cardinal_direction other)const { return cardinal_direction_idx == other.cardinal_direction_idx; }
-  cardinal_direction operator-()const;
-  int which_dimension()const { return which_dimension_is_cardinal_direction_index(cardinal_direction_idx); }
-};
-
-template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_direction(vector3<ScalarType> src, cardinal_direction dir) {
-  return vector3<ScalarType>(src.x * std::abs((ScalarType)dir.v.x), src.y * std::abs((ScalarType)dir.v.y), src.z * std::abs((ScalarType)dir.v.z));
-}*/
-
-/*const vector3<neighboring_tile_differential> xunitv(1, 0, 0);
-const vector3<neighboring_tile_differential> yunitv(0, 1, 0);
-const vector3<neighboring_tile_differential> zunitv(0, 0, 1);
-const cardinal_direction cdir_xminus = cardinal_direction(-xunitv, cdiridx_xminus);
-const cardinal_direction cdir_yminus = cardinal_direction(-yunitv, cdiridx_yminus);
-const cardinal_direction cdir_zminus = cardinal_direction(-zunitv, cdiridx_zminus);
-const cardinal_direction cdir_xplus = cardinal_direction(xunitv, cdiridx_xplus);
-const cardinal_direction cdir_yplus = cardinal_direction(yunitv, cdiridx_yplus);
-const cardinal_direction cdir_zplus = cardinal_direction(zunitv, cdiridx_zplus);
-// This ordering must match the dir ordering above.
-// Sadly C++ isn't supporting C99's = { [cdiridx_xminus] = cdir_xminus, [...] };.
-const cardinal_direction cardinal_directions[num_cardinal_directions] = { cdir_xminus, cdir_yminus, cdir_zminus, cdir_xplus, cdir_yplus, cdir_zplus };
-#define EACH_CARDINAL_DIRECTION(varname) cardinal_direction varname : cardinal_directions
-inline cardinal_direction cardinal_direction::operator-()const {
-  return cardinal_directions[opposite_cardinal_direction_index(cardinal_direction_idx)];
-}*/
-
 inline bool cardinal_directions_are_perpendicular(cardinal_direction d1, cardinal_direction d2) {
-  return (d1 != d2) && (opposite_cardinal_direction(d1) != d2);
+  return (which_dimension_is_cardinal_direction(d1) != which_dimension_is_cardinal_direction(d2));
 }
 
 

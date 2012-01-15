@@ -318,14 +318,13 @@ void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_
     const tile_location search_loc = inf.frontier.back();
     inf.frontier.pop_back();
     
-    std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(search_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    std::array<tile_location, num_cardinal_directions> search_neighbors = get_all_neighbors(search_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
-      tile_location const& adj_loc = neighbors[dir];
+      tile_location const& adj_loc = search_neighbors[dir];
       inf.try_collect_loc(adj_loc);
       
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
-        // TODO: Not compute unnecessary neighbors?
-        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
+        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
         for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
           if (cardinal_directions_are_perpendicular(dir, d2)) {
             inf.try_collect_loc(adj_neighbors[d2]);
@@ -461,8 +460,7 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
       inf.try_collect_loc(adj_loc);
       
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
-        // TODO: Not compute unnecessary neighbors?
-        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
+        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
         for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
           if (cardinal_directions_are_perpendicular(dir, d2)) {
             inf.try_collect_loc(adj_neighbors[d2]);
@@ -1287,8 +1285,7 @@ void replace_substance_(
             if (destroy_this_frontier) goto fake_continue;
             
             if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
-              // TODO: Not compute unnecessary neighbors?
-              std::array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc);
+              std::array<tile_location, num_cardinal_directions> adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, FULL_REALIZATION);
               for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
                 if (cardinal_directions_are_perpendicular(dir, d2)) {
                   destroy_this_frontier = inf.try_collect_loc(which_neighbor, adj_neighbors[d2]);
@@ -1446,7 +1443,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       tile_location const& dst_loc = neighbors[dir];
       if (dst_loc.stuff_at().contents() == AIR) {
-        std::array<tile_location, num_cardinal_directions> neighbor_neighbors = get_all_neighbors(dst_loc);
+        std::array<tile_location, num_cardinal_directions> neighbor_neighbors = get_perpendicular_neighbors(dst_loc, dir, CONTENTS_ONLY);
         for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
           if (cardinal_directions_are_perpendicular(dir, d2)) {
             tile_location const& diag_loc = neighbor_neighbors[d2];
@@ -1656,16 +1653,16 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // NOTE "Adjacent tile conditions for activation/deactivation": The only relevant ones are
       // the one directly below, the ones cardinally-horizontally, and the ones horizontally-and-below.
       // at the 2-diagonals. This comment is duplicated one one other place in this file.
-      std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc);
-      if (obstructiveness(neighbors[zminus].stuff_at().contents()) < obstructiveness(t.contents())) goto fake_continue;
+      std::array<tile_location, num_cardinal_directions> cneighbors = get_all_neighbors(loc, CONTENTS_ONLY);
+      if (obstructiveness(cneighbors[zminus].stuff_at().contents()) < obstructiveness(t.contents())) goto fake_continue;
 
       // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
       for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
         if (cardinal_directions_are_perpendicular(dir, zminus)) {
-          tile_location const& dst_loc = neighbors[dir];
+          tile_location const& dst_loc = cneighbors[dir];
           if (dst_loc.stuff_at().contents() == AIR) {
             tile_location const& diag_loc = dst_loc.get_neighbor<zminus>(CONTENTS_ONLY);
-            if (obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness(neighbors[zminus].stuff_at().contents())) {
+            if (obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness(cneighbors[zminus].stuff_at().contents())) {
               goto fake_continue;
             }
           }

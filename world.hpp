@@ -290,6 +290,7 @@ public:
   vector3<tile_coordinate> const& coords()const { return v; }
 private:
   friend tile& mutable_stuff_at(tile_location const& loc);
+  friend tile_location trivial_invalid_location();
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
   // This constructor should only be used when you know exactly what worldblock it's in!!
@@ -298,6 +299,8 @@ private:
   vector3<tile_coordinate> v;
   hacky_internals::worldblock *wb; // invariant: nonnull
 };
+
+inline tile_location trivial_invalid_location() { return tile_location(vector3<tile_coordinate>(0,0,0), nullptr); }
 
 namespace std {
   template<> struct hash<tile_location> {
@@ -309,15 +312,46 @@ namespace std {
 
 inline std::array<tile_location, num_cardinal_directions> get_all_neighbors(tile_location const& loc, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
   return std::array<tile_location, num_cardinal_directions>({{
-    loc.get_neighbor<cardinal_direction(0)>(realineeded),
-    loc.get_neighbor<cardinal_direction(1)>(realineeded),
-    loc.get_neighbor<cardinal_direction(2)>(realineeded),
-    loc.get_neighbor<cardinal_direction(3)>(realineeded),
-    loc.get_neighbor<cardinal_direction(4)>(realineeded),
-    loc.get_neighbor<cardinal_direction(5)>(realineeded)
+    loc.get_neighbor<0>(realineeded),
+    loc.get_neighbor<1>(realineeded),
+    loc.get_neighbor<2>(realineeded),
+    loc.get_neighbor<3>(realineeded),
+    loc.get_neighbor<4>(realineeded),
+    loc.get_neighbor<5>(realineeded)
   }});
 }
 
+inline std::array<tile_location, num_cardinal_directions> get_perpendicular_neighbors(tile_location const& loc, cardinal_direction dir, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
+  return std::array<tile_location, num_cardinal_directions>({{
+    cardinal_directions_are_perpendicular(dir, 0) ? loc.get_neighbor<0>(realineeded) : trivial_invalid_location(),
+    cardinal_directions_are_perpendicular(dir, 1) ? loc.get_neighbor<1>(realineeded) : trivial_invalid_location(),
+    cardinal_directions_are_perpendicular(dir, 2) ? loc.get_neighbor<2>(realineeded) : trivial_invalid_location(),
+    cardinal_directions_are_perpendicular(dir, 3) ? loc.get_neighbor<3>(realineeded) : trivial_invalid_location(),
+    cardinal_directions_are_perpendicular(dir, 4) ? loc.get_neighbor<4>(realineeded) : trivial_invalid_location(),
+    cardinal_directions_are_perpendicular(dir, 5) ? loc.get_neighbor<5>(realineeded) : trivial_invalid_location(),
+  }});
+}
+
+/*
+Nobody actually cares to learn what all the 2diagonals are without knowing the directions.
+This stands as a reminder of what we could do, anyway.
+
+inline std::array<tile_location, 12> get_all_2diagonals(std::array<tile_location, num_cardinal_directions>& neighbors) {
+  return std::array<tile_location, 12>({{
+    neighbors[zplus ].get_neighbor<xplus >(realineeded),
+    neighbors[zplus ].get_neighbor<yplus >(realineeded),
+    neighbors[zplus ].get_neighbor<xminus>(realineeded),
+    neighbors[zplus ].get_neighbor<yminus>(realineeded),
+    neighbors[zminus].get_neighbor<xplus >(realineeded),
+    neighbors[zminus].get_neighbor<yplus >(realineeded),
+    neighbors[zminus].get_neighbor<xminus>(realineeded),
+    neighbors[zminus].get_neighbor<yminus>(realineeded),
+    neighbors[xplus ].get_neighbor<yplus >(realineeded),
+    neighbors[xplus ].get_neighbor<yminus>(realineeded),
+    neighbors[xminus].get_neighbor<yplus >(realineeded),
+    neighbors[xminus].get_neighbor<yminus>(realineeded)
+  }});
+}*/
 
 typedef uint64_t object_identifier;
 const object_identifier NO_OBJECT = 0;
