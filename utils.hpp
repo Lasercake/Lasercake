@@ -232,23 +232,74 @@ namespace std {
 }
 
 typedef int8_t neighboring_tile_differential;
-enum cardinal_direction : int8_t { xminus, yminus, zminus, xplus, yplus, zplus };
+enum {
+  first_cardinal_direction = 0,
+  xminus = 0,
+  yminus,
+  zminus,
+  xplus,
+  yplus,
+  zplus,
+  num_cardinal_directions
+};
+typedef int8_t cardinal_direction;
 
-template <cardinal_direction Dir> struct cardinal_direction_info;
+
+template <cardinal_direction Dir> struct cdir_info;
 template<> struct cdir_info<xminus> {
   static const cardinal_direction opposite = xplus;
   static const int dimension = 0;
-  static const vector3<neighboring_tile_differential> as_vector(-1, 0, 0);
-  template<class ThingWithCoordinates> void add_to(ThingWithCoordinates &t) { --t.x; }
+  static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(-1, 0, 0); }
+  template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates &t) { --t.x; }
+};
+template<> struct cdir_info<yminus> {
+  static const cardinal_direction opposite = yplus;
+  static const int dimension = 1;
+  static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(0, -1, 0); }
+  template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates &t) { --t.y; }
+};
+template<> struct cdir_info<zminus> {
+  static const cardinal_direction opposite = zplus;
+  static const int dimension = 2;
+  static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(0, 0, -1); }
+  template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates &t) { --t.z; }
+};
+template<> struct cdir_info<xplus> {
+  static const cardinal_direction opposite = xminus;
+  static const int dimension = 0;
+  static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(1, 0, 0); }
+  template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates &t) { ++t.x; }
+};
+template<> struct cdir_info<yplus> {
+  static const cardinal_direction opposite = yminus;
+  static const int dimension = 1;
+  static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(0, 1, 0); }
+  template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates &t) { ++t.y; }
+};
+template<> struct cdir_info<zplus> {
+  static const cardinal_direction opposite = zminus;
+  static const int dimension = 2;
+  static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(0, 0, 1); }
+  template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates &t) { ++t.z; }
 };
 
-const int num_cardinal_directions = 6;
+// This ordering must match the dir ordering above.
+// Sadly C++ isn't supporting C99's = { [cdiridx_xminus] = cdir_xminus, [...] };.
+const vector3<neighboring_tile_differential> cardinal_direction_vectors[num_cardinal_directions] = { cdir_info<xminus>::as_vector(), cdir_info<yminus>::as_vector(), cdir_info<zminus>::as_vector(), cdir_info<xplus>::as_vector(), cdir_info<yplus>::as_vector(), cdir_info<zplus>::as_vector() };
+
 // These are macros (not inline functions) so they can be used in constant expressions:
 // 'constexpr' support in compilers isn't quite functional yet.
-#define which_dimension_is_cardinal_direction_index(idx) (int(idx) % 3)
-#define opposite_cardinal_direction_index(idx) (cardinal_direction_index((int(idx) + 3) % 6))
-#define is_a_positive_directional_cardinal_direction_index(idx) (int(idx) >= 3)
+#define which_dimension_is_cardinal_direction(dir) (dir % 3)
+#define opposite_cardinal_direction(dir) (cardinal_direction((dir + 3) % 6))
+#define is_a_positive_directional_cardinal_direction(dir) (dir >= 3)
 
+template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_direction(vector3<ScalarType> src, cardinal_direction dir) {
+  vector3<ScalarType> result(0,0,0);
+  result[which_dimension_is_cardinal_direction(dir)] = src[which_dimension_is_cardinal_direction(dir)];
+  return result;
+}
+
+/*
 struct cardinal_direction {
   cardinal_direction(vector3<neighboring_tile_differential> v, cardinal_direction_index i):v(v),cardinal_direction_idx(i){}
   vector3<neighboring_tile_differential> v;
@@ -260,9 +311,9 @@ struct cardinal_direction {
 
 template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_direction(vector3<ScalarType> src, cardinal_direction dir) {
   return vector3<ScalarType>(src.x * std::abs((ScalarType)dir.v.x), src.y * std::abs((ScalarType)dir.v.y), src.z * std::abs((ScalarType)dir.v.z));
-}
-/*
-const vector3<neighboring_tile_differential> xunitv(1, 0, 0);
+}*/
+
+/*const vector3<neighboring_tile_differential> xunitv(1, 0, 0);
 const vector3<neighboring_tile_differential> yunitv(0, 1, 0);
 const vector3<neighboring_tile_differential> zunitv(0, 0, 1);
 const cardinal_direction cdir_xminus = cardinal_direction(-xunitv, cdiridx_xminus);
@@ -279,6 +330,9 @@ inline cardinal_direction cardinal_direction::operator-()const {
   return cardinal_directions[opposite_cardinal_direction_index(cardinal_direction_idx)];
 }*/
 
+inline bool cardinal_directions_are_perpendicular(cardinal_direction d1, cardinal_direction d2) {
+  return (d1 != d2) && (opposite_cardinal_direction(d1) != d2);
+}
 
 
 template<typename ValueType> class value_for_each_cardinal_direction {

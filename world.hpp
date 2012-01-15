@@ -246,8 +246,8 @@ private:
 };
 
 // "progress" is measured in the smaller, velocity units.
-template<cardinal_direction Dir> constexpr sub_tile_distance progress_necessary() {
-  return tile_size[cdir_info<Dir>::dimension] * velocity_scale_factor;
+inline sub_tile_distance progress_necessary(cardinal_direction dir) {
+  return tile_size[which_dimension_is_cardinal_direction(dir)] * velocity_scale_factor;
 }
 
 struct active_fluid_tile_info {
@@ -281,6 +281,8 @@ public:
   //tile_location operator+(cardinal_direction dir)const;
   // Equivalent to operator+, except allowing you to specify the amount of realization needed.
   template<cardinal_direction Dir> tile_location get_neighbor(level_of_tile_realization_needed realineeded)const;
+  
+  tile_location get_neighbor_by_variable(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
   //tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
   bool operator==(tile_location const& other)const { return v == other.v; }
   bool operator!=(tile_location const& other)const { return v != other.v; }
@@ -307,12 +309,12 @@ namespace std {
 
 inline std::array<tile_location, num_cardinal_directions> get_all_neighbors(tile_location const& loc, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
   return std::array<tile_location, num_cardinal_directions>({{
-    loc.get_neighbor(cardinal_directions[0], realineeded),
-    loc.get_neighbor(cardinal_directions[1], realineeded),
-    loc.get_neighbor(cardinal_directions[2], realineeded),
-    loc.get_neighbor(cardinal_directions[3], realineeded),
-    loc.get_neighbor(cardinal_directions[4], realineeded),
-    loc.get_neighbor(cardinal_directions[5], realineeded)
+    loc.get_neighbor<cardinal_direction(0)>(realineeded),
+    loc.get_neighbor<cardinal_direction(1)>(realineeded),
+    loc.get_neighbor<cardinal_direction(2)>(realineeded),
+    loc.get_neighbor<cardinal_direction(3)>(realineeded),
+    loc.get_neighbor<cardinal_direction(4)>(realineeded),
+    loc.get_neighbor<cardinal_direction(5)>(realineeded)
   }});
 }
 
@@ -486,6 +488,7 @@ public:
     tile& get_tile(vector3<tile_coordinate> global_coords);
   
     // Only to be used in tile_location::get_neighbor:
+    template<cardinal_direction Dir> bool crossed_boundary(tile_coordinate new_coord);
     template<cardinal_direction Dir> tile_location get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
   
     template<cardinal_direction Dir> tile_location get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded);
@@ -498,6 +501,9 @@ private:
     level_of_tile_realization_needed current_tile_realization;
     bool is_busy_realizing;
   };
+}
+template<cardinal_direction Dir> tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
+  return wb->get_neighboring_loc<Dir>(v, realineeded);
 }
 
 class world_building_gun {
@@ -579,12 +585,12 @@ struct groupable_water_dimensional_boundaries_TODO_name_this_better_t {
   //set<tile_location, tile_compare_zxy> y_boundary_groupable_water_tiles;
   //set<tile_location, tile_compare_xyz> z_boundary_groupable_water_tiles;
   void handle_tile_insertion(tile_location const& loc) {
-    handle_tile_insertion_in_dimension<xplus>(x_boundary_groupable_water_tiles, loc);
+    handle_tile_insertion_in_dimension<tile_compare_yzx, xplus>(x_boundary_groupable_water_tiles, loc);
   //  handle_tile_insertion_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
   //  handle_tile_insertion_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
   }
   void handle_tile_removal(tile_location const& loc) {
-    handle_tile_removal_in_dimension<xplus>(x_boundary_groupable_water_tiles, loc);
+    handle_tile_removal_in_dimension<tile_compare_yzx, xplus>(x_boundary_groupable_water_tiles, loc);
   //  handle_tile_removal_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
   //  handle_tile_removal_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
   }
@@ -606,7 +612,7 @@ private:
     }
   }
   template <typename Compare, cardinal_direction Dir>
-  static void handle_tile_insertion_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc, cardinal_direction dir) {
+  static void handle_tile_insertion_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc) {
     // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
     const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
     const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);
