@@ -33,6 +33,10 @@ namespace hacky_internals {
   // level less-than-or-equal-to X, then we justly receive get an assertion failure.
   // Realizing a worldblock at a given level must not require same-level information.
   worldblock& worldblock::ensure_realization(level_of_tile_realization_needed realineeded, world *w_, vector3<tile_coordinate> global_position_) {
+    // This function gets called to do nothing a LOT more than it gets called to actually do something;
+    // bail ASAP if we don't have to do anything.
+    if (realineeded <= current_tile_realization) return *this;
+    
     caller_correct_if(realineeded >= COMPLETELY_IMAGINARY && realineeded <= FULL_REALIZATION, "Calling ensure_realization with an invalid realization level");
     
     if ((             realineeded >= CONTENTS_ONLY) &&
