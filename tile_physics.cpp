@@ -1388,11 +1388,6 @@ int obstructiveness(tile_contents tc) {
   else assert(false); // reaching this would mean we implemented a new material type but forgot to set its obstructiveness
 }
 
-struct active_fluid_temporary_data {
-  active_fluid_temporary_data():new_progress(0){}
-  value_for_each_cardinal_direction<sub_tile_distance> new_progress;
-};
-
 void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups);
 
 void world::update_fluids() {
@@ -1406,7 +1401,8 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
   //  There are a lot of relatively-separable rules governing how water tiles move.
   // ==============================================================================
   
-  unordered_map<tile_location, active_fluid_temporary_data> temp_data;
+  vector<wanted_move> wanted_moves;
+  
   for (pair<const tile_location, active_fluid_tile_info> &p : active_fluids) {
     tile_location const& loc = p.first;
     active_fluid_tile_info &fluid = p.second;
@@ -1415,8 +1411,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     assert(is_fluid(t.contents()));
 #endif
     
-    // initialize...
-    temp_data[loc];
+    value_for_each_cardinal_direction<sub_tile_distance> new_progress(0);
     
     // Gravity applies to everyone
     fluid.velocity += gravity_acceleration;
@@ -1484,7 +1479,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     // Velocity causes progress.
     for (EACH_CARDINAL_DIRECTION(dir)) {
       const sub_tile_distance dp = fluid.velocity.dot<sub_tile_distance>(dir.v);
-      if (dp > 0) temp_data[loc].new_progress[dir] += dp;
+      if (dp > 0) new_progress[dir] += dp;
     }
     
     // Water that's blocked, but can go around in a diagonal direction, also makes "progress" towards all those possible directions (so it'll go in a random direction if it could go around in several different diagonals, without having to 'choose' one right away and gain velocity only in that direction). The main purpose of this is to make it so that water doesn't stack nicely in pillars, or sit still on steep slopes.
@@ -1495,7 +1490,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
         for (EACH_CARDINAL_DIRECTION(d2)) {
           const tile_location diag_loc = dst_loc + d2;
           if (fluid.blockage_amount_this_frame[d2] > 0 && d2.v.dot<sub_tile_distance>(dir.v) == 0 && obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness((loc + d2).stuff_at().contents())) {
-            temp_data[loc].new_progress[dir] += fluid.blockage_amount_this_frame[d2];
+            new_progress[dir] += fluid.blockage_amount_this_frame[d2];
           }
         }
       }
@@ -1504,52 +1499,47 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     // blockage_amount_this_frame is just a temporary value that lingers from one frame to the next -
     // we erase it after we use it.
     for (sub_tile_distance &bb : fluid.blockage_amount_this_frame) bb = 0;
-  }
-  
-  // ==============================================================================
-  //  Phase 2
-  //  We've computed all the velocities and progress. Now we check which tiles
-  //  have made enough progress to move. For each move someone wants to make,
-  //  we record that 'wanted move', then we shuffle all the wanted moves and
-  //  execute them in a random order, as opposed to trying to find some way to
-  //  composite them when they conflict with each other.
-  // ==============================================================================
-  
-  vector<wanted_move> wanted_moves;
-  for (pair<const tile_location, active_fluid_tile_info> &p : active_fluids) {
-    tile_location const& loc = p.first;
-    active_fluid_tile_info &fluid = p.second;
-#ifdef ASSERT_EVERYTHING
-    assert(is_fluid(loc.stuff_at().contents()));
-#endif
+    
+    // ==============================================================================
+    //  Phase 2
+    //  We've computed our velocity and progress for this frame. Now we check
+    //  whether we've made enough progress to move, and if we have, we record
+    //  that as a "wanted move".
+    // ==============================================================================
+    
     for (EACH_CARDINAL_DIRECTION(dir)) {
       sub_tile_distance &progress_ref = fluid.progress[dir];
-      const sub_tile_distance new_progress = temp_data[loc].new_progress[dir];
-      if (temp_data[loc].new_progress[dir] == 0) {
+      if (new_progress[dir] == 0) {
         if (progress_ref < idle_progress_reduction_rate) progress_ref = 0;
         else progress_ref -= idle_progress_reduction_rate;
       }
       else {
 #ifdef ASSERT_EVERYTHING
-        assert(new_progress >= 0);
+        assert(new_progress[dir] >= 0);
         assert(progress_ref >= 0);
         assert(progress_ref <= progress_necessary(dir));
 #endif
-        progress_ref += new_progress;
+        progress_ref += new_progress[dir];
         if (progress_ref > progress_necessary(dir)) {
-          wanted_moves.push_back(wanted_move(loc, dir, new_progress, progress_ref - progress_necessary(dir)));
+          wanted_moves.push_back(wanted_move(loc, dir, new_progress[dir], progress_ref - progress_necessary(dir)));
           progress_ref = progress_necessary(dir);
         }
       }
     }
   }
   
+  // ==============================================================================
+  //  Phase 2
+  //  We shuffle all the wanted moves and
+  //  execute them in a random order, as opposed to trying to find some way to
+  //  composite them when they conflict with each other.
+  // ==============================================================================
+  
   
   std::random_shuffle(wanted_moves.begin(), wanted_moves.end());
   std::unordered_set<tile_location> disturbed_tiles;
   
   
-  // It doesn't matter that we won't add temp_data for nearby tiles that are activated during this loop by the insertion and deletion of water.
   for (const wanted_move move : wanted_moves) {
     const tile_location dst = move.src + move.dir;
     tile const& src_tile = move.src.stuff_at();
@@ -1592,9 +1582,6 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // Water always becomes ungroupable when it moves
       w.replace_substance(dst, dst_old_contents, src_old_contents == GROUPABLE_WATER ? UNGROUPABLE_WATER : src_old_contents);
       w.replace_substance(move.src, src_old_contents, dst_old_contents);
-      
-      temp_data[dst] = temp_data[move.src];
-      temp_data.erase(move.src);
       
       if (dst_was_active_fluid) src_fluid = dst_info_store;
       disturbed_tiles.insert(dst);
