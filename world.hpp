@@ -385,7 +385,7 @@ private:
   typedef internal_t::generalized_object_collection_handler igoch;
   typedef internal_t::bounding_box ibb;
   static ibb convert_bb(bounding_box const& bb) {
-    assert(bb.is_anywhere);
+    caller_correct_if(bb.is_anywhere, "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
     ibb b;
     b.min[0] = bb.min.x;
     b.min[1] = bb.min.y;

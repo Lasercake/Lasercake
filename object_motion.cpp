@@ -56,7 +56,7 @@ void actually_change_personal_space_shape(
 cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& velocity, bounding_box const& my_bounds, bounding_box const& other_bounds) {
   bounding_box overlapping_bounds(my_bounds);
   overlapping_bounds.restrict_to(other_bounds);
-  assert(overlapping_bounds.is_anywhere);
+  caller_correct_if(overlapping_bounds.is_anywhere, "calling approximate_direction_of_entry with non-overlapping bounds");
   cardinal_direction best_dir = cdir_xplus; // it shouldn't matter what I initialize it to
   fine_scalar best = -1;
   for (EACH_CARDINAL_DIRECTION(dir)) {

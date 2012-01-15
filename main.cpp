@@ -405,8 +405,6 @@ srand(time(NULL));
         const object_shapes_t::const_iterator blah = w.get_object_personal_space_shapes().find(*mid);
         std::vector<convex_polygon> const& foo = blah->second.get_polygons();
         for (convex_polygon const& bar : foo) {
-          assert(bar.get_vertices().size() >= 3);
-
           push_convex_polygon(view_loc, coll, bar.get_vertices(), color(0x77777777));
 
           // TODO so many redundant velocity vectors!!

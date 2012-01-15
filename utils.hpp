@@ -365,7 +365,7 @@ public:
     return false;
   }
   Stuff const& get_random()const {
-    assert(!stuffs_set.empty());
+    caller_error_if(stuffs_set.empty(), "Trying to get a random element of an empty literally_random_access_removable_stuff");
     size_t idx;
     do {
       idx = (size_t)(rand()%(stuffs_superset_vector.size()));
