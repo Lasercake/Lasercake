@@ -269,12 +269,11 @@ public:
 
   void insert(ObjectIdentifier const& id, bounding_box const& bbox) {
     caller_correct_if(
-      bboxes_by_object.find(id) == bboxes_by_object.end(),
+      bboxes_by_object.insert(std::make_pair(id, bbox)).second,
       "bbox_collision_detector::insert() requires for your safety that the id "
       "is not already in this container.  Use .erase() or .exists() if you need "
       "any particular behaviour in this case."
     );
-    bboxes_by_object.insert(std::make_pair(id, bbox));
     Coordinate max_dim = bbox.size[0];
     for (num_coordinates_type i = 1; i < NumDimensions; ++i) {
       if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
