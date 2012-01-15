@@ -57,11 +57,11 @@ cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& ve
   bounding_box overlapping_bounds(my_bounds);
   overlapping_bounds.restrict_to(other_bounds);
   assert(overlapping_bounds.is_anywhere);
-  cardinal_direction best_dir = cdir_xplus; // it shouldn't matter what I initialize it to
+  cardinal_direction best_dir = xplus; // it shouldn't matter what I initialize it to
   fine_scalar best = -1;
-  for (EACH_CARDINAL_DIRECTION(dir)) {
-    if (velocity.dot<fine_scalar>(dir.v) > 0) {
-      const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[dir.which_dimension()] - overlapping_bounds.min[dir.which_dimension()];
+  for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+    if (velocity.dot<fine_scalar>(cardinal_direction_vectors[dir]) > 0) {
+      const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[which_dimension_is_cardinal_direction(dir)] - overlapping_bounds.min[which_dimension_is_cardinal_direction(dir)];
       if (best == -1 || overlap_in_this_dimension < best) {
         best = overlap_in_this_dimension;
         best_dir = dir;
