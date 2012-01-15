@@ -106,31 +106,32 @@ namespace hacky_internals {
     vector3<tile_coordinate> local_coords = global_coords - global_position;
     return tiles[local_coords.x][local_coords.y][local_coords.z];
   }
+  
+  template<> bool worldblock::crossed_boundary<xminus>(tile_coordinate new_coord) { return new_coord < global_position.x; }
+  template<> bool worldblock::crossed_boundary<yminus>(tile_coordinate new_coord) { return new_coord < global_position.y; }
+  template<> bool worldblock::crossed_boundary<zminus>(tile_coordinate new_coord) { return new_coord < global_position.z; }
+  template<> bool worldblock::crossed_boundary<xplus>(tile_coordinate new_coord) { return new_coord >= global_position.x + worldblock_dimension; }
+  template<> bool worldblock::crossed_boundary<yplus>(tile_coordinate new_coord) { return new_coord >= global_position.y + worldblock_dimension; }
+  template<> bool worldblock::crossed_boundary<zplus>(tile_coordinate new_coord) { return new_coord >= global_position.z + worldblock_dimension; }
 
-  tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded) {
+  template<cardinal_direction Dir> tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded) {
     ensure_realization(realineeded);
-    // this could be made more effecient, but I'm not sure how
-    vector3<tile_coordinate> new_coords = old_coords + dir.v;
-    if (new_coords.x < global_position.x) return get_loc_across_boundary(new_coords, cdir_xminus, realineeded);
-    if (new_coords.y < global_position.y) return get_loc_across_boundary(new_coords, cdir_yminus, realineeded);
-    if (new_coords.z < global_position.z) return get_loc_across_boundary(new_coords, cdir_zminus, realineeded);
-    if (new_coords.x >= global_position.x + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_xplus, realineeded);
-    if (new_coords.y >= global_position.y + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_yplus, realineeded);
-    if (new_coords.z >= global_position.z + worldblock_dimension) return get_loc_across_boundary(new_coords, cdir_zplus, realineeded);
-    return tile_location(new_coords, this);
+    vector3<tile_coordinate> new_coords = old_coords; cdir_info<Dir>::add_to(new_coords);
+    if (crossed_boundary<Dir>(new_coords[cdir_info<Dir>::dimension])) return get_loc_across_boundary<Dir>(new_coords, realineeded);
+    else return tile_location(new_coords, this);
   }
 
-  tile_location worldblock::get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, cardinal_direction dir, level_of_tile_realization_needed realineeded) {
-    if (worldblock* neighbor = neighbors[dir]) {
+  template<cardinal_direction Dir> tile_location worldblock::get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded) {
+    if (worldblock* neighbor = neighbors[Dir]) {
       neighbor->ensure_realization(realineeded);
       return tile_location(new_coords, neighbor);
     }
     else return tile_location(
       new_coords,
       (
-        neighbors[dir] =
+        neighbors[Dir] =
         w->ensure_realization_of_and_get_worldblock(
-          global_position + vector3<worldblock_dimension_type>(dir.v) * worldblock_dimension,
+          global_position + vector3<worldblock_dimension_type>(cdir_info<Dir>::as_vector()) * worldblock_dimension,
           realineeded
         )
       )
@@ -144,11 +145,16 @@ namespace hacky_internals {
 }
 
 
-tile_location tile_location::operator+(cardinal_direction dir)const {
-  return wb->get_neighboring_loc(v, dir, FULL_REALIZATION);
-}
-tile_location tile_location::get_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded)const {
-  return wb->get_neighboring_loc(v, dir, realineeded);
+tile_location tile_location::get_neighbor_by_variable(cardinal_direction dir, level_of_tile_realization_needed realineeded)const {
+  switch(dir) {
+    case xminus: return wb->get_neighboring_loc<xminus>(v, realineeded);
+    case yminus: return wb->get_neighboring_loc<yminus>(v, realineeded);
+    case zminus: return wb->get_neighboring_loc<zminus>(v, realineeded);
+    case xplus: return wb->get_neighboring_loc<xplus>(v, realineeded);
+    case yplus: return wb->get_neighboring_loc<yplus>(v, realineeded);
+    case zplus: return wb->get_neighboring_loc<zplus>(v, realineeded);
+    default: caller_error("calling get_neighbor_by_variable with an invalid direction");
+  }
 }
 tile const& tile_location::stuff_at()const { return wb->get_tile(v); }
 

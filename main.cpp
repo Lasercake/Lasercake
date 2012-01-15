@@ -470,7 +470,7 @@ srand(time(NULL));
           // 1,1,1 as a vertex.
           
           // Only output the faces that are not interior to a single kind of material.
-          if(loc.get_neighbor((z_close_idx == 0 ? cdir_zplus : cdir_zminus), CONTENTS_ONLY)
+          if(((z_close_idx == 0) ? loc.get_neighbor<zplus>(CONTENTS_ONLY) : loc.get_neighbor<zminus>(CONTENTS_ONLY))
                     .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[0].x, glb[0].y, glb[1].z),
@@ -479,7 +479,7 @@ srand(time(NULL));
                       vertex(glb[0].x, glb[1].y, glb[1].z),
                       tile_color);
           }
-          if(loc.get_neighbor((x_close_idx == 0 ? cdir_xplus : cdir_xminus), CONTENTS_ONLY)
+          if(((x_close_idx == 0) ? loc.get_neighbor<xplus>(CONTENTS_ONLY) : loc.get_neighbor<xminus>(CONTENTS_ONLY))
                     .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[1].x, glb[0].y, glb[0].z),
@@ -488,7 +488,7 @@ srand(time(NULL));
                       vertex(glb[1].x, glb[0].y, glb[1].z),
                       tile_color);
           }
-          if(loc.get_neighbor((y_close_idx == 0 ? cdir_yplus : cdir_yminus), CONTENTS_ONLY)
+          if(((y_close_idx == 0) ? loc.get_neighbor<yplus>(CONTENTS_ONLY) : loc.get_neighbor<yminus>(CONTENTS_ONLY))
                     .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[0].x, glb[1].y, glb[0].z),
@@ -497,7 +497,7 @@ srand(time(NULL));
                       vertex(glb[1].x, glb[1].y, glb[0].z),
                       tile_color);
           }
-          if(loc.get_neighbor((z_close_idx == 0 ? cdir_zminus : cdir_zplus), CONTENTS_ONLY)
+          if(((z_close_idx == 0) ? loc.get_neighbor<zminus>(CONTENTS_ONLY) : loc.get_neighbor<zplus>(CONTENTS_ONLY))
                     .stuff_at().contents() != t.contents()) {
             push_quad(coll,
                       vertex(glb[0].x, glb[0].y, glb[0].z),
@@ -506,7 +506,7 @@ srand(time(NULL));
                       vertex(glb[0].x, glb[1].y, glb[0].z),
                       tile_color);
           }
-          if(loc.get_neighbor((x_close_idx == 0 ? cdir_xminus : cdir_xplus), CONTENTS_ONLY)
+          if(((x_close_idx == 0) ? loc.get_neighbor<xminus>(CONTENTS_ONLY) : loc.get_neighbor<xplus>(CONTENTS_ONLY))
                     .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[0].x, glb[0].y, glb[0].z),
@@ -515,7 +515,7 @@ srand(time(NULL));
                       vertex(glb[0].x, glb[0].y, glb[1].z),
                       tile_color);
           }
-          if(loc.get_neighbor((y_close_idx == 0 ? cdir_yminus : cdir_yplus), CONTENTS_ONLY)
+          if(((y_close_idx == 0) ? loc.get_neighbor<yminus>(CONTENTS_ONLY) : loc.get_neighbor<yplus>(CONTENTS_ONLY))
                     .stuff_at().contents() != t.contents()){
             push_quad(coll,
                       vertex(glb[0].x, glb[0].y, glb[0].z),
@@ -536,10 +536,10 @@ srand(time(NULL));
                         locv.z + 0.1 + ((GLfloat)fluid->velocity.z / (tile_width))),
                       color(0x00ff0077));
 
-            for (EACH_CARDINAL_DIRECTION(dir)) {
+            for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
               const sub_tile_distance prog = fluid->progress[dir];
               if (prog > 0) {
-                vector3<GLfloat> directed_prog = (vector3<GLfloat>(dir.v) * prog) / progress_necessary(dir);
+                vector3<GLfloat> directed_prog = (vector3<GLfloat>(cardinal_direction_vectors[dir]) * prog) / progress_necessary(dir);
 
                 push_line(coll,
                             vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),

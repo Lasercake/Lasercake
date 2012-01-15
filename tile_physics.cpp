@@ -270,13 +270,13 @@ void dump_all_groups(world &w) {
   }
 }
 
-void check_pushable_tiles_sanity(world &w) {
+/*void check_pushable_tiles_sanity(world &w) {
   for (auto const& p : w.get_persistent_water_groups()) {
     auto const& g = p.second;
     for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
       for(auto const& bar : foo.second.as_unordered_set()) {
         bool sane = false;
-        for(EACH_CARDINAL_DIRECTION(dir)) {
+        for(cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
           if(g.surface_tiles.find(bar + dir) != g.surface_tiles.end()) {
             sane = true;
             break;
@@ -286,7 +286,7 @@ void check_pushable_tiles_sanity(world &w) {
       }
     }
   }
-}
+}*/
 
 // Hacky debugging function that duplicates code from elsewhere.
 void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_water_group_info const& g) {
@@ -308,7 +308,7 @@ void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_
       if (loc.stuff_at().contents() == GROUPABLE_WATER && !loc.stuff_at().is_interior() && new_group.surface_tiles.find(loc) == new_group.surface_tiles.end()) {
         frontier.push_back(loc);
         new_group.surface_tiles.insert(loc);
-        if ((loc.get_neighbor(cdir_zplus, CONTENTS_ONLY)).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(loc);
+        if (loc.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(loc);
       }
     }
   };
@@ -317,15 +317,17 @@ void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_
   while(!inf.frontier.empty()) {
     const tile_location search_loc = inf.frontier.back();
     inf.frontier.pop_back();
-          
-    for (EACH_CARDINAL_DIRECTION(dir)) {
-      const tile_location adj_loc = search_loc.get_neighbor(dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    
+    std::array<tile_location, num_cardinal_directions> search_neighbors = get_all_neighbors(search_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+      tile_location const& adj_loc = search_neighbors[dir];
       inf.try_collect_loc(adj_loc);
       
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
-        for (EACH_CARDINAL_DIRECTION(d2)) {
-          if (d2.v.dot<neighboring_tile_differential>(dir.v) == 0) {
-            inf.try_collect_loc(adj_loc.get_neighbor(d2, CONTENTS_AND_LOCAL_CACHES_ONLY));
+        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
+        for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
+          if (cardinal_directions_are_perpendicular(dir, d2)) {
+            inf.try_collect_loc(adj_neighbors[d2]);
           }
         }
       }
@@ -412,7 +414,7 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
   // interior tiles, and the cost is trivial since we only ever do this once per group-initialization.
   tile_location surface_loc = loc;
   while (true) {
-    const tile_location next_loc = surface_loc.get_neighbor(cdir_zplus, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    const tile_location next_loc = surface_loc.get_neighbor<zplus>(CONTENTS_AND_LOCAL_CACHES_ONLY);
     if (next_loc.stuff_at().contents() != GROUPABLE_WATER) break;
     surface_loc = next_loc;
   }
@@ -438,7 +440,7 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
         frontier.push_back(loc);
         assert(new_group.surface_tiles.insert(loc).second);
         assert(water_groups_by_surface_tile.insert(make_pair(loc, new_group_id)).second);
-        if ((loc.get_neighbor(cdir_zplus, CONTENTS_ONLY)).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(loc);
+        if (loc.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(loc);
     
         // This DOES handle first-initialization properly; it makes some unnecessary checks, but
         // we're not worried about super speed here.
@@ -451,15 +453,17 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
   while(!inf.frontier.empty()) {
     const tile_location search_loc = inf.frontier.back();
     inf.frontier.pop_back();
-          
-    for (EACH_CARDINAL_DIRECTION(dir)) {
-      const tile_location adj_loc = search_loc.get_neighbor(dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    
+    std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(search_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+      tile_location const& adj_loc = neighbors[dir];
       inf.try_collect_loc(adj_loc);
       
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
-        for (EACH_CARDINAL_DIRECTION(d2)) {
-          if (d2.v.dot<neighboring_tile_differential>(dir.v) == 0) {
-            inf.try_collect_loc(adj_loc.get_neighbor(d2, CONTENTS_AND_LOCAL_CACHES_ONLY));
+        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
+        for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
+          if (cardinal_directions_are_perpendicular(dir, d2)) {
+            inf.try_collect_loc(adj_neighbors[d2]);
           }
         }
       }
@@ -478,8 +482,8 @@ void initialize_tile_local_caches_(tile_location const& loc);
 
 void world::initialize_tile_local_caches(tile_location const& loc) {
   bool should_be_interior = true;
-  for (EACH_CARDINAL_DIRECTION(dir)) {
-    const tile_location adj_loc = loc.get_neighbor(dir, CONTENTS_ONLY);
+  std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc, CONTENTS_ONLY);
+  for (tile_location const& adj_loc : neighbors) {
     if (neighboring_tiles_with_these_contents_are_not_interior(adj_loc.stuff_at().contents(), loc.stuff_at().contents())) {
       // Between us and them is a 'different types' interface, so we're not interior:
       should_be_interior = false;
@@ -522,9 +526,9 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
   
   for (tile_location const& surface_loc : surface_tiles) {
     // We're only interested in starting at low-x boundaries
-    if (surface_loc.get_neighbor(cdir_xminus, CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) {
+    if (surface_loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) {
       // If we're *also* the high-x boundary, there's only one water tile in this row
-      if (surface_loc.get_neighbor(cdir_xplus, CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) {
+      if (surface_loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) {
         num_tiles_by_height[surface_loc.coords().z] += 1;
       }
       else {
@@ -605,14 +609,14 @@ void suck_out_suckable_water(world &w,
   //     and the *upper* water just fell naturally. That way, the upper water (now in the location of the lower
   //     water) has no downwards progress left, and has to build up progress again using gravity.
   
-  const tile_location downward_loc = loc + cdir_zminus;
+  const tile_location downward_loc = loc.get_neighbor<zminus>(FULL_REALIZATION);
   if (downward_loc.stuff_at().contents() == GROUPABLE_WATER) {
     auto here_af_iter = active_fluids.find(loc);
     auto down_af_iter = active_fluids.find(downward_loc);
     active_fluid_tile_info here_info = ((here_af_iter == active_fluids.end()) ? active_fluid_tile_info() : here_af_iter->second);
-    here_info.progress[cdir_zminus] -= progress_necessary(cdir_zminus); // The usual effect of moving downwards
+    here_info.progress[zminus] -= progress_necessary(zminus); // The usual effect of moving downwards
 #ifdef ASSERT_EVERYTHING
-    assert(here_info.progress[cdir_zminus] >= 0);
+    assert(here_info.progress[zminus] >= 0);
 #endif
     if (down_af_iter == active_fluids.end()) {
       active_fluids.insert(make_pair(downward_loc, here_info));
@@ -657,7 +661,7 @@ void push_water_into_pushable_tile(world &w,
   // In this case, we don't want the default attributes - water moved by pressure
   // starts with no downward progress or velocity.
   // It'll be given its new velocity in the next frame, by the normal pressure-pushes-water rules.
-  active_fluids[loc].progress[cdir_zminus] = 0;
+  active_fluids[loc].progress[zminus] = 0;
   active_fluids[loc].velocity.z = 0;
 }
 
@@ -806,7 +810,7 @@ void replace_substance_(
 #endif
   //check_pushable_tiles_sanity(w);
   
-  std::array<tile_location, 6> neighbors = get_all_neighbors(loc);
+  std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc);
   
   if (old_substance_type != AIR && new_substance_type == AIR) {
     // We might have moved away from a tile that was trying to push water into us.
@@ -868,17 +872,6 @@ void replace_substance_(
       }
     }
     
-#ifdef ASSERT_EVERYTHING
-      const tile_location uploc = loc + cdir_zplus;
-    // Hack: make sure we're not a pushable tile of any other groups either...
-    for (auto &foo : persistent_water_groups) {
-      if (foo.second.pushable_tiles_by_height.erase(loc)) {
-        std::cerr << uploc.coords() << ", " << foo.first << ", " << water_groups_by_surface_tile.find(uploc)->second << "\n";
-        assert(foo.second.surface_tiles.find(uploc) != foo.second.surface_tiles.end());
-        assert(false);
-      }
-    }
-#endif
     //check_pushable_tiles_sanity(w);
   }
   
@@ -969,14 +962,13 @@ void replace_substance_(
     // Water is activated-if-necessary by calling unordered_set::operator[], which default-constructs one
     // if there isn't one there already.
     if (is_fluid(new_substance_type)) active_fluids[loc];
-    const tile_location uploc = loc + cdir_zplus;
+    const tile_location uploc = loc.get_neighbor<zplus>(FULL_REALIZATION);
     if (is_fluid(uploc.stuff_at().contents())) active_fluids[uploc];
     
-    for (int i = 0; i < num_cardinal_directions; ++i) {
-      const cardinal_direction dir = cardinal_directions[i];
-      if (dir.v.dot<sub_tile_distance>(cdir_zplus.v) == 0) {
-        tile_location const& adj_loc = neighbors[i];
-        const tile_location diag_loc = adj_loc + cdir_zplus;
+    for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+      if (cardinal_directions_are_perpendicular(dir, zplus)) {
+        tile_location const& adj_loc = neighbors[dir];
+        const tile_location diag_loc = adj_loc.get_neighbor<zplus>(FULL_REALIZATION);
         // We could be more conservative about what we activate, by checking the actual details of
         // what changed and how that affects things, but that would just invite missing cases,
         // and it wouldn't speed stuff up noticeably because the thing will just deactivate again
@@ -1009,8 +1001,9 @@ void replace_substance_(
         // If we've become the same as the other tile, we may have made that tile interior
         if (!adj_loc.stuff_at().is_interior()) {
           bool they_should_be_interior = true;
-          for (EACH_CARDINAL_DIRECTION(d2)) {
-            if (neighboring_tiles_with_these_contents_are_not_interior((adj_loc + d2).stuff_at().contents(), adj_loc.stuff_at().contents())) {
+          std::array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc);
+          for (tile_location const& adj_adj_loc : adj_neighbors) {
+            if (neighboring_tiles_with_these_contents_are_not_interior(adj_adj_loc.stuff_at().contents(), adj_loc.stuff_at().contents())) {
               they_should_be_interior = false;
               break;
             }
@@ -1054,7 +1047,7 @@ void replace_substance_(
   // For creating water, there are only a few more caches to update.
   if (new_substance_type == GROUPABLE_WATER && old_substance_type != GROUPABLE_WATER) {
     // The tile below us, if any, is no longer suckable.
-    const tile_location downloc = loc + cdir_zminus;
+    const tile_location downloc = loc.get_neighbor<zminus>(FULL_REALIZATION);
     if (downloc.stuff_at().contents() == GROUPABLE_WATER) water_group->suckable_tiles_by_height.erase(downloc);
     
     // We might need to designate ourself as a surface tile,
@@ -1064,8 +1057,10 @@ void replace_substance_(
     for (tile_location const& adj_loc : neighbors) {
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
         bool adjacent_tile_has_any_adjacent_tiles_that_are_not_groupable_water = false;
-        for (EACH_CARDINAL_DIRECTION(d2)) {
-          if ((adj_loc + d2).stuff_at().contents() != GROUPABLE_WATER) {
+        
+        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc);
+        for (tile_location const& adj_adj_loc : adj_neighbors) {
+          if (adj_adj_loc.stuff_at().contents() != GROUPABLE_WATER) {
             adjacent_tile_has_any_adjacent_tiles_that_are_not_groupable_water = true;
             break;
           }
@@ -1100,8 +1095,8 @@ void replace_substance_(
     
     // If the tile above us was idle groupable water, it's now suckable...
     // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
-    const tile_location uploc = loc + cdir_zplus;
-    if (uploc.stuff_at().contents() == GROUPABLE_WATER && (uploc + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER && active_fluids.find(uploc) == active_fluids.end()) {
+    const tile_location uploc = loc.get_neighbor<zplus>(FULL_REALIZATION);
+    if (uploc.stuff_at().contents() == GROUPABLE_WATER && (uploc.get_neighbor<zplus>(CONTENTS_ONLY)).stuff_at().contents() != GROUPABLE_WATER && active_fluids.find(uploc) == active_fluids.end()) {
       water_group->mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, uploc, active_fluids);
     }
     correct_all_suckable_pushable_pairs(w, *water_group, active_fluids);
@@ -1151,8 +1146,8 @@ void replace_substance_(
     for (tile_location const& adj_loc : neighbors) {
       if (adj_loc.stuff_at().contents() == AIR) {
         bool can_be_pushable = false;
-        for (EACH_CARDINAL_DIRECTION(d2)) {
-          const tile_location adj_adj_loc = adj_loc + d2;
+        std::array<tile_location, num_cardinal_directions> neighbor_neighbors = get_all_neighbors(adj_loc);
+        for (tile_location const& adj_adj_loc : neighbor_neighbors) {
           if (adj_adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
             water_groups_by_location_t::const_iterator foo = water_groups_by_surface_tile.find(adj_adj_loc);
             if (foo != water_groups_by_surface_tile.end() && foo->second == water_group_id) {
@@ -1280,8 +1275,8 @@ void replace_substance_(
               assert(p.stuff_at().contents() == AIR);
 #endif
               bool is_pushable_for_original_group = false;
-              for (EACH_CARDINAL_DIRECTION(dir)) {
-                const tile_location adj_loc = p + dir;
+              std::array<tile_location, num_cardinal_directions> p_neighbors = get_all_neighbors(p);
+              for (tile_location const& adj_loc : p_neighbors) {
                 if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
                   const water_group_identifier pushable_having_group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
                   if (pushable_having_group_id == water_group_id) {
@@ -1315,17 +1310,19 @@ void replace_substance_(
             assert(iter->second == water_group_id);
           }
 #endif
-          
-          for (EACH_CARDINAL_DIRECTION(dir)) {
-            tile_location adj_loc = search_loc + dir;
+
+          std::array<tile_location, num_cardinal_directions> search_neighbors = get_all_neighbors(search_loc);
+          for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+            tile_location const& adj_loc = search_neighbors[dir];
             
             destroy_this_frontier = inf.try_collect_loc(which_neighbor, adj_loc);
             if (destroy_this_frontier) goto fake_continue;
             
             if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
-              for (EACH_CARDINAL_DIRECTION(d2)) {
-                if (d2.v.dot<neighboring_tile_differential>(dir.v) == 0) {
-                  destroy_this_frontier = inf.try_collect_loc(which_neighbor, adj_loc + d2);
+              std::array<tile_location, num_cardinal_directions> adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, FULL_REALIZATION);
+              for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
+                if (cardinal_directions_are_perpendicular(dir, d2)) {
+                  destroy_this_frontier = inf.try_collect_loc(which_neighbor, adj_neighbors[d2]);
                   if (destroy_this_frontier) goto fake_continue;
                 }
               }
@@ -1414,7 +1411,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     fluid.velocity -= (fluid.velocity * fluid.velocity.magnitude_within_32_bits()) / air_resistance_constant;
       
     // Relatively large friction against the ground
-    for (EACH_CARDINAL_DIRECTION(dir)) {
+    for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       if (fluid.blockage_amount_this_frame[dir] > 0) {
         vector3<sub_tile_distance> copy_stationary_in_blocked_direction = fluid.velocity; copy_stationary_in_blocked_direction -= project_onto_cardinal_direction(copy_stationary_in_blocked_direction, dir);
         if (copy_stationary_in_blocked_direction.magnitude_within_32_bits_is_less_than(friction_amount)) {
@@ -1426,13 +1423,12 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       }
     }
     
-    // Groupable water pushes other fluids away from it according to pressure.
+    // Groupable water pushes fluids away from it according to pressure.
     if (t.contents() != GROUPABLE_WATER) {
-      for (int i = 0; i < num_cardinal_directions; ++i) {
-        const cardinal_direction dir = cardinal_directions[i];
-        tile_location const& adj_loc = neighbors[i];
+      for (int dir = 0; dir < num_cardinal_directions; ++dir) {
+        tile_location const& adj_loc = neighbors[dir];
         if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-          tile_location const& opposite_loc = neighbors[opposite_cardinal_direction_index(i)];
+          tile_location const& opposite_loc = neighbors[opposite_cardinal_direction(dir)];
           tile_location walking_loc = opposite_loc;
           bool pinned_between_obstacles;
           while(true) {
@@ -1445,7 +1441,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
               pinned_between_obstacles = false;
               break;
             }
-            walking_loc = walking_loc - dir;
+            walking_loc = walking_loc.get_neighbor_by_variable(opposite_cardinal_direction(dir), CONTENTS_ONLY);
           }
           if (pinned_between_obstacles) {
             // Hack? - if we're pinned between obstructions, just become groupable immediately
@@ -1457,13 +1453,13 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
           else {
             persistent_water_group_info const& group = w.get_water_group_by_grouped_tile(adj_loc);
             const fine_scalar pressure = group.get_pressure_at_height(opposite_loc.coords().z);
-            if (pressure > 0) { // Hack - TODO examine the fact that "0 pressure" forces velocity to be at least 0 away from the tile (incorrect behavior for tiles directly above the group) and if that also causes subtler problems.
-              const sub_tile_distance amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_distance>(-dir.v);
+            if (pressure > 0) { // Hack - TODO examine the fact that "0 pressure" forces velocity to be at least 0 away from the tile (incorrect behavior for tiles directly above the group) and if the principles that causes that problem also causes subtler problems.
+              const sub_tile_distance amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_distance>(-cardinal_direction_vectors[dir]);
               // This velocity pushes us towards opposite_loc, and pressure is a measure of how much water wants to
               // *go to* the height pressure is being measured at, so we measure at opposite_loc.
               const sub_tile_distance deficiency_of_vel = i64sqrt(2*pressure) - amount_of_vel_in_pressure_receiving_dir;
               if (deficiency_of_vel > 0) {
-                fluid.velocity += vector3<sub_tile_distance>(-dir.v) * deficiency_of_vel;
+                fluid.velocity += vector3<sub_tile_distance>(-cardinal_direction_vectors[dir]) * deficiency_of_vel;
               }
             }
           }
@@ -1472,21 +1468,23 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     }
     
     // Velocity causes progress.
-    for (EACH_CARDINAL_DIRECTION(dir)) {
-      const sub_tile_distance dp = fluid.velocity.dot<sub_tile_distance>(dir.v);
+    for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+      const sub_tile_distance dp = fluid.velocity.dot<sub_tile_distance>(cardinal_direction_vectors[dir]);
       if (dp > 0) new_progress[dir] += dp;
     }
     
     // Water that's blocked, but can go around in a diagonal direction, also makes "progress" towards all those possible directions (so it'll go in a random direction if it could go around in several different diagonals, without having to 'choose' one right away and gain velocity only in that direction). The main purpose of this is to make it so that water doesn't stack nicely in pillars, or sit still on steep slopes.
     // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
-    for (int i = 0; i < num_cardinal_directions; ++i) {
-      cardinal_direction dir = cardinal_directions[i];
-      tile_location const& dst_loc = neighbors[i];
+    for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+      tile_location const& dst_loc = neighbors[dir];
       if (dst_loc.stuff_at().contents() == AIR) {
-        for (EACH_CARDINAL_DIRECTION(d2)) {
-          const tile_location diag_loc = dst_loc + d2;
-          if (fluid.blockage_amount_this_frame[d2] > 0 && d2.v.dot<sub_tile_distance>(dir.v) == 0 && obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness((loc + d2).stuff_at().contents())) {
-            new_progress[dir] += fluid.blockage_amount_this_frame[d2];
+        std::array<tile_location, num_cardinal_directions> neighbor_neighbors = get_perpendicular_neighbors(dst_loc, dir, CONTENTS_ONLY);
+        for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
+          if (cardinal_directions_are_perpendicular(dir, d2)) {
+            tile_location const& diag_loc = neighbor_neighbors[d2];
+            if (fluid.blockage_amount_this_frame[d2] > 0 && obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness(neighbors[d2].stuff_at().contents())) {
+              new_progress[dir] += fluid.blockage_amount_this_frame[d2];
+            }
           }
         }
       }
@@ -1503,7 +1501,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     //  that as a "wanted move".
     // ==============================================================================
     
-    for (EACH_CARDINAL_DIRECTION(dir)) {
+    for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       sub_tile_distance &progress_ref = fluid.progress[dir];
       if (new_progress[dir] == 0) {
         if (progress_ref < idle_progress_reduction_rate) progress_ref = 0;
@@ -1537,7 +1535,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
   
   
   for (const wanted_move move : wanted_moves) {
-    const tile_location dst = move.src + move.dir;
+    const tile_location dst = move.src.get_neighbor_by_variable(move.dir, FULL_REALIZATION);
     tile const& src_tile = move.src.stuff_at();
     tile const& dst_tile = dst.stuff_at();
     // Avoid making stupid situations where we do things like trying to move water more than once
@@ -1583,10 +1581,10 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       disturbed_tiles.insert(dst);
       
       // If a tile moves, we're now content to assume that it was moving because it had a realistic velocity in that direction, so we should continue with that assumption.
-      const sub_tile_distance amount_of_new_vel_in_movement_dir = dst_fluid.velocity.dot<sub_tile_distance>(move.dir.v);
+      const sub_tile_distance amount_of_new_vel_in_movement_dir = dst_fluid.velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
       const sub_tile_distance deficiency_of_new_vel_in_movement_dir = move.amount_of_the_push_that_sent_us_over_the_threshold - amount_of_new_vel_in_movement_dir;
       if (deficiency_of_new_vel_in_movement_dir > 0) {
-        dst_fluid.velocity += vector3<sub_tile_distance>(move.dir.v) * deficiency_of_new_vel_in_movement_dir;
+        dst_fluid.velocity += vector3<sub_tile_distance>(cardinal_direction_vectors[move.dir]) * deficiency_of_new_vel_in_movement_dir;
       }
       
       // Don't lose movement to rounding error during progress over multiple tiles:
@@ -1599,7 +1597,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // groupable water with free lower exterior surfaces", then 
       // instead of getting blocked, we get sucked to one of the exterior surfaces.
       bool blocked = true;
-      const bool becoming_suckable = (src_tile.contents() == GROUPABLE_WATER) && (move.dir == cdir_zminus) && ((move.src + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER);
+      const bool becoming_suckable = (src_tile.contents() == GROUPABLE_WATER) && (move.dir == zminus) && (move.src.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
       
       if (becoming_suckable) {
         const water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(move.src);
@@ -1618,13 +1616,13 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
         
         sub_tile_distance dst_vel_in_movement_dir;
         auto i = active_fluids.find(dst);
-        if (i == active_fluids.end()) dst_vel_in_movement_dir = inactive_fluid_velocity.dot<sub_tile_distance>(move.dir.v);
-        else                          dst_vel_in_movement_dir = i->second.velocity     .dot<sub_tile_distance>(move.dir.v);
+        if (i == active_fluids.end()) dst_vel_in_movement_dir = inactive_fluid_velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
+        else                          dst_vel_in_movement_dir = i->second.velocity     .dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
         const sub_tile_distance acceptable_remaining_vel_for_us = std::max(dst_vel_in_movement_dir - gravity_acceleration_magnitude * 2, min_convincing_speed);
-        const sub_tile_distance our_vel_in_movement_dir = src_fluid.velocity.dot<sub_tile_distance>(move.dir.v);
+        const sub_tile_distance our_vel_in_movement_dir = src_fluid.velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
         const sub_tile_distance excess_vel = our_vel_in_movement_dir - acceptable_remaining_vel_for_us;
         if (excess_vel > 0) {
-          src_fluid.velocity -= vector3<sub_tile_distance>(move.dir.v) * excess_vel;
+          src_fluid.velocity -= vector3<sub_tile_distance>(cardinal_direction_vectors[move.dir]) * excess_vel;
         }
       }
     }
@@ -1655,7 +1653,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
         // HACK: Water with groupable water directly under it doesn't stop being groupable due to high velocity,
         // purely to facilitate the water-being-sucked-out-very-fast situation.
         // TODO: find a cleaner way to facilitate that if possible.
-        if ((loc + cdir_zminus).stuff_at().contents() != GROUPABLE_WATER)
+        if (loc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER)
           w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
       }
     }
@@ -1669,8 +1667,8 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
     bool can_deactivate = false;
     if (fluid.is_in_inactive_state()) {
       // Be a little paranoid about making sure fluids obeys all the proper conditions of inactivity
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        if (dir.v.z < 0) {
+      for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+        if (dir == zminus) {
           if (fluid.blockage_amount_this_frame[dir] > min_convincing_speed + (-gravity_acceleration.z) || fluid.blockage_amount_this_frame[dir] <= min_convincing_speed) {
             goto fake_continue;
           }
@@ -1685,16 +1683,16 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // NOTE "Adjacent tile conditions for activation/deactivation": The only relevant ones are
       // the one directly below, the ones cardinally-horizontally, and the ones horizontally-and-below.
       // at the 2-diagonals. This comment is duplicated one one other place in this file.
-      const tile_location downloc = loc + cdir_zminus;
-      if (obstructiveness(downloc.stuff_at().contents()) < obstructiveness(t.contents())) goto fake_continue;
+      std::array<tile_location, num_cardinal_directions> cneighbors = get_all_neighbors(loc, CONTENTS_ONLY);
+      if (obstructiveness(cneighbors[zminus].stuff_at().contents()) < obstructiveness(t.contents())) goto fake_continue;
 
       // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
-      for (EACH_CARDINAL_DIRECTION(dir)) {
-        if (dir.v.dot<sub_tile_distance>(cdir_zminus.v) == 0) {
-          const tile_location dst_loc = loc + dir;
+      for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+        if (cardinal_directions_are_perpendicular(dir, zminus)) {
+          tile_location const& dst_loc = cneighbors[dir];
           if (dst_loc.stuff_at().contents() == AIR) {
-            const tile_location diag_loc = dst_loc + cdir_zminus;
-            if (obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness((loc + cdir_zminus).stuff_at().contents())) {
+            tile_location const& diag_loc = dst_loc.get_neighbor<zminus>(CONTENTS_ONLY);
+            if (obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness(cneighbors[zminus].stuff_at().contents())) {
               goto fake_continue;
             }
           }
@@ -1718,7 +1716,7 @@ void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_g
       // but the following frame, we won't make the check because we'll be inactive!
       // Semi-hack: Cover for that scenario here.
       // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
-      if (is_groupable_water && (loc_preserved + cdir_zplus).stuff_at().contents() != GROUPABLE_WATER) {
+      if (is_groupable_water && loc_preserved.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) {
         persistent_water_groups.find(w.get_water_group_id_by_grouped_tile(loc_preserved))->second.mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, loc_preserved, active_fluids);
       }
     }
@@ -1732,13 +1730,13 @@ active_fluid_tile_info::active_fluid_tile_info():
    progress(0),
    blockage_amount_this_frame(0)
 {
-  progress[cdir_zminus] = progress_necessary(cdir_zminus);
+  progress[zminus] = progress_necessary(zminus);
 }
   
 bool active_fluid_tile_info::is_in_inactive_state()const {
   // TODO: does it make sense that we're ignoring the 1-frame-duration variable "blockage_amount_this_frame"?
-  for (EACH_CARDINAL_DIRECTION(dir)) {
-    if (dir.v.z < 0) {
+  for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+    if (dir == zminus) {
       if (progress[dir] != progress_necessary(dir)) return false;
     }
     else {
