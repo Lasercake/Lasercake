@@ -623,6 +623,7 @@ srand(time(NULL));
     microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
     double fps = 1000000.0 / monotonic_microseconds_for_frame;
 
+    std::cerr << "Frame " << frame << ": ";
     debug_print_microseconds(microseconds_for_processing);
     std::cerr << ", ";
     debug_print_microseconds(microseconds_for_drawing);
