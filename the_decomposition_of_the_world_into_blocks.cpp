@@ -33,13 +33,12 @@ namespace hacky_internals {
   // level less-than-or-equal-to X, then we justly receive get an assertion failure.
   // Realizing a worldblock at a given level must not require same-level information.
   worldblock& worldblock::ensure_realization(level_of_tile_realization_needed realineeded, world *w_, vector3<tile_coordinate> global_position_) {
-    assert(realineeded >= COMPLETELY_IMAGINARY);
-    assert(realineeded <= FULL_REALIZATION);
+    caller_correct_if(realineeded >= COMPLETELY_IMAGINARY && realineeded <= FULL_REALIZATION, "Calling ensure_realization with an invalid realization level");
     
     if ((             realineeded >= CONTENTS_ONLY) &&
         (current_tile_realization <  CONTENTS_ONLY)) {
     
-      assert(!is_busy_realizing);
+      caller_error_if(is_busy_realizing, "Referring to a realization level currently being computed");
       is_busy_realizing = true;
       
       w = w_;
@@ -55,7 +54,7 @@ namespace hacky_internals {
     if ((             realineeded >= CONTENTS_AND_LOCAL_CACHES_ONLY) &&
         (current_tile_realization <  CONTENTS_AND_LOCAL_CACHES_ONLY)) {
     
-      assert(!is_busy_realizing);
+      caller_error_if(is_busy_realizing, "Referring to a realization level currently being computed");
       is_busy_realizing = true;
       
       for (tile_coordinate x = global_position.x; x < global_position.x + worldblock_dimension; ++x) {
@@ -74,7 +73,7 @@ namespace hacky_internals {
     if ((             realineeded >= FULL_REALIZATION) &&
         (current_tile_realization <  FULL_REALIZATION)) {
     
-      assert(!is_busy_realizing);
+      caller_error_if(is_busy_realizing, "Referring to a realization level currently being computed");
       is_busy_realizing = true;
       
       for (tile_coordinate x = global_position.x; x < global_position.x + worldblock_dimension; ++x) {
