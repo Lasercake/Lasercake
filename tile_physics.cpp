@@ -962,8 +962,7 @@ void replace_substance_(
     // Water is activated-if-necessary by calling unordered_set::operator[], which default-constructs one
     // if there isn't one there already.
     if (is_fluid(new_substance_type)) active_fluids[loc];
-    const tile_location uploc = loc.get_neighbor<zplus>(FULL_REALIZATION);
-    if (is_fluid(uploc.stuff_at().contents())) active_fluids[uploc];
+    if (is_fluid(neighbors[zplus].stuff_at().contents())) active_fluids[neighbors[zplus]];
     
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       if (cardinal_directions_are_perpendicular(dir, zplus)) {
@@ -1047,8 +1046,7 @@ void replace_substance_(
   // For creating water, there are only a few more caches to update.
   if (new_substance_type == GROUPABLE_WATER && old_substance_type != GROUPABLE_WATER) {
     // The tile below us, if any, is no longer suckable.
-    const tile_location downloc = loc.get_neighbor<zminus>(FULL_REALIZATION);
-    if (downloc.stuff_at().contents() == GROUPABLE_WATER) water_group->suckable_tiles_by_height.erase(downloc);
+    if (neighbors[zminus].stuff_at().contents() == GROUPABLE_WATER) water_group->suckable_tiles_by_height.erase(neighbors[zminus]);
     
     // We might need to designate ourself as a surface tile,
     // and we might need to designate neighbors as non-surface tiles,
@@ -1095,7 +1093,7 @@ void replace_substance_(
     
     // If the tile above us was idle groupable water, it's now suckable...
     // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
-    const tile_location uploc = loc.get_neighbor<zplus>(FULL_REALIZATION);
+    tile_location const& uploc = neighbors[zplus];
     if (uploc.stuff_at().contents() == GROUPABLE_WATER && (uploc.get_neighbor<zplus>(CONTENTS_ONLY)).stuff_at().contents() != GROUPABLE_WATER && active_fluids.find(uploc) == active_fluids.end()) {
       water_group->mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, uploc, active_fluids);
     }
