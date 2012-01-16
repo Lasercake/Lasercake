@@ -72,10 +72,9 @@ shape robot::get_initial_detail_shape()const {
 
 void robot::update(world &w, object_identifier my_id) {
   bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-  vector3<fine_scalar> bottom_middle(
-    (shape_bounds.min.x + shape_bounds.max.x) / 2,
-    (shape_bounds.min.y + shape_bounds.max.y) / 2,
-    shape_bounds.min.z);
+  vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
+  location = middle;
+  vector3<fine_scalar> bottom_middle(middle.x, middle.y, shape_bounds.min.z);
   const tile_location l = w.make_tile_location(get_containing_tile_coordinates(bottom_middle), CONTENTS_ONLY);
   const tile_location lminus = l.get_neighbor<zminus>(CONTENTS_ONLY);
   if (lminus.stuff_at().contents() != AIR) {
@@ -92,9 +91,10 @@ void robot::update(world &w, object_identifier my_id) {
   Uint8 *keystate = SDL_GetKeyState(NULL);
   velocity.x -= velocity.x / 2;
   velocity.y -= velocity.y / 2;
-  if (keystate[SDLK_UP]) {
-    velocity.x = facing.x;
-    velocity.y = facing.y;
+  const fine_scalar xymag = i64sqrt(facing.x*facing.x + facing.y*facing.y);
+  if (keystate[SDLK_x]) {
+    velocity.x = facing.x * tile_width * velocity_scale_factor / 8 / xymag;
+    velocity.y = facing.y * tile_width * velocity_scale_factor / 8 / xymag;
   }
   if (keystate[SDLK_RIGHT]) {
     fine_scalar new_facing_x = facing.x + facing.y / 20;
@@ -105,6 +105,15 @@ void robot::update(world &w, object_identifier my_id) {
     fine_scalar new_facing_x = facing.x - facing.y / 20;
     fine_scalar new_facing_y = facing.y + facing.x / 20;
     facing.x = new_facing_x; facing.y = new_facing_y;
+  }
+  if (keystate[SDLK_UP] ^ keystate[SDLK_DOWN]) {
+    const fine_scalar which_way = (keystate[SDLK_UP] ? 1 : -1);
+    const fine_scalar new_xymag = xymag - (which_way * facing.z / 20);
+    if (new_xymag > tile_width * velocity_scale_factor / 64) {
+      facing.z += which_way * xymag / 20;
+      facing.y = facing.y * new_xymag / xymag;
+      facing.x = facing.x * new_xymag / xymag;
+    }
   }
   facing = facing * tile_width * velocity_scale_factor / 8 / facing.magnitude_within_32_bits();
 }
