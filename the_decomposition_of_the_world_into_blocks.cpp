@@ -101,11 +101,6 @@ namespace hacky_internals {
     
     return (*this);
   }
-
-  tile& worldblock::get_tile(vector3<tile_coordinate> global_coords) {
-    vector3<tile_coordinate> local_coords = global_coords - global_position;
-    return tiles[local_coords.x][local_coords.y][local_coords.z];
-  }
   
   template<> bool worldblock::crossed_boundary<xminus>(tile_coordinate new_coord) { return new_coord < global_position.x; }
   template<> bool worldblock::crossed_boundary<yminus>(tile_coordinate new_coord) { return new_coord < global_position.y; }
@@ -156,7 +151,6 @@ tile_location tile_location::get_neighbor_by_variable(cardinal_direction dir, le
     default: caller_error("calling get_neighbor_by_variable with an invalid direction");
   }
 }
-tile const& tile_location::stuff_at()const { return wb->get_tile(v); }
 
 vector3<tile_coordinate> coordinates_of_containing_worldblock(vector3<tile_coordinate> const& coords) {
   return vector3<tile_coordinate>(

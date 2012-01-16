@@ -286,7 +286,7 @@ public:
   //tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
   bool operator==(tile_location const& other)const { return v == other.v; }
   bool operator!=(tile_location const& other)const { return v != other.v; }
-  tile const& stuff_at()const;
+  inline tile const& stuff_at()const;
   vector3<tile_coordinate> const& coords()const { return v; }
 private:
   friend tile& mutable_stuff_at(tile_location const& loc);
@@ -519,7 +519,9 @@ public:
     worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w_ = nullptr, vector3<tile_coordinate> global_position_ = vector3<tile_coordinate>(0,0,0));
   
     // Only to be used in tile_location::stuff_at():
-    tile& get_tile(vector3<tile_coordinate> global_coords);
+    inline tile& get_tile(vector3<tile_coordinate> global_coords) {
+      return tiles[global_coords.x - global_position.x][global_coords.y - global_position.y][global_coords.z - global_position.z];
+    }
   
     // Only to be used in tile_location::get_neighbor:
     template<cardinal_direction Dir> bool crossed_boundary(tile_coordinate new_coord);
@@ -536,6 +538,7 @@ private:
     bool is_busy_realizing;
   };
 }
+inline tile const& tile_location::stuff_at()const { return wb->get_tile(v); }
 template<cardinal_direction Dir> tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
   return wb->get_neighboring_loc<Dir>(v, realineeded);
 }
