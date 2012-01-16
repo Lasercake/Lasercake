@@ -35,6 +35,7 @@
 
 #include "world.hpp"
 #include "specific_worlds.hpp"
+#include "specific_object_types.hpp"
 
 namespace /* anonymous */ {
 

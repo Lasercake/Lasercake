@@ -19,7 +19,7 @@
 
 */
 
-#include "world.hpp"
+#include "specific_object_types.hpp"
 
 // TODO HAAAAACK
 #include "SDL/SDL.h"

@@ -803,32 +803,5 @@ private:
   void initialize_tile_water_group_caches(tile_location const& loc);
 };
 
-class robot : public mobile_object, public autonomous_object {
-public:
-  robot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location(location),facing(facing){}
-  
-  virtual shape get_initial_personal_space_shape()const;
-  virtual shape get_initial_detail_shape()const;
-  
-  virtual void update(world &w, object_identifier my_id);
-  vector3<fine_scalar> get_facing()const { return facing; }
-private:
-  vector3<fine_scalar> location;
-  vector3<fine_scalar> facing;
-};
-
-class laser_emitter : public mobile_object, public autonomous_object {
-public:
-  laser_emitter(vector3<fine_scalar> location, vector3<fine_scalar> facing):location(location),facing(facing){}
-  
-  virtual shape get_initial_personal_space_shape()const;
-  virtual shape get_initial_detail_shape()const;
-  
-  virtual void update(world &w, object_identifier id);
-private:
-  vector3<fine_scalar> location;
-  vector3<fine_scalar> facing;
-};
-
 #endif
 
