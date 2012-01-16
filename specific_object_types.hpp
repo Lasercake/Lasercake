@@ -26,7 +26,7 @@
 
 class robot : public mobile_object, public autonomous_object {
 public:
-  robot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location(location),facing(facing){}
+  robot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location(location),facing(facing),carrying(false){}
   
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
@@ -36,6 +36,7 @@ public:
 private:
   vector3<fine_scalar> location;
   vector3<fine_scalar> facing;
+  bool carrying;
 };
 
 class laser_emitter : public mobile_object, public autonomous_object {

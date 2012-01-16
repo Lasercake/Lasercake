@@ -109,13 +109,43 @@ void robot::update(world &w, object_identifier my_id) {
   if (keystate[SDLK_UP] ^ keystate[SDLK_DOWN]) {
     const fine_scalar which_way = (keystate[SDLK_UP] ? 1 : -1);
     const fine_scalar new_xymag = xymag - (which_way * facing.z / 20);
-    if (new_xymag > tile_width * velocity_scale_factor / 64) {
+    if (new_xymag > tile_width / 8) {
       facing.z += which_way * xymag / 20;
       facing.y = facing.y * new_xymag / xymag;
       facing.x = facing.x * new_xymag / xymag;
     }
   }
-  facing = facing * tile_width * velocity_scale_factor / 8 / facing.magnitude_within_32_bits();
+  facing = facing * tile_width / facing.magnitude_within_32_bits();
+  
+  vector3<fine_scalar> beam_delta = facing * 3 / 2;
+  
+  if (keystate[SDLK_c]) {
+    beam_first_contact_finder finder(w, line_segment(location, location + beam_delta));
+    finder.ignores.insert(my_id);
+    w.get_things_exposed_to_collision().get_objects_generalized(&finder);
+    
+    if (finder.best_intercept_point.first) {
+      // TODO do I have to worry about overflow?
+      w.add_laser_sfx(location, beam_delta * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
+      if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
+        if (!carrying && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
+          carrying = true;
+          w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+        }
+        /*if (carrying && locp->stuff_at().contents() == ROCK) {
+          w.replace_substance(*locp, ROCK, RUBBLE);
+        }*/
+      }
+    }
+    else {
+      w.add_laser_sfx(location, beam_delta);
+      if (carrying) {
+        carrying = false;
+        const tile_location target_loc = w.make_tile_location(get_containing_tile_coordinates(location + beam_delta), FULL_REALIZATION);
+        w.replace_substance(target_loc, AIR, RUBBLE);
+      }
+    }
+  }
 }
 
 
