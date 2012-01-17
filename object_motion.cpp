@@ -60,12 +60,18 @@ cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& ve
   caller_correct_if(velocity != vector3<fine_scalar>(0,0,0), "calling approximate_direction_of_entry an object that's not moving");
   cardinal_direction best_dir = xminus; // it shouldn't matter what I initialize it to
   fine_scalar best = -1;
-  for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
-    if (velocity.dot<fine_scalar>(cardinal_direction_vectors[dir]) > 0) {
-      const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[which_dimension_is_cardinal_direction(dir)] - overlapping_bounds.min[which_dimension_is_cardinal_direction(dir)];
+  for (int dim = 0; dim < 3; ++dim) {
+    if ((velocity[dim] > 0 && my_bounds.max[dim] < other_bounds.max[dim]) || (velocity[dim] < 0 && my_bounds.min[dim] > other_bounds.min[dim])) {
+      const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[dim] - overlapping_bounds.min[dim];
       if (best == -1 || overlap_in_this_dimension < best) {
         best = overlap_in_this_dimension;
-        best_dir = dir;
+        // HACK - TODO put something in utils.hpp to do this for us, instead of the + 3
+        if (velocity[dim] > 0) {
+          best_dir = dim + 3;
+        }
+        else {
+          best_dir = dim;
+        }
       }
     }
   }
