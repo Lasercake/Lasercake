@@ -57,6 +57,7 @@ cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& ve
   bounding_box overlapping_bounds(my_bounds);
   overlapping_bounds.restrict_to(other_bounds);
   caller_correct_if(overlapping_bounds.is_anywhere, "calling approximate_direction_of_entry with non-overlapping bounds");
+  caller_correct_if(velocity != vector3<fine_scalar>(0,0,0), "calling approximate_direction_of_entry an object that's not moving");
   cardinal_direction best_dir = xminus; // it shouldn't matter what I initialize it to
   fine_scalar best = -1;
   for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
@@ -68,6 +69,9 @@ cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& ve
       }
     }
   }
+#ifdef ASSERT_EVERYTHING
+  assert(best != -1);
+#endif
   return best_dir;
 }
 
@@ -213,7 +217,6 @@ void update_moving_objects_(
     
     // This collision code is kludgy because of the way it handles one collision at a time.
     // TODO properly consider multiple collisions in the same step.
-    bool this_step_is_a_collision = false;
     bool this_step_needs_adjusting = false;
     for (object_or_tile_identifier const& them : this_overlaps) {
       if (them != id) {
@@ -224,26 +227,24 @@ void update_moving_objects_(
             objp->velocity = objp->velocity * max_object_speed_through_water / current_speed;
             info.remaining_displacement = info.remaining_displacement * max_object_speed_through_water / current_speed;
             this_step_needs_adjusting = true;
+            break;
           }
         }
         else {
           shape their_shape = w.get_personal_space_shape_of_object_or_tile(them);
-          if (new_shape.intersects(their_shape)) {
-            this_step_is_a_collision = true;
+          if (new_shape.intersects(their_shape) && !personal_space_shapes[id].intersects(their_shape)) {
+            this_step_needs_adjusting = true;
             cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), their_shape.bounds());
             
             objp->velocity -= project_onto_cardinal_direction(objp->velocity, approx_impact_dir);
             info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, approx_impact_dir);
+            break;
           }
         }
       }
     }
     
-    if (this_step_is_a_collision) {
-      info.remaining_displacement -= wanted_displacement_this_step;
-      info.last_step_time = times.current_time;
-    }
-    else if (this_step_needs_adjusting) {
+    if (this_step_needs_adjusting) {
       // don't update last_step_time - it will compute another step at current_time
     }
     else {
