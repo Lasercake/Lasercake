@@ -423,6 +423,7 @@ srand(time(NULL));
       }
       if (tile_location const* locp = id.get_tile_location()) {
         tile_location const& loc = *locp;
+        vector3<tile_coordinate> const& coords = loc.coords();
         tile const& t = loc.stuff_at();
         vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
 
@@ -433,7 +434,8 @@ srand(time(NULL));
 
         {
           const color tile_color =
-            t.contents() ==              ROCK ? color(0x33000077 + (rand()&(0x77000000))) :
+            t.contents() ==              ROCK ? color(((((coords.x + coords.y + coords.z) % 3)
+                                                        * 0x222222u + 0x333333u) << 8) + 0xff) :
             t.contents() ==            RUBBLE ? color(0xffff0077) :
             t.contents() ==   GROUPABLE_WATER ? color(0x0000ff77) :
             t.contents() == UNGROUPABLE_WATER ? color(0x6666ff77) :
