@@ -71,6 +71,29 @@ struct world_building_func {
 
   void operator()(world_building_gun make, tile_bounding_box bounds) {
     const tile_coordinate wc = world_center_coord;
+    if (scenario == "flat") {
+      for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
+        for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
+          for (tile_coordinate z = bounds.min.z; z < std::min(world_center_coord, bounds.min.z + bounds.size.z); ++z) {
+            vector3<tile_coordinate> l(x,y,z);
+            make(ROCK, l);
+          }
+        }
+      }
+      return;
+    }
+    if (scenario == "plane") {
+      for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
+        for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
+          for (tile_coordinate z = std::max(bounds.min.z, world_center_coord - 1);
+               z < std::min(world_center_coord, bounds.min.z + bounds.size.z); ++z) {
+            vector3<tile_coordinate> l(x,y,z);
+            make(ROCK, l);
+          }
+        }
+      }
+      return;
+    }
     if (scenario == "simple_hills") {
       for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
         for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
