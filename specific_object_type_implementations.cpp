@@ -71,10 +71,10 @@ shape robot::get_initial_detail_shape()const {
 }
 
 void robot::update(world &w, object_identifier my_id) {
-  bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-  vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
+  const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
+  const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
   location = middle;
-  vector3<fine_scalar> bottom_middle(middle.x, middle.y, shape_bounds.min.z);
+  const vector3<fine_scalar> bottom_middle(middle.x, middle.y, shape_bounds.min.z);
   const tile_location l = w.make_tile_location(get_containing_tile_coordinates(bottom_middle), CONTENTS_ONLY);
   const tile_location lminus = l.get_neighbor<zminus>(CONTENTS_ONLY);
   if (lminus.stuff_at().contents() != AIR) {
@@ -161,8 +161,8 @@ shape laser_emitter::get_initial_detail_shape()const {
 }
 
 void laser_emitter::update(world &w, object_identifier my_id) {
-  bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-  vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
+  const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
+  const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
   location = middle;
   do {
     facing.x = (rand()&2047) - 1024;
