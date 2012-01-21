@@ -58,6 +58,7 @@ struct beam_first_contact_finder : world_collision_detector::generalized_object_
   }
 };
 
+const int robot_max_carrying_capacity = 4;
 
 shape robot::get_initial_personal_space_shape()const {
   return shape(bounding_box(
@@ -119,7 +120,7 @@ void robot::update(world &w, object_identifier my_id) {
   
   vector3<fine_scalar> beam_delta = facing * 3 / 2;
   
-  if (keystate[SDLK_c]) {
+  if (keystate[SDLK_c] || keystate[SDLK_v]) {
     beam_first_contact_finder finder(w, line_segment(location, location + beam_delta));
     finder.ignores.insert(my_id);
     w.get_things_exposed_to_collision().get_objects_generalized(&finder);
@@ -128,8 +129,8 @@ void robot::update(world &w, object_identifier my_id) {
       // TODO do I have to worry about overflow?
       w.add_laser_sfx(location, beam_delta * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
       if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
-        if (!carrying && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
-          carrying = true;
+        if (keystate[SDLK_c] && (carrying < robot_max_carrying_capacity) && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
+          ++carrying;
           w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
         }
         /*if (carrying && locp->stuff_at().contents() == ROCK) {
@@ -139,8 +140,8 @@ void robot::update(world &w, object_identifier my_id) {
     }
     else {
       w.add_laser_sfx(location, beam_delta);
-      if (carrying) {
-        carrying = false;
+      if (keystate[SDLK_v] && (carrying > 0)) {
+        --carrying;
         const tile_location target_loc = w.make_tile_location(get_containing_tile_coordinates(location + beam_delta), FULL_REALIZATION);
         w.replace_substance(target_loc, AIR, RUBBLE);
       }

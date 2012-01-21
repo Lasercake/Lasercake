@@ -36,7 +36,7 @@ public:
 private:
   vector3<fine_scalar> location;
   vector3<fine_scalar> facing;
-  bool carrying;
+  int carrying;
 };
 
 class laser_emitter : public mobile_object, public autonomous_object {
