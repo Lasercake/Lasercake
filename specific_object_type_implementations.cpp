@@ -58,6 +58,27 @@ struct beam_first_contact_finder : world_collision_detector::generalized_object_
   }
 };
 
+void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar> location, vector3<fine_scalar> facing) {
+  facing = facing * tile_width * 2 / facing.magnitude_within_32_bits();
+  
+  beam_first_contact_finder finder(w, line_segment(location, location + facing * 50));
+  finder.ignores.insert(my_id);
+  w.get_things_exposed_to_collision().get_objects_generalized(&finder);
+  
+  if (finder.best_intercept_point.first) {
+    // TODO do I have to worry about overflow?
+    w.add_laser_sfx(location, facing * 50 * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
+    if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
+      if (locp->stuff_at().contents() == ROCK) {
+        w.replace_substance(*locp, ROCK, RUBBLE);
+      }
+    }
+  }
+  else {
+    w.add_laser_sfx(location, facing * 50);
+  }
+}
+
 const int robot_max_carrying_capacity = 4;
 
 shape robot::get_initial_personal_space_shape()const {
@@ -147,6 +168,11 @@ void robot::update(world &w, object_identifier my_id) {
       }
     }
   }
+  if (keystate[SDLK_b]) {
+    const vector3<fine_scalar> offset(-facing.y / 4, facing.x / 4, 0);
+    fire_standard_laser(w, my_id, location + offset, facing);
+    fire_standard_laser(w, my_id, location - offset, facing);
+  }
 }
 
 
@@ -170,24 +196,8 @@ void laser_emitter::update(world &w, object_identifier my_id) {
     facing.y = (rand()&2047) - 1024;
     facing.z = (rand()&2047) - 1024;
   } while (facing.magnitude_within_32_bits_is_greater_than(1023) || facing.magnitude_within_32_bits_is_less_than(512));
-  facing = facing * tile_width * 2 / facing.magnitude_within_32_bits();
-  
-  beam_first_contact_finder finder(w, line_segment(location, location + facing * 50));
-  finder.ignores.insert(my_id);
-  w.get_things_exposed_to_collision().get_objects_generalized(&finder);
-  
-  if (finder.best_intercept_point.first) {
-    // TODO do I have to worry about overflow?
-    w.add_laser_sfx(location, facing * 50 * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
-    if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
-      if (locp->stuff_at().contents() == ROCK) {
-        w.replace_substance(*locp, ROCK, RUBBLE);
-      }
-    }
-  }
-  else {
-    w.add_laser_sfx(location, facing * 50);
-  }
+
+  fire_standard_laser(w, my_id, location, facing);
   
   
   #if 0
