@@ -261,7 +261,7 @@ vector3<int64_t> shape::arbitrary_interior_point()const {
   caller_error("Trying to get an arbitrary interior point of a shape that contains no points");
 }
 
-std::pair<bool, boost::rational<int64_t>> get_intersection(int64_t sl1x, int64_t sl1y, int64_t sl2x, int64_t sl2y, int64_t ol1x, int64_t ol1y, int64_t ol2x, int64_t ol2y) {
+std::pair<bool, non_normalized_rational<int64_t>> get_intersection(int64_t sl1x, int64_t sl1y, int64_t sl2x, int64_t sl2y, int64_t ol1x, int64_t ol1y, int64_t ol2x, int64_t ol2y) {
   // assume ol1 is (0, 0)
   ol2x -= ol1x;
   sl1x -= ol1x;
@@ -279,22 +279,22 @@ std::pair<bool, boost::rational<int64_t>> get_intersection(int64_t sl1x, int64_t
   const int64_t Dy2mDy1 = Dy2 - Dy1;
   const int64_t ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
   if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return std::make_pair(false, 1);
-  else                                               return std::make_pair(true, boost::rational<int64_t>(Dy1, Dy1 - Dy2));
+  else                                               return std::make_pair(true, non_normalized_rational<int64_t>(Dy1, Dy1 - Dy2));
 }
 
-std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment const& l, bounding_box const& bb) {
+std::pair<bool, non_normalized_rational<int64_t>> get_intersection(line_segment const& l, bounding_box const& bb) {
   if (!bb.is_anywhere) return std::make_pair(false, 1);
   if (bb.contains(l.ends[0])) return std::make_pair(true, 0);
   
-  boost::rational<int64_t> intersecting_min(0);
-  boost::rational<int64_t> intersecting_max(1);
+  non_normalized_rational<int64_t> intersecting_min(0);
+  non_normalized_rational<int64_t> intersecting_max(1);
   
 #define CHECK(minormax, maxormin, compare, dimension) \
   if (l.ends[0].dimension == l.ends[1].dimension) { \
     if (l.ends[0].dimension compare bb.minormax.dimension) return std::make_pair(false, 1); \
   } \
   else { \
-    const boost::rational<int64_t> checkval((l.ends[1].dimension > l.ends[0].dimension ? bb.minormax.dimension : bb.maxormin.dimension) - l.ends[0].dimension, l.ends[1].dimension - l.ends[0].dimension); \
+    const non_normalized_rational<int64_t> checkval((l.ends[1].dimension > l.ends[0].dimension ? bb.minormax.dimension : bb.maxormin.dimension) - l.ends[0].dimension, l.ends[1].dimension - l.ends[0].dimension); \
     if (intersecting_##minormax compare checkval) { \
       intersecting_##minormax = checkval; \
       if (intersecting_min > intersecting_max) return std::make_pair(false, 1); \
@@ -312,7 +312,7 @@ std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment const& l
   return std::make_pair(true, intersecting_min);
 }
 
-std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment l, convex_polygon const& p) {
+std::pair<bool, non_normalized_rational<int64_t>> get_intersection(line_segment l, convex_polygon const& p) {
   p.setup_cache_if_needed();
   polygon_collision_info_cache const& c = p.get_cache();
   
@@ -331,10 +331,10 @@ std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment l, conve
     else {
       // Now, we need to do 2D line vs. polygon collisions, which are just a bunch of 2D line vs. line collisions.
       // We just ignore the z values for these purposes.
-      std::pair<bool, boost::rational<int64_t>> result(false, 1);
+      std::pair<bool, non_normalized_rational<int64_t>> result(false, 1);
       for (size_t i = 0; i < c.adjusted_vertices.size(); ++i) {
         const int next_i = (i + 1) % c.adjusted_vertices.size();
-        std::pair<bool, boost::rational<int64_t>> here = get_intersection(l.ends[0].x, l.ends[0].y, l.ends[1].x, l.ends[1].y, c.adjusted_vertices[i].x, c.adjusted_vertices[i].y, c.adjusted_vertices[next_i].x, c.adjusted_vertices[next_i].y);
+        std::pair<bool, non_normalized_rational<int64_t>> here = get_intersection(l.ends[0].x, l.ends[0].y, l.ends[1].x, l.ends[1].y, c.adjusted_vertices[i].x, c.adjusted_vertices[i].y, c.adjusted_vertices[next_i].x, c.adjusted_vertices[next_i].y);
         if (here.first && (!result.first || here.second < result.second)) {
           result = here;
         }
@@ -365,12 +365,12 @@ std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment l, conve
         previous_clockwiseness = clockwiseness;
       }
       else {
-        if (clockwiseness != previous_clockwiseness) return std::make_pair(false, boost::rational<int64_t>(1));
+        if (clockwiseness != previous_clockwiseness) return std::make_pair(false, non_normalized_rational<int64_t>(1));
       }
     }
   }
   
-  return std::make_pair(true, boost::rational<int64_t>(l.ends[0].z, l.ends[0].z - l.ends[1].z));
+  return std::make_pair(true, non_normalized_rational<int64_t>(l.ends[0].z, l.ends[0].z - l.ends[1].z));
 }
 
 bool nonshape_intersects_onesided(convex_polygon const& p1, convex_polygon const& p2) {
@@ -452,16 +452,16 @@ bool shape::intersects(shape const& other)const {
   return false;
 }
 
-std::pair<bool, boost::rational<int64_t>> shape::first_intersection(line_segment const& other)const {
-  std::pair<bool, boost::rational<int64_t>> result(false, 1);
+std::pair<bool, non_normalized_rational<int64_t>> shape::first_intersection(line_segment const& other)const {
+  std::pair<bool, non_normalized_rational<int64_t>> result(false, 1);
   for (convex_polygon const& p : polygons) {
-    std::pair<bool, boost::rational<int64_t>> here = get_intersection(other, p);
+    std::pair<bool, non_normalized_rational<int64_t>> here = get_intersection(other, p);
     if (here.first && (!result.first || here.second < result.second)) {
       result = here;
     }
   }
   for (bounding_box const& bb : boxes) {
-    std::pair<bool, boost::rational<int64_t>> here = get_intersection(other, bb);
+    std::pair<bool, non_normalized_rational<int64_t>> here = get_intersection(other, bb);
     if (here.first && (!result.first || here.second < result.second)) {
       result = here;
     }

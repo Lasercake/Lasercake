@@ -29,7 +29,7 @@ struct beam_first_contact_finder : world_collision_detector::generalized_object_
   beam_first_contact_finder(world const& w, line_segment beam):w(w),beam(beam),best_intercept_point(false, 1){}
   world const& w;
   line_segment beam;
-  std::pair<bool, boost::rational<int64_t>> best_intercept_point;
+  std::pair<bool, non_normalized_rational<int64_t>> best_intercept_point;
   unordered_set<object_or_tile_identifier> ignores;
   object_or_tile_identifier thing_hit;
   
@@ -37,7 +37,7 @@ struct beam_first_contact_finder : world_collision_detector::generalized_object_
     if (ignores.find(id) != ignores.end()) return;
     
     // TODO : long beams, overflow?
-    std::pair<bool, boost::rational<int64_t>> result = w.get_detail_shape_of_object_or_tile(id).first_intersection(beam);
+    std::pair<bool, non_normalized_rational<int64_t>> result = w.get_detail_shape_of_object_or_tile(id).first_intersection(beam);
     if (result.first) {
       if (!best_intercept_point.first || result.second < best_intercept_point.second) {
         best_intercept_point = result;
@@ -46,13 +46,13 @@ struct beam_first_contact_finder : world_collision_detector::generalized_object_
     }
   }
   virtual bool should_be_considered__dynamic(bounding_box const& bb)const {
-    std::pair<bool, boost::rational<int64_t>> result = shape(bb).first_intersection(beam);
+    std::pair<bool, non_normalized_rational<int64_t>> result = shape(bb).first_intersection(beam);
     return result.first && (!best_intercept_point.first || result.second < best_intercept_point.second);
   }
   virtual bool bbox_ordering(bounding_box const& bb1, bounding_box const& bb2)const {
     // TODO do this in a more efficient way
-    std::pair<bool, boost::rational<int64_t>> result1 = shape(bb1).first_intersection(beam);
-    std::pair<bool, boost::rational<int64_t>> result2 = shape(bb2).first_intersection(beam);
+    std::pair<bool, non_normalized_rational<int64_t>> result1 = shape(bb1).first_intersection(beam);
+    std::pair<bool, non_normalized_rational<int64_t>> result2 = shape(bb2).first_intersection(beam);
     // Hack: This will never be relevant if the bools are false
     return (result1.second < result2.second);
   }
@@ -126,7 +126,7 @@ void robot::update(world &w, object_identifier my_id) {
     
     if (finder.best_intercept_point.first) {
       // TODO do I have to worry about overflow?
-      w.add_laser_sfx(location, beam_delta * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
+      w.add_laser_sfx(location, beam_delta * finder.best_intercept_point.second.numerator / finder.best_intercept_point.second.denominator);
       if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
         if (!carrying && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
           carrying = true;
@@ -163,6 +163,7 @@ shape laser_emitter::get_initial_detail_shape()const {
 void laser_emitter::update(world &w, object_identifier my_id) {
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
   const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
+  for (int i = 0; i < 100; ++i) {
   location = middle;
   do {
     facing.x = (rand()&2047) - 1024;
@@ -177,7 +178,7 @@ void laser_emitter::update(world &w, object_identifier my_id) {
   
   if (finder.best_intercept_point.first) {
     // TODO do I have to worry about overflow?
-    w.add_laser_sfx(location, facing * 50 * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
+    w.add_laser_sfx(location, facing * 50 * finder.best_intercept_point.second.numerator / finder.best_intercept_point.second.denominator);
     if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
       if (locp->stuff_at().contents() == ROCK) {
         w.replace_substance(*locp, ROCK, RUBBLE);
@@ -186,6 +187,7 @@ void laser_emitter::update(world &w, object_identifier my_id) {
   }
   else {
     w.add_laser_sfx(location, facing * 50);
+  }
   }
   
   

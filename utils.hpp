@@ -322,6 +322,19 @@ private:
   internal_array data;
 };
 
+template<typename IntType> struct non_normalized_rational {
+  IntType numerator;
+  IntType denominator;
+  non_normalized_rational(IntType n, IntType d):numerator(n),denominator(d){ assert(std::abs(numerator) < (1ULL<<32)); assert(std::abs(denominator) < (1ULL<<32));}
+  non_normalized_rational(IntType n):numerator(n),denominator(1){}
+  non_normalized_rational():numerator(0),denominator(1){}
+  bool operator< (non_normalized_rational const& o)const { return numerator*o.denominator <  o.numerator*denominator; }
+  bool operator> (non_normalized_rational const& o)const { return numerator*o.denominator >  o.numerator*denominator; }
+  bool operator<=(non_normalized_rational const& o)const { return numerator*o.denominator <= o.numerator*denominator; }
+  bool operator>=(non_normalized_rational const& o)const { return numerator*o.denominator >= o.numerator*denominator; }
+  bool operator==(non_normalized_rational const& o)const { return numerator*o.denominator == o.numerator*denominator; }
+  bool operator!=(non_normalized_rational const& o)const { return numerator*o.denominator != o.numerator*denominator; }
+};
 
 class bounds_checked_int {
 public:
