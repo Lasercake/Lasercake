@@ -175,34 +175,34 @@ shape::shape(bounding_box const& init): bounds_cache_is_valid(true) {
 */
   
 void convex_polygon::setup_cache_if_needed()const {
-  if (cache.is_valid) return;
+  if (cache_.is_valid) return;
   
-  cache.adjusted_vertices = vertices;
+  cache_.adjusted_vertices = vertices_;
   
   // Translate everything to a more convenient location. Translations are linear and hence preserve everything we need.
-  cache.translation_amount = -vertices[0];
-  for (vector3<int64_t>& v : cache.adjusted_vertices) v += cache.translation_amount;
+  cache_.translation_amount = -vertices_[0];
+  for (vector3<int64_t>& v : cache_.adjusted_vertices) v += cache_.translation_amount;
   
-  cache.amount_twisted = 0;
+  cache_.amount_twisted = 0;
   while (true) {
-    cache.denom = (cache.adjusted_vertices[1].x*cache.adjusted_vertices[2].y - cache.adjusted_vertices[1].y*cache.adjusted_vertices[2].x);
-    if (cache.denom != 0) break;
+    cache_.denom = (cache_.adjusted_vertices[1].x*cache_.adjusted_vertices[2].y - cache_.adjusted_vertices[1].y*cache_.adjusted_vertices[2].x);
+    if (cache_.denom != 0) break;
     
     // One of the three orientations must work.
     // These are rotations, which are linear and hence preserve everything we need.
     
-    ++cache.amount_twisted;
-    for (vector3<int64_t>& v : cache.adjusted_vertices) v = vector3<int64_t>(v.y, v.z, v.x);
+    ++cache_.amount_twisted;
+    for (vector3<int64_t>& v : cache_.adjusted_vertices) v = vector3<int64_t>(v.y, v.z, v.x);
 #ifdef ASSERT_EVERYTHING
-    assert(cache.amount_twisted <= 2);
+    assert(cache_.amount_twisted <= 2);
 #endif
   }
   
   // In the formula Skew(T) = I + (z unit vector)*(a(t.x) + b(t.y)) ...
-  cache.a_times_denom =  ((cache.adjusted_vertices[2].z*cache.adjusted_vertices[1].y)
-                        - (cache.adjusted_vertices[1].z*cache.adjusted_vertices[2].y));
-  cache.b_times_denom = -((cache.adjusted_vertices[2].z*cache.adjusted_vertices[1].x)
-                        - (cache.adjusted_vertices[1].z*cache.adjusted_vertices[2].x));
+  cache_.a_times_denom =  ((cache_.adjusted_vertices[2].z*cache_.adjusted_vertices[1].y)
+                         - (cache_.adjusted_vertices[1].z*cache_.adjusted_vertices[2].y));
+  cache_.b_times_denom = -((cache_.adjusted_vertices[2].z*cache_.adjusted_vertices[1].x)
+                         - (cache_.adjusted_vertices[1].z*cache_.adjusted_vertices[2].x));
   
   // We don't actually need to skew the polygon, since (by definition) it just skews the z coordinate to zero,
   // and because of that, hereafter we just don't need to refer to the z coordinates at all.
@@ -217,17 +217,17 @@ void line_segment::translate(vector3<int64_t> t) {
 }
 
 void convex_polygon::translate(vector3<int64_t> t) {
-  for (vector3<int64_t>& v : vertices) v += t;
-  cache.translation_amount -= t;
+  for (vector3<int64_t>& v : vertices_) v += t;
+  cache_.translation_amount -= t;
 }
 
 void shape::translate(vector3<int64_t> t) {
-  for (  line_segment& l : segments) l.translate(t);
-  for (convex_polygon& p : polygons) p.translate(t);
-  for (  bounding_box& b : boxes   ) b.translate(t);
-  if (bounds_cache_is_valid && bounds_cache.is_anywhere) {
-    bounds_cache.min += t;
-    bounds_cache.max += t;
+  for (  line_segment& l : segments_) l.translate(t);
+  for (convex_polygon& p : polygons_) p.translate(t);
+  for (  bounding_box& b : boxes_   ) b.translate(t);
+  if (bounds_cache_is_valid_ && bounds_cache_.is_anywhere) {
+    bounds_cache_.min += t;
+    bounds_cache_.max += t;
     // now still valid!
   }
 }
@@ -240,24 +240,24 @@ bounding_box line_segment::bounds()const {
 
 bounding_box convex_polygon::bounds()const {
   bounding_box result;
-  for (vector3<int64_t> const& v : vertices) result.combine_with(bounding_box(v));
+  for (vector3<int64_t> const& v : vertices_) result.combine_with(bounding_box(v));
   return result;
 }
 
 bounding_box shape::bounds()const {
-  if (bounds_cache_is_valid) return bounds_cache;
-  bounds_cache = bounding_box();
-  for (  line_segment const& l : segments) bounds_cache.combine_with(l.bounds());
-  for (convex_polygon const& p : polygons) bounds_cache.combine_with(p.bounds());
-  for (  bounding_box const& b : boxes   ) bounds_cache.combine_with(b         );
-  bounds_cache_is_valid = true;
-  return bounds_cache;
+  if (bounds_cache_is_valid_) return bounds_cache_;
+  bounds_cache_ = bounding_box();
+  for (  line_segment const& l : segments_) bounds_cache_.combine_with(l.bounds());
+  for (convex_polygon const& p : polygons_) bounds_cache_.combine_with(p.bounds());
+  for (  bounding_box const& b : boxes_   ) bounds_cache_.combine_with(b         );
+  bounds_cache_is_valid_ = true;
+  return bounds_cache_;
 }
 
 vector3<int64_t> shape::arbitrary_interior_point()const {
-  if (!segments.empty()) return segments[0].ends[0];
-  if (!polygons.empty()) return polygons[0].get_vertices()[0];
-  for (bounding_box const& bb : boxes) { if (bb.is_anywhere) { return bb.min; }}
+  if (!segments_.empty()) return segments_[0].ends[0];
+  if (!polygons_.empty()) return polygons_[0].get_vertices()[0];
+  for (bounding_box const& bb : boxes_) { if (bb.is_anywhere) { return bb.min; }}
   caller_error("Trying to get an arbitrary interior point of a shape that contains no points");
 }
 
@@ -433,35 +433,35 @@ bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
 bool shape::intersects(shape const& other)const {
   if (!bounds().overlaps(other.bounds())) return false;
   
-  for (line_segment const& l : segments) {
-    for (convex_polygon const& p2 : other.polygons) {
+  for (line_segment const& l : segments_) {
+    for (convex_polygon const& p2 : other.polygons_) {
       if (get_intersection(l, p2).first) return true;
     }
-    for (bounding_box const& b2 : other.boxes) {
+    for (bounding_box const& b2 : other.boxes_) {
       if (get_intersection(l, b2).first) return true;
     }
   }
 
-  for (convex_polygon const& p1 : polygons) {
-    for (line_segment const& l : other.segments) {
+  for (convex_polygon const& p1 : polygons_) {
+    for (line_segment const& l : other.segments_) {
       if (get_intersection(l, p1).first) return true;
     }
-    for (convex_polygon const& p2 : other.polygons) {
+    for (convex_polygon const& p2 : other.polygons_) {
       if (nonshape_intersects(p1, p2)) return true;
     }
-    for (bounding_box const& b2 : other.boxes) {
+    for (bounding_box const& b2 : other.boxes_) {
       if (nonshape_intersects(p1, b2)) return true;
     }
   }
 
-  for (bounding_box const& b1 : boxes) {
-    for (line_segment const& l : other.segments) {
+  for (bounding_box const& b1 : boxes_) {
+    for (line_segment const& l : other.segments_) {
       if (get_intersection(l, b1).first) return true;
     }
-    for (convex_polygon const& p2 : other.polygons) {
+    for (convex_polygon const& p2 : other.polygons_) {
       if (nonshape_intersects(p2, b1)) return true;
     }
-    for (bounding_box const& b2 : other.boxes) {
+    for (bounding_box const& b2 : other.boxes_) {
       if (b1.overlaps(b2)) return true;
     }
   }
@@ -470,13 +470,13 @@ bool shape::intersects(shape const& other)const {
 
 std::pair<bool, boost::rational<int64_t>> shape::first_intersection(line_segment const& other)const {
   std::pair<bool, boost::rational<int64_t>> result(false, 1);
-  for (convex_polygon const& p : polygons) {
+  for (convex_polygon const& p : polygons_) {
     std::pair<bool, boost::rational<int64_t>> here = get_intersection(other, p);
     if (here.first && (!result.first || here.second < result.second)) {
       result = here;
     }
   }
-  for (bounding_box const& bb : boxes) {
+  for (bounding_box const& bb : boxes_) {
     std::pair<bool, boost::rational<int64_t>> here = get_intersection(other, bb);
     if (here.first && (!result.first || here.second < result.second)) {
       result = here;

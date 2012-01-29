@@ -74,7 +74,8 @@ its drawing code in order to draw implementation-detail states-of-being.
 Various names look like:
 
 local_variable
-member_variable (TODO: perhaps change to member_variable_ or such?)
+private_member_variable_, private_member_function_
+public_member
 function_name, struct_name, constant_quantity
 IDENTIFIER_CONSTANT (e.g. enum values. Not an amount of something, just a number that represents something)
 TemplateArgument

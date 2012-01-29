@@ -145,11 +145,11 @@ typedef uint64_t object_identifier;
 const object_identifier NO_OBJECT = 0;
 
 struct object_or_tile_identifier {
-  object_or_tile_identifier():data(NO_OBJECT){}
-  object_or_tile_identifier(tile_location const& loc):data(loc){}
-  object_or_tile_identifier(object_identifier id):data(id){}
-  tile_location const* get_tile_location()const { return boost::get<tile_location>(&data); }
-  object_identifier const* get_object_identifier()const { return boost::get<object_identifier>(&data); }
+  object_or_tile_identifier():data_(NO_OBJECT){}
+  object_or_tile_identifier(tile_location const& loc):data_(loc){}
+  object_or_tile_identifier(object_identifier id):data_(id){}
+  tile_location const* get_tile_location()const { return boost::get<tile_location>(&data_); }
+  object_identifier const* get_object_identifier()const { return boost::get<object_identifier>(&data_); }
   size_t hash()const {
     struct hash_visitor : public boost::static_visitor<size_t>
     {
@@ -161,9 +161,9 @@ struct object_or_tile_identifier {
         return std::hash<object_identifier>()(i);
       }
     };
-    return boost::apply_visitor( hash_visitor(), data );
+    return boost::apply_visitor( hash_visitor(), data_ );
   }
-  bool operator==(object_or_tile_identifier const& other)const { return data == other.data; }
+  bool operator==(object_or_tile_identifier const& other)const { return data_ == other.data_; }
   bool operator==(object_identifier const& other)const {
     if (object_identifier const* foo = get_object_identifier()) { return *foo == other; }
     else return false;
@@ -175,7 +175,7 @@ struct object_or_tile_identifier {
   bool operator!=(object_identifier const& other)const { return !(*this == other); }
   bool operator!=(tile_location const& other)const { return !(*this == other); }
 private:
-  boost::variant<tile_location, object_identifier> data;
+  boost::variant<tile_location, object_identifier> data_;
 };
 
 namespace std {
@@ -219,7 +219,7 @@ private:
   typedef bbox_collision_detector<object_or_tile_identifier, 64, 3> internal_t;
   typedef internal_t::generalized_object_collection_handler igoch;
   typedef internal_t::bounding_box ibb;
-  static ibb convert_bb(bounding_box const& bb) {
+  static ibb convert_bb_(bounding_box const& bb) {
     caller_correct_if(bb.is_anywhere, "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
     ibb b;
     b.min[0] = bb.min.x;
@@ -230,7 +230,7 @@ private:
     b.size[2] = bb.max.z + 1 - bb.min.z;
     return b;
   }
-  static bounding_box convert_bb(ibb const& b) {
+  static bounding_box convert_bb_(ibb const& b) {
     bounding_box bb;
     bb.min.x = b.min[0];
     bb.min.y = b.min[1];
@@ -245,11 +245,11 @@ public:
   world_collision_detector(){}
   
   void get_objects_overlapping(unordered_set<object_or_tile_identifier>& results, bounding_box const& bb)const {
-    detector.get_objects_overlapping(results, convert_bb(bb));
+    detector.get_objects_overlapping(results, convert_bb_(bb));
   }
   
   void insert(object_or_tile_identifier id, bounding_box const& bb) {
-    detector.insert(id, convert_bb(bb));
+    detector.insert(id, convert_bb_(bb));
   }
   bool erase(object_or_tile_identifier id) {
     return detector.erase(id);
@@ -260,7 +260,7 @@ public:
   // Returns bounding_box() (i.e. !is_anywhere) iff the id isn't in the detector.
   bounding_box find_bounding_box(object_or_tile_identifier id)const {
     const ibb* bb = detector.find_bounding_box(id);
-    if(bb) return convert_bb(*bb);
+    if(bb) return convert_bb_(*bb);
     else return bounding_box();
   }
   
@@ -279,9 +279,9 @@ public:
       world_collision_detector::generalized_object_collection_handler *outer;
       impl_(world_collision_detector::generalized_object_collection_handler *outer):outer(outer){}
       void handle_new_find(object_or_tile_identifier id) { outer->handle_new_find(id); }
-      bool should_be_considered__static(ibb const& bb)const { return outer->should_be_considered__static(convert_bb(bb)); }
-      bool should_be_considered__dynamic(ibb const& bb)const { return outer->should_be_considered__dynamic(convert_bb(bb)); }
-      bool bbox_ordering(ibb const& bb1, ibb const& bb2)const { return outer->bbox_ordering(convert_bb(bb1), convert_bb(bb2)); }
+      bool should_be_considered__static(ibb const& bb)const { return outer->should_be_considered__static(convert_bb_(bb)); }
+      bool should_be_considered__dynamic(ibb const& bb)const { return outer->should_be_considered__dynamic(convert_bb_(bb)); }
+      bool bbox_ordering(ibb const& bb1, ibb const& bb2)const { return outer->bbox_ordering(convert_bb_(bb1), convert_bb_(bb2)); }
       bool done()const { return outer->done(); }
     };
     impl_ intermediary_;
@@ -303,12 +303,12 @@ namespace hacky_internals {
 
   class worldblock {
 public:
-    worldblock():neighbors(nullptr),w(nullptr),current_tile_realization(COMPLETELY_IMAGINARY),is_busy_realizing(false){}
-    worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w_ = nullptr, vector3<tile_coordinate> global_position_ = vector3<tile_coordinate>(0,0,0));
+    worldblock():neighbors_(nullptr),w_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false){}
+    worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w = nullptr, vector3<tile_coordinate> global_position = vector3<tile_coordinate>(0,0,0));
   
     // Only to be used in tile_location::stuff_at():
     inline tile& get_tile(vector3<tile_coordinate> global_coords) {
-      return tiles[global_coords.x - global_position.x][global_coords.y - global_position.y][global_coords.z - global_position.z];
+      return tiles_[global_coords.x - global_position_.x][global_coords.y - global_position_.y][global_coords.z - global_position_.z];
     }
   
     // Only to be used in tile_location::get_neighbor:
@@ -318,26 +318,26 @@ public:
     template<cardinal_direction Dir> tile_location get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded);
     tile_location get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords);
 private:
-    std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles;
-    value_for_each_cardinal_direction<worldblock*> neighbors;
-    vector3<tile_coordinate> global_position; // the lowest x, y, and z among elements in this worldblock
-    world *w;
-    level_of_tile_realization_needed current_tile_realization;
-    bool is_busy_realizing;
+    std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
+    value_for_each_cardinal_direction<worldblock*> neighbors_;
+    vector3<tile_coordinate> global_position_; // the lowest x, y, and z among elements in this worldblock
+    world* w_;
+    level_of_tile_realization_needed current_tile_realization_;
+    bool is_busy_realizing_;
   };
 }
-inline tile const& tile_location::stuff_at()const { return wb->get_tile(v); }
+inline tile const& tile_location::stuff_at()const { return wb_->get_tile(v_); }
 template<cardinal_direction Dir> tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
-  return wb->get_neighboring_loc<Dir>(v, realineeded);
+  return wb_->get_neighboring_loc<Dir>(v_, realineeded);
 }
 
 class world_building_gun {
 public:
-  world_building_gun(world* w, tile_bounding_box bounds):w(w),bounds(bounds){}
+  world_building_gun(world* w, tile_bounding_box bounds):w_(w),bounds_(bounds){}
   void operator()(tile_contents new_contents, vector3<tile_coordinate> locv);
 private:
-  world* w;
-  tile_bounding_box bounds;
+  world* w_;
+  tile_bounding_box bounds_;
 };
 
 typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
@@ -381,7 +381,7 @@ using tile_physics_impl::tile_physics_state_t;
 
 class world {
 public:
-  world(worldgen_function_t f):tile_physics_state(*this),next_object_identifier(1),worldgen_function(f){}
+  world(worldgen_function_t f):tile_physics_state_(*this),next_object_identifier_(1),worldgen_function_(f){}
   
   void update_moving_objects();
   void update_fluids();
@@ -389,28 +389,28 @@ public:
   inline void update() {
     laser_sfxes.clear();
     update_fluids();
-    for (auto& obj : autonomously_active_objects) obj.second->update(*this, obj.first);
+    for (auto& obj : autonomously_active_objects_) obj.second->update(*this, obj.first);
     update_moving_objects();
   }
   
   // I *think* this pointer is valid as long as the shared_ptr exists
-  shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects, id); }
+  shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects_, id); }
   /*boost::iterator_range<mobile_objects_map<mobile_object>::iterator> mobile_objects_range() {
     return boost::make_iterator_range(mobile_objects.begin(), mobile_objects.end());
   }*/
   boost::iterator_range<objects_map<mobile_object>::type::iterator> moving_objects_range() {
-    return boost::make_iterator_range(moving_objects.begin(), moving_objects.end());
+    return boost::make_iterator_range(moving_objects_.begin(), moving_objects_.end());
   }
   
   tile_location make_tile_location(vector3<tile_coordinate> const& coords, level_of_tile_realization_needed realineeded);
   
   void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier>& results, bounding_box const& bounds) {
-    ensure_realization_of_space(convert_to_smallest_superset_at_tile_resolution(bounds), FULL_REALIZATION);
-    things_exposed_to_collision.get_objects_overlapping(results, bounds);
+    ensure_realization_of_space_(convert_to_smallest_superset_at_tile_resolution(bounds), FULL_REALIZATION);
+    things_exposed_to_collision_.get_objects_overlapping(results, bounds);
   }
   void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier>& results, tile_bounding_box const& bounds) {
-    ensure_realization_of_space(bounds, FULL_REALIZATION);
-    things_exposed_to_collision.get_objects_overlapping(results, convert_to_fine_units(bounds));
+    ensure_realization_of_space_(bounds, FULL_REALIZATION);
+    things_exposed_to_collision_.get_objects_overlapping(results, convert_to_fine_units(bounds));
   }
   
   // old_substance_type doesn't actually do anything except give an assertion.
@@ -424,20 +424,20 @@ public:
   
   object_identifier try_create_object(shared_ptr<object> obj) {
     // TODO: fail (and return NO_OBJECT) if there's something in the way
-    object_identifier id = next_object_identifier++;
-    objects.insert(make_pair(id, obj));
+    object_identifier id = next_object_identifier_++;
+    objects_.insert(make_pair(id, obj));
     bounding_box b; // TODO: in mobile_objects.cpp, include detail_shape in at least the final box left in the ztree
-    object_personal_space_shapes[id] = obj->get_initial_personal_space_shape();
-    b.combine_with(object_personal_space_shapes[id].bounds());
-    object_detail_shapes[id] = obj->get_initial_detail_shape();
-    b.combine_with(object_detail_shapes[id].bounds());
-    things_exposed_to_collision.insert(id, b);
+    object_personal_space_shapes_[id] = obj->get_initial_personal_space_shape();
+    b.combine_with(object_personal_space_shapes_[id].bounds());
+    object_detail_shapes_[id] = obj->get_initial_detail_shape();
+    b.combine_with(object_detail_shapes_[id].bounds());
+    things_exposed_to_collision_.insert(id, b);
     if(shared_ptr<mobile_object> m = boost::dynamic_pointer_cast<mobile_object>(obj)) {
-      moving_objects.insert(make_pair(id, m));
+      moving_objects_.insert(make_pair(id, m));
     }
     // TODO: don't do this if you're in the middle of updating autonomous objects
     if(shared_ptr<autonomous_object> m = boost::dynamic_pointer_cast<autonomous_object>(obj)) {
-      autonomously_active_objects.insert(make_pair(id, m));
+      autonomously_active_objects_.insert(make_pair(id, m));
     }
     return id;
   }
@@ -460,12 +460,12 @@ public:
   shape get_personal_space_shape_of_object_or_tile(object_or_tile_identifier id)const;
   shape get_detail_shape_of_object_or_tile(object_or_tile_identifier id)const;
   
-  objects_map<object>::type const& get_objects()const { return objects; }
-  object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes; }
-  object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes; }
+  objects_map<object>::type const& get_objects()const { return objects_; }
+  object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes_; }
+  object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes_; }
 
-  tile_physics_state_t& tile_physics() { return tile_physics_state; }
-  world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision; }
+  tile_physics_state_t& tile_physics() { return tile_physics_state_; }
+  world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision_; }
 
   
 private:
@@ -473,34 +473,34 @@ private:
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
   // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
-  unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks; 
+  unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks_; 
 
-  tile_physics_state_t tile_physics_state;
+  tile_physics_state_t tile_physics_state_;
   
-  objects_map<object>::type objects;
-  objects_map<mobile_object>::type moving_objects;
-  objects_map<autonomous_object>::type autonomously_active_objects;
+  objects_map<object>::type objects_;
+  objects_map<mobile_object>::type moving_objects_;
+  objects_map<autonomous_object>::type autonomously_active_objects_;
   
-  object_identifier next_object_identifier;
-  vector<shared_ptr<object>> objects_to_add;
-  object_shapes_t object_personal_space_shapes;
-  object_shapes_t object_detail_shapes;
+  object_identifier next_object_identifier_;
+  vector<shared_ptr<object>> objects_to_add_;
+  object_shapes_t object_personal_space_shapes_;
+  object_shapes_t object_detail_shapes_;
   
   // This currently means all mobile objects, all water, and surface rock tiles. TODO I haven't actually implemented restricting to sufface rock yet
-  world_collision_detector things_exposed_to_collision;
+  world_collision_detector things_exposed_to_collision_;
   
   // Worldgen functions TODO describe them
-  worldgen_function_t worldgen_function;
+  worldgen_function_t worldgen_function_;
   
   
-  hacky_internals::worldblock* ensure_realization_of_and_get_worldblock(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
-  void ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded);
+  hacky_internals::worldblock* ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
+  void ensure_realization_of_space_(tile_bounding_box space, level_of_tile_realization_needed realineeded);
   
   // Used only by world_building_gun
-  void initialize_tile_contents(tile_location const& loc, tile_contents contents);
+  void initialize_tile_contents_(tile_location const& loc, tile_contents contents);
   // Used only in the worldblock stuff
-  void initialize_tile_local_caches(tile_location const& loc);
-  void initialize_tile_water_group_caches(tile_location const& loc);
+  void initialize_tile_local_caches_(tile_location const& loc);
+  void initialize_tile_water_group_caches_(tile_location const& loc);
 };
 
 #endif

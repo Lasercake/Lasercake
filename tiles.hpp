@@ -57,25 +57,25 @@ struct tile_bounding_box {
   {
     public:
       iterator(){}
-    bool equal(iterator other)const { return data == other.data; }
-    void increment() {
-      data.first.x += 1;
-      if (data.first.x >= data.second->min.x + data.second->size.x) {
-        data.first.x = data.second->min.x;
-        data.first.y += 1;
-        if (data.first.y >= data.second->min.y + data.second->size.y) {
-          data.first.y = data.second->min.y;
-          data.first.z += 1;
+      bool equal(iterator other)const { return data_ == other.data_; }
+      void increment() {
+        data_.first.x += 1;
+        if (data_.first.x >= data_.second->min.x + data_.second->size.x) {
+          data_.first.x = data_.second->min.x;
+          data_.first.y += 1;
+          if (data_.first.y >= data_.second->min.y + data_.second->size.y) {
+            data_.first.y = data_.second->min.y;
+            data_.first.z += 1;
+          }
         }
       }
-    }
-    vector3<tile_coordinate> dereference()const { return data.first; }
+      vector3<tile_coordinate> dereference()const { return data_.first; }
 
-    explicit iterator(pair<vector3<tile_coordinate>, tile_bounding_box*> data):data(data){}
+      explicit iterator(pair<vector3<tile_coordinate>, tile_bounding_box*> data):data_(data){}
     private:
-    friend class boost::iterator_core_access;
+      friend class boost::iterator_core_access;
       friend class tile_bounding_box;
-      pair<vector3<tile_coordinate>, tile_bounding_box*> data;
+      pair<vector3<tile_coordinate>, tile_bounding_box*> data_;
 
   };
 
@@ -126,24 +126,31 @@ inline bool neighboring_tiles_with_these_contents_are_not_interior(tile_contents
 
 class tile {
 public:
-  tile():data(0){}
+  tile():data_(0){}
 
 
   // For tile based physics (e.g. water movement)
   // This is so that we don't have to search the collision-detector for relevant objects at every tile.
-  bool there_is_an_object_here_that_affects_the_tile_based_physics()const { return data & there_is_an_object_here_that_affects_the_tile_based_physics_mask; }
-  bool is_interior()const { return is_interior_bit(); }
-  tile_contents contents()const{ return (tile_contents)(data & contents_mask); }
+  bool there_is_an_object_here_that_affects_the_tile_based_physics()const { return data_ & there_is_an_object_here_that_affects_the_tile_based_physics_mask; }
+  bool is_interior()const { return is_interior_bit_(); }
+  tile_contents contents()const{ return (tile_contents)(data_ & contents_mask); }
 
-  void set_contents(tile_contents new_contents){ data = (data & ~contents_mask) | (uint8_t(new_contents) & contents_mask); }
-  void set_whether_there_is_an_object_here_that_affects_the_tile_based_physics(bool b){ data = (data & ~there_is_an_object_here_that_affects_the_tile_based_physics_mask) | (b ? there_is_an_object_here_that_affects_the_tile_based_physics_mask : uint8_t(0)); }
-  void set_interiorness(bool b){ data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
+  void set_contents(tile_contents new_contents) {
+    data_ = (data_ & ~contents_mask) | (uint8_t(new_contents) & contents_mask);
+  }
+  void set_whether_there_is_an_object_here_that_affects_the_tile_based_physics(bool b) {
+    data_ = (data_ & ~there_is_an_object_here_that_affects_the_tile_based_physics_mask)
+         | (b ? there_is_an_object_here_that_affects_the_tile_based_physics_mask : uint8_t(0));
+  }
+  void set_interiorness(bool b) {
+    data_ = (data_ & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0));
+  }
 private:
   static const uint8_t contents_mask = 0x7;
   static const uint8_t interior_bit_mask = (1<<3);
   static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask = (1<<4);
-  bool is_interior_bit()const{ return data & interior_bit_mask; }
-  uint8_t data;
+  bool is_interior_bit_()const{ return data_ & interior_bit_mask; }
+  uint8_t data_;
 };
 
 
@@ -173,20 +180,20 @@ public:
 
   tile_location get_neighbor_by_variable(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
   //tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
-  bool operator==(tile_location const& other)const { return v == other.v; }
-  bool operator!=(tile_location const& other)const { return v != other.v; }
+  bool operator==(tile_location const& other)const { return v_ == other.v_; }
+  bool operator!=(tile_location const& other)const { return v_ != other.v_; }
   inline tile const& stuff_at()const;
-  vector3<tile_coordinate> const& coords()const { return v; }
+  vector3<tile_coordinate> const& coords()const { return v_; }
 private:
   friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
   friend tile_location trivial_invalid_location();
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
 
   // This constructor should only be used when you know exactly what worldblock it's in!!
-  tile_location(vector3<tile_coordinate> v, hacky_internals::worldblock *wb):v(v),wb(wb){}
+  tile_location(vector3<tile_coordinate> v, hacky_internals::worldblock *wb):v_(v),wb_(wb){}
 
-  vector3<tile_coordinate> v;
-  hacky_internals::worldblock *wb; // invariant: nonnull
+  vector3<tile_coordinate> v_;
+  hacky_internals::worldblock *wb_; // invariant: nonnull
 };
 
 inline tile_location trivial_invalid_location() { return tile_location(vector3<tile_coordinate>(0,0,0), nullptr); }
@@ -258,9 +265,9 @@ public:
   bool any_above(tile_coordinate height)const;
   bool any_below(tile_coordinate height)const;
 
-  map_t const& as_map()const { return data; }
+  map_t const& as_map()const { return data_; }
 private:
-  map_t data;
+  map_t data_;
 };
 
 #endif

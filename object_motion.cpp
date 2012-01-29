@@ -320,7 +320,7 @@ void update_moving_objects_impl(
 } /* end anonymous namespace */
 
 void world::update_moving_objects() {
-  update_moving_objects_impl(*this, moving_objects, object_personal_space_shapes, object_detail_shapes, things_exposed_to_collision);
+  update_moving_objects_impl(*this, moving_objects_, object_personal_space_shapes_, object_detail_shapes_, things_exposed_to_collision_);
 }
 
 #if 0

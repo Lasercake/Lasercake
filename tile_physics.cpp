@@ -225,7 +225,7 @@ using namespace tile_physics_impl;
 // Other files should change tile contents through replace_substance,
 // and shouldn't be in the business of altering tile caches at all.
 // (TODO: also add something for the there_is_an_object_here_that_affects_the_tile_based_physics thing)
-tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc) { return loc.wb->get_tile(loc.v); }
+tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc) { return loc.wb_->get_tile(loc.v_); }
 
 namespace tile_physics_impl {
 
@@ -1757,15 +1757,15 @@ bool active_fluid_tile_info::is_in_inactive_state()const {
 } // end namespace
 
 
-void world::initialize_tile_contents(tile_location const& loc, tile_contents contents) {
+void world::initialize_tile_contents_(tile_location const& loc, tile_contents contents) {
   mutable_stuff_at(loc).set_contents(contents);
 }
 
-void world::initialize_tile_local_caches(tile_location const& loc) {
-  initialize_tile_local_caches_impl(this->things_exposed_to_collision, loc);
+void world::initialize_tile_local_caches_(tile_location const& loc) {
+  initialize_tile_local_caches_impl(things_exposed_to_collision_, loc);
 }
 
-void world::initialize_tile_water_group_caches(tile_location const& loc) {
+void world::initialize_tile_water_group_caches_(tile_location const& loc) {
   if (loc.stuff_at().contents() == GROUPABLE_WATER) {
     state_t& state = get_state(*this);
     initialize_water_group_from_tile_if_necessary(state, loc);
@@ -1775,7 +1775,7 @@ void world::initialize_tile_water_group_caches(tile_location const& loc) {
 void world::replace_substance(tile_location const& loc,
         tile_contents old_substance_type, tile_contents new_substance_type) {
   state_t& state = get_state(*this);
-  replace_substance_impl(state, loc, old_substance_type, new_substance_type, this->things_exposed_to_collision);
+  replace_substance_impl(state, loc, old_substance_type, new_substance_type, things_exposed_to_collision_);
 }
 
 void world::update_fluids() {
