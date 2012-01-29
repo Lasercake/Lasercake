@@ -478,7 +478,6 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
 void world::initialize_tile_contents(tile_location const& loc, tile_contents contents) {
   mutable_stuff_at(loc).set_contents(contents);
 }
-void initialize_tile_local_caches_(tile_location const& loc);
 
 void world::initialize_tile_local_caches(tile_location const& loc) {
   bool should_be_interior = true;
@@ -772,7 +771,7 @@ persistent_water_group_info const& world::get_water_group_by_grouped_tile(tile_l
 }
 
 
-void replace_substance_(
+void replace_substance_impl(
    world &w,
    tile_location const& loc,
    tile_contents old_substance_type,
@@ -789,10 +788,10 @@ void world::replace_substance(
    tile_location const& loc,
    tile_contents old_substance_type,
    tile_contents new_substance_type) {
-  replace_substance_(*this, loc, old_substance_type, new_substance_type, things_exposed_to_collision, groupable_water_dimensional_boundaries_TODO_name_this_better, active_fluids, next_water_group_identifier, persistent_water_groups, water_groups_by_surface_tile);
+  replace_substance_impl(*this, loc, old_substance_type, new_substance_type, things_exposed_to_collision, groupable_water_dimensional_boundaries_TODO_name_this_better, active_fluids, next_water_group_identifier, persistent_water_groups, water_groups_by_surface_tile);
 }
 
-void replace_substance_(
+void replace_substance_impl(
    world &w,
    tile_location const& loc,
    tile_contents old_substance_type,
@@ -1376,13 +1375,13 @@ int obstructiveness(tile_contents tc) {
   else assert(false); // reaching this would mean we implemented a new material type but forgot to set its obstructiveness
 }
 
-void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups);
+void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups);
 
 void world::update_fluids() {
-  update_fluids_(*this, active_fluids, persistent_water_groups);
+  update_fluids_impl(*this, active_fluids, persistent_water_groups);
 }
 
-void update_fluids_(world &w, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups) {
+void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups) {
   // ==============================================================================
   //  Phase 1
   //  Compute all the velocities and movement.

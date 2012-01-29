@@ -98,7 +98,7 @@ void cap_remaining_displacement_to_new_velocity(vector3<fine_scalar> &remaining_
   }
 }
 
-void update_moving_objects_(
+void update_moving_objects_impl(
    world                             &w,
    objects_map<mobile_object>::type  &moving_objects,
    object_shapes_t                   &personal_space_shapes,
@@ -315,12 +315,12 @@ void update_moving_objects_(
 } /* end anonymous namespace */
 
 void world::update_moving_objects() {
-  update_moving_objects_(*this, moving_objects, object_personal_space_shapes, object_detail_shapes, things_exposed_to_collision);
+  update_moving_objects_impl(*this, moving_objects, object_personal_space_shapes, object_detail_shapes, things_exposed_to_collision);
 }
 
 #if 0
 // If objects overlap with the new position, returns their IDs. If not, changes the shape and returns an empty set.
-unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape_(world &w, object_shapes_t &personal_space_shapes, world_collision_detector &things_exposed_to_collision, object_identifier id, shape const& new_shape) {
+unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape_impl(world &w, object_shapes_t &personal_space_shapes, world_collision_detector &things_exposed_to_collision, object_identifier id, shape const& new_shape) {
   unordered_set<object_or_tile_identifier> collisions;
   collect_collisions_if_object_personal_space_is_at(w, collisions, id, new_shape);
   
@@ -333,7 +333,7 @@ unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape_(wor
 }
 
 unordered_set<object_or_tile_identifier> world::try_to_change_personal_space_shape(object_identifier id, shape const& new_shape) {
-  return try_to_change_personal_space_shape_(*this, object_personal_space_shapes, things_exposed_to_collision, id, new_shape);
+  return try_to_change_personal_space_shape_impl(*this, object_personal_space_shapes, things_exposed_to_collision, id, new_shape);
 }
 
 // Objects can't fail to change their detail shape, but it may cause effects (like blocking a laser beam)
