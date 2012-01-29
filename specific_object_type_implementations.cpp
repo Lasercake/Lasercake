@@ -51,11 +51,17 @@ struct beam_first_contact_finder : world_collision_detector::generalized_object_
     return result.first && (!best_intercept_point.first || result.second < best_intercept_point.second);
   }
   virtual bool bbox_ordering(bounding_box const& bb1, bounding_box const& bb2)const {
-    // TODO do this in a more efficient way
-    std::pair<bool, non_normalized_rational<int64_t>> result1 = shape(bb1).first_intersection(beam);
-    std::pair<bool, non_normalized_rational<int64_t>> result2 = shape(bb2).first_intersection(beam);
-    // Hack: This will never be relevant if the bools are false
-    return (result1.second < result2.second);
+    for (int dim = 0; dim < 3; ++dim) {
+      if (beam.ends[0][dim] < beam.ends[1][dim]) {
+        if (bb1.min[dim] < bb2.min[dim]) return true;
+        if (bb1.min[dim] > bb2.min[dim]) return false;
+      }
+      if (beam.ends[0][dim] > beam.ends[1][dim]) {
+        if (bb1.min[dim] > bb2.min[dim]) return true;
+        if (bb1.min[dim] < bb2.min[dim]) return false;
+      }
+    }
+    return false;
   }
 };
 
