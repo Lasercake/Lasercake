@@ -38,6 +38,8 @@
 #include "specific_object_types.hpp"
 #include "tile_physics.hpp" // to access internals for debugging-displaying...
 
+extern bool is_in_shadow(world const& w, tile_location t, vector3<fine_scalar> beamv);
+
 namespace /* anonymous */ {
 
 typedef int64_t microseconds_t;
@@ -448,6 +450,11 @@ srand(time(NULL));
           tile_color.r *= ((coords.x + coords.y + coords.z) % 3) + 2;
           tile_color.g *= ((coords.x + coords.y + coords.z) % 3) + 2;
           tile_color.b *= ((coords.x + coords.y + coords.z) % 3) + 2;
+          if (is_in_shadow(w, loc, vector3<fine_scalar>(tile_width*50, -tile_width*10, tile_width*50))) {
+            tile_color.r /= 2;
+            tile_color.g /= 2;
+            tile_color.b /= 2;
+          }
 
           // If we make one of the 'glb' members the closest corner of the tile to the player,
           // and the other the farthest, then we can draw the faces in a correct order

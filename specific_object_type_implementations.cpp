@@ -95,6 +95,17 @@ const int robot_max_carrying_capacity = 4;
 
 } /* end anonymous namespace */
 
+// HACK, TODO FIX - utility function for main.cpp, externed there
+bool is_in_shadow(world const& w, tile_location t, vector3<fine_scalar> beamv) {
+  const vector3<fine_scalar> location = lower_bound_in_fine_units(t.coords()) + (tile_size / 2);
+  
+  beam_first_contact_finder finder(w, line_segment(location, location + beamv));
+  finder.ignores.insert(t);
+  w.get_things_exposed_to_collision().get_objects_generalized(&finder);
+  
+  return finder.best_intercept_point.first;
+}
+
 shape robot::get_initial_personal_space_shape()const {
   return shape(bounding_box(
     location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
@@ -206,14 +217,14 @@ void laser_emitter::update(world& w, object_identifier my_id) {
   const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
   
   location_ = middle;
-  for (int i = 0; i < 100; ++i) {
+  /*for (int i = 0; i < 100; ++i) {
   do {
     facing_.x = (rand()&2047) - 1024;
     facing_.y = (rand()&2047) - 1024;
     facing_.z = (rand()&2047) - 1024;
-  } while (facing_.magnitude_within_32_bits_is_greater_than(1023) || facing_.magnitude_within_32_bits_is_less_than(512));
+  } while (facing_.magnitude_within_32_bits_is_greater_than(1023) || facing_.magnitude_within_32_bits_is_less_than(512));*/
 
   fire_standard_laser(w, my_id, location_, facing_);
-  }
+  //}
 }
 
