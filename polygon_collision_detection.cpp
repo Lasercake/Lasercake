@@ -306,7 +306,7 @@ std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment const& l
     vector3<int64_t> const& bb_min_or_max = bb.MIN_OR_MAX; \
     vector3<int64_t> const& bb_max_or_min = bb.MAX_OR_MIN; \
     boost::rational<int64_t>& intersecting_min_or_max = intersecting_##MIN_OR_MAX; \
-    int dim = (DIMENSION); \
+    const int dim = (DIMENSION); \
     \
     if (l.ends[0][dim] == l.ends[1][dim]) { \
       if (l.ends[0][dim] LESS_THAN_OR_GREATER_THAN bb_min_or_max[dim]) return std::make_pair(false, 1); \
