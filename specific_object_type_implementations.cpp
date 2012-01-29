@@ -206,6 +206,7 @@ void laser_emitter::update(world& w, object_identifier my_id) {
   const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
   
   location_ = middle;
+  for (int i = 0; i < 100; ++i) {
   do {
     facing_.x = (rand()&2047) - 1024;
     facing_.y = (rand()&2047) - 1024;
@@ -213,7 +214,7 @@ void laser_emitter::update(world& w, object_identifier my_id) {
   } while (facing_.magnitude_within_32_bits_is_greater_than(1023) || facing_.magnitude_within_32_bits_is_less_than(512));
 
   fire_standard_laser(w, my_id, location_, facing_);
-  
+  }
   
   #if 0
   line_segment laser_line(location_, location_ + facing_);
