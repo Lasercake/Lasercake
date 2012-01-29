@@ -175,34 +175,34 @@ shape::shape(bounding_box const& init): bounds_cache_is_valid(true) {
 */
   
 void convex_polygon::setup_cache_if_needed()const {
-  if (cache.is_valid) return;
+  if (cache_.is_valid) return;
   
-  cache.adjusted_vertices = vertices;
+  cache_.adjusted_vertices = vertices_;
   
   // Translate everything to a more convenient location. Translations are linear and hence preserve everything we need.
-  cache.translation_amount = -vertices[0];
-  for (vector3<int64_t> &v : cache.adjusted_vertices) v += cache.translation_amount;
+  cache_.translation_amount = -vertices_[0];
+  for (vector3<int64_t>& v : cache_.adjusted_vertices) v += cache_.translation_amount;
   
-  cache.amount_twisted = 0;
+  cache_.amount_twisted = 0;
   while (true) {
-    cache.denom = (cache.adjusted_vertices[1].x*cache.adjusted_vertices[2].y - cache.adjusted_vertices[1].y*cache.adjusted_vertices[2].x);
-    if (cache.denom != 0) break;
+    cache_.denom = (cache_.adjusted_vertices[1].x*cache_.adjusted_vertices[2].y - cache_.adjusted_vertices[1].y*cache_.adjusted_vertices[2].x);
+    if (cache_.denom != 0) break;
     
     // One of the three orientations must work.
     // These are rotations, which are linear and hence preserve everything we need.
     
-    ++cache.amount_twisted;
-    for (vector3<int64_t> &v : cache.adjusted_vertices) v = vector3<int64_t>(v.y, v.z, v.x);
+    ++cache_.amount_twisted;
+    for (vector3<int64_t>& v : cache_.adjusted_vertices) v = vector3<int64_t>(v.y, v.z, v.x);
 #ifdef ASSERT_EVERYTHING
-    assert(cache.amount_twisted <= 2);
+    assert(cache_.amount_twisted <= 2);
 #endif
   }
   
   // In the formula Skew(T) = I + (z unit vector)*(a(t.x) + b(t.y)) ...
-  cache.a_times_denom =  ((cache.adjusted_vertices[2].z*cache.adjusted_vertices[1].y)
-                        - (cache.adjusted_vertices[1].z*cache.adjusted_vertices[2].y));
-  cache.b_times_denom = -((cache.adjusted_vertices[2].z*cache.adjusted_vertices[1].x)
-                        - (cache.adjusted_vertices[1].z*cache.adjusted_vertices[2].x));
+  cache_.a_times_denom =  ((cache_.adjusted_vertices[2].z*cache_.adjusted_vertices[1].y)
+                         - (cache_.adjusted_vertices[1].z*cache_.adjusted_vertices[2].y));
+  cache_.b_times_denom = -((cache_.adjusted_vertices[2].z*cache_.adjusted_vertices[1].x)
+                         - (cache_.adjusted_vertices[1].z*cache_.adjusted_vertices[2].x));
   
   // We don't actually need to skew the polygon, since (by definition) it just skews the z coordinate to zero,
   // and because of that, hereafter we just don't need to refer to the z coordinates at all.
@@ -213,21 +213,21 @@ void bounding_box::translate(vector3<int64_t> t) {
 }
 
 void line_segment::translate(vector3<int64_t> t) {
-  for (vector3<int64_t> &v : ends) v += t;
+  for (vector3<int64_t>& v : ends) v += t;
 }
 
 void convex_polygon::translate(vector3<int64_t> t) {
-  for (vector3<int64_t> &v : vertices) v += t;
-  cache.translation_amount -= t;
+  for (vector3<int64_t>& v : vertices_) v += t;
+  cache_.translation_amount -= t;
 }
 
 void shape::translate(vector3<int64_t> t) {
-  for (  line_segment &l : segments) l.translate(t);
-  for (convex_polygon &p : polygons) p.translate(t);
-  for (  bounding_box &b : boxes   ) b.translate(t);
-  if (bounds_cache_is_valid && bounds_cache.is_anywhere) {
-    bounds_cache.min += t;
-    bounds_cache.max += t;
+  for (  line_segment& l : segments_) l.translate(t);
+  for (convex_polygon& p : polygons_) p.translate(t);
+  for (  bounding_box& b : boxes_   ) b.translate(t);
+  if (bounds_cache_is_valid_ && bounds_cache_.is_anywhere) {
+    bounds_cache_.min += t;
+    bounds_cache_.max += t;
     // now still valid!
   }
 }
@@ -240,27 +240,28 @@ bounding_box line_segment::bounds()const {
 
 bounding_box convex_polygon::bounds()const {
   bounding_box result;
-  for (vector3<int64_t> const& v : vertices) result.combine_with(bounding_box(v));
+  for (vector3<int64_t> const& v : vertices_) result.combine_with(bounding_box(v));
   return result;
 }
 
 bounding_box shape::bounds()const {
-  if (bounds_cache_is_valid) return bounds_cache;
-  bounds_cache = bounding_box();
-  for (  line_segment const& l : segments) bounds_cache.combine_with(l.bounds());
-  for (convex_polygon const& p : polygons) bounds_cache.combine_with(p.bounds());
-  for (  bounding_box const& b : boxes   ) bounds_cache.combine_with(b         );
-  bounds_cache_is_valid = true;
-  return bounds_cache;
+  if (bounds_cache_is_valid_) return bounds_cache_;
+  bounds_cache_ = bounding_box();
+  for (  line_segment const& l : segments_) bounds_cache_.combine_with(l.bounds());
+  for (convex_polygon const& p : polygons_) bounds_cache_.combine_with(p.bounds());
+  for (  bounding_box const& b : boxes_   ) bounds_cache_.combine_with(b         );
+  bounds_cache_is_valid_ = true;
+  return bounds_cache_;
 }
 
 vector3<int64_t> shape::arbitrary_interior_point()const {
-  if (!segments.empty()) return segments[0].ends[0];
-  if (!polygons.empty()) return polygons[0].get_vertices()[0];
-  for (bounding_box const& bb : boxes) { if (bb.is_anywhere) { return bb.min; }}
+  if (!segments_.empty()) return segments_[0].ends[0];
+  if (!polygons_.empty()) return polygons_[0].get_vertices()[0];
+  for (bounding_box const& bb : boxes_) { if (bb.is_anywhere) { return bb.min; }}
   caller_error("Trying to get an arbitrary interior point of a shape that contains no points");
 }
 
+namespace /*anonymous*/ {
 std::pair<bool, non_normalized_rational<int64_t>> get_intersection(int64_t sl1x, int64_t sl1y, int64_t sl2x, int64_t sl2y, int64_t ol1x, int64_t ol1y, int64_t ol2x, int64_t ol2y) {
   // assume ol1 is (0, 0)
   ol2x -= ol1x;
@@ -284,29 +285,50 @@ std::pair<bool, non_normalized_rational<int64_t>> get_intersection(int64_t sl1x,
 
 std::pair<bool, non_normalized_rational<int64_t>> get_intersection(line_segment const& l, bounding_box const& bb) {
   if (!bb.is_anywhere) return std::make_pair(false, 1);
+  
+  // Check for common, simple cases to save time.
+  if (l.ends[0].x < bb.min.x && l.ends[1].x < bb.min.x) return std::make_pair(false, 1);
+  if (l.ends[0].y < bb.min.y && l.ends[1].y < bb.min.y) return std::make_pair(false, 1);
+  if (l.ends[0].z < bb.min.z && l.ends[1].z < bb.min.z) return std::make_pair(false, 1);
+  if (l.ends[0].x > bb.max.x && l.ends[1].x > bb.max.x) return std::make_pair(false, 1);
+  if (l.ends[0].y > bb.max.y && l.ends[1].y > bb.max.y) return std::make_pair(false, 1);
+  if (l.ends[0].z > bb.max.z && l.ends[1].z > bb.max.z) return std::make_pair(false, 1);
   if (bb.contains(l.ends[0])) return std::make_pair(true, 0);
   
   non_normalized_rational<int64_t> intersecting_min(0);
   non_normalized_rational<int64_t> intersecting_max(1);
-  
-#define CHECK(minormax, maxormin, compare, dimension) \
-  if (l.ends[0].dimension == l.ends[1].dimension) { \
-    if (l.ends[0].dimension compare bb.minormax.dimension) return std::make_pair(false, 1); \
-  } \
-  else { \
-    const non_normalized_rational<int64_t> checkval((l.ends[1].dimension > l.ends[0].dimension ? bb.minormax.dimension : bb.maxormin.dimension) - l.ends[0].dimension, l.ends[1].dimension - l.ends[0].dimension); \
-    if (intersecting_##minormax compare checkval) { \
-      intersecting_##minormax = checkval; \
-      if (intersecting_min > intersecting_max) return std::make_pair(false, 1); \
+
+// This macro is specific to this function.  It only uses its arguments
+// at the beginning of the macro definition, except for LESS_THAN_OR_GREATER_THAN.
+// (Can you find a way to do this that's nicer without being lots messier?)
+#define CHECK(MIN_OR_MAX, MAX_OR_MIN, LESS_THAN_OR_GREATER_THAN, DIMENSION) \
+  { \
+    vector3<int64_t> const& bb_min_or_max = bb.MIN_OR_MAX; \
+    vector3<int64_t> const& bb_max_or_min = bb.MAX_OR_MIN; \
+    non_normalized_rational<int64_t>& intersecting_min_or_max = intersecting_##MIN_OR_MAX; \
+    const int dim = (DIMENSION); \
+    \
+    if (l.ends[0][dim] == l.ends[1][dim]) { \
+      if (l.ends[0][dim] LESS_THAN_OR_GREATER_THAN bb_min_or_max[dim]) return std::make_pair(false, 1); \
+    } \
+    else { \
+      const non_normalized_rational<int64_t> checkval( \
+        (l.ends[1][dim] > l.ends[0][dim] ? bb_min_or_max[dim] : bb_max_or_min[dim]) - l.ends[0][dim], \
+        l.ends[1][dim] - l.ends[0][dim] \
+      ); \
+      if (intersecting_min_or_max LESS_THAN_OR_GREATER_THAN checkval) { \
+        intersecting_min_or_max = checkval; \
+        if (intersecting_min > intersecting_max) return std::make_pair(false, 1); \
+      } \
     } \
   }
   
-  CHECK(min, max, <, x)
-  CHECK(min, max, <, y)
-  CHECK(min, max, <, z)
-  CHECK(max, min, >, x)
-  CHECK(max, min, >, y)
-  CHECK(max, min, >, z)
+  CHECK(min, max, <, X)
+  CHECK(min, max, <, Y)
+  CHECK(min, max, <, Z)
+  CHECK(max, min, >, X)
+  CHECK(max, min, >, Y)
+  CHECK(max, min, >, Z)
 #undef CHECK
   
   return std::make_pair(true, intersecting_min);
@@ -317,11 +339,11 @@ std::pair<bool, non_normalized_rational<int64_t>> get_intersection(line_segment 
   polygon_collision_info_cache const& c = p.get_cache();
   
   // Translate and twist, as we did with the polygon.
-  for (vector3<int64_t> &v : l.ends) v += c.translation_amount;
-  for (vector3<int64_t> &v : l.ends) v = vector3<int64_t>(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
+  for (vector3<int64_t>& v : l.ends) v += c.translation_amount;
+  for (vector3<int64_t>& v : l.ends) v = vector3<int64_t>(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
   // Now skew the z values. Skews are linear and hence preserve everything we need.
   // The line's z values are scaled up as well as skewed.
-  for (vector3<int64_t> &v : l.ends) { v.z = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y); }
+  for (vector3<int64_t>& v : l.ends) { v.z = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y); }
   
   if (sign(l.ends[0].z) == sign(l.ends[1].z)) {
     if (l.ends[0].z != 0) {
@@ -414,38 +436,40 @@ bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
   return false;
 }
 
+} /* end anonymous namespace */
+
 bool shape::intersects(shape const& other)const {
   if (!bounds().overlaps(other.bounds())) return false;
   
-  for (line_segment const& l : segments) {
-    for (convex_polygon const& p2 : other.polygons) {
+  for (line_segment const& l : segments_) {
+    for (convex_polygon const& p2 : other.polygons_) {
       if (get_intersection(l, p2).first) return true;
     }
-    for (bounding_box const& b2 : other.boxes) {
+    for (bounding_box const& b2 : other.boxes_) {
       if (get_intersection(l, b2).first) return true;
     }
   }
 
-  for (convex_polygon const& p1 : polygons) {
-    for (line_segment const& l : other.segments) {
+  for (convex_polygon const& p1 : polygons_) {
+    for (line_segment const& l : other.segments_) {
       if (get_intersection(l, p1).first) return true;
     }
-    for (convex_polygon const& p2 : other.polygons) {
+    for (convex_polygon const& p2 : other.polygons_) {
       if (nonshape_intersects(p1, p2)) return true;
     }
-    for (bounding_box const& b2 : other.boxes) {
+    for (bounding_box const& b2 : other.boxes_) {
       if (nonshape_intersects(p1, b2)) return true;
     }
   }
 
-  for (bounding_box const& b1 : boxes) {
-    for (line_segment const& l : other.segments) {
+  for (bounding_box const& b1 : boxes_) {
+    for (line_segment const& l : other.segments_) {
       if (get_intersection(l, b1).first) return true;
     }
-    for (convex_polygon const& p2 : other.polygons) {
+    for (convex_polygon const& p2 : other.polygons_) {
       if (nonshape_intersects(p2, b1)) return true;
     }
-    for (bounding_box const& b2 : other.boxes) {
+    for (bounding_box const& b2 : other.boxes_) {
       if (b1.overlaps(b2)) return true;
     }
   }
@@ -454,13 +478,13 @@ bool shape::intersects(shape const& other)const {
 
 std::pair<bool, non_normalized_rational<int64_t>> shape::first_intersection(line_segment const& other)const {
   std::pair<bool, non_normalized_rational<int64_t>> result(false, 1);
-  for (convex_polygon const& p : polygons) {
+  for (convex_polygon const& p : polygons_) {
     std::pair<bool, non_normalized_rational<int64_t>> here = get_intersection(other, p);
     if (here.first && (!result.first || here.second < result.second)) {
       result = here;
     }
   }
-  for (bounding_box const& bb : boxes) {
+  for (bounding_box const& bb : boxes_) {
     std::pair<bool, non_normalized_rational<int64_t>> here = get_intersection(other, bb);
     if (here.first && (!result.first || here.second < result.second)) {
       result = here;

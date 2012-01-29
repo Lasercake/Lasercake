@@ -122,6 +122,35 @@ struct world_building_func {
       }
       return;
     }
+    if (scenario == "stepped_pools") {
+      const int64_t block_width = 30;
+      const int64_t border_width = 3;
+      const int64_t block_height_shift = 30;
+      const int64_t pool_steepness = 1;
+      const int64_t pool_top_layers_missing = 1;
+      for(vector3<tile_coordinate> l : bounds) {
+        const vector3<int64_t> lmwc = vector3<int64_t>(l) - vector3<int64_t>(wc,wc,wc);
+        const int64_t base_height = -20LL + (int64_t(l.x / block_width) - int64_t(wc / block_width)) * block_height_shift;
+        const int64_t dist_from_block_edge = std::min(
+          std::min(int64_t(l.x % block_width), block_width - 1 - (l.x % block_width)),
+          std::min(int64_t(l.y % block_width), block_width - 1 - (l.y % block_width)));
+        if (dist_from_block_edge <= border_width) {
+          if (lmwc.z <= base_height) make(ROCK, l);
+        }
+        else {
+          if (lmwc.z <= base_height) {
+            const tile_coordinate pool_depth_here = (dist_from_block_edge - border_width) * pool_steepness;
+            if (lmwc.z > base_height - pool_depth_here) {
+              if (lmwc.z <= base_height - pool_top_layers_missing) make(GROUPABLE_WATER, l);
+            }
+            else {
+              make(ROCK, l);
+            }
+          }
+        }
+      }
+      return;
+    }
     for (tile_coordinate x = std::max(world_center_coord-1, bounds.min.x); x < std::min(world_center_coord+21, bounds.min.x + bounds.size.x); ++x) {
       for (tile_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
         for (tile_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {

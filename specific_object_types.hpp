@@ -26,30 +26,30 @@
 
 class robot : public mobile_object, public autonomous_object {
 public:
-  robot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location(location),facing(facing),carrying(false){}
+  robot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location_(location),facing_(facing),carrying_(false){}
   
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
   
   virtual void update(world &w, object_identifier my_id);
-  vector3<fine_scalar> get_facing()const { return facing; }
+  vector3<fine_scalar> get_facing()const { return facing_; }
 private:
-  vector3<fine_scalar> location;
-  vector3<fine_scalar> facing;
-  bool carrying;
+  vector3<fine_scalar> location_;
+  vector3<fine_scalar> facing_;
+  int carrying_;
 };
 
 class laser_emitter : public mobile_object, public autonomous_object {
 public:
-  laser_emitter(vector3<fine_scalar> location, vector3<fine_scalar> facing):location(location),facing(facing){}
+  laser_emitter(vector3<fine_scalar> location, vector3<fine_scalar> facing):location_(location),facing_(facing){}
   
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
   
   virtual void update(world &w, object_identifier id);
 private:
-  vector3<fine_scalar> location;
-  vector3<fine_scalar> facing;
+  vector3<fine_scalar> location_;
+  vector3<fine_scalar> facing_;
 };
 
 #endif

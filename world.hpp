@@ -47,21 +47,20 @@
 #include "utils.hpp"
 #include "polygon_collision_detection.hpp"
 #include "bbox_collision_detector.hpp"
+#include "tiles.hpp"
 
-using std::map;
-using std::unordered_map;
-using std::unordered_set;
 using std::pair;
 using std::make_pair;
+using std::map;
 using std::set;
+using std::unordered_map;
+using std::unordered_set;
 using std::vector;
 using std::array;
 using boost::shared_ptr;
 
 
-typedef uint32_t tile_coordinate;
 typedef int64_t fine_scalar; // Fine as opposed to coarse, that is.
-typedef int32_t tile_coordinate_signed_type;
 typedef int32_t sub_tile_distance; // We can fit it within 32 bits, so we might as well do faster math
 
 const fine_scalar tile_width = (fine_scalar(1) << 10);
@@ -88,6 +87,7 @@ const sub_tile_distance idle_progress_reduction_rate = 20 * velocity_scale_facto
 const vector3<sub_tile_distance> inactive_fluid_velocity(0, 0, -min_convincing_speed);
 
 const fine_scalar max_object_speed_through_water = tile_width * velocity_scale_factor / 16;
+
 
 inline vector3<tile_coordinate> get_containing_tile_coordinates(vector3<fine_scalar> v) {
   return vector3<tile_coordinate>(
@@ -123,48 +123,6 @@ inline bounding_box fine_bounding_box_of_tile(vector3<tile_coordinate> v) {
   return bounding_box(lower_bound_in_fine_units(v), upper_bound_in_fine_units(v));
 }
 
-
-struct tile_bounding_box {
-  vector3<tile_coordinate> min, size;
-  tile_bounding_box(){}
-  tile_bounding_box(vector3<tile_coordinate> coords):min(coords),size(1,1,1){}
-  tile_bounding_box(vector3<tile_coordinate> min, vector3<tile_coordinate> size):min(min),size(size){}
-  bool contains(vector3<tile_coordinate> v) {
-    return (v.x >= min.x && v.x <= min.x + (size.x - 1) &&
-            v.y >= min.y && v.y <= min.y + (size.y - 1) &&
-            v.z >= min.z && v.z <= min.z + (size.z - 1));
-  }
-  
-  class iterator : public boost::iterator_facade<iterator, vector3<tile_coordinate>, boost::forward_traversal_tag, vector3<tile_coordinate>>
-  {
-    public:
-      iterator(){}
-    bool equal(iterator other)const { return data == other.data; }
-    void increment() {
-      data.first.x += 1;
-      if (data.first.x >= data.second->min.x + data.second->size.x) {
-        data.first.x = data.second->min.x;
-        data.first.y += 1;
-        if (data.first.y >= data.second->min.y + data.second->size.y) {
-          data.first.y = data.second->min.y;
-          data.first.z += 1;
-        }
-      }
-    }
-    vector3<tile_coordinate> dereference()const { return data.first; }
-
-    explicit iterator(pair<vector3<tile_coordinate>, tile_bounding_box*> data):data(data){}
-    private:
-    friend class boost::iterator_core_access;
-      friend class tile_bounding_box;
-      pair<vector3<tile_coordinate>, tile_bounding_box*> data;
-      
-  };
-  
-  iterator begin(){ return iterator(make_pair(min, this)); }
-  iterator end(){ return iterator(make_pair(min + vector3<tile_coordinate>(0, 0, size.z), this)); }
-};
-
 inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
   return bounding_box(
     lower_bound_in_fine_units(bb.min),
@@ -183,185 +141,15 @@ inline shape tile_shape(vector3<tile_coordinate> tile) {
   return shape(fine_bounding_box_of_tile(tile));
 }
 
-
-
-/*
-
-Whether tiles are water or not
- -- dictates, at one tile distance --
-Whether water tiles are "sticky water" ("fewer than two adjacent tiles are air") or "free water" (at least two adjacent air tiles)
- -- dictates, at one tile distance --
-Whether sticky water tiles are "interior water" ("every adjacent tile is sticky water") or "membrane water" ("at least one tile is not a sticky water tile")
-
-This is a one-way dictation - the latter things don't affect the former things at all (until they cause water to actually move, anyway). It's not an exact dictation 
-
-*/
-
-enum tile_contents {
-  AIR = 0,
-  ROCK,
-  UNGROUPABLE_WATER,
-  GROUPABLE_WATER,
-  RUBBLE
-  // NOTE: we currently rely on these fitting into three bits
-};
-
-inline bool is_fluid(tile_contents t) {
-  return (t >= UNGROUPABLE_WATER) && (t <= RUBBLE);
-}
-inline bool is_water(tile_contents t) {
-  return (t >= UNGROUPABLE_WATER) && (t <= GROUPABLE_WATER);
-}
-
-// This could be an equivalence relation other than equality someday.
-inline bool these_tile_contents_are_identical_regarding_interiorness(tile_contents t1, tile_contents t2) {
-  return t1 == t2;
-}
-// These tiles, when next to each other, are different enough to form
-// an imaginary membrane.
-inline bool neighboring_tiles_with_these_contents_are_not_interior(tile_contents t1, tile_contents t2) {
-  return t1 != t2;
-}
-
-class tile {
-public:
-  tile():data(0){}
-  
-  
-  // For tile based physics (e.g. water movement)
-  // This is so that we don't have to search the collision-detector for relevant objects at every tile.
-  bool there_is_an_object_here_that_affects_the_tile_based_physics()const { return data & there_is_an_object_here_that_affects_the_tile_based_physics_mask; }
-  bool is_interior()const { return is_interior_bit(); }
-  tile_contents contents()const{ return (tile_contents)(data & contents_mask); }
-  
-  void set_contents(tile_contents new_contents){ data = (data & ~contents_mask) | (uint8_t(new_contents) & contents_mask); }
-  void set_whether_there_is_an_object_here_that_affects_the_tile_based_physics(bool b){ data = (data & ~there_is_an_object_here_that_affects_the_tile_based_physics_mask) | (b ? there_is_an_object_here_that_affects_the_tile_based_physics_mask : uint8_t(0)); }
-  void set_interiorness(bool b){ data = (data & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0)); }
-private:
-  static const uint8_t contents_mask = 0x7;
-  static const uint8_t interior_bit_mask = (1<<3);
-  static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask = (1<<4);
-  bool is_interior_bit()const{ return data & interior_bit_mask; }
-  uint8_t data;
-};
-
-// "progress" is measured in the smaller, velocity units.
-inline sub_tile_distance progress_necessary(cardinal_direction dir) {
-  return tile_size[which_dimension_is_cardinal_direction(dir)] * velocity_scale_factor;
-}
-
-struct active_fluid_tile_info {
-  // Constructing one of these in the default way yields the natural inactive state
-  active_fluid_tile_info();
-  bool is_in_inactive_state()const;
-  
-  vector3<sub_tile_distance> velocity;
-  value_for_each_cardinal_direction<sub_tile_distance> progress;
-  value_for_each_cardinal_direction<sub_tile_distance> blockage_amount_this_frame;
-
-  //int frames_until_can_become_groupable = 0;
-};
-
-
-class world;
-
-namespace hacky_internals {
-  class worldblock;
-}
-
-enum level_of_tile_realization_needed {
-  COMPLETELY_IMAGINARY = 0,
-  CONTENTS_ONLY = 1,
-  CONTENTS_AND_LOCAL_CACHES_ONLY = 2,
-  FULL_REALIZATION = 3
-};
-
-class tile_location {
-public:
-  //tile_location operator+(cardinal_direction dir)const;
-  // Equivalent to operator+, except allowing you to specify the amount of realization needed.
-  template<cardinal_direction Dir> tile_location get_neighbor(level_of_tile_realization_needed realineeded)const;
-  
-  tile_location get_neighbor_by_variable(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
-  //tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
-  bool operator==(tile_location const& other)const { return v == other.v; }
-  bool operator!=(tile_location const& other)const { return v != other.v; }
-  inline tile const& stuff_at()const;
-  vector3<tile_coordinate> const& coords()const { return v; }
-private:
-  friend tile& mutable_stuff_at(tile_location const& loc);
-  friend tile_location trivial_invalid_location();
-  friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
-  
-  // This constructor should only be used when you know exactly what worldblock it's in!!
-  tile_location(vector3<tile_coordinate> v, hacky_internals::worldblock *wb):v(v),wb(wb){}
-  
-  vector3<tile_coordinate> v;
-  hacky_internals::worldblock *wb; // invariant: nonnull
-};
-
-inline tile_location trivial_invalid_location() { return tile_location(vector3<tile_coordinate>(0,0,0), nullptr); }
-
-namespace std {
-  template<> struct hash<tile_location> {
-    inline size_t operator()(tile_location const& l) const {
-      return hash<vector3<tile_coordinate> >()(l.coords());
-    }
-  };
-}
-
-inline std::array<tile_location, num_cardinal_directions> get_all_neighbors(tile_location const& loc, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
-  return std::array<tile_location, num_cardinal_directions>({{
-    loc.get_neighbor<0>(realineeded),
-    loc.get_neighbor<1>(realineeded),
-    loc.get_neighbor<2>(realineeded),
-    loc.get_neighbor<3>(realineeded),
-    loc.get_neighbor<4>(realineeded),
-    loc.get_neighbor<5>(realineeded)
-  }});
-}
-
-inline std::array<tile_location, num_cardinal_directions> get_perpendicular_neighbors(tile_location const& loc, cardinal_direction dir, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
-  return std::array<tile_location, num_cardinal_directions>({{
-    cardinal_directions_are_perpendicular(dir, 0) ? loc.get_neighbor<0>(realineeded) : trivial_invalid_location(),
-    cardinal_directions_are_perpendicular(dir, 1) ? loc.get_neighbor<1>(realineeded) : trivial_invalid_location(),
-    cardinal_directions_are_perpendicular(dir, 2) ? loc.get_neighbor<2>(realineeded) : trivial_invalid_location(),
-    cardinal_directions_are_perpendicular(dir, 3) ? loc.get_neighbor<3>(realineeded) : trivial_invalid_location(),
-    cardinal_directions_are_perpendicular(dir, 4) ? loc.get_neighbor<4>(realineeded) : trivial_invalid_location(),
-    cardinal_directions_are_perpendicular(dir, 5) ? loc.get_neighbor<5>(realineeded) : trivial_invalid_location(),
-  }});
-}
-
-/*
-Nobody actually cares to learn what all the 2diagonals are without knowing the directions.
-This stands as a reminder of what we could do, anyway.
-
-inline std::array<tile_location, 12> get_all_2diagonals(std::array<tile_location, num_cardinal_directions>& neighbors) {
-  return std::array<tile_location, 12>({{
-    neighbors[zplus ].get_neighbor<xplus >(realineeded),
-    neighbors[zplus ].get_neighbor<yplus >(realineeded),
-    neighbors[zplus ].get_neighbor<xminus>(realineeded),
-    neighbors[zplus ].get_neighbor<yminus>(realineeded),
-    neighbors[zminus].get_neighbor<xplus >(realineeded),
-    neighbors[zminus].get_neighbor<yplus >(realineeded),
-    neighbors[zminus].get_neighbor<xminus>(realineeded),
-    neighbors[zminus].get_neighbor<yminus>(realineeded),
-    neighbors[xplus ].get_neighbor<yplus >(realineeded),
-    neighbors[xplus ].get_neighbor<yminus>(realineeded),
-    neighbors[xminus].get_neighbor<yplus >(realineeded),
-    neighbors[xminus].get_neighbor<yminus>(realineeded)
-  }});
-}*/
-
 typedef uint64_t object_identifier;
 const object_identifier NO_OBJECT = 0;
 
 struct object_or_tile_identifier {
-  object_or_tile_identifier():data(NO_OBJECT){}
-  object_or_tile_identifier(tile_location const& loc):data(loc){}
-  object_or_tile_identifier(object_identifier id):data(id){}
-  tile_location const* get_tile_location()const { return boost::get<tile_location>(&data); }
-  object_identifier const* get_object_identifier()const { return boost::get<object_identifier>(&data); }
+  object_or_tile_identifier():data_(NO_OBJECT){}
+  object_or_tile_identifier(tile_location const& loc):data_(loc){}
+  object_or_tile_identifier(object_identifier id):data_(id){}
+  tile_location const* get_tile_location()const { return boost::get<tile_location>(&data_); }
+  object_identifier const* get_object_identifier()const { return boost::get<object_identifier>(&data_); }
   size_t hash()const {
     struct hash_visitor : public boost::static_visitor<size_t>
     {
@@ -373,9 +161,9 @@ struct object_or_tile_identifier {
         return std::hash<object_identifier>()(i);
       }
     };
-    return boost::apply_visitor( hash_visitor(), data );
+    return boost::apply_visitor( hash_visitor(), data_ );
   }
-  bool operator==(object_or_tile_identifier const& other)const { return data == other.data; }
+  bool operator==(object_or_tile_identifier const& other)const { return data_ == other.data_; }
   bool operator==(object_identifier const& other)const {
     if (object_identifier const* foo = get_object_identifier()) { return *foo == other; }
     else return false;
@@ -387,7 +175,7 @@ struct object_or_tile_identifier {
   bool operator!=(object_identifier const& other)const { return !(*this == other); }
   bool operator!=(tile_location const& other)const { return !(*this == other); }
 private:
-  boost::variant<tile_location, object_identifier> data;
+  boost::variant<tile_location, object_identifier> data_;
 };
 
 namespace std {
@@ -422,7 +210,7 @@ public:
 
 class autonomous_object : virtual public object {
 public:
-  virtual void update(world &w, object_identifier my_id) = 0;
+  virtual void update(world& w, object_identifier my_id) = 0;
 };
 
 
@@ -431,7 +219,7 @@ private:
   typedef bbox_collision_detector<object_or_tile_identifier, 64, 3> internal_t;
   typedef internal_t::generalized_object_collection_handler igoch;
   typedef internal_t::bounding_box ibb;
-  static ibb convert_bb(bounding_box const& bb) {
+  static ibb convert_bb_(bounding_box const& bb) {
     caller_correct_if(bb.is_anywhere, "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
     ibb b;
     b.min[0] = bb.min.x;
@@ -442,7 +230,7 @@ private:
     b.size[2] = bb.max.z + 1 - bb.min.z;
     return b;
   }
-  static bounding_box convert_bb(ibb const& b) {
+  static bounding_box convert_bb_(ibb const& b) {
     bounding_box bb;
     bb.min.x = b.min[0];
     bb.min.y = b.min[1];
@@ -457,11 +245,11 @@ public:
   world_collision_detector(){}
   
   void get_objects_overlapping(unordered_set<object_or_tile_identifier>& results, bounding_box const& bb)const {
-    detector.get_objects_overlapping(results, convert_bb(bb));
+    detector.get_objects_overlapping(results, convert_bb_(bb));
   }
   
   void insert(object_or_tile_identifier id, bounding_box const& bb) {
-    detector.insert(id, convert_bb(bb));
+    detector.insert(id, convert_bb_(bb));
   }
   bool erase(object_or_tile_identifier id) {
     return detector.erase(id);
@@ -472,7 +260,7 @@ public:
   // Returns bounding_box() (i.e. !is_anywhere) iff the id isn't in the detector.
   bounding_box find_bounding_box(object_or_tile_identifier id)const {
     const ibb* bb = detector.find_bounding_box(id);
-    if(bb) return convert_bb(*bb);
+    if(bb) return convert_bb_(*bb);
     else return bounding_box();
   }
   
@@ -491,9 +279,9 @@ public:
       world_collision_detector::generalized_object_collection_handler *outer;
       impl_(world_collision_detector::generalized_object_collection_handler *outer):outer(outer){}
       void handle_new_find(object_or_tile_identifier id) { outer->handle_new_find(id); }
-      bool should_be_considered__static(ibb const& bb)const { return outer->should_be_considered__static(convert_bb(bb)); }
-      bool should_be_considered__dynamic(ibb const& bb)const { return outer->should_be_considered__dynamic(convert_bb(bb)); }
-      bool bbox_ordering(ibb const& bb1, ibb const& bb2)const { return outer->bbox_ordering(convert_bb(bb1), convert_bb(bb2)); }
+      bool should_be_considered__static(ibb const& bb)const { return outer->should_be_considered__static(convert_bb_(bb)); }
+      bool should_be_considered__dynamic(ibb const& bb)const { return outer->should_be_considered__dynamic(convert_bb_(bb)); }
+      bool bbox_ordering(ibb const& bb1, ibb const& bb2)const { return outer->bbox_ordering(convert_bb_(bb1), convert_bb_(bb2)); }
       bool done()const { return outer->done(); }
     };
     impl_ intermediary_;
@@ -508,19 +296,19 @@ private:
 };
 
 
-namespace hacky_internals {
+namespace the_decomposition_of_the_world_into_blocks_impl {
   const int worldblock_dimension_exp = 4;
   typedef int worldblock_dimension_type;
   const worldblock_dimension_type worldblock_dimension = (1 << worldblock_dimension_exp);
 
   class worldblock {
 public:
-    worldblock():neighbors(nullptr),w(nullptr),current_tile_realization(COMPLETELY_IMAGINARY),is_busy_realizing(false){}
-    worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w_ = nullptr, vector3<tile_coordinate> global_position_ = vector3<tile_coordinate>(0,0,0));
+    worldblock():neighbors_(nullptr),w_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false){}
+    worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w = nullptr, vector3<tile_coordinate> global_position = vector3<tile_coordinate>(0,0,0));
   
     // Only to be used in tile_location::stuff_at():
     inline tile& get_tile(vector3<tile_coordinate> global_coords) {
-      return tiles[global_coords.x - global_position.x][global_coords.y - global_position.y][global_coords.z - global_position.z];
+      return tiles_[global_coords.x - global_position_.x][global_coords.y - global_position_.y][global_coords.z - global_position_.z];
     }
   
     // Only to be used in tile_location::get_neighbor:
@@ -530,77 +318,30 @@ public:
     template<cardinal_direction Dir> tile_location get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded);
     tile_location get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords);
 private:
-    std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles;
-    value_for_each_cardinal_direction<worldblock*> neighbors;
-    vector3<tile_coordinate> global_position; // the lowest x, y, and z among elements in this worldblock
-    world *w;
-    level_of_tile_realization_needed current_tile_realization;
-    bool is_busy_realizing;
+    std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
+    value_for_each_cardinal_direction<worldblock*> neighbors_;
+    vector3<tile_coordinate> global_position_; // the lowest x, y, and z among elements in this worldblock
+    world* w_;
+    level_of_tile_realization_needed current_tile_realization_;
+    bool is_busy_realizing_;
   };
 }
-inline tile const& tile_location::stuff_at()const { return wb->get_tile(v); }
+inline tile const& tile_location::stuff_at()const { return wb_->get_tile(v_); }
 template<cardinal_direction Dir> tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
-  return wb->get_neighboring_loc<Dir>(v, realineeded);
+  return wb_->get_neighboring_loc<Dir>(v_, realineeded);
 }
 
 class world_building_gun {
 public:
-  world_building_gun(world* w, tile_bounding_box bounds):w(w),bounds(bounds){}
+  world_building_gun(world* w, tile_bounding_box bounds):w_(w),bounds_(bounds){}
   void operator()(tile_contents new_contents, vector3<tile_coordinate> locv);
 private:
-  world* w;
-  tile_bounding_box bounds;
-};
-
-
-class literally_random_access_removable_tiles_by_height {
-public:
-  typedef map<tile_coordinate, literally_random_access_removable_stuff<tile_location>> map_t;
-  
-  tile_location get_and_erase_random_from_the_top();
-  tile_location get_and_erase_random_from_the_bottom();
-  bool erase(tile_location const& loc);
-  void insert(tile_location const& loc);
-  bool any_above(tile_coordinate height)const;
-  bool any_below(tile_coordinate height)const;
-  
-  map_t const& as_map()const { return data; }
-private:
-  map_t data;
-};
-
-
-typedef uint64_t water_tile_count;
-typedef uint64_t water_group_identifier;
-const water_group_identifier NO_WATER_GROUP = 0;
-
-typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
-
-struct persistent_water_group_info {
-  literally_random_access_removable_tiles_by_height suckable_tiles_by_height;
-  literally_random_access_removable_tiles_by_height pushable_tiles_by_height;
-  map<tile_coordinate, water_tile_count> num_tiles_by_height;
-  unordered_set<tile_location> surface_tiles;
-  
-  mutable map<tile_coordinate, fine_scalar> pressure_caches;
-  mutable map<tile_coordinate, water_tile_count> width_of_widest_level_so_far_caches;
-  
-  //bool is_infinite;
-  //tile_coordinate infinite_ocean_height;
-  
-  void recompute_num_tiles_by_height_from_surface_tiles(world const& w);
-  fine_scalar get_pressure_at_height(tile_coordinate height)const;
-  
-  tile_location get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height);
-  
-  bool mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(world &w, tile_location const& loc, active_fluids_t &active_fluids);
-  bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(world &w, tile_location const& loc, active_fluids_t &active_fluids);
+  world* w_;
+  tile_bounding_box bounds_;
 };
 
 typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
 typedef unordered_map<object_identifier, shape> object_shapes_t;
-typedef unordered_map<water_group_identifier, persistent_water_group_info> persistent_water_groups_t;
-typedef unordered_map<tile_location, water_group_identifier> water_groups_by_location_t;
 template<typename ObjectSubtype>
 struct objects_map {
   typedef unordered_map<object_identifier, shared_ptr<ObjectSubtype>> type;
@@ -608,72 +349,39 @@ struct objects_map {
 
 
 
-struct tile_compare_xyz { bool operator()(tile_location const& i, tile_location const& j)const; };
-struct tile_compare_yzx { bool operator()(tile_location const& i, tile_location const& j)const; };
-struct tile_compare_zxy { bool operator()(tile_location const& i, tile_location const& j)const; };
 
-// We could easily keep lists of boundary tiles in all three dimensions
-// (Just uncomment the six commented lines below.)
-// The only reason we don't is because there's no need for any of the others right now.
-// (And it would take that much extra space (proportional to the that-dimension surface area)
-//   and time (proportional to how much the groupable-water landscape changes)).
-struct groupable_water_dimensional_boundaries_TODO_name_this_better_t {
-  set<tile_location, tile_compare_yzx> x_boundary_groupable_water_tiles;
-  //set<tile_location, tile_compare_zxy> y_boundary_groupable_water_tiles;
-  //set<tile_location, tile_compare_xyz> z_boundary_groupable_water_tiles;
-  void handle_tile_insertion(tile_location const& loc) {
-    handle_tile_insertion_in_dimension<tile_compare_yzx, xplus>(x_boundary_groupable_water_tiles, loc);
-  //  handle_tile_insertion_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
-  //  handle_tile_insertion_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
-  }
-  void handle_tile_removal(tile_location const& loc) {
-    handle_tile_removal_in_dimension<tile_compare_yzx, xplus>(x_boundary_groupable_water_tiles, loc);
-  //  handle_tile_removal_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
-  //  handle_tile_removal_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
-  }
+
+
+
+namespace tile_physics_impl {
+struct state_t;
+class tile_physics_state_t {
+public:
+  tile_physics_state_t(world& w);
+  tile_physics_state_t(tile_physics_state_t const& other);
+  tile_physics_state_t& operator=(tile_physics_state_t const& other);
+  ~tile_physics_state_t() noexcept;
 private:
-  template <typename Compare, cardinal_direction Dir>
-  static void handle_tile_removal_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc) {
-    // This tile is no longer groupable at all, so it can't be a boundary tile
-    boundary_tiles_set.erase(loc);
-    
-    // If there are groupable tiles next to us, they must now be boundary tiles,
-    // because our deletion exposed them
-    const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
-    const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);
-    if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      boundary_tiles_set.insert(further_in_positive_direction_loc);
-    }
-    if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      boundary_tiles_set.insert(further_in_negative_direction_loc);
-    }
-  }
-  template <typename Compare, cardinal_direction Dir>
-  static void handle_tile_insertion_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc) {
-    // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
-    const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
-    const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);
-    bool we_are_boundary_tile = false;
-    if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if (further_in_positive_direction_loc.get_neighbor<Dir                     >(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
-        boundary_tiles_set.erase(further_in_positive_direction_loc);
-      }
-    }
-    else we_are_boundary_tile = true;
-    if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if (further_in_negative_direction_loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
-        boundary_tiles_set.erase(further_in_negative_direction_loc);
-      }
-    }
-    else we_are_boundary_tile = true;
-    
-    if (we_are_boundary_tile) boundary_tiles_set.insert(loc);
-  }
+  boost::scoped_ptr<state_t> state_;
+  friend state_t& get_state(tile_physics_state_t& s);
 };
+inline state_t& get_state(tile_physics_state_t& s) {
+  return *s.state_;
+}
+} // end namespace tile_physics_impl
+using tile_physics_impl::tile_physics_state_t;
+
+
+
+
+
+
+
+
 
 class world {
 public:
-  world(worldgen_function_t f):next_water_group_identifier(1),next_object_identifier(1),worldgen_function(f){}
+  world(worldgen_function_t f):tile_physics_state_(*this),next_object_identifier_(1),worldgen_function_(f){}
   
   void update_moving_objects();
   void update_fluids();
@@ -681,30 +389,28 @@ public:
   inline void update() {
     laser_sfxes.clear();
     update_fluids();
-    for (auto &obj : autonomously_active_objects) obj.second->update(*this, obj.first);
+    for (auto& obj : autonomously_active_objects_) obj.second->update(*this, obj.first);
     update_moving_objects();
   }
   
-  // Right now this is just a hack to expose the velocity to the display.
-  active_fluid_tile_info const* get_active_fluid_info(tile_location const& loc)const { return find_as_pointer(active_fluids, loc); }
   // I *think* this pointer is valid as long as the shared_ptr exists
-  shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects, id); }
+  shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects_, id); }
   /*boost::iterator_range<mobile_objects_map<mobile_object>::iterator> mobile_objects_range() {
     return boost::make_iterator_range(mobile_objects.begin(), mobile_objects.end());
   }*/
   boost::iterator_range<objects_map<mobile_object>::type::iterator> moving_objects_range() {
-    return boost::make_iterator_range(moving_objects.begin(), moving_objects.end());
+    return boost::make_iterator_range(moving_objects_.begin(), moving_objects_.end());
   }
   
   tile_location make_tile_location(vector3<tile_coordinate> const& coords, level_of_tile_realization_needed realineeded);
   
-  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier> &results, bounding_box const& bounds) {
-    ensure_realization_of_space(convert_to_smallest_superset_at_tile_resolution(bounds), FULL_REALIZATION);
-    things_exposed_to_collision.get_objects_overlapping(results, bounds);
+  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier>& results, bounding_box const& bounds) {
+    ensure_realization_of_space_(convert_to_smallest_superset_at_tile_resolution(bounds), FULL_REALIZATION);
+    things_exposed_to_collision_.get_objects_overlapping(results, bounds);
   }
-  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier> &results, tile_bounding_box const& bounds) {
-    ensure_realization_of_space(bounds, FULL_REALIZATION);
-    things_exposed_to_collision.get_objects_overlapping(results, convert_to_fine_units(bounds));
+  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier>& results, tile_bounding_box const& bounds) {
+    ensure_realization_of_space_(bounds, FULL_REALIZATION);
+    things_exposed_to_collision_.get_objects_overlapping(results, convert_to_fine_units(bounds));
   }
   
   // old_substance_type doesn't actually do anything except give an assertion.
@@ -718,20 +424,20 @@ public:
   
   object_identifier try_create_object(shared_ptr<object> obj) {
     // TODO: fail (and return NO_OBJECT) if there's something in the way
-    object_identifier id = next_object_identifier++;
-    objects.insert(make_pair(id, obj));
+    object_identifier id = next_object_identifier_++;
+    objects_.insert(make_pair(id, obj));
     bounding_box b; // TODO: in mobile_objects.cpp, include detail_shape in at least the final box left in the ztree
-    object_personal_space_shapes[id] = obj->get_initial_personal_space_shape();
-    b.combine_with(object_personal_space_shapes[id].bounds());
-    object_detail_shapes[id] = obj->get_initial_detail_shape();
-    b.combine_with(object_detail_shapes[id].bounds());
-    things_exposed_to_collision.insert(id, b);
+    object_personal_space_shapes_[id] = obj->get_initial_personal_space_shape();
+    b.combine_with(object_personal_space_shapes_[id].bounds());
+    object_detail_shapes_[id] = obj->get_initial_detail_shape();
+    b.combine_with(object_detail_shapes_[id].bounds());
+    things_exposed_to_collision_.insert(id, b);
     if(shared_ptr<mobile_object> m = boost::dynamic_pointer_cast<mobile_object>(obj)) {
-      moving_objects.insert(make_pair(id, m));
+      moving_objects_.insert(make_pair(id, m));
     }
     // TODO: don't do this if you're in the middle of updating autonomous objects
     if(shared_ptr<autonomous_object> m = boost::dynamic_pointer_cast<autonomous_object>(obj)) {
-      autonomously_active_objects.insert(make_pair(id, m));
+      autonomously_active_objects_.insert(make_pair(id, m));
     }
     return id;
   }
@@ -754,53 +460,47 @@ public:
   shape get_personal_space_shape_of_object_or_tile(object_or_tile_identifier id)const;
   shape get_detail_shape_of_object_or_tile(object_or_tile_identifier id)const;
   
-  objects_map<object>::type const& get_objects()const { return objects; }
-  object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes; }
-  object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes; }
+  objects_map<object>::type const& get_objects()const { return objects_; }
+  object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes_; }
+  object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes_; }
+
+  tile_physics_state_t& tile_physics() { return tile_physics_state_; }
+  world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision_; }
+
   
-  water_group_identifier get_water_group_id_by_grouped_tile(tile_location const& loc)const;
-  persistent_water_group_info const& get_water_group_by_grouped_tile(tile_location const& loc)const;
-  persistent_water_groups_t const& get_persistent_water_groups()const { return persistent_water_groups; }
-  world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision; }
-  
-  groupable_water_dimensional_boundaries_TODO_name_this_better_t const& get_groupable_water_dimensional_boundaries_TODO_name_this_better()const { return groupable_water_dimensional_boundaries_TODO_name_this_better;}
 private:
   friend class world_building_gun;
-  friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
+  friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
   // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
-  unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks; 
+  unordered_map<vector3<tile_coordinate>, the_decomposition_of_the_world_into_blocks_impl::worldblock> blocks_; 
 
-  water_group_identifier next_water_group_identifier;
-  water_groups_by_location_t water_groups_by_surface_tile;
-  persistent_water_groups_t persistent_water_groups;
-  groupable_water_dimensional_boundaries_TODO_name_this_better_t groupable_water_dimensional_boundaries_TODO_name_this_better;
-  active_fluids_t active_fluids;
+  tile_physics_state_t tile_physics_state_;
   
-  objects_map<object>::type objects;
-  objects_map<mobile_object>::type moving_objects;
-  objects_map<autonomous_object>::type autonomously_active_objects;
+  objects_map<object>::type objects_;
+  objects_map<mobile_object>::type moving_objects_;
+  objects_map<autonomous_object>::type autonomously_active_objects_;
   
-  object_identifier next_object_identifier;
-  vector<shared_ptr<object>> objects_to_add;
-  object_shapes_t object_personal_space_shapes;
-  object_shapes_t object_detail_shapes;
+  object_identifier next_object_identifier_;
+  vector<shared_ptr<object>> objects_to_add_;
+  object_shapes_t object_personal_space_shapes_;
+  object_shapes_t object_detail_shapes_;
   
   // This currently means all mobile objects, all water, and surface rock tiles. TODO I haven't actually implemented restricting to sufface rock yet
-  world_collision_detector things_exposed_to_collision;
+  world_collision_detector things_exposed_to_collision_;
   
   // Worldgen functions TODO describe them
-  worldgen_function_t worldgen_function;
+  worldgen_function_t worldgen_function_;
   
   
-  hacky_internals::worldblock* ensure_realization_of_and_get_worldblock(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
-  void ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded);
+  the_decomposition_of_the_world_into_blocks_impl::worldblock* ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
+  void ensure_realization_of_space_(tile_bounding_box space, level_of_tile_realization_needed realineeded);
   
   // Used only by world_building_gun
-  void initialize_tile_contents(tile_location const& loc, tile_contents contents);
+  void initialize_tile_contents_(tile_location const& loc, tile_contents contents);
   // Used only in the worldblock stuff
-  void initialize_tile_local_caches(tile_location const& loc);
-  void initialize_tile_water_group_caches(tile_location const& loc);
+  void initialize_tile_local_caches_(tile_location const& loc);
+  void initialize_tile_water_group_caches_(tile_location const& loc);
 };
 
 #endif

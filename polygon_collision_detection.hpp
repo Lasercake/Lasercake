@@ -81,25 +81,25 @@ struct line_segment {
 struct convex_polygon {
   // The structure simply trusts that you will provide a convex, coplanar sequence of points. Failure to do so will result in undefined behavior.
   void setup_cache_if_needed()const;
-  convex_polygon(std::vector<vector3<int64_t>> const& vertices):vertices(vertices){ caller_error_if(vertices.size() < 3, "Trying to construct a polygon with fewer than three vertices"); } // And there's also something wrong with a polygon where all the points are collinear, but it's more complicated to check that.
-  polygon_collision_info_cache const& get_cache()const { return cache; }
-  std::vector<vector3<int64_t>> const& get_vertices()const { return vertices; }
+  convex_polygon(std::vector<vector3<int64_t>> const& vertices):vertices_(vertices){ caller_error_if(vertices_.size() < 3, "Trying to construct a polygon with fewer than three vertices"); } // And there's also something wrong with a polygon where all the points are collinear, but it's more complicated to check that.
+  polygon_collision_info_cache const& get_cache()const { return cache_; }
+  std::vector<vector3<int64_t>> const& get_vertices()const { return vertices_; }
   void translate(vector3<int64_t> t);
   bounding_box bounds()const;
 private:
-  std::vector<vector3<int64_t>> vertices;
-  mutable polygon_collision_info_cache cache;
+  std::vector<vector3<int64_t>> vertices_;
+  mutable polygon_collision_info_cache cache_;
 };
 
 class shape {
 public:
-  shape(                                       ): bounds_cache_is_valid(false)                {}
-  shape(               line_segment const& init): bounds_cache_is_valid(false)                { segments.push_back(init); }
-  shape(             convex_polygon const& init): bounds_cache_is_valid(false)                { polygons.push_back(init); }
-  shape(               bounding_box const& init): bounds_cache_is_valid(false)                { boxes   .push_back(init); }
-  shape(std::vector<convex_polygon> const& init): bounds_cache_is_valid(false), polygons(init){}
+  shape(                                       ): bounds_cache_is_valid_(false)                 {}
+  shape(               line_segment const& init): bounds_cache_is_valid_(false)                 { segments_.push_back(init); }
+  shape(             convex_polygon const& init): bounds_cache_is_valid_(false)                 { polygons_.push_back(init); }
+  shape(               bounding_box const& init): bounds_cache_is_valid_(false)                 { boxes_   .push_back(init); }
+  shape(std::vector<convex_polygon> const& init): bounds_cache_is_valid_(false), polygons_(init){}
   
-  shape(shape const& o):bounds_cache(o.bounds_cache),bounds_cache_is_valid(o.bounds_cache_is_valid),segments(o.segments),polygons(o.polygons),boxes(o.boxes) {}
+  shape(shape const& o):bounds_cache_(o.bounds_cache_),bounds_cache_is_valid_(o.bounds_cache_is_valid_),segments_(o.segments_),polygons_(o.polygons_),boxes_(o.boxes_) {}
   
   void translate(vector3<int64_t> t);
   
@@ -109,16 +109,16 @@ public:
   bounding_box bounds()const;
   vector3<int64_t> arbitrary_interior_point()const;
   
-  std::vector<  line_segment> const& get_segments()const { return segments; }
-  std::vector<convex_polygon> const& get_polygons()const { return polygons; }
-  std::vector<  bounding_box> const& get_boxes   ()const { return boxes   ; }
+  std::vector<  line_segment> const& get_segments()const { return segments_; }
+  std::vector<convex_polygon> const& get_polygons()const { return polygons_; }
+  std::vector<  bounding_box> const& get_boxes   ()const { return boxes_   ; }
 private:
-  mutable bounding_box bounds_cache;
-  mutable bool bounds_cache_is_valid;
+  mutable bounding_box bounds_cache_;
+  mutable bool bounds_cache_is_valid_;
   
-  std::vector<  line_segment> segments;
-  std::vector<convex_polygon> polygons;
-  std::vector<  bounding_box> boxes   ;
+  std::vector<  line_segment> segments_;
+  std::vector<convex_polygon> polygons_;
+  std::vector<  bounding_box> boxes_   ;
 };
 
 /*bool intersects(line_segment l, convex_polygon const& p);
