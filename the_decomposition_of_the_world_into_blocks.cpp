@@ -63,9 +63,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
       
-      for (tile_coordinate x = global_position.x; x < global_position.x + worldblock_dimension; ++x) {
-        for (tile_coordinate y = global_position.y; y < global_position.y + worldblock_dimension; ++y) {
-          for (tile_coordinate z = global_position.z; z < global_position.z + worldblock_dimension; ++z) {
+      for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
+        for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
+          for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
             tile_location loc(vector3<tile_coordinate>(x,y,z), this);
             w_->initialize_tile_local_caches_(loc);
           }
@@ -82,9 +82,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
       
-      for (tile_coordinate x = global_position.x; x < global_position.x + worldblock_dimension; ++x) {
-        for (tile_coordinate y = global_position.y; y < global_position.y + worldblock_dimension; ++y) {
-          for (tile_coordinate z = global_position.z; z < global_position.z + worldblock_dimension; ++z) {
+      for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
+        for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
+          for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
             const vector3<tile_coordinate> coords(x,y,z);
             tile& here = this->get_tile(coords);
             // Checking contents() here: significant speed improvement.
