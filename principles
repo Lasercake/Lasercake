@@ -80,3 +80,11 @@ IDENTIFIER_CONSTANT (e.g. enum values. Not an amount of something, just a number
 TemplateArgument
 typedefed_thing or typedefed_thing_t (the latter if it'd be nice to have variables named "typedefed_thing").
 
+
+Pointer and reference types put the * or & next to the type, not the name
+(after all a foo* is a pointer, not a foo) :
+foo* a; bar& b; baz const& c;
+Variables are never declared together (foo* a, *b;) to avoid the way that
+C's syntax makes the above convention strange.  Don't do it anywhere,
+not even for non-pointer non-reference types.
+

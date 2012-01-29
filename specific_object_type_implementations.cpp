@@ -95,7 +95,7 @@ shape robot::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
-void robot::update(world &w, object_identifier my_id) {
+void robot::update(world& w, object_identifier my_id) {
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
   const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
   location = middle;
@@ -113,7 +113,7 @@ void robot::update(world &w, object_identifier my_id) {
   }
     
   // TODO HAAAAAACK
-  Uint8 *keystate = SDL_GetKeyState(NULL);
+  Uint8* keystate = SDL_GetKeyState(NULL);
   velocity.x -= velocity.x / 2;
   velocity.y -= velocity.y / 2;
   const fine_scalar xymag = i64sqrt(facing.x*facing.x + facing.y*facing.y);
@@ -190,7 +190,7 @@ shape laser_emitter::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
-void laser_emitter::update(world &w, object_identifier my_id) {
+void laser_emitter::update(world& w, object_identifier my_id) {
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
   const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
   location = middle;
@@ -250,7 +250,7 @@ void laser_emitter::update(world &w, object_identifier my_id) {
         return other.facing_in_this_dimension * dist_in_this_dimension < facing_in_this_dimension * other.dist_in_this_dimension;
       }
     };
-    laser_path_calculator(laser_emitter *emi):emi(emi),current_laser_tile(get_containing_tile_coordinates(emi->location)){
+    laser_path_calculator(laser_emitter* emi):emi(emi),current_laser_tile(get_containing_tile_coordinates(emi->location)){
       for (int i = 0; i < 3; ++i) {
         facing_signs[i] = sign(emi->facing[i]);
         facing_offs[i] = emi->facing[i] > 0;
@@ -275,7 +275,7 @@ void laser_emitter::update(world &w, object_identifier my_id) {
       return which_dimension;
     }
     
-    laser_emitter *emi;
+    laser_emitter* emi;
     vector3<tile_coordinate> current_laser_tile;
     set<cross> coming_crosses;
     vector3<fine_scalar> facing_signs;

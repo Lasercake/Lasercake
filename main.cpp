@@ -646,7 +646,7 @@ srand(time(NULL));
 
 
 
-static SDL_Surface *gScreen;
+static SDL_Surface* gScreen;
 
 static void initAttributes ()
 {

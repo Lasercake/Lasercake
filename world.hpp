@@ -210,7 +210,7 @@ public:
 
 class autonomous_object : virtual public object {
 public:
-  virtual void update(world &w, object_identifier my_id) = 0;
+  virtual void update(world& w, object_identifier my_id) = 0;
 };
 
 
@@ -389,7 +389,7 @@ public:
   inline void update() {
     laser_sfxes.clear();
     update_fluids();
-    for (auto &obj : autonomously_active_objects) obj.second->update(*this, obj.first);
+    for (auto& obj : autonomously_active_objects) obj.second->update(*this, obj.first);
     update_moving_objects();
   }
   
@@ -404,11 +404,11 @@ public:
   
   tile_location make_tile_location(vector3<tile_coordinate> const& coords, level_of_tile_realization_needed realineeded);
   
-  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier> &results, bounding_box const& bounds) {
+  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier>& results, bounding_box const& bounds) {
     ensure_realization_of_space(convert_to_smallest_superset_at_tile_resolution(bounds), FULL_REALIZATION);
     things_exposed_to_collision.get_objects_overlapping(results, bounds);
   }
-  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier> &results, tile_bounding_box const& bounds) {
+  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier>& results, tile_bounding_box const& bounds) {
     ensure_realization_of_space(bounds, FULL_REALIZATION);
     things_exposed_to_collision.get_objects_overlapping(results, convert_to_fine_units(bounds));
   }
@@ -466,6 +466,8 @@ public:
 
   tile_physics_state_t& tile_physics() { return tile_physics_state; }
   world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision; }
+void obj(world arg1,  arg2);
+
   
 private:
   friend class world_building_gun;

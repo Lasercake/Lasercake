@@ -396,7 +396,7 @@ private:
     // TODO: we can probably find a more optimal data structure to use here than std::set.
     std::set<ztree_node const*, set_compare> frontier;
     
-    void try_add(ztree_node *z) {
+    void try_add(ztree_node* z) {
       if (z && handler->should_be_considered__static(z->here.bbox) && handler->should_be_considered__dynamic(z->here.bbox)) {
         frontier.insert(z);
       }
@@ -430,7 +430,7 @@ private:
   };
     
 public:
-  void get_objects_generalized(generalized_object_collection_handler *handler)const {
+  void get_objects_generalized(generalized_object_collection_handler* handler)const {
     generalized_object_collection_walker data(handler, bboxes_by_object);
     
     data.try_add(objects_tree.get());

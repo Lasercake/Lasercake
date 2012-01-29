@@ -23,7 +23,12 @@
 
 namespace /*anonymous*/ {
 
-void collect_collisions_if_object_personal_space_is_at(world& w, unordered_set<object_or_tile_identifier> &results, object_identifier id, shape const& new_shape) {
+void collect_collisions_if_object_personal_space_is_at(
+    world& w,
+    unordered_set<object_or_tile_identifier>& results,
+    object_identifier id,
+    shape const& new_shape
+) {
   unordered_set<object_or_tile_identifier> potential_collisions;
   w.collect_things_exposed_to_collision_intersecting(potential_collisions, new_shape.bounds());
   for (auto const& pc : potential_collisions){
@@ -47,8 +52,8 @@ void collect_collisions_if_object_personal_space_is_at(world& w, unordered_set<o
 /*
 void actually_change_personal_space_shape(
    object_identifier id, shape const& new_shape,
-   object_shapes_t           &personal_space_shapes,
-   world_collision_detector  &things_exposed_to_collision) {
+   object_shapes_t           & personal_space_shapes,
+   world_collision_detector  & things_exposed_to_collision) {
   personal_space_shapes[id] = new_shape;
   things_exposed_to_collision.erase(id);
   things_exposed_to_collision.insert(id, new_shape.bounds());
@@ -87,7 +92,7 @@ cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& ve
 const int64_t whole_frame_duration = 1ULL << 32;
 
 // Currently unused...
-void cap_remaining_displacement_to_new_velocity(vector3<fine_scalar> &remaining_displacement, vector3<fine_scalar> const& new_velocity, int64_t remaining_time) {
+void cap_remaining_displacement_to_new_velocity(vector3<fine_scalar>& remaining_displacement, vector3<fine_scalar> const& new_velocity, int64_t remaining_time) {
   for (int i = 0; i < 3; ++i) {
     if (new_velocity[i] * remaining_displacement[i] > 0) {
       const fine_scalar natural_remaining_displacement_in_this_direction = divide_rounding_towards_zero(new_velocity[i] * remaining_time, whole_frame_duration);
@@ -99,16 +104,16 @@ void cap_remaining_displacement_to_new_velocity(vector3<fine_scalar> &remaining_
 }
 
 void update_moving_objects_impl(
-   world                             &w,
-   objects_map<mobile_object>::type  &moving_objects,
-   object_shapes_t                   &personal_space_shapes,
-   object_shapes_t                   &detail_shapes,
-   world_collision_detector          &things_exposed_to_collision) {
+   world                            & w,
+   objects_map<mobile_object>::type & moving_objects,
+   object_shapes_t                  & personal_space_shapes,
+   object_shapes_t                  & detail_shapes,
+   world_collision_detector         & things_exposed_to_collision) {
    
   // This entire function is kludgy and horrifically un-optimized.
   
   // Accelerate everything due to gravity.
-  for (pair<const object_identifier, shared_ptr<mobile_object>> &p : moving_objects) {
+  for (pair<const object_identifier, shared_ptr<mobile_object>>& p : moving_objects) {
     p.second->velocity += gravity_acceleration;
     
     // Check any tile it happens to be in for whether there's water there.
@@ -212,7 +217,7 @@ void update_moving_objects_impl(
   while(!times.queued_steps.empty()) {
     object_identifier id = times.pop_next_step();
     shared_ptr<mobile_object> objp = moving_objects[id];
-    object_trajectory_info &info = trajinfo[id];
+    object_trajectory_info& info = trajinfo[id];
     
     shape new_shape(personal_space_shapes[id]);
       
@@ -296,7 +301,7 @@ void update_moving_objects_impl(
     }
   }
   
-  for (auto &p : moving_objects) {
+  for (auto& p : moving_objects) {
     if (objects_with_some_overlap.find(p.first) == objects_with_some_overlap.end()) {
       personal_space_shapes[p.first].translate(p.second->velocity / velocity_scale_factor);
       detail_shapes[p.first].translate(p.second->velocity / velocity_scale_factor);
@@ -320,7 +325,7 @@ void world::update_moving_objects() {
 
 #if 0
 // If objects overlap with the new position, returns their IDs. If not, changes the shape and returns an empty set.
-unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape_impl(world &w, object_shapes_t &personal_space_shapes, world_collision_detector &things_exposed_to_collision, object_identifier id, shape const& new_shape) {
+unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape_impl(world& w, object_shapes_t& personal_space_shapes, world_collision_detector& things_exposed_to_collision, object_identifier id, shape const& new_shape) {
   unordered_set<object_or_tile_identifier> collisions;
   collect_collisions_if_object_personal_space_is_at(w, collisions, id, new_shape);
   

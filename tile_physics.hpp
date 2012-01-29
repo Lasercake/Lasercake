@@ -67,8 +67,8 @@ struct persistent_water_group_info {
 
   tile_location get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height);
 
-  bool mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(state_t& state, tile_location const& loc, active_fluids_t &active_fluids);
-  bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state_t& state, tile_location const& loc, active_fluids_t &active_fluids);
+  bool mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(state_t& state, tile_location const& loc, active_fluids_t& active_fluids);
+  bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state_t& state, tile_location const& loc, active_fluids_t& active_fluids);
 };
 
 typedef unordered_map<water_group_identifier, persistent_water_group_info> persistent_water_groups_t;
@@ -98,7 +98,7 @@ struct groupable_water_dimensional_boundaries_TODO_name_this_better_t {
   }
 private:
   template <typename Compare, cardinal_direction Dir>
-  static void handle_tile_removal_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc) {
+  static void handle_tile_removal_in_dimension(set<tile_location, Compare>& boundary_tiles_set, tile_location const& loc) {
     // This tile is no longer groupable at all, so it can't be a boundary tile
     boundary_tiles_set.erase(loc);
 
@@ -114,7 +114,7 @@ private:
     }
   }
   template <typename Compare, cardinal_direction Dir>
-  static void handle_tile_insertion_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc) {
+  static void handle_tile_insertion_in_dimension(set<tile_location, Compare>& boundary_tiles_set, tile_location const& loc) {
     // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
     const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
     const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);

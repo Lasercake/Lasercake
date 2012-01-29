@@ -181,7 +181,7 @@ void convex_polygon::setup_cache_if_needed()const {
   
   // Translate everything to a more convenient location. Translations are linear and hence preserve everything we need.
   cache.translation_amount = -vertices[0];
-  for (vector3<int64_t> &v : cache.adjusted_vertices) v += cache.translation_amount;
+  for (vector3<int64_t>& v : cache.adjusted_vertices) v += cache.translation_amount;
   
   cache.amount_twisted = 0;
   while (true) {
@@ -192,7 +192,7 @@ void convex_polygon::setup_cache_if_needed()const {
     // These are rotations, which are linear and hence preserve everything we need.
     
     ++cache.amount_twisted;
-    for (vector3<int64_t> &v : cache.adjusted_vertices) v = vector3<int64_t>(v.y, v.z, v.x);
+    for (vector3<int64_t>& v : cache.adjusted_vertices) v = vector3<int64_t>(v.y, v.z, v.x);
 #ifdef ASSERT_EVERYTHING
     assert(cache.amount_twisted <= 2);
 #endif
@@ -213,18 +213,18 @@ void bounding_box::translate(vector3<int64_t> t) {
 }
 
 void line_segment::translate(vector3<int64_t> t) {
-  for (vector3<int64_t> &v : ends) v += t;
+  for (vector3<int64_t>& v : ends) v += t;
 }
 
 void convex_polygon::translate(vector3<int64_t> t) {
-  for (vector3<int64_t> &v : vertices) v += t;
+  for (vector3<int64_t>& v : vertices) v += t;
   cache.translation_amount -= t;
 }
 
 void shape::translate(vector3<int64_t> t) {
-  for (  line_segment &l : segments) l.translate(t);
-  for (convex_polygon &p : polygons) p.translate(t);
-  for (  bounding_box &b : boxes   ) b.translate(t);
+  for (  line_segment& l : segments) l.translate(t);
+  for (convex_polygon& p : polygons) p.translate(t);
+  for (  bounding_box& b : boxes   ) b.translate(t);
   if (bounds_cache_is_valid && bounds_cache.is_anywhere) {
     bounds_cache.min += t;
     bounds_cache.max += t;
@@ -331,11 +331,11 @@ std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment l, conve
   polygon_collision_info_cache const& c = p.get_cache();
   
   // Translate and twist, as we did with the polygon.
-  for (vector3<int64_t> &v : l.ends) v += c.translation_amount;
-  for (vector3<int64_t> &v : l.ends) v = vector3<int64_t>(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
+  for (vector3<int64_t>& v : l.ends) v += c.translation_amount;
+  for (vector3<int64_t>& v : l.ends) v = vector3<int64_t>(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
   // Now skew the z values. Skews are linear and hence preserve everything we need.
   // The line's z values are scaled up as well as skewed.
-  for (vector3<int64_t> &v : l.ends) { v.z = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y); }
+  for (vector3<int64_t>& v : l.ends) { v.z = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y); }
   
   if (sign(l.ends[0].z) == sign(l.ends[1].z)) {
     if (l.ends[0].z != 0) {
