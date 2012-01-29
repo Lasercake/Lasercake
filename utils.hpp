@@ -254,37 +254,37 @@ typedef int8_t cardinal_direction;
 template <cardinal_direction Dir> struct cdir_info;
 template<> struct cdir_info<xminus> {
   static const cardinal_direction opposite = xplus;
-  static const int dimension = 0;
+  static const int dimension = X;
   static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(-1, 0, 0); }
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { --t.x; }
 };
 template<> struct cdir_info<yminus> {
   static const cardinal_direction opposite = yplus;
-  static const int dimension = 1;
+  static const int dimension = Y;
   static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(0, -1, 0); }
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { --t.y; }
 };
 template<> struct cdir_info<zminus> {
   static const cardinal_direction opposite = zplus;
-  static const int dimension = 2;
+  static const int dimension = Z;
   static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(0, 0, -1); }
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { --t.z; }
 };
 template<> struct cdir_info<xplus> {
   static const cardinal_direction opposite = xminus;
-  static const int dimension = 0;
+  static const int dimension = X;
   static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(1, 0, 0); }
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { ++t.x; }
 };
 template<> struct cdir_info<yplus> {
   static const cardinal_direction opposite = yminus;
-  static const int dimension = 1;
+  static const int dimension = Y;
   static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(0, 1, 0); }
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { ++t.y; }
 };
 template<> struct cdir_info<zplus> {
   static const cardinal_direction opposite = zminus;
-  static const int dimension = 2;
+  static const int dimension = Z;
   static vector3<neighboring_tile_differential> as_vector() { return vector3<neighboring_tile_differential>(0, 0, 1); }
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { ++t.z; }
 };
