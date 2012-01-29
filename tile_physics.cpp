@@ -21,6 +21,7 @@
 
 
 #include "world.hpp"
+#include "tile_physics.hpp"
 #include <queue>
 
 /*
@@ -214,13 +215,22 @@ dividing two infinite oceans.)
 
 */
 
+
+using namespace tile_physics_impl;
+
+////////////////////////////////////////////
+// Miscellaneous helpful stuff.
+
 // This is the only file that's allowed to change the contents of tiles at locations.
 // Other files should change tile contents through replace_substance,
 // and shouldn't be in the business of altering tile caches at all.
 // (TODO: also add something for the there_is_an_object_here_that_affects_the_tile_based_physics thing)
-tile& mutable_stuff_at(tile_location const& loc) { return loc.wb->get_tile(loc.v); }
+tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc) { return loc.wb->get_tile(loc.v); }
 
-using namespace tile_physics_impl;
+
+state_t& get_state(world& w) {
+  return get_state(w.tile_physics());
+}
 
 water_group_identifier make_new_water_group(water_group_identifier &next_water_group_identifier, persistent_water_groups_t &persistent_water_groups) {
   water_group_identifier this_id = next_water_group_identifier++;
@@ -228,6 +238,50 @@ water_group_identifier make_new_water_group(water_group_identifier &next_water_g
   return this_id;
 }
 
+tile_physics_state_t::tile_physics_state_t(world& w) : state_(new state_t(w)) {}
+tile_physics_state_t::tile_physics_state_t(tile_physics_state_t const& other)
+  : state_(new state_t(*other.state_)) {}
+tile_physics_state_t& tile_physics_state_t::operator=(tile_physics_state_t const& other) {
+  state_.reset(new state_t(*other.state_));
+  return *this;
+}
+tile_physics_state_t::~tile_physics_state_t() noexcept {}
+
+void replace_substance(
+   state_t& state,
+   tile_location const& loc,
+   tile_contents old_substance_type,
+   tile_contents new_substance_type) {
+  state.access_the_world.replace_substance(loc, old_substance_type, new_substance_type);
+}
+
+water_group_identifier get_water_group_id_by_grouped_tile(state_t const& state, tile_location const& loc) {
+  {
+    water_groups_by_location_t::const_iterator i = state.water_groups_by_surface_tile.find(loc);
+    if (i != state.water_groups_by_surface_tile.end()) {
+      return i->second;
+    }
+  }
+
+  // Crap, we don't know what group we're part of unless we find a surface tile!
+  // Find the next surface tile in some arbitrary direction.
+  // That tile will tell us what group we're in.
+  auto iter = state.groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.lower_bound(loc);
+  if (iter == state.groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end()) {
+    return NO_WATER_GROUP;
+  }
+  tile_location const& surface_loc = *iter;
+  if (surface_loc.coords().y != loc.coords().y || surface_loc.coords().z != loc.coords().z) {
+    return NO_WATER_GROUP;
+  }
+  return state.water_groups_by_surface_tile.find(surface_loc)->second;
+}
+persistent_water_group_info const& get_water_group_by_grouped_tile(state_t const& state, tile_location const& loc) {
+  return state.persistent_water_groups.find(get_water_group_id_by_grouped_tile(state, loc))->second;
+}
+
+
+///////////////////////////////
 // Debugging functions:
 void dump_boundary_stuff(groupable_water_dimensional_boundaries_TODO_name_this_better_t &g) {
   for (auto const& foo : g.x_boundary_groupable_water_tiles)
@@ -265,15 +319,15 @@ void dump_group_info(persistent_water_group_info const& g) {
     std::cerr << "  " << foo.first << ": " << foo.second << "\n";
   }
 }
-void dump_all_groups(world &w) {
-  for (auto const& p : w.get_persistent_water_groups()) {
+void dump_all_groups(state_t& state) {
+  for (auto const& p : state.persistent_water_groups) {
     std::cerr << "\n==GROUP "<< p.first<<"==\n";
     dump_group_info(p.second);
   }
 }
 
-/*void check_pushable_tiles_sanity(world &w) {
-  for (auto const& p : w.get_persistent_water_groups()) {
+/*void check_pushable_tiles_sanity(state_t& state) {
+  for (auto const& p : state.persistent_water_groups) {
     auto const& g = p.second;
     for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
       for(auto const& bar : foo.second.as_unordered_set()) {
@@ -291,7 +345,7 @@ void dump_all_groups(world &w) {
 }*/
 
 // Hacky debugging function that duplicates code from elsewhere.
-void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_water_group_info const& g) {
+void check_group_surface_tiles_cache_and_layer_size_caches(state_t& state, persistent_water_group_info const& g) {
   persistent_water_group_info h;
   // Scan from an arbitrary surface tile of g
   if (g.surface_tiles.empty()) {
@@ -336,7 +390,7 @@ void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_
     }
   }
   
-  h.recompute_num_tiles_by_height_from_surface_tiles(w);
+  h.recompute_num_tiles_by_height_from_surface_tiles(state);
   
   bool check_succeeded = true;
   
@@ -375,6 +429,9 @@ void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_
   assert(check_succeeded);
 }
 
+
+
+
 // Initialization.
 // When we initialize a tile...
 // If it's not groupable water, we only need to compute its interiorness.
@@ -401,13 +458,13 @@ void check_group_surface_tiles_cache_and_layer_size_caches(world &w, persistent_
 // single group hardly takes any time.
 bool is_ungrouped_surface_tile(tile_location const& loc, water_groups_by_location_t const& water_groups_by_surface_tile) { return loc.stuff_at().contents() == GROUPABLE_WATER && !loc.stuff_at().is_interior() && water_groups_by_surface_tile.find(loc) == water_groups_by_surface_tile.end(); }
 
-void initialize_water_group_from_tile_if_necessary(world &w, tile_location const& loc,
+void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location const& loc,
    groupable_water_dimensional_boundaries_TODO_name_this_better_t &groupable_water_dimensional_boundaries_TODO_name_this_better,
    water_group_identifier &next_water_group_identifier,
    persistent_water_groups_t &persistent_water_groups,
    water_groups_by_location_t &water_groups_by_surface_tile) {
   
-  if (w.get_water_group_id_by_grouped_tile(loc) != NO_WATER_GROUP) return;
+  if (get_water_group_id_by_grouped_tile(state, loc) != NO_WATER_GROUP) return;
   
   // Walk until we get a location on the surface.
   // We *could* just ignore interior tiles and only do the initialization if we started from a surface
@@ -472,9 +529,9 @@ void initialize_water_group_from_tile_if_necessary(world &w, tile_location const
     }
   }
   
-  new_group.recompute_num_tiles_by_height_from_surface_tiles(w);
+  new_group.recompute_num_tiles_by_height_from_surface_tiles(state);
   
-  //check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
+  //check_group_surface_tiles_cache_and_layer_size_caches(state, new_group);
 }
 
 void world::initialize_tile_contents(tile_location const& loc, tile_contents contents) {
@@ -506,15 +563,16 @@ void world::initialize_tile_local_caches(tile_location const& loc) {
 
 void world::initialize_tile_water_group_caches(tile_location const& loc) {
   if (loc.stuff_at().contents() == GROUPABLE_WATER) {
-    initialize_water_group_from_tile_if_necessary(*this, loc,
-       groupable_water_dimensional_boundaries_TODO_name_this_better,
-       next_water_group_identifier,
-       persistent_water_groups,
-       water_groups_by_surface_tile);
+    state_t& state = get_state(*this);
+    initialize_water_group_from_tile_if_necessary(state, loc,
+       state.groupable_water_dimensional_boundaries_TODO_name_this_better,
+       state.next_water_group_identifier,
+       state.persistent_water_groups,
+       state.water_groups_by_surface_tile);
   }
 }
 
-void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_tiles(world const& w) {
+void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_tiles(state_t const& state) {
   // Here's how we compute the total volume in less than linear time:
   // We take each contiguous row of surface tiles and compute its total length by
   // using a cleverly sorted set, so that we can start with a tile at the beginning
@@ -523,7 +581,7 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
   // Here, we look up all "low-x ends of x-rows" and jump to the high-x ends
   num_tiles_by_height.clear();
   
-  auto const& groupable_water_dimensional_boundaries_TODO_name_this_better = w.get_groupable_water_dimensional_boundaries_TODO_name_this_better();
+  auto const& groupable_water_dimensional_boundaries_TODO_name_this_better = state.groupable_water_dimensional_boundaries_TODO_name_this_better;
   
   for (tile_location const& surface_loc : surface_tiles) {
     // We're only interested in starting at low-x boundaries
@@ -585,7 +643,7 @@ fine_scalar persistent_water_group_info::get_pressure_at_height(tile_coordinate 
 }
 
 
-void suck_out_suckable_water(world &w,
+void suck_out_suckable_water(state_t& state,
    tile_location const& loc,
    active_fluids_t &active_fluids)
 {
@@ -639,10 +697,10 @@ void suck_out_suckable_water(world &w,
   }
   
   // replace_substance handles marking the water no-longer-suckable.
-  w.replace_substance(loc, GROUPABLE_WATER, AIR);
+  replace_substance(state, loc, GROUPABLE_WATER, AIR);
 }
 
-void push_water_into_pushable_tile(world &w,
+void push_water_into_pushable_tile(state_t& state,
    tile_location const& loc,
    active_fluids_t &active_fluids)
 {
@@ -655,7 +713,7 @@ void push_water_into_pushable_tile(world &w,
   //
   // Semi-hack - we trust that this has been called on a reasonable tile,
   // so we just copy the tile's contents into old_substance_type.
-  w.replace_substance(loc, loc.stuff_at().contents(), UNGROUPABLE_WATER);
+  replace_substance(state, loc, loc.stuff_at().contents(), UNGROUPABLE_WATER);
       
   // Activate it.
   // The [] operator creates a default-constructed version.
@@ -667,32 +725,32 @@ void push_water_into_pushable_tile(world &w,
 }
 
 
-bool persistent_water_group_info::mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(world &w, tile_location const& loc, active_fluids_t &active_fluids) {
+bool persistent_water_group_info::mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(state_t& state, tile_location const& loc, active_fluids_t &active_fluids) {
   if (!pushable_tiles_by_height.any_below(loc.coords().z)) {
     suckable_tiles_by_height.insert(loc);
     return false;
   }
   const tile_location pushed_tile = pushable_tiles_by_height.get_and_erase_random_from_the_bottom();
-  suck_out_suckable_water(w, loc, active_fluids);
-  push_water_into_pushable_tile(w, pushed_tile, active_fluids);
+  suck_out_suckable_water(state, loc, active_fluids);
+  push_water_into_pushable_tile(state, pushed_tile, active_fluids);
   return true;
 }
-bool persistent_water_group_info::mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(world &w, tile_location const& loc, active_fluids_t &active_fluids) {
+bool persistent_water_group_info::mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state_t& state, tile_location const& loc, active_fluids_t &active_fluids) {
   if (!suckable_tiles_by_height.any_above(loc.coords().z)) {
     pushable_tiles_by_height.insert(loc);
     return false;
   }
   const tile_location sucked_tile = suckable_tiles_by_height.get_and_erase_random_from_the_top();
-  suck_out_suckable_water(w, sucked_tile, active_fluids);
-  push_water_into_pushable_tile(w, loc, active_fluids);
+  suck_out_suckable_water(state, sucked_tile, active_fluids);
+  push_water_into_pushable_tile(state, loc, active_fluids);
   return true;
 }
-void correct_all_suckable_pushable_pairs(world &w, persistent_water_group_info &g, active_fluids_t &active_fluids) {
+void correct_all_suckable_pushable_pairs(state_t& state, persistent_water_group_info &g, active_fluids_t &active_fluids) {
   while (!g.suckable_tiles_by_height.as_map().empty() && !g.pushable_tiles_by_height.as_map().empty() && g.suckable_tiles_by_height.as_map().rbegin()->first > g.pushable_tiles_by_height.as_map().begin()->first) {
     const tile_location sucked_tile = g.suckable_tiles_by_height.get_and_erase_random_from_the_top();
     const tile_location pushed_tile = g.pushable_tiles_by_height.get_and_erase_random_from_the_bottom();
-    suck_out_suckable_water      (w, sucked_tile, active_fluids);
-    push_water_into_pushable_tile(w, pushed_tile, active_fluids);
+    suck_out_suckable_water      (state, sucked_tile, active_fluids);
+    push_water_into_pushable_tile(state, pushed_tile, active_fluids);
   }
 }
 
@@ -747,34 +805,10 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
   return remaining_group_id;
 }
 
-water_group_identifier world::get_water_group_id_by_grouped_tile(tile_location const& loc)const {
-  {
-    water_groups_by_location_t::const_iterator i = water_groups_by_surface_tile.find(loc);
-    if (i != water_groups_by_surface_tile.end()) {
-      return i->second;
-    }
-  }
-  
-  // Crap, we don't know what group we're part of unless we find a surface tile!
-  // Find the next surface tile in some arbitrary direction.
-  // That tile will tell us what group we're in.
-  auto iter = groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.lower_bound(loc);
-  if (iter == groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end()) {
-    return NO_WATER_GROUP;
-  }
-  tile_location const& surface_loc = *iter;
-  if (surface_loc.coords().y != loc.coords().y || surface_loc.coords().z != loc.coords().z) {
-    return NO_WATER_GROUP;
-  }
-  return water_groups_by_surface_tile.find(surface_loc)->second;
-}
-persistent_water_group_info const& world::get_water_group_by_grouped_tile(tile_location const& loc)const {
-  return persistent_water_groups.find(get_water_group_id_by_grouped_tile(loc))->second;
-}
 
 
 void replace_substance_impl(
-   world &w,
+   state_t& state,
    tile_location const& loc,
    tile_contents old_substance_type,
    tile_contents new_substance_type,
@@ -790,11 +824,19 @@ void world::replace_substance(
    tile_location const& loc,
    tile_contents old_substance_type,
    tile_contents new_substance_type) {
-  replace_substance_impl(*this, loc, old_substance_type, new_substance_type, things_exposed_to_collision, groupable_water_dimensional_boundaries_TODO_name_this_better, active_fluids, next_water_group_identifier, persistent_water_groups, water_groups_by_surface_tile);
+  
+  state_t& state = get_state(*this);
+  replace_substance_impl(state, loc, old_substance_type, new_substance_type,
+                         this->things_exposed_to_collision,
+                         state.groupable_water_dimensional_boundaries_TODO_name_this_better,
+                         state.active_fluids,
+                         state.next_water_group_identifier,
+                         state.persistent_water_groups,
+                         state.water_groups_by_surface_tile);
 }
 
 void replace_substance_impl(
-   world &w,
+   state_t& state,
    tile_location const& loc,
    tile_contents old_substance_type,
    tile_contents new_substance_type,
@@ -809,7 +851,7 @@ void replace_substance_impl(
 #ifdef ASSERT_EVERYTHING
   assert(loc.stuff_at().contents() == old_substance_type);
 #endif
-  //check_pushable_tiles_sanity(w);
+  //check_pushable_tiles_sanity(state);
   
   std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc);
   
@@ -829,7 +871,7 @@ void replace_substance_impl(
     vector<tile_location> adj_tiles_that_want_to_fill_us_via_pressure;
     for (tile_location const& adj_loc : neighbors) {
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-        water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
+        water_group_identifier group_id = get_water_group_id_by_grouped_tile(state, adj_loc);
         persistent_water_group_info const& group = persistent_water_groups.find(group_id)->second;
         if (group.suckable_tiles_by_height.any_above(loc.coords().z)) {
           adj_tiles_that_want_to_fill_us_via_pressure.push_back(adj_loc);
@@ -839,19 +881,19 @@ void replace_substance_impl(
     
     if (!adj_tiles_that_want_to_fill_us_via_pressure.empty()) {
       tile_location const& tile_pulled_from = adj_tiles_that_want_to_fill_us_via_pressure[rand()%(adj_tiles_that_want_to_fill_us_via_pressure.size())];
-      water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(tile_pulled_from);
+      water_group_identifier group_id = get_water_group_id_by_grouped_tile(state, tile_pulled_from);
       persistent_water_group_info &group = persistent_water_groups.find(group_id)->second;
       
-      assert(group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(w, loc, active_fluids));
+      assert(group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state, loc, active_fluids));
       // That function will have run the body of replace_substance on this tile; we don't need to.
       return;
     }
     else {
       for (tile_location const& adj_loc : neighbors) {
         if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-          water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
+          water_group_identifier group_id = get_water_group_id_by_grouped_tile(state, adj_loc);
           persistent_water_group_info &group = persistent_water_groups.find(group_id)->second;
-          assert(!group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(w, loc, active_fluids));
+          assert(!group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state, loc, active_fluids));
         }
       }
     }
@@ -860,7 +902,7 @@ void replace_substance_impl(
   if (old_substance_type == AIR && new_substance_type != AIR) {
     for (tile_location const& adj_loc : neighbors) {
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-        water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
+        water_group_identifier group_id = get_water_group_id_by_grouped_tile(state, adj_loc);
 #ifdef ASSERT_EVERYTHING
         assert(group_id != NO_WATER_GROUP);
 #endif
@@ -873,7 +915,7 @@ void replace_substance_impl(
       }
     }
     
-    //check_pushable_tiles_sanity(w);
+    //check_pushable_tiles_sanity(state);
   }
   
   // If we're removing water, we have complicated computations to do. We do it in this order:
@@ -889,7 +931,7 @@ void replace_substance_impl(
     // 1) Gather as much information as possible without physically changing anything
     //    (while we're still marked as water)
     // ==============================================================================
-    water_group_id = w.get_water_group_id_by_grouped_tile(loc);
+    water_group_id = get_water_group_id_by_grouped_tile(state, loc);
 #ifdef ASSERT_EVERYTHING
     assert(water_group_id != NO_WATER_GROUP);
 #endif
@@ -898,7 +940,7 @@ void replace_substance_impl(
     assert(iter != persistent_water_groups.end());
 #endif
     water_group = &iter->second;
-    //check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
+    //check_group_surface_tiles_cache_and_layer_size_caches(state, *water_group);
   }
   
   // For inserting water, we check group membership BEFORE
@@ -1082,7 +1124,7 @@ void replace_substance_impl(
     
     // Adding a tile at a specific height can change pressure at that height, but not anywhere above
     water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(loc.coords().z));
-    //check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
+    //check_group_surface_tiles_cache_and_layer_size_caches(state, *water_group);
     
     // Our surfaces are now pushable surfaces.
     for (tile_location const& adj_loc : neighbors) {
@@ -1090,15 +1132,15 @@ void replace_substance_impl(
         water_group->pushable_tiles_by_height.insert(adj_loc);
       }
     }
-    //check_pushable_tiles_sanity(w);
+    //check_pushable_tiles_sanity(state);
     
     // If the tile above us was idle groupable water, it's now suckable...
     // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
     tile_location const& uploc = neighbors[zplus];
     if (uploc.stuff_at().contents() == GROUPABLE_WATER && (uploc.get_neighbor<zplus>(CONTENTS_ONLY)).stuff_at().contents() != GROUPABLE_WATER && active_fluids.find(uploc) == active_fluids.end()) {
-      water_group->mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, uploc, active_fluids);
+      water_group->mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(state, uploc, active_fluids);
     }
-    correct_all_suckable_pushable_pairs(w, *water_group, active_fluids);
+    correct_all_suckable_pushable_pairs(state, *water_group, active_fluids);
   }
   
   if (old_substance_type == GROUPABLE_WATER && new_substance_type != GROUPABLE_WATER) {
@@ -1158,7 +1200,7 @@ void replace_substance_impl(
         if (!can_be_pushable) water_group->pushable_tiles_by_height.erase(adj_loc);
       }
     }
-    //check_pushable_tiles_sanity(w);
+    //check_pushable_tiles_sanity(state);
     
     // Our disappearance might have split the group.
     // If we *did* split the group, we're going to have to flood-fill along the surfaces of all the components in order to divide the groups from each other.
@@ -1231,7 +1273,7 @@ void replace_substance_impl(
         bool destroy_this_frontier = (inf.defunct_frontiers.find(which_neighbor) != inf.defunct_frontiers.end());
         
         if (!destroy_this_frontier && frontier.empty()) {
-          //check_pushable_tiles_sanity(w);
+          //check_pushable_tiles_sanity(state);
           // If the frontier is empty, that means this route has finished its search and not found any
           // connections to the rest of the water. Therefore, we need to mark this frontier off as a
           // separate group.
@@ -1254,7 +1296,7 @@ void replace_substance_impl(
               new_group.suckable_tiles_by_height.insert(new_grouped_loc);
             }
           }
-          new_group.recompute_num_tiles_by_height_from_surface_tiles(w);
+          new_group.recompute_num_tiles_by_height_from_surface_tiles(state);
           for (auto const& p : new_group.num_tiles_by_height) {
             auto iter = water_group->num_tiles_by_height.find(p.first);
 #ifdef ASSERT_EVERYTHING
@@ -1277,7 +1319,7 @@ void replace_substance_impl(
               std::array<tile_location, num_cardinal_directions> p_neighbors = get_all_neighbors(p);
               for (tile_location const& adj_loc : p_neighbors) {
                 if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
-                  const water_group_identifier pushable_having_group_id = w.get_water_group_id_by_grouped_tile(adj_loc);
+                  const water_group_identifier pushable_having_group_id = get_water_group_id_by_grouped_tile(state, adj_loc);
                   if (pushable_having_group_id == water_group_id) {
                     is_pushable_for_original_group = true;
                   }
@@ -1296,8 +1338,8 @@ void replace_substance_impl(
           for (auto const& p : original_pushable_tiles_removed) {
             water_group->pushable_tiles_by_height.erase(p);
           }
-          //check_group_surface_tiles_cache_and_layer_size_caches(w, new_group);
-          //check_pushable_tiles_sanity(w);
+          //check_group_surface_tiles_cache_and_layer_size_caches(state, new_group);
+          //check_pushable_tiles_sanity(state);
         }
         else if (!destroy_this_frontier) {
           tile_location search_loc = frontier.front();
@@ -1354,9 +1396,9 @@ void replace_substance_impl(
     //  End of flood-fill-based group-splitting algorithm
     // ==============================================================================
     
-    //check_group_surface_tiles_cache_and_layer_size_caches(w, *water_group);
+    //check_group_surface_tiles_cache_and_layer_size_caches(state, *water_group);
   }
-  //check_pushable_tiles_sanity(w);
+  //check_pushable_tiles_sanity(state);
 }
 
 
@@ -1377,13 +1419,14 @@ int obstructiveness(tile_contents tc) {
   else assert(false); // reaching this would mean we implemented a new material type but forgot to set its obstructiveness
 }
 
-void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups);
+void update_fluids_impl(state_t& state, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups);
 
 void world::update_fluids() {
-  update_fluids_impl(*this, active_fluids, persistent_water_groups);
+  state_t& state = get_state(*this);
+  update_fluids_impl(state, state.active_fluids, state.persistent_water_groups);
 }
 
-void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups) {
+void update_fluids_impl(state_t& state, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups) {
   // ==============================================================================
   //  Phase 1
   //  Compute all the velocities and movement.
@@ -1450,7 +1493,7 @@ void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_wat
             //fluid.frames_until_can_become_groupable = 0;
           }
           else {
-            persistent_water_group_info const& group = w.get_water_group_by_grouped_tile(adj_loc);
+            persistent_water_group_info const& group = get_water_group_by_grouped_tile(state, adj_loc);
             const fine_scalar pressure = group.get_pressure_at_height(opposite_loc.coords().z);
             if (pressure > 0) { // Hack - TODO examine the fact that "0 pressure" forces velocity to be at least 0 away from the tile (incorrect behavior for tiles directly above the group) and if the principles that causes that problem also causes subtler problems.
               const sub_tile_distance amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_distance>(-cardinal_direction_vectors[dir]);
@@ -1573,8 +1616,8 @@ void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_wat
       active_fluid_tile_info &dst_fluid = (active_fluids[dst] = src_fluid);
       
       // Water always becomes ungroupable when it moves
-      w.replace_substance(dst, dst_old_contents, src_old_contents == GROUPABLE_WATER ? UNGROUPABLE_WATER : src_old_contents);
-      w.replace_substance(move.src, src_old_contents, dst_old_contents);
+      replace_substance(state, dst, dst_old_contents, src_old_contents == GROUPABLE_WATER ? UNGROUPABLE_WATER : src_old_contents);
+      replace_substance(state, move.src, src_old_contents, dst_old_contents);
       
       if (dst_was_active_fluid) src_fluid = dst_info_store;
       disturbed_tiles.insert(dst);
@@ -1599,11 +1642,11 @@ void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_wat
       const bool becoming_suckable = (src_tile.contents() == GROUPABLE_WATER) && (move.dir == zminus) && (move.src.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
       
       if (becoming_suckable) {
-        const water_group_identifier group_id = w.get_water_group_id_by_grouped_tile(move.src);
+        const water_group_identifier group_id = get_water_group_id_by_grouped_tile(state, move.src);
         persistent_water_group_info &group = persistent_water_groups.find(group_id)->second;
         // Caution - if this returns true, it has removed the water we're currently looking at.
         // (Otherwise, it hasn't.)
-        if (group.mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, move.src, active_fluids)) {
+        if (group.mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(state, move.src, active_fluids)) {
           blocked = false;
         }
       }
@@ -1643,7 +1686,7 @@ void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_wat
       //if (fluid.frames_until_can_become_groupable <= 0) {
       //  fluid.frames_until_can_become_groupable = 0;
         if (!(fluid.velocity - inactive_fluid_velocity).magnitude_within_32_bits_is_greater_than(min_convincing_speed/2)) {
-          w.replace_substance(loc, UNGROUPABLE_WATER, GROUPABLE_WATER);
+          replace_substance(state, loc, UNGROUPABLE_WATER, GROUPABLE_WATER);
         }
       //}
     }
@@ -1653,7 +1696,7 @@ void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_wat
         // purely to facilitate the water-being-sucked-out-very-fast situation.
         // TODO: find a cleaner way to facilitate that if possible.
         if (loc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER)
-          w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
+          replace_substance(state, loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
       }
     }
   }
@@ -1716,7 +1759,9 @@ void update_fluids_impl(world &w, active_fluids_t &active_fluids, persistent_wat
       // Semi-hack: Cover for that scenario here.
       // TODO come up with a way to handle pushable and suckable tiles that isn't so likely to have missed cases.
       if (is_groupable_water && loc_preserved.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) {
-        persistent_water_groups.find(w.get_water_group_id_by_grouped_tile(loc_preserved))->second.mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(w, loc_preserved, active_fluids);
+        persistent_water_groups
+          .find(get_water_group_id_by_grouped_tile(state, loc_preserved))->second
+            .mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(state, loc_preserved, active_fluids);
       }
     }
     else ++i;

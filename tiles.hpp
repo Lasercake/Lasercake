@@ -19,8 +19,8 @@
 
 */
 
-#ifndef LASERCAKE_TILE_PHYSICS_HPP__
-#define LASERCAKE_TILE_PHYSICS_HPP__
+#ifndef LASERCAKE_TILES_HPP__
+#define LASERCAKE_TILES_HPP__
 
 #include <utility>
 #include <map>
@@ -160,6 +160,11 @@ enum level_of_tile_realization_needed {
   FULL_REALIZATION = 3
 };
 
+class tile_location;
+namespace tile_physics_impl {
+  tile& mutable_stuff_at(tile_location const& loc);
+}
+
 class tile_location {
 public:
   //tile_location operator+(cardinal_direction dir)const;
@@ -173,7 +178,7 @@ public:
   inline tile const& stuff_at()const;
   vector3<tile_coordinate> const& coords()const { return v; }
 private:
-  friend tile& mutable_stuff_at(tile_location const& loc);
+  friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
   friend tile_location trivial_invalid_location();
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
 

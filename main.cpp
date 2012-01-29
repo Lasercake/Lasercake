@@ -36,6 +36,7 @@
 #include "world.hpp"
 #include "specific_worlds.hpp"
 #include "specific_object_types.hpp"
+#include "tile_physics.hpp" // to access internals for debugging-displaying...
 
 namespace /* anonymous */ {
 
@@ -349,7 +350,7 @@ srand(time(NULL));
       view_loc + vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50)
     ));
     
-    for (auto const& p : w.get_persistent_water_groups()) {
+    for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
       tile_physics_impl::persistent_water_group_info const& g = p.second;
       
       for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
@@ -530,7 +531,8 @@ srand(time(NULL));
         }
 
         if (is_fluid(t.contents())) {
-          if (tile_physics_impl::active_fluid_tile_info const* fluid = w.get_active_fluid_info(loc)) {
+          if (tile_physics_impl::active_fluid_tile_info const* fluid =
+                find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
             push_line(coll,
                       vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
                       vertex(

@@ -354,118 +354,22 @@ struct objects_map {
 
 
 namespace tile_physics_impl {
-typedef uint64_t water_tile_count;
-typedef uint64_t water_group_identifier;
-const water_group_identifier NO_WATER_GROUP = 0;
-
-// "progress" is measured in the smaller, velocity units.
-inline sub_tile_distance progress_necessary(cardinal_direction dir) {
-  return tile_size[which_dimension_is_cardinal_direction(dir)] * velocity_scale_factor;
-}
-
-struct active_fluid_tile_info {
-  // Constructing one of these in the default way yields the natural inactive state
-  active_fluid_tile_info();
-  bool is_in_inactive_state()const;
-
-  vector3<sub_tile_distance> velocity;
-  value_for_each_cardinal_direction<sub_tile_distance> progress;
-  value_for_each_cardinal_direction<sub_tile_distance> blockage_amount_this_frame;
-
-  //int frames_until_can_become_groupable = 0;
-};
-
-typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
-
-struct persistent_water_group_info {
-  literally_random_access_removable_tiles_by_height suckable_tiles_by_height;
-  literally_random_access_removable_tiles_by_height pushable_tiles_by_height;
-  map<tile_coordinate, water_tile_count> num_tiles_by_height;
-  unordered_set<tile_location> surface_tiles;
-
-  mutable map<tile_coordinate, fine_scalar> pressure_caches;
-  mutable map<tile_coordinate, water_tile_count> width_of_widest_level_so_far_caches;
-
-  //bool is_infinite;
-  //tile_coordinate infinite_ocean_height;
-
-  void recompute_num_tiles_by_height_from_surface_tiles(world const& w);
-  fine_scalar get_pressure_at_height(tile_coordinate height)const;
-
-  tile_location get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height);
-
-  bool mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(world &w, tile_location const& loc, active_fluids_t &active_fluids);
-  bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(world &w, tile_location const& loc, active_fluids_t &active_fluids);
-};
-
-typedef unordered_map<water_group_identifier, persistent_water_group_info> persistent_water_groups_t;
-typedef unordered_map<tile_location, water_group_identifier> water_groups_by_location_t;
-
-
-
-
-// We could easily keep lists of boundary tiles in all three dimensions
-// (Just uncomment the six commented lines below.)
-// The only reason we don't is because there's no need for any of the others right now.
-// (And it would take that much extra space (proportional to the that-dimension surface area)
-//   and time (proportional to how much the groupable-water landscape changes)).
-struct groupable_water_dimensional_boundaries_TODO_name_this_better_t {
-  set<tile_location, tile_compare_yzx> x_boundary_groupable_water_tiles;
-  //set<tile_location, tile_compare_zxy> y_boundary_groupable_water_tiles;
-  //set<tile_location, tile_compare_xyz> z_boundary_groupable_water_tiles;
-  void handle_tile_insertion(tile_location const& loc) {
-    handle_tile_insertion_in_dimension<tile_compare_yzx, xplus>(x_boundary_groupable_water_tiles, loc);
-  //  handle_tile_insertion_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
-  //  handle_tile_insertion_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
-  }
-  void handle_tile_removal(tile_location const& loc) {
-    handle_tile_removal_in_dimension<tile_compare_yzx, xplus>(x_boundary_groupable_water_tiles, loc);
-  //  handle_tile_removal_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
-  //  handle_tile_removal_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
-  }
+struct state_t;
+class tile_physics_state_t {
+public:
+  tile_physics_state_t(world& w);
+  tile_physics_state_t(tile_physics_state_t const& other);
+  tile_physics_state_t& operator=(tile_physics_state_t const& other);
+  ~tile_physics_state_t() noexcept;
 private:
-  template <typename Compare, cardinal_direction Dir>
-  static void handle_tile_removal_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc) {
-    // This tile is no longer groupable at all, so it can't be a boundary tile
-    boundary_tiles_set.erase(loc);
-
-    // If there are groupable tiles next to us, they must now be boundary tiles,
-    // because our deletion exposed them
-    const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
-    const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);
-    if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      boundary_tiles_set.insert(further_in_positive_direction_loc);
-    }
-    if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      boundary_tiles_set.insert(further_in_negative_direction_loc);
-    }
-  }
-  template <typename Compare, cardinal_direction Dir>
-  static void handle_tile_insertion_in_dimension(set<tile_location, Compare> &boundary_tiles_set, tile_location const& loc) {
-    // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
-    const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
-    const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);
-    bool we_are_boundary_tile = false;
-    if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if (further_in_positive_direction_loc.get_neighbor<Dir                     >(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
-        boundary_tiles_set.erase(further_in_positive_direction_loc);
-      }
-    }
-    else we_are_boundary_tile = true;
-    if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if (further_in_negative_direction_loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
-        boundary_tiles_set.erase(further_in_negative_direction_loc);
-      }
-    }
-    else we_are_boundary_tile = true;
-
-    if (we_are_boundary_tile) boundary_tiles_set.insert(loc);
-  }
+  boost::scoped_ptr<state_t> state_;
+  friend state_t& get_state(tile_physics_state_t& s);
 };
-
+inline state_t& get_state(tile_physics_state_t& s) {
+  return *s.state_;
+}
 } // end namespace tile_physics_impl
-
-
+using tile_physics_impl::tile_physics_state_t;
 
 
 
@@ -477,7 +381,7 @@ private:
 
 class world {
 public:
-  world(worldgen_function_t f):next_water_group_identifier(1),next_object_identifier(1),worldgen_function(f){}
+  world(worldgen_function_t f):tile_physics_state(*this),next_object_identifier(1),worldgen_function(f){}
   
   void update_moving_objects();
   void update_fluids();
@@ -489,8 +393,6 @@ public:
     update_moving_objects();
   }
   
-  // Right now this is just a hack to expose the velocity to the display.
-  tile_physics_impl::active_fluid_tile_info const* get_active_fluid_info(tile_location const& loc)const { return find_as_pointer(active_fluids, loc); }
   // I *think* this pointer is valid as long as the shared_ptr exists
   shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects, id); }
   /*boost::iterator_range<mobile_objects_map<mobile_object>::iterator> mobile_objects_range() {
@@ -561,13 +463,10 @@ public:
   objects_map<object>::type const& get_objects()const { return objects; }
   object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes; }
   object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes; }
-  
-  tile_physics_impl::water_group_identifier get_water_group_id_by_grouped_tile(tile_location const& loc)const;
-  tile_physics_impl::persistent_water_group_info const& get_water_group_by_grouped_tile(tile_location const& loc)const;
-  tile_physics_impl::persistent_water_groups_t const& get_persistent_water_groups()const { return persistent_water_groups; }
+
+  tile_physics_state_t& tile_physics() { return tile_physics_state; }
   world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision; }
   
-  tile_physics_impl::groupable_water_dimensional_boundaries_TODO_name_this_better_t const& get_groupable_water_dimensional_boundaries_TODO_name_this_better()const { return groupable_water_dimensional_boundaries_TODO_name_this_better;}
 private:
   friend class world_building_gun;
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
@@ -575,11 +474,7 @@ private:
   // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
   unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks; 
 
-  tile_physics_impl::water_group_identifier next_water_group_identifier;
-  tile_physics_impl::water_groups_by_location_t water_groups_by_surface_tile;
-  tile_physics_impl::persistent_water_groups_t persistent_water_groups;
-  tile_physics_impl::groupable_water_dimensional_boundaries_TODO_name_this_better_t groupable_water_dimensional_boundaries_TODO_name_this_better;
-  tile_physics_impl::active_fluids_t active_fluids;
+  tile_physics_state_t tile_physics_state;
   
   objects_map<object>::type objects;
   objects_map<mobile_object>::type moving_objects;
