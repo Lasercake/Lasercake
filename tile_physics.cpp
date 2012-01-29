@@ -538,7 +538,7 @@ void world::initialize_tile_contents(tile_location const& loc, tile_contents con
   mutable_stuff_at(loc).set_contents(contents);
 }
 
-void world::initialize_tile_local_caches(tile_location const& loc) {
+void initialize_tile_local_caches_impl(world_collision_detector& things_exposed_to_collision, tile_location const& loc) {
   bool should_be_interior = true;
   std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc, CONTENTS_ONLY);
   for (tile_location const& adj_loc : neighbors) {
@@ -559,6 +559,9 @@ void world::initialize_tile_local_caches(tile_location const& loc) {
     if (loc.stuff_at().contents() != AIR)
       things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
   }
+}
+void world::initialize_tile_local_caches(tile_location const& loc) {
+  initialize_tile_local_caches_impl(this->things_exposed_to_collision, loc);
 }
 
 void world::initialize_tile_water_group_caches(tile_location const& loc) {
