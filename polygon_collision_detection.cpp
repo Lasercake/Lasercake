@@ -289,25 +289,38 @@ std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment const& l
   
   boost::rational<int64_t> intersecting_min(0);
   boost::rational<int64_t> intersecting_max(1);
-  
-#define CHECK(minormax, maxormin, compare, dimension) \
-  if (l.ends[0].dimension == l.ends[1].dimension) { \
-    if (l.ends[0].dimension compare bb.minormax.dimension) return std::make_pair(false, 1); \
-  } \
-  else { \
-    const boost::rational<int64_t> checkval((l.ends[1].dimension > l.ends[0].dimension ? bb.minormax.dimension : bb.maxormin.dimension) - l.ends[0].dimension, l.ends[1].dimension - l.ends[0].dimension); \
-    if (intersecting_##minormax compare checkval) { \
-      intersecting_##minormax = checkval; \
-      if (intersecting_min > intersecting_max) return std::make_pair(false, 1); \
+
+// This macro is specific to this function.  It only uses its arguments
+// at the beginning of the macro definition, except for LESS_THAN_OR_GREATER_THAN.
+// (Can you find a way to do this that's nicer without being lots messier?)
+#define CHECK(MIN_OR_MAX, MAX_OR_MIN, LESS_THAN_OR_GREATER_THAN, DIMENSION) \
+  { \
+    vector3<int64_t> const& bb_min_or_max = bb.MIN_OR_MAX; \
+    vector3<int64_t> const& bb_max_or_min = bb.MAX_OR_MIN; \
+    boost::rational<int64_t>& intersecting_min_or_max = intersecting_##MIN_OR_MAX; \
+    int dim = (DIMENSION); \
+    \
+    if (l.ends[0][dim] == l.ends[1][dim]) { \
+      if (l.ends[0][dim] LESS_THAN_OR_GREATER_THAN bb_min_or_max[dim]) return std::make_pair(false, 1); \
+    } \
+    else { \
+      const boost::rational<int64_t> checkval( \
+        (l.ends[1][dim] > l.ends[0][dim] ? bb_min_or_max[dim] : bb_max_or_min[dim]) - l.ends[0][dim], \
+        l.ends[1][dim] - l.ends[0][dim] \
+      ); \
+      if (intersecting_min_or_max LESS_THAN_OR_GREATER_THAN checkval) { \
+        intersecting_min_or_max = checkval; \
+        if (intersecting_min > intersecting_max) return std::make_pair(false, 1); \
+      } \
     } \
   }
   
-  CHECK(min, max, <, x)
-  CHECK(min, max, <, y)
-  CHECK(min, max, <, z)
-  CHECK(max, min, >, x)
-  CHECK(max, min, >, y)
-  CHECK(max, min, >, z)
+  CHECK(min, max, <, X)
+  CHECK(min, max, <, Y)
+  CHECK(min, max, <, Z)
+  CHECK(max, min, >, X)
+  CHECK(max, min, >, Y)
+  CHECK(max, min, >, Z)
 #undef CHECK
   
   return std::make_pair(true, intersecting_min);

@@ -124,6 +124,12 @@ inline uint32_t i64sqrt(uint64_t radicand)
   return lower_bound;
 }
 
+// If you need to pass around a dimension for use as an index to
+// a vector3, you can optionally use these names.
+enum {
+  X = 0, Y = 1, Z = 2
+};
+
 template<typename ScalarType> class vector3 {
 public:
   ScalarType x, y, z;
