@@ -438,13 +438,16 @@ srand(time(NULL));
         }
 
         {
-          const color tile_color =
-            t.contents() ==              ROCK ? color(((((coords.x + coords.y + coords.z) % 3)
-                                                        * 0x222222u + 0x333333u) << 8) + 0xff) :
-            t.contents() ==            RUBBLE ? color(0xffff0077) :
-            t.contents() ==   GROUPABLE_WATER ? color(0x0000ff77) :
-            t.contents() == UNGROUPABLE_WATER ? color(0x6666ff77) :
+          color tile_color =
+            t.contents() ==              ROCK ? color(0x222222ff) :
+            t.contents() ==            RUBBLE ? color(0x3f3f00cf) :
+            t.contents() ==   GROUPABLE_WATER ? color(0x00003f7f) :
+            t.contents() == UNGROUPABLE_WATER ? color(0x1b1b3f7f) :
             (assert(false), (/*hack to make this compile*/0?color(0):throw 0xdeadbeef));
+            
+          tile_color.r *= ((coords.x + coords.y + coords.z) % 3) + 2;
+          tile_color.g *= ((coords.x + coords.y + coords.z) % 3) + 2;
+          tile_color.b *= ((coords.x + coords.y + coords.z) % 3) + 2;
 
           // If we make one of the 'glb' members the closest corner of the tile to the player,
           // and the other the farthest, then we can draw the faces in a correct order
