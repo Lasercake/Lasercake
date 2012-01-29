@@ -24,6 +24,7 @@
 // TODO HAAAAACK
 #include "SDL/SDL.h"
 
+namespace /* anonymous */ {
 
 struct beam_first_contact_finder : world_collision_detector::generalized_object_collection_handler {
   beam_first_contact_finder(world const& w, line_segment beam):w(w),beam(beam),best_intercept_point(false, 1){}
@@ -81,10 +82,12 @@ void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar>
 
 const int robot_max_carrying_capacity = 4;
 
+} /* end anonymous namespace */
+
 shape robot::get_initial_personal_space_shape()const {
   return shape(bounding_box(
-    location - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
-    location + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
+    location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
+    location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
   ));
 }
 
@@ -92,10 +95,10 @@ shape robot::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
-void robot::update(world &w, object_identifier my_id) {
+void robot::update(world& w, object_identifier my_id) {
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
   const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
-  location = middle;
+  location_ = middle;
   const vector3<fine_scalar> bottom_middle(middle.x, middle.y, shape_bounds.min.z);
   const tile_location l = w.make_tile_location(get_containing_tile_coordinates(bottom_middle), CONTENTS_ONLY);
   const tile_location lminus = l.get_neighbor<zminus>(CONTENTS_ONLY);
@@ -110,48 +113,48 @@ void robot::update(world &w, object_identifier my_id) {
   }
     
   // TODO HAAAAAACK
-  Uint8 *keystate = SDL_GetKeyState(NULL);
+  Uint8* keystate = SDL_GetKeyState(NULL);
   velocity.x -= velocity.x / 2;
   velocity.y -= velocity.y / 2;
-  const fine_scalar xymag = i64sqrt(facing.x*facing.x + facing.y*facing.y);
+  const fine_scalar xymag = i64sqrt(facing_.x*facing_.x + facing_.y*facing_.y);
   if (keystate[SDLK_x]) {
-    velocity.x = facing.x * tile_width * velocity_scale_factor / 8 / xymag;
-    velocity.y = facing.y * tile_width * velocity_scale_factor / 8 / xymag;
+    velocity.x = facing_.x * tile_width * velocity_scale_factor / 8 / xymag;
+    velocity.y = facing_.y * tile_width * velocity_scale_factor / 8 / xymag;
   }
   if (keystate[SDLK_RIGHT]) {
-    fine_scalar new_facing_x = facing.x + facing.y / 20;
-    fine_scalar new_facing_y = facing.y - facing.x / 20;
-    facing.x = new_facing_x; facing.y = new_facing_y;
+    fine_scalar new_facing_x = facing_.x + facing_.y / 20;
+    fine_scalar new_facing_y = facing_.y - facing_.x / 20;
+    facing_.x = new_facing_x; facing_.y = new_facing_y;
   }
   if (keystate[SDLK_LEFT]) {
-    fine_scalar new_facing_x = facing.x - facing.y / 20;
-    fine_scalar new_facing_y = facing.y + facing.x / 20;
-    facing.x = new_facing_x; facing.y = new_facing_y;
+    fine_scalar new_facing_x = facing_.x - facing_.y / 20;
+    fine_scalar new_facing_y = facing_.y + facing_.x / 20;
+    facing_.x = new_facing_x; facing_.y = new_facing_y;
   }
   if (keystate[SDLK_UP] ^ keystate[SDLK_DOWN]) {
     const fine_scalar which_way = (keystate[SDLK_UP] ? 1 : -1);
-    const fine_scalar new_xymag = xymag - (which_way * facing.z / 20);
+    const fine_scalar new_xymag = xymag - (which_way * facing_.z / 20);
     if (new_xymag > tile_width / 8) {
-      facing.z += which_way * xymag / 20;
-      facing.y = facing.y * new_xymag / xymag;
-      facing.x = facing.x * new_xymag / xymag;
+      facing_.z += which_way * xymag / 20;
+      facing_.y = facing_.y * new_xymag / xymag;
+      facing_.x = facing_.x * new_xymag / xymag;
     }
   }
-  facing = facing * tile_width / facing.magnitude_within_32_bits();
+  facing_ = facing_ * tile_width / facing_.magnitude_within_32_bits();
   
-  vector3<fine_scalar> beam_delta = facing * 3 / 2;
+  vector3<fine_scalar> beam_delta = facing_ * 3 / 2;
   
   if (keystate[SDLK_c] || keystate[SDLK_v]) {
-    beam_first_contact_finder finder(w, line_segment(location, location + beam_delta));
+    beam_first_contact_finder finder(w, line_segment(location_, location_ + beam_delta));
     finder.ignores.insert(my_id);
     w.get_things_exposed_to_collision().get_objects_generalized(&finder);
     
     if (finder.best_intercept_point.first) {
       // TODO do I have to worry about overflow?
-      w.add_laser_sfx(location, beam_delta * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
+      w.add_laser_sfx(location_, beam_delta * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
       if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
-        if (keystate[SDLK_c] && (carrying < robot_max_carrying_capacity) && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
-          ++carrying;
+        if (keystate[SDLK_c] && (carrying_ < robot_max_carrying_capacity) && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
+          ++carrying_;
           w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
         }
         /*if (carrying && locp->stuff_at().contents() == ROCK) {
@@ -160,26 +163,26 @@ void robot::update(world &w, object_identifier my_id) {
       }
     }
     else {
-      w.add_laser_sfx(location, beam_delta);
-      if (keystate[SDLK_v] && (carrying > 0)) {
-        --carrying;
-        const tile_location target_loc = w.make_tile_location(get_containing_tile_coordinates(location + beam_delta), FULL_REALIZATION);
+      w.add_laser_sfx(location_, beam_delta);
+      if (keystate[SDLK_v] && (carrying_ > 0)) {
+        --carrying_;
+        const tile_location target_loc = w.make_tile_location(get_containing_tile_coordinates(location_ + beam_delta), FULL_REALIZATION);
         w.replace_substance(target_loc, AIR, RUBBLE);
       }
     }
   }
   if (keystate[SDLK_b]) {
-    const vector3<fine_scalar> offset(-facing.y / 4, facing.x / 4, 0);
-    fire_standard_laser(w, my_id, location + offset, facing);
-    fire_standard_laser(w, my_id, location - offset, facing);
+    const vector3<fine_scalar> offset(-facing_.y / 4, facing_.x / 4, 0);
+    fire_standard_laser(w, my_id, location_ + offset, facing_);
+    fire_standard_laser(w, my_id, location_ - offset, facing_);
   }
 }
 
 
 shape laser_emitter::get_initial_personal_space_shape()const {
   return shape(bounding_box(
-    location - vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10),
-    location + vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10)
+    location_ - vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10),
+    location_ + vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10)
   ));
 }
 
@@ -187,21 +190,21 @@ shape laser_emitter::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
-void laser_emitter::update(world &w, object_identifier my_id) {
+void laser_emitter::update(world& w, object_identifier my_id) {
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
   const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
-  location = middle;
+  location_ = middle;
   do {
-    facing.x = (rand()&2047) - 1024;
-    facing.y = (rand()&2047) - 1024;
-    facing.z = (rand()&2047) - 1024;
-  } while (facing.magnitude_within_32_bits_is_greater_than(1023) || facing.magnitude_within_32_bits_is_less_than(512));
+    facing_.x = (rand()&2047) - 1024;
+    facing_.y = (rand()&2047) - 1024;
+    facing_.z = (rand()&2047) - 1024;
+  } while (facing_.magnitude_within_32_bits_is_greater_than(1023) || facing_.magnitude_within_32_bits_is_less_than(512));
 
-  fire_standard_laser(w, my_id, location, facing);
+  fire_standard_laser(w, my_id, location_, facing_);
   
   
   #if 0
-  line_segment laser_line(location, location + facing);
+  line_segment laser_line(location_, location_ + facing_);
   for (int i = 0; i < 50; ++i) {
     unordered_set<object_or_tile_identifier> possible_hits;
     w.collect_things_exposed_to_collision_intersecting(possible_hits, laser_line.bounds());
@@ -220,7 +223,7 @@ void laser_emitter::update(world &w, object_identifier my_id) {
     
     if (best_inters.first) {
       // TODO do I have to worry about overflow?
-      w.add_laser_sfx(location, facing * i + facing * best_inters.second.numerator() / best_inters.second.denominator());
+      w.add_laser_sfx(location_, facing_ * i + facing_ * best_inters.second.numerator() / best_inters.second.denominator());
       if(tile_location const* locp = best_id.get_tile_location()) {
         /*if(rand()%100 == 0) {
           w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
@@ -231,9 +234,9 @@ void laser_emitter::update(world &w, object_identifier my_id) {
       }
       return;
     }
-    laser_line.translate(facing);
+    laser_line.translate(facing_);
   }
-  w.add_laser_sfx(location, facing * 50);
+  w.add_laser_sfx(location_, facing_ * 50);
   return;
   #endif
   
@@ -247,7 +250,7 @@ void laser_emitter::update(world &w, object_identifier my_id) {
         return other.facing_in_this_dimension * dist_in_this_dimension < facing_in_this_dimension * other.dist_in_this_dimension;
       }
     };
-    laser_path_calculator(laser_emitter *emi):emi(emi),current_laser_tile(get_containing_tile_coordinates(emi->location)){
+    laser_path_calculator(laser_emitter* emi):emi(emi),current_laser_tile(get_containing_tile_coordinates(emi->location)){
       for (int i = 0; i < 3; ++i) {
         facing_signs[i] = sign(emi->facing[i]);
         facing_offs[i] = emi->facing[i] > 0;
@@ -272,7 +275,7 @@ void laser_emitter::update(world &w, object_identifier my_id) {
       return which_dimension;
     }
     
-    laser_emitter *emi;
+    laser_emitter* emi;
     vector3<tile_coordinate> current_laser_tile;
     set<cross> coming_crosses;
     vector3<fine_scalar> facing_signs;
@@ -281,8 +284,8 @@ void laser_emitter::update(world &w, object_identifier my_id) {
   
   laser_path_calculator calc(this);
   
-  const vector3<fine_scalar> max_laser_delta = facing * 50;
-  //const vector3<tile_coordinate> theoretical_end_tile = get_containing_tile_coordinates(location + max_laser_delta);
+  const vector3<fine_scalar> max_laser_delta = facing_ * 50;
+  //const vector3<tile_coordinate> theoretical_end_tile = get_containing_tile_coordinates(location_ + max_laser_delta);
   
   int which_dimension_we_last_advanced = -1;
   while(true) {
@@ -298,10 +301,10 @@ void laser_emitter::update(world &w, object_identifier my_id) {
         else {
           vector3<tile_coordinate> hitloc_finding_hack = calc.current_laser_tile;
           hitloc_finding_hack[which_dimension_we_last_advanced] += calc.facing_offs[which_dimension_we_last_advanced];
-          const fine_scalar laser_delta_in_facing_direction = (lower_bound_in_fine_units(hitloc_finding_hack)[which_dimension_we_last_advanced] - location[which_dimension_we_last_advanced]);
-          laser_delta = (facing * laser_delta_in_facing_direction) / facing[which_dimension_we_last_advanced];
+          const fine_scalar laser_delta_in_facing_direction = (lower_bound_in_fine_units(hitloc_finding_hack)[which_dimension_we_last_advanced] - location_[which_dimension_we_last_advanced]);
+          laser_delta = (facing_ * laser_delta_in_facing_direction) / facing_[which_dimension_we_last_advanced];
         }
-        w.add_laser_sfx(location, laser_delta);
+        w.add_laser_sfx(location_, laser_delta);
         return; // TODO handle what happens if there are mobile objects and/or multiple objects and/or whatever
       }
       if (object_identifier const* oidp = id.get_object_identifier()) {
@@ -310,8 +313,8 @@ void laser_emitter::update(world &w, object_identifier my_id) {
       }
     }
     // TODO figure out a better end condition...
-    if ((calc.current_laser_tile - get_containing_tile_coordinates(location)).magnitude_within_32_bits_is_greater_than(101)) {
-      w.add_laser_sfx(location, max_laser_delta);
+    if ((calc.current_laser_tile - get_containing_tile_coordinates(location_)).magnitude_within_32_bits_is_greater_than(101)) {
+      w.add_laser_sfx(location_, max_laser_delta);
       return;
     }
     else which_dimension_we_last_advanced = calc.advance_to_next_location();

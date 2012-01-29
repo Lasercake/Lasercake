@@ -199,7 +199,7 @@ for (int i = 0; i < 50; ++i) {
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
     gluLookAt(5+15*std::cos(double(frame) / 200),5+15*std::sin(double(frame) / 200),10,5,5,0,0,0,1);
-    for (floating_line &foo : lines) {
+    for (floating_line& foo : lines) {
       if (foo.collided) glColor3f(1.0,0.0,1.0);
       else              glColor3f(0.0,0.0,1.0);
       glBegin(GL_LINES);
@@ -207,11 +207,11 @@ for (int i = 0; i < 50; ++i) {
         glVertex3f(0.01*foo.ends[1].x, 0.01*foo.ends[1].y, 0.01*foo.ends[1].z);
       glEnd();
     }
-    for (floating_poly &foo : polys) {
+    for (floating_poly& foo : polys) {
       if (foo.collided) glColor3f(1.0,1.0,0.0);
       else              glColor3f(0.0,1.0,0.0);
       glBegin(GL_POLYGON);
-        for (vector3<int64_t> &v : foo.vertices)
+        for (vector3<int64_t>& v : foo.vertices)
           glVertex3f(0.01*v.x, 0.01*v.y, 0.01*v.z);
       glEnd();
     }
@@ -225,16 +225,16 @@ for (int i = 0; i < 50; ++i) {
     
     //doing stuff code here
 	++frame;
-    for (floating_line &foo : lines) {
-      for (vector3<int64_t> &v : foo.ends) --v.z;
+    for (floating_line& foo : lines) {
+      for (vector3<int64_t>& v : foo.ends) --v.z;
       foo.collided = false;
     }
-    for (floating_poly &foo : polys) {
-      for (vector3<int64_t> &v : foo.vertices) ++v.z;
+    for (floating_poly& foo : polys) {
+      for (vector3<int64_t>& v : foo.vertices) ++v.z;
       foo.collided = false;
     }
-    for (floating_line &foo : lines) {
-      for (floating_poly &bar : polys) {
+    for (floating_line& foo : lines) {
+      for (floating_poly& bar : polys) {
         if (intersects(line_segment(foo.ends), convex_polygon(bar.vertices))) {
           foo.collided = true;
           bar.collided = true;
