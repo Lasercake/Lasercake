@@ -108,16 +108,16 @@ inline uint32_t i64sqrt(uint64_t radicand)
   uint32_t lower_bound = 1 << (shift >> 1);
   
   //replace the lost accuracy:
-  if(radicand & (((((uint64_t)1 << 1) - 1) << 1) << shift))lower_bound = (uint32_t)((lower_bound * 6074000999ULL) >> 32); //approximate the square root of 2
+  if(radicand & ((((1ULL << 1) - 1) << 1) << shift))lower_bound = (uint32_t)((lower_bound * 6074000999ULL) >> 32); //approximate the square root of 2
   
-  uint64_t upper_bound = (uint64_t)lower_bound << 1;
+  uint64_t upper_bound = (lower_bound < (uint32_t(1) << 31)) ? (lower_bound << 1) : (1ULL << 32);
   //lower_bound is guaranteed to be less than or equal to the answer
   //upper_bound is guaranteed to be greater than the answer
   
   while(lower_bound < upper_bound - 1)
   {
-    const uint32_t mid = (uint32_t)((upper_bound + lower_bound) >> 1);
-    if((uint64_t)mid * mid > radicand)upper_bound = mid;
+    const uint32_t mid = uint32_t((upper_bound + lower_bound) >> 1);
+    if(uint64_t(mid) * mid > radicand)upper_bound = mid;
     else lower_bound = mid;
   }
   
