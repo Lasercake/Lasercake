@@ -88,3 +88,7 @@ Variables are never declared together (foo* a, *b;) to avoid the way that
 C's syntax makes the above convention strange.  Don't do it anywhere,
 not even for non-pointer non-reference types.
 
+Variables, even local variables, should be marked "const" wherever possible.
+(We fail at this sometimes. Is there a good way to get the compiler to suggest
+'const's?)
+
