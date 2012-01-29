@@ -47,6 +47,11 @@ struct beam_first_contact_finder : world_collision_detector::generalized_object_
     }
   }
   virtual bool should_be_considered__dynamic(bounding_box const& bb)const {
+    // hack - avoid overflow
+    if (bb.max.x - bb.min.x >= (1LL << 32) || bb.max.y - bb.min.y >= (1LL << 32) || bb.max.z - bb.min.z >= (1LL << 32)) {
+      // if there might be overflow, only do a bounds check
+      return beam.bounds().overlaps(bb);
+    }
     std::pair<bool, non_normalized_rational<int64_t>> result = shape(bb).first_intersection(beam);
     return result.first && (!best_intercept_point.first || result.second < best_intercept_point.second);
   }
