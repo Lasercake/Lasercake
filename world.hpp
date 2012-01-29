@@ -466,7 +466,6 @@ public:
 
   tile_physics_state_t& tile_physics() { return tile_physics_state; }
   world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision; }
-void obj(world arg1,  arg2);
 
   
 private:
