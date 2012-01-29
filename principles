@@ -45,6 +45,19 @@ curly braces {
   there is no concerted attempt to limit the length of lines to anything in particular;
 };
 
+
+Anything declared+defined in a single .cpp file and not used elsewhere should be enclosed
+in an anonymous namespace, to indicate this to the reader and the compiler.
+The begin/end comments saying "anonymous" are encouraged but not required.
+
+namespace /* anonymous */ {
+code (not indented) {
+}
+more code;
+} /* end anonymous namespace */
+
+
+
 Various names look like:
 
 local_variable

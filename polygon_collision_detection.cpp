@@ -261,6 +261,7 @@ vector3<int64_t> shape::arbitrary_interior_point()const {
   caller_error("Trying to get an arbitrary interior point of a shape that contains no points");
 }
 
+namespace /*anonymous*/ {
 std::pair<bool, boost::rational<int64_t>> get_intersection(int64_t sl1x, int64_t sl1y, int64_t sl2x, int64_t sl2y, int64_t ol1x, int64_t ol1y, int64_t ol2x, int64_t ol2y) {
   // assume ol1 is (0, 0)
   ol2x -= ol1x;
@@ -413,6 +414,8 @@ bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
   }}}
   return false;
 }
+
+} /* end anonymous namespace */
 
 bool shape::intersects(shape const& other)const {
   if (!bounds().overlaps(other.bounds())) return false;

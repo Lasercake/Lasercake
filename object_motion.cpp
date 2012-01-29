@@ -21,6 +21,8 @@
 
 #include "world.hpp"
 
+namespace /*anonymous*/ {
+
 void collect_collisions_if_object_personal_space_is_at(world& w, unordered_set<object_or_tile_identifier> &results, object_identifier id, shape const& new_shape) {
   unordered_set<object_or_tile_identifier> potential_collisions;
   w.collect_things_exposed_to_collision_intersecting(potential_collisions, new_shape.bounds());
@@ -309,6 +311,8 @@ void update_moving_objects_(
     things_exposed_to_collision.insert(p.first, new_bounds);
   }
 }
+
+} /* end anonymous namespace */
 
 void world::update_moving_objects() {
   update_moving_objects_(*this, moving_objects, object_personal_space_shapes, object_detail_shapes, things_exposed_to_collision);

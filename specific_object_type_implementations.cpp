@@ -24,6 +24,7 @@
 // TODO HAAAAACK
 #include "SDL/SDL.h"
 
+namespace /* anonymous */ {
 
 struct beam_first_contact_finder : world_collision_detector::generalized_object_collection_handler {
   beam_first_contact_finder(world const& w, line_segment beam):w(w),beam(beam),best_intercept_point(false, 1){}
@@ -80,6 +81,8 @@ void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar>
 }
 
 const int robot_max_carrying_capacity = 4;
+
+} /* end anonymous namespace */
 
 shape robot::get_initial_personal_space_shape()const {
   return shape(bounding_box(

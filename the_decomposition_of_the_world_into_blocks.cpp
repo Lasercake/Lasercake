@@ -152,6 +152,7 @@ tile_location tile_location::get_neighbor_by_variable(cardinal_direction dir, le
   }
 }
 
+namespace { // anonymous
 vector3<tile_coordinate> coordinates_of_containing_worldblock(vector3<tile_coordinate> const& coords) {
   return vector3<tile_coordinate>(
     coords.x & ~(hacky_internals::worldblock_dimension-1),
@@ -159,6 +160,7 @@ vector3<tile_coordinate> coordinates_of_containing_worldblock(vector3<tile_coord
     coords.z & ~(hacky_internals::worldblock_dimension-1)
   );
 }
+} // end anonymous namespace
 
 tile_location world::make_tile_location(vector3<tile_coordinate> const& coords, level_of_tile_realization_needed realineeded) {
   return ensure_realization_of_and_get_worldblock(coordinates_of_containing_worldblock(coords), realineeded)->get_loc_guaranteed_to_be_in_this_block(coords);
