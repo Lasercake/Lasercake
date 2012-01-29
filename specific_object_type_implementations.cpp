@@ -68,7 +68,7 @@ void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar>
   
   if (finder.best_intercept_point.first) {
     // TODO do I have to worry about overflow?
-    w.add_laser_sfx(location, facing * 50 * finder.best_intercept_point.second.numerator() / finder.best_intercept_point.second.denominator());
+    w.add_laser_sfx(location, facing * 50 * finder.best_intercept_point.second.numerator / finder.best_intercept_point.second.denominator);
     if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
       if (locp->stuff_at().contents() == ROCK) {
         w.replace_substance(*locp, ROCK, RUBBLE);
@@ -151,7 +151,7 @@ void robot::update(world& w, object_identifier my_id) {
     
     if (finder.best_intercept_point.first) {
       // TODO do I have to worry about overflow?
-      w.add_laser_sfx(location, beam_delta * finder.best_intercept_point.second.numerator / finder.best_intercept_point.second.denominator);
+      w.add_laser_sfx(location_, beam_delta * finder.best_intercept_point.second.numerator / finder.best_intercept_point.second.denominator);
       if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
         if (keystate[SDLK_c] && (carrying_ < robot_max_carrying_capacity) && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
           ++carrying_;
