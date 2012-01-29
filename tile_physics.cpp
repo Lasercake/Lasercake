@@ -227,6 +227,7 @@ using namespace tile_physics_impl;
 // (TODO: also add something for the there_is_an_object_here_that_affects_the_tile_based_physics thing)
 tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc) { return loc.wb->get_tile(loc.v); }
 
+namespace tile_physics_impl {
 
 state_t& get_state(world& w) {
   return get_state(w.tile_physics());
@@ -534,10 +535,6 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
   //check_group_surface_tiles_cache_and_layer_size_caches(state, new_group);
 }
 
-void world::initialize_tile_contents(tile_location const& loc, tile_contents contents) {
-  mutable_stuff_at(loc).set_contents(contents);
-}
-
 void initialize_tile_local_caches_impl(world_collision_detector& things_exposed_to_collision, tile_location const& loc) {
   bool should_be_interior = true;
   std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc, CONTENTS_ONLY);
@@ -558,20 +555,6 @@ void initialize_tile_local_caches_impl(world_collision_detector& things_exposed_
     // (maybe there's something that detects contact with air? Sodium...?)
     if (loc.stuff_at().contents() != AIR)
       things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
-  }
-}
-void world::initialize_tile_local_caches(tile_location const& loc) {
-  initialize_tile_local_caches_impl(this->things_exposed_to_collision, loc);
-}
-
-void world::initialize_tile_water_group_caches(tile_location const& loc) {
-  if (loc.stuff_at().contents() == GROUPABLE_WATER) {
-    state_t& state = get_state(*this);
-    initialize_water_group_from_tile_if_necessary(state, loc,
-       state.groupable_water_dimensional_boundaries_TODO_name_this_better,
-       state.next_water_group_identifier,
-       state.persistent_water_groups,
-       state.water_groups_by_surface_tile);
   }
 }
 
@@ -808,35 +791,6 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
   return remaining_group_id;
 }
 
-
-
-void replace_substance_impl(
-   state_t& state,
-   tile_location const& loc,
-   tile_contents old_substance_type,
-   tile_contents new_substance_type,
-   
-   world_collision_detector &things_exposed_to_collision,
-   groupable_water_dimensional_boundaries_TODO_name_this_better_t &groupable_water_dimensional_boundaries_TODO_name_this_better,
-   active_fluids_t &active_fluids,
-   water_group_identifier &next_water_group_identifier,
-   persistent_water_groups_t &persistent_water_groups,
-   water_groups_by_location_t &water_groups_by_surface_tile);
-
-void world::replace_substance(
-   tile_location const& loc,
-   tile_contents old_substance_type,
-   tile_contents new_substance_type) {
-  
-  state_t& state = get_state(*this);
-  replace_substance_impl(state, loc, old_substance_type, new_substance_type,
-                         this->things_exposed_to_collision,
-                         state.groupable_water_dimensional_boundaries_TODO_name_this_better,
-                         state.active_fluids,
-                         state.next_water_group_identifier,
-                         state.persistent_water_groups,
-                         state.water_groups_by_surface_tile);
-}
 
 void replace_substance_impl(
    state_t& state,
@@ -1422,13 +1376,6 @@ int obstructiveness(tile_contents tc) {
   else assert(false); // reaching this would mean we implemented a new material type but forgot to set its obstructiveness
 }
 
-void update_fluids_impl(state_t& state, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups);
-
-void world::update_fluids() {
-  state_t& state = get_state(*this);
-  update_fluids_impl(state, state.active_fluids, state.persistent_water_groups);
-}
-
 void update_fluids_impl(state_t& state, active_fluids_t &active_fluids, persistent_water_groups_t &persistent_water_groups) {
   // ==============================================================================
   //  Phase 1
@@ -1793,4 +1740,44 @@ bool active_fluid_tile_info::is_in_inactive_state()const {
   return velocity == inactive_fluid_velocity;
 }
 
+} // end namespace
 
+
+void world::initialize_tile_contents(tile_location const& loc, tile_contents contents) {
+  mutable_stuff_at(loc).set_contents(contents);
+}
+
+void world::initialize_tile_local_caches(tile_location const& loc) {
+  initialize_tile_local_caches_impl(this->things_exposed_to_collision, loc);
+}
+
+void world::initialize_tile_water_group_caches(tile_location const& loc) {
+  if (loc.stuff_at().contents() == GROUPABLE_WATER) {
+    state_t& state = get_state(*this);
+    initialize_water_group_from_tile_if_necessary(state, loc,
+       state.groupable_water_dimensional_boundaries_TODO_name_this_better,
+       state.next_water_group_identifier,
+       state.persistent_water_groups,
+       state.water_groups_by_surface_tile);
+  }
+}
+
+void world::replace_substance(
+   tile_location const& loc,
+   tile_contents old_substance_type,
+   tile_contents new_substance_type) {
+
+  state_t& state = get_state(*this);
+  replace_substance_impl(state, loc, old_substance_type, new_substance_type,
+                         this->things_exposed_to_collision,
+                         state.groupable_water_dimensional_boundaries_TODO_name_this_better,
+                         state.active_fluids,
+                         state.next_water_group_identifier,
+                         state.persistent_water_groups,
+                         state.water_groups_by_surface_tile);
+}
+
+void world::update_fluids() {
+  state_t& state = get_state(*this);
+  update_fluids_impl(state, state.active_fluids, state.persistent_water_groups);
+}
