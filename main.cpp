@@ -530,7 +530,7 @@ srand(time(NULL));
         }
 
         if (is_fluid(t.contents())) {
-          if (active_fluid_tile_info const* fluid = w.get_active_fluid_info(loc)) {
+          if (tile_physics_impl::active_fluid_tile_info const* fluid = w.get_active_fluid_info(loc)) {
             push_line(coll,
                       vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
                       vertex(
@@ -542,7 +542,9 @@ srand(time(NULL));
             for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
               const sub_tile_distance prog = fluid->progress[dir];
               if (prog > 0) {
-                vector3<GLfloat> directed_prog = (vector3<GLfloat>(cardinal_direction_vectors[dir]) * prog) / progress_necessary(dir);
+                vector3<GLfloat> directed_prog =
+                  (vector3<GLfloat>(cardinal_direction_vectors[dir]) * prog) /
+                  tile_physics_impl::progress_necessary(dir);
 
                 push_line(coll,
                             vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
