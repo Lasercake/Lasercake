@@ -310,6 +310,10 @@ namespace std {
   };
 }
 
+struct tile_compare_xyz { bool operator()(tile_location const& i, tile_location const& j)const; };
+struct tile_compare_yzx { bool operator()(tile_location const& i, tile_location const& j)const; };
+struct tile_compare_zxy { bool operator()(tile_location const& i, tile_location const& j)const; };
+
 inline std::array<tile_location, num_cardinal_directions> get_all_neighbors(tile_location const& loc, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
   return std::array<tile_location, num_cardinal_directions>({{
     loc.get_neighbor<0>(realineeded),
@@ -552,6 +556,13 @@ private:
   tile_bounding_box bounds;
 };
 
+typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
+typedef unordered_map<object_identifier, shape> object_shapes_t;
+template<typename ObjectSubtype>
+struct objects_map {
+  typedef unordered_map<object_identifier, shared_ptr<ObjectSubtype>> type;
+};
+
 
 class literally_random_access_removable_tiles_by_height {
 public:
@@ -569,7 +580,7 @@ private:
   map_t data;
 };
 
-
+namespace tile_physics_impl {
 typedef uint64_t water_tile_count;
 typedef uint64_t water_group_identifier;
 const water_group_identifier NO_WATER_GROUP = 0;
@@ -597,20 +608,11 @@ struct persistent_water_group_info {
   bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(world &w, tile_location const& loc, active_fluids_t &active_fluids);
 };
 
-typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
-typedef unordered_map<object_identifier, shape> object_shapes_t;
 typedef unordered_map<water_group_identifier, persistent_water_group_info> persistent_water_groups_t;
 typedef unordered_map<tile_location, water_group_identifier> water_groups_by_location_t;
-template<typename ObjectSubtype>
-struct objects_map {
-  typedef unordered_map<object_identifier, shared_ptr<ObjectSubtype>> type;
-};
 
 
 
-struct tile_compare_xyz { bool operator()(tile_location const& i, tile_location const& j)const; };
-struct tile_compare_yzx { bool operator()(tile_location const& i, tile_location const& j)const; };
-struct tile_compare_zxy { bool operator()(tile_location const& i, tile_location const& j)const; };
 
 // We could easily keep lists of boundary tiles in all three dimensions
 // (Just uncomment the six commented lines below.)
@@ -670,6 +672,7 @@ private:
     if (we_are_boundary_tile) boundary_tiles_set.insert(loc);
   }
 };
+} // end namespace tile_physics_impl
 
 class world {
 public:
@@ -758,12 +761,12 @@ public:
   object_shapes_t const& get_object_personal_space_shapes()const { return object_personal_space_shapes; }
   object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes; }
   
-  water_group_identifier get_water_group_id_by_grouped_tile(tile_location const& loc)const;
-  persistent_water_group_info const& get_water_group_by_grouped_tile(tile_location const& loc)const;
-  persistent_water_groups_t const& get_persistent_water_groups()const { return persistent_water_groups; }
+  tile_physics_impl::water_group_identifier get_water_group_id_by_grouped_tile(tile_location const& loc)const;
+  tile_physics_impl::persistent_water_group_info const& get_water_group_by_grouped_tile(tile_location const& loc)const;
+  tile_physics_impl::persistent_water_groups_t const& get_persistent_water_groups()const { return persistent_water_groups; }
   world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision; }
   
-  groupable_water_dimensional_boundaries_TODO_name_this_better_t const& get_groupable_water_dimensional_boundaries_TODO_name_this_better()const { return groupable_water_dimensional_boundaries_TODO_name_this_better;}
+  tile_physics_impl::groupable_water_dimensional_boundaries_TODO_name_this_better_t const& get_groupable_water_dimensional_boundaries_TODO_name_this_better()const { return groupable_water_dimensional_boundaries_TODO_name_this_better;}
 private:
   friend class world_building_gun;
   friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
@@ -771,11 +774,11 @@ private:
   // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
   unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks; 
 
-  water_group_identifier next_water_group_identifier;
-  water_groups_by_location_t water_groups_by_surface_tile;
-  persistent_water_groups_t persistent_water_groups;
-  groupable_water_dimensional_boundaries_TODO_name_this_better_t groupable_water_dimensional_boundaries_TODO_name_this_better;
-  active_fluids_t active_fluids;
+  tile_physics_impl::water_group_identifier next_water_group_identifier;
+  tile_physics_impl::water_groups_by_location_t water_groups_by_surface_tile;
+  tile_physics_impl::persistent_water_groups_t persistent_water_groups;
+  tile_physics_impl::groupable_water_dimensional_boundaries_TODO_name_this_better_t groupable_water_dimensional_boundaries_TODO_name_this_better;
+  tile_physics_impl::active_fluids_t active_fluids;
   
   objects_map<object>::type objects;
   objects_map<mobile_object>::type moving_objects;

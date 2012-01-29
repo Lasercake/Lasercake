@@ -350,7 +350,7 @@ srand(time(NULL));
     ));
     
     for (auto const& p : w.get_persistent_water_groups()) {
-      persistent_water_group_info const& g = p.second;
+      tile_physics_impl::persistent_water_group_info const& g = p.second;
       
       for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
         for(tile_location const& bar : foo.second.as_unordered_set()) {

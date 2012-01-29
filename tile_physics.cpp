@@ -220,6 +220,8 @@ dividing two infinite oceans.)
 // (TODO: also add something for the there_is_an_object_here_that_affects_the_tile_based_physics thing)
 tile& mutable_stuff_at(tile_location const& loc) { return loc.wb->get_tile(loc.v); }
 
+using namespace tile_physics_impl;
+
 water_group_identifier make_new_water_group(water_group_identifier &next_water_group_identifier, persistent_water_groups_t &persistent_water_groups) {
   water_group_identifier this_id = next_water_group_identifier++;
   persistent_water_groups[this_id]; // operator[] inserts a default-constructed one

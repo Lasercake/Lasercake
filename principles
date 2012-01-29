@@ -56,6 +56,19 @@ code (not indented) {
 more code;
 } /* end anonymous namespace */
 
+If a header must refer to something that logically goes only in a .cpp file
+(e.g. so a class can have a private member that's a class defined/used in only
+one implementation file, or to allow something to be inlined)
+then that file's code, if the file is that_file.cpp, should go in
+namespace that_file_impl {}
+and the _impl suffix will indicate that no one else should try to use that
+code.  "that_file.cpp" may "using namespace that_file_impl;" if it wishes.
+In this case, if it wishes, "that_file.cpp" may use namespace that_file_impl
+in place of anonymous namespaces for its convenience.
+
+Also, as a debugging hack, main.cpp may use things in _impl namespaces in
+its drawing code in order to draw implementation-detail states-of-being.
+
 
 
 Various names look like:
