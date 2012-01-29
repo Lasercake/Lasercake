@@ -285,6 +285,14 @@ std::pair<bool, boost::rational<int64_t>> get_intersection(int64_t sl1x, int64_t
 
 std::pair<bool, boost::rational<int64_t>> get_intersection(line_segment const& l, bounding_box const& bb) {
   if (!bb.is_anywhere) return std::make_pair(false, 1);
+  
+  // Check for common, simple cases to save time.
+  if (l.ends[0].x < bb.min.x && l.ends[1].x < bb.min.x) return std::make_pair(false, 1);
+  if (l.ends[0].y < bb.min.y && l.ends[1].y < bb.min.y) return std::make_pair(false, 1);
+  if (l.ends[0].z < bb.min.z && l.ends[1].z < bb.min.z) return std::make_pair(false, 1);
+  if (l.ends[0].x > bb.max.x && l.ends[1].x > bb.max.x) return std::make_pair(false, 1);
+  if (l.ends[0].y > bb.max.y && l.ends[1].y > bb.max.y) return std::make_pair(false, 1);
+  if (l.ends[0].z > bb.max.z && l.ends[1].z > bb.max.z) return std::make_pair(false, 1);
   if (bb.contains(l.ends[0])) return std::make_pair(true, 0);
   
   boost::rational<int64_t> intersecting_min(0);
