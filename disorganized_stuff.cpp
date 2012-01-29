@@ -22,9 +22,9 @@
 #include "world.hpp"
 
 void world_building_gun::operator()(tile_contents new_contents, vector3<tile_coordinate> locv) {
-  caller_correct_if(bounds.contains(locv), "Trying to use world_building_gun to create tiles outside the given range");
+  caller_correct_if(bounds_.contains(locv), "Trying to use world_building_gun to create tiles outside the given range");
   if (new_contents == ROCK || new_contents == GROUPABLE_WATER || new_contents == RUBBLE) {
-    w->initialize_tile_contents(w->make_tile_location(locv, COMPLETELY_IMAGINARY), new_contents);
+    w_->initialize_tile_contents_(w_->make_tile_location(locv, COMPLETELY_IMAGINARY), new_contents);
   }
   else caller_error("Trying to place a type of tile other than ROCK, GROUPABLE_WATER, and RUBBLE");
 }
@@ -35,7 +35,7 @@ bounding_box world::get_bounding_box_of_object_or_tile(object_or_tile_identifier
   }
   if (object_identifier const* oidp = id.get_object_identifier()) {
     //TODO is this impl a hack? and what about non-mobile objects?
-    bounding_box result = things_exposed_to_collision.find_bounding_box(*oidp);
+    bounding_box result = things_exposed_to_collision_.find_bounding_box(*oidp);
     assert(result.is_anywhere);
     return result;
   }
@@ -46,7 +46,7 @@ shape world::get_personal_space_shape_of_object_or_tile(object_or_tile_identifie
     return tile_shape(tlocp->coords());
   }
   if (object_identifier const* oidp = id.get_object_identifier()) {
-    return object_personal_space_shapes.find(*oidp)->second;
+    return object_personal_space_shapes_.find(*oidp)->second;
   }
   assert(false);
 }
@@ -55,32 +55,32 @@ shape world::get_detail_shape_of_object_or_tile(object_or_tile_identifier id)con
     return tile_shape(tlocp->coords());
   }
   if (object_identifier const* oidp = id.get_object_identifier()) {
-    return object_personal_space_shapes.find(*oidp)->second;
+    return object_personal_space_shapes_.find(*oidp)->second;
   }
   assert(false);
 }
 
 
 tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_top() {
-  map_t::reverse_iterator iter = data.rbegin();
+  map_t::reverse_iterator iter = data_.rbegin();
   const tile_location result = iter->second.get_random();
   iter->second.erase(result);
-  if (iter->second.empty()) data.erase(iter->first); // can't erase from a reverse_iterator
+  if (iter->second.empty()) data_.erase(iter->first); // can't erase from a reverse_iterator
   return result;
 }
 tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_bottom() {
-  map_t::iterator iter = data.begin();
+  map_t::iterator iter = data_.begin();
   const tile_location result = iter->second.get_random();
   iter->second.erase(result);
-  if (iter->second.empty()) data.erase(iter);
+  if (iter->second.empty()) data_.erase(iter);
   return result;
 }
 bool literally_random_access_removable_tiles_by_height::erase(tile_location const& loc) {
-  auto j = data.find(loc.coords().z);
-  if (j != data.end()) {
+  auto j = data_.find(loc.coords().z);
+  if (j != data_.end()) {
     if (j->second.erase(loc)) {
       if (j->second.empty()) {
-        data.erase(j);
+        data_.erase(j);
       }
       return true;
     }
@@ -89,14 +89,14 @@ bool literally_random_access_removable_tiles_by_height::erase(tile_location cons
 }
 void literally_random_access_removable_tiles_by_height::insert(tile_location const& loc) {
   // Note: operator[] default-constructs an empty structure if there wasn't one
-  data[loc.coords().z].insert(loc);
+  data_[loc.coords().z].insert(loc);
 }
 
 bool literally_random_access_removable_tiles_by_height::any_above(tile_coordinate height)const {
-  return data.upper_bound(height) != data.end();
+  return data_.upper_bound(height) != data_.end();
 }
 bool literally_random_access_removable_tiles_by_height::any_below(tile_coordinate height)const {
-  return (!data.empty()) && (data.begin()->first < height);
+  return (!data_.empty()) && (data_.begin()->first < height);
 }
 
 bool tile_compare_xyz::operator()(tile_location const& i, tile_location const& j)const {

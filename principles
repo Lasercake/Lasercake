@@ -45,12 +45,51 @@ curly braces {
   there is no concerted attempt to limit the length of lines to anything in particular;
 };
 
+
+Anything declared+defined in a single .cpp file and not used elsewhere should be enclosed
+in an anonymous namespace, to indicate this to the reader and the compiler.
+The begin/end comments saying "anonymous" are encouraged but not required.
+
+namespace /* anonymous */ {
+code (not indented) {
+}
+more code;
+} /* end anonymous namespace */
+
+If a header must refer to something that logically goes only in a .cpp file
+(e.g. so a class can have a private member that's a class defined/used in only
+one implementation file, or to allow something to be inlined)
+then that file's code, if the file is that_file.cpp, should go in
+namespace that_file_impl {}
+and the _impl suffix will indicate that no one else should try to use that
+code.  "that_file.cpp" may "using namespace that_file_impl;" if it wishes.
+In this case, if it wishes, "that_file.cpp" may use namespace that_file_impl
+in place of anonymous namespaces for its convenience.
+
+Also, as a debugging hack, main.cpp may use things in _impl namespaces in
+its drawing code in order to draw implementation-detail states-of-being.
+
+
+
 Various names look like:
 
 local_variable
-member_variable (TODO: perhaps change to member_variable_ or such?)
+private_member_variable_, private_member_function_
+public_member
 function_name, struct_name, constant_quantity
 IDENTIFIER_CONSTANT (e.g. enum values. Not an amount of something, just a number that represents something)
 TemplateArgument
 typedefed_thing or typedefed_thing_t (the latter if it'd be nice to have variables named "typedefed_thing").
+
+
+Pointer and reference types put the * or & next to the type, not the name
+(after all a foo* is a pointer, not a foo) :
+foo* a; bar& b; baz const& c;
+Variables are never declared together (foo* a, *b;) to avoid the way that
+C's syntax makes the above convention strange.  Don't do it anywhere,
+not even for non-pointer non-reference types.
+
+Variables, even local variables, should be marked "const" wherever possible.
+(We fail at this sometimes. Is there a good way to get the compiler to suggest
+'const's?)
 

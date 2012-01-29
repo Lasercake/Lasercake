@@ -36,6 +36,7 @@
 #include "world.hpp"
 #include "specific_worlds.hpp"
 #include "specific_object_types.hpp"
+#include "tile_physics.hpp" // to access internals for debugging-displaying...
 
 namespace /* anonymous */ {
 
@@ -350,10 +351,11 @@ srand(time(NULL));
       view_loc - vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50),
       view_loc + vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50)
     ));
+    
     // this is a bloody stupid hack, TODO do something different
     if (drawing_debug_stuff)
-    for (auto const& p : w.get_persistent_water_groups()) {
-      persistent_water_group_info const& g = p.second;
+    for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
+      tile_physics_impl::persistent_water_group_info const& g = p.second;
       
       for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
         for(tile_location const& bar : foo.second.as_unordered_set()) {
@@ -533,7 +535,8 @@ srand(time(NULL));
         }
 
         if (is_fluid(t.contents()) && drawing_debug_stuff) {
-          if (active_fluid_tile_info const* fluid = w.get_active_fluid_info(loc)) {
+          if (tile_physics_impl::active_fluid_tile_info const* fluid =
+                find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
             push_line(coll,
                       vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
                       vertex(
@@ -545,7 +548,9 @@ srand(time(NULL));
             for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
               const sub_tile_distance prog = fluid->progress[dir];
               if (prog > 0) {
-                vector3<GLfloat> directed_prog = (vector3<GLfloat>(cardinal_direction_vectors[dir]) * prog) / progress_necessary(dir);
+                vector3<GLfloat> directed_prog =
+                  (vector3<GLfloat>(cardinal_direction_vectors[dir]) * prog) /
+                  tile_physics_impl::progress_necessary(dir);
 
                 push_line(coll,
                             vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
@@ -645,7 +650,7 @@ srand(time(NULL));
 
 
 
-static SDL_Surface *gScreen;
+static SDL_Surface* gScreen;
 
 static void initAttributes ()
 {
