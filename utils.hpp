@@ -331,7 +331,7 @@ private:
 template<typename IntType> struct non_normalized_rational {
   IntType numerator;
   IntType denominator;
-  non_normalized_rational(IntType n, IntType d):numerator(n),denominator(d){ assert(std::abs(numerator) < (1ULL<<32)); assert(std::abs(denominator) < (1ULL<<32));}
+  non_normalized_rational(IntType n, IntType d):numerator(n),denominator(d){ caller_error_if(denominator == 0, "Constructing a rational with denominator zero..."); }
   non_normalized_rational(IntType n):numerator(n),denominator(1){}
   non_normalized_rational():numerator(0),denominator(1){}
   bool operator< (non_normalized_rational const& o)const {
