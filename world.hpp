@@ -296,7 +296,7 @@ private:
 };
 
 
-namespace hacky_internals {
+namespace the_decomposition_of_the_world_into_blocks_impl {
   const int worldblock_dimension_exp = 4;
   typedef int worldblock_dimension_type;
   const worldblock_dimension_type worldblock_dimension = (1 << worldblock_dimension_exp);
@@ -470,10 +470,10 @@ public:
   
 private:
   friend class world_building_gun;
-  friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
+  friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
   // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
-  unordered_map<vector3<tile_coordinate>, hacky_internals::worldblock> blocks_; 
+  unordered_map<vector3<tile_coordinate>, the_decomposition_of_the_world_into_blocks_impl::worldblock> blocks_; 
 
   tile_physics_state_t tile_physics_state_;
   
@@ -493,7 +493,7 @@ private:
   worldgen_function_t worldgen_function_;
   
   
-  hacky_internals::worldblock* ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
+  the_decomposition_of_the_world_into_blocks_impl::worldblock* ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
   void ensure_realization_of_space_(tile_bounding_box space, level_of_tile_realization_needed realineeded);
   
   // Used only by world_building_gun

@@ -21,7 +21,9 @@
 
 #include "world.hpp"
 
-namespace hacky_internals {
+using namespace the_decomposition_of_the_world_into_blocks_impl;
+
+namespace the_decomposition_of_the_world_into_blocks_impl {
 
   // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").
   //
@@ -155,9 +157,9 @@ tile_location tile_location::get_neighbor_by_variable(cardinal_direction dir, le
 namespace { // anonymous
 vector3<tile_coordinate> coordinates_of_containing_worldblock(vector3<tile_coordinate> const& coords) {
   return vector3<tile_coordinate>(
-    coords.x & ~(hacky_internals::worldblock_dimension-1),
-    coords.y & ~(hacky_internals::worldblock_dimension-1),
-    coords.z & ~(hacky_internals::worldblock_dimension-1)
+    coords.x & ~(worldblock_dimension-1),
+    coords.y & ~(worldblock_dimension-1),
+    coords.z & ~(worldblock_dimension-1)
   );
 }
 } // end anonymous namespace
@@ -166,12 +168,12 @@ tile_location world::make_tile_location(vector3<tile_coordinate> const& coords, 
   return ensure_realization_of_and_get_worldblock_(coordinates_of_containing_worldblock(coords), realineeded)->get_loc_guaranteed_to_be_in_this_block(coords);
 }
 
-hacky_internals::worldblock* world::ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded) {
+worldblock* world::ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded) {
   return &(blocks_[position].ensure_realization(realineeded, this, position));
 }
 
 void world::ensure_realization_of_space_(tile_bounding_box space, level_of_tile_realization_needed realineeded) {
-  const hacky_internals::worldblock_dimension_type wd = hacky_internals::worldblock_dimension;
+  const worldblock_dimension_type wd = worldblock_dimension;
   for (tile_coordinate
        x =  space.min.x                            / wd;
        x < (space.min.x + space.size.x + (wd - 1)) / wd;

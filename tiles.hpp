@@ -156,7 +156,7 @@ private:
 
 class world;
 
-namespace hacky_internals {
+namespace the_decomposition_of_the_world_into_blocks_impl {
   class worldblock;
 }
 
@@ -187,13 +187,13 @@ public:
 private:
   friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
   friend tile_location trivial_invalid_location();
-  friend class hacky_internals::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
+  friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
 
   // This constructor should only be used when you know exactly what worldblock it's in!!
-  tile_location(vector3<tile_coordinate> v, hacky_internals::worldblock *wb):v_(v),wb_(wb){}
+  tile_location(vector3<tile_coordinate> v, the_decomposition_of_the_world_into_blocks_impl::worldblock *wb):v_(v),wb_(wb){}
 
   vector3<tile_coordinate> v_;
-  hacky_internals::worldblock *wb_; // invariant: nonnull
+  the_decomposition_of_the_world_into_blocks_impl::worldblock *wb_; // invariant: nonnull
 };
 
 inline tile_location trivial_invalid_location() { return tile_location(vector3<tile_coordinate>(0,0,0), nullptr); }
