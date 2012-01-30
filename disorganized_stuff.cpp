@@ -19,6 +19,7 @@
 
 */
 
+#include <climits>
 #include "world.hpp"
 
 void world_building_gun::operator()(tile_contents new_contents, vector3<tile_coordinate> locv) {
@@ -115,3 +116,21 @@ bool tile_compare_zxy::operator()(tile_location const& i, tile_location const& j
   return (c1.z < c2.z) || ((c1.z == c2.z) && ((c1.x < c2.x) || ((c1.x == c2.x) && (c1.y < c2.y))));
 }
 
+
+// Double-check (not thoroughly) that the compilers aren't lying about word sizes
+// and use 8-bit bytes and two's complement arithmetic.
+// Hopefully this means that integer variations won't cause two people's compiles
+// of this program to behave differently.
+static_assert(CHAR_BIT == 8, "8 bits in a byte (claims limits.h)");
+static_assert(sizeof(uint64_t)*8 == 64, "uint64_t is 64 bit");
+static_assert(sizeof(int64_t)*8 == 64, "int64_t is 64 bit");
+static_assert(sizeof(uint32_t)*8 == 32, "uint32_t is 32 bit");
+static_assert(sizeof(int32_t)*8 == 32, "int32_t is 32 bit");
+static_assert(sizeof(uint16_t)*8 == 16, "uint16_t is 16 bit");
+static_assert(sizeof(int16_t)*8 == 16, "int16_t is 16 bit");
+static_assert(sizeof(uint8_t)*8 == 8, "uint8_t is 8 bit");
+static_assert(sizeof(int8_t)*8 == 8, "int8_t is 8 bit");
+static_assert((uint32_t)0xffffffffUL == 0xffffffffUL, "max uint32_t fits");
+static_assert((uint32_t)0xffffffffUL + (uint32_t)1 == (uint32_t)0, "max uint32_t + 1 doesn't fit");
+static_assert((int32_t)(uint32_t)0x80000000UL < 0, "min int32_t < 0");
+static_assert((int32_t)(uint32_t)0x7fffffffUL > 0, "max int32_t > 0");
