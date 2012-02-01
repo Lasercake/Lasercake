@@ -27,4 +27,6 @@ If you're developing, if you really want, you can use
 'make lasercake-debug', which compiles without optimizations.
 The game will run incredibly slowly, but compiles
 faster and has slightly better debugging backtraces.
+'make lasercake-clang' builds with Clang rather than GCC,
+if you want to try that.
 
