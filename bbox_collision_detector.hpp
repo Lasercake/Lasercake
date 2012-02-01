@@ -372,7 +372,7 @@ public:
     unordered_set<ObjectIdentifier> const& get_found_objects()const { return found_objects; }
   private:
     unordered_set<ObjectIdentifier> found_objects;
-    friend class generalized_object_collection_walker;
+    friend struct generalized_object_collection_walker;
   };
 
 private:

@@ -199,7 +199,7 @@ public:
   //virtual void move_due_to_velocity() = 0;
 
   mobile_object():velocity(0,0,0){}
-  mobile_object(vector3<fine_scalar>):velocity(velocity){}
+  mobile_object(vector3<fine_scalar> velocity):velocity(velocity){}
   vector3<fine_scalar> velocity;
 };
 

@@ -74,7 +74,7 @@ struct tile_bounding_box {
       explicit iterator(pair<vector3<tile_coordinate>, tile_bounding_box*> data):data_(data){}
     private:
       friend class boost::iterator_core_access;
-      friend class tile_bounding_box;
+      friend struct tile_bounding_box;
       pair<vector3<tile_coordinate>, tile_bounding_box*> data_;
 
   };
