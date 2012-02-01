@@ -4,6 +4,8 @@ sim
 /output
 lasercake
 lasercake-optimized
+lasercake-debug
+lasercake-clang
 .*.swp
 .*.kate-swp
 /.kdev4/
