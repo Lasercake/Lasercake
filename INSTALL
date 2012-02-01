@@ -1,0 +1,30 @@
+
+Lasercake currently depends on the following libraries:
+(You'll need the development headers.)
+
+Boost -- http://www.boost.org/
+SDL -- http://www.libsdl.org/
+OpenGL
+
+and tools:
+
+GNU Make (or build Lasercake yourself. The first few lines
+    of the Makefile are the only interesting thing in it).
+A recent C++ compiler (e.g. GCC >= 4.6, CLang >= 3.0)
+    that supports the C++0x features Lasercake uses.
+
+To build, run 'make' from the command-line.
+It will give you an executable 'lasercake'.
+Then you can run that and/or put it anywhere you like on
+your computer.
+
+These build instructions have been tested on Linux
+[Arch Linux as well as Debian Testing, x86_64, Jan 2012].
+Please tell us if you try to build it elsewhere,
+no matter how successful you are!
+
+If you're developing, if you really want, you can use
+'make lasercake-debug', which compiles without optimizations.
+The game will run incredibly slowly, but compiles
+faster and has slightly better debugging backtraces.
+
