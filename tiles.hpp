@@ -71,16 +71,25 @@ struct tile_bounding_box {
       }
       vector3<tile_coordinate> dereference()const { return data_.first; }
 
-      explicit iterator(pair<vector3<tile_coordinate>, tile_bounding_box*> data):data_(data){}
+      explicit iterator(pair<vector3<tile_coordinate>, tile_bounding_box const*> data):data_(data){}
     private:
       friend class boost::iterator_core_access;
       friend struct tile_bounding_box;
-      pair<vector3<tile_coordinate>, tile_bounding_box*> data_;
+      pair<vector3<tile_coordinate>, tile_bounding_box const*> data_;
 
   };
+  typedef vector3<tile_coordinate> value_type;
+  typedef value_type reference;
+  typedef value_type const_reference;
+  typedef value_type* pointer;
+  typedef value_type const* const_pointer;
+  typedef iterator iterator;
+  typedef iterator const_iterator;
+  typedef std::size_t size_type;
+  typedef std::ptrdiff_t difference_type;
 
-  iterator begin(){ return iterator(make_pair(min, this)); }
-  iterator end(){ return iterator(make_pair(min + vector3<tile_coordinate>(0, 0, size.z), this)); }
+  iterator begin()const{ return iterator(make_pair(min, this)); }
+  iterator end()const{ return iterator(make_pair(min + vector3<tile_coordinate>(0, 0, size.z), this)); }
 };
 
 

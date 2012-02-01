@@ -320,10 +320,19 @@ public:
 private:
   typedef std::array<ValueType, num_cardinal_directions> internal_array;
 public:
-  typename internal_array::iterator begin() { return data.begin(); }
-  typename internal_array::iterator end() { return data.end(); }
-  typename internal_array::const_iterator cbegin()const { return data.cbegin(); }
-  typename internal_array::const_iterator cend()const { return data.cend(); }
+  typedef ValueType value_type;
+  typedef ValueType& reference;
+  typedef ValueType const& const_reference;
+  typedef ValueType* pointer;
+  typedef ValueType const* const_pointer;
+  typedef typename internal_array::iterator iterator;
+  typedef typename internal_array::const_iterator const_iterator;
+  typedef typename internal_array::size_type size_type;
+  typedef typename internal_array::difference_type difference_type;
+  iterator begin() { return data.begin(); }
+  iterator end() { return data.end(); }
+  const_iterator cbegin()const { return data.cbegin(); }
+  const_iterator cend()const { return data.cend(); }
 private:
   internal_array data;
 };
