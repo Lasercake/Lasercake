@@ -6,6 +6,7 @@ lasercake
 lasercake-optimized
 lasercake-debug
 lasercake-clang
+lasercake-gcc45
 .*.swp
 .*.kate-swp
 /.kdev4/
