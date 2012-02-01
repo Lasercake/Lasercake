@@ -1,40 +1,44 @@
 CC=g++
 OPTFLAGS=-O3
-CXXFLAGS=-std=gnu++0x -ggdb -Wall -Wextra -O0 -fmax-errors=15 -I/usr/include/SDL/ -lSDL -lGL -lGLU -lrt
+UNOPTFLAGS=-O0
+CXXFLAGS=-std=gnu++0x -ggdb -Wall -Wextra -fmax-errors=15 -I/usr/include/SDL/ -lSDL -lGL -lGLU -lrt
 
 ODIR=output
-ODIR_OPTIMIZED=output/optimized
+ODIR_DEPS=output/deps
+ODIR_OPT=output/optimized
+ODIR_UNOPT=output/unoptimized
 
 SOURCES = $(wildcard *.cpp)
-OBJ = $(patsubst %,$(ODIR)/%,$(SOURCES:.cpp=.o))
-OBJ_OPTIMIZED = $(patsubst %,$(ODIR_OPTIMIZED)/%,$(SOURCES:.cpp=.o))
+DEPS      = $(patsubst %,$(ODIR_DEPS)/%,$(SOURCES:.cpp=.makedeps))
+OBJ_OPT   = $(patsubst %,$(ODIR_OPT)/%,$(SOURCES:.cpp=.o))
+OBJ_UNOPT = $(patsubst %,$(ODIR_UNOPT)/%,$(SOURCES:.cpp=.o))
 
-$(ODIR)/%.d: %.cpp
-	@set -e; mkdir -p $(ODIR); rm -f $@; \
+$(ODIR_DEPS)/%.makedeps: %.cpp
+	@set -e; mkdir -p $(ODIR_DEPS); rm -f $@; \
 	$(CC) -MM $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
-	sed 's,\($*\)\.o[ :]*,$(ODIR)/\1.o $(ODIR_OPTIMIZED)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+	sed 's,\($*\)\.o[ :]*,$(ODIR_OPT)/\1.o $(ODIR_UNOPT)/\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
-lasercake: $(OBJ)
-	$(CC) -o $@ $^ $(CXXFLAGS)
+lasercake: $(OBJ_OPT)
+	$(CC) -o $@ $^ $(OPTFLAGS) $(CXXFLAGS)
 
-lasercake-optimized: $(OBJ_OPTIMIZED)
-	$(CC) -o $@ $^ $(CXXFLAGS) $(OPTFLAGS)
+lasercake-debug: $(OBJ_UNOPT)
+	$(CC) -o $@ $^ $(UNOPTFLAGS) $(CXXFLAGS)
 
-include $(OBJ:.o=.d)
+include $(DEPS)
 
 
-$(ODIR)/%.o: %.cpp
-	@mkdir -p $(ODIR)
-	$(CC) -c -o $@ $< $(CXXFLAGS)
+$(ODIR_OPT)/%.o: %.cpp
+	@mkdir -p $(ODIR_OPT)
+	$(CC) -c -o $@ $< $(OPTFLAGS) $(CXXFLAGS)
 
-$(ODIR_OPTIMIZED)/%.o: %.cpp
-	@mkdir -p $(ODIR_OPTIMIZED)
-	$(CC) -c -o $@ $< $(CXXFLAGS) $(OPTFLAGS)
+$(ODIR_UNOPT)/%.o: %.cpp
+	@mkdir -p $(ODIR_UNOPT)
+	$(CC) -c -o $@ $< $(UNOPTFLAGS) $(CXXFLAGS)
 
 .PHONY :
 	clean
 
 clean:
-	rm -rf output lasercake lasercake-optimized
+	rm -rf output lasercake lasercake-debug lasercake-optimized
 
