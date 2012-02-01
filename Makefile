@@ -1,8 +1,18 @@
-CC=g++
+# The top of this file is a bit interesting.
+
+GCC=g++
+CLANG=clang++
+
+CC=$(GCC)
+
 OPTFLAGS=-O3
 UNOPTFLAGS=-O0
-CXXFLAGS=-std=gnu++0x -ggdb -Wall -Wextra -fmax-errors=15 -I/usr/include/SDL/ -lSDL -lGL -lGLU -lrt
-CLANG=clang++
+GENERAL_FLAGS=-Wall -Wextra -fmax-errors=15 $(CFLAGS) $(CXXFLAGS)
+COMPILE_FLAGS=-std=gnu++0x -I/usr/include/SDL/ $(CPPFLAGS) $(GENERAL_FLAGS)
+LINK_FLAGS=-lSDL -lGL -lGLU -lrt $(GENERAL_FLAGS) $(LDFLAGS)
+
+
+# The rest of this file is pretty boring.
 
 ODIR=output
 ODIR_DEPS=output/deps
@@ -18,33 +28,33 @@ OBJ_CLANG = $(patsubst %,$(ODIR_CLANG)/%,$(SOURCES:.cpp=.o))
 
 $(ODIR_DEPS)/%.makedeps: %.cpp
 	@set -e; mkdir -p $(ODIR_DEPS); rm -f $@; \
-	$(CC) -MM $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
+	$(CC) -MM $(COMPILE_FLAGS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,$(ODIR_OPT)/\1.o $(ODIR_UNOPT)/\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
 lasercake: $(OBJ_OPT)
-	$(CC) -o $@ $^ $(OPTFLAGS) $(CXXFLAGS)
+	$(CC) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS)
 
 lasercake-debug: $(OBJ_UNOPT)
-	$(CC) -o $@ $^ $(UNOPTFLAGS) $(CXXFLAGS)
+	$(CC) -o $@ $^ $(UNOPTFLAGS) $(LINK_FLAGS)
 
 lasercake-clang: $(OBJ_CLANG)
-	$(CLANG) -o $@ $^ $(OPTFLAGS) $(CXXFLAGS)
+	$(CLANG) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS)
 
 include $(DEPS)
 
 
 $(ODIR_OPT)/%.o: %.cpp
 	@mkdir -p $(ODIR_OPT)
-	$(CC) -c -o $@ $< $(OPTFLAGS) $(CXXFLAGS)
+	$(CC) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
 
 $(ODIR_UNOPT)/%.o: %.cpp
 	@mkdir -p $(ODIR_UNOPT)
-	$(CC) -c -o $@ $< $(UNOPTFLAGS) $(CXXFLAGS)
+	$(CC) -c -o $@ $< $(UNOPTFLAGS) $(COMPILE_FLAGS)
 
 $(ODIR_CLANG)/%.o: %.cpp
 	@mkdir -p $(ODIR_CLANG)
-	$(CLANG) -c -o $@ $< $(OPTFLAGS) $(CXXFLAGS)
+	$(CLANG) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
 
 .PHONY :
 	clean
