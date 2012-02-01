@@ -35,6 +35,11 @@ $(ODIR_DEPS)/%.makedeps: %.cpp
 	sed 's,\($*\)\.o[ :]*,$(ODIR_OPT)/\1.o $(ODIR_UNOPT)/\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
+# The top target in the file is the default one invoked by 'make'.
+
+# When you add a target, remember to add it to the 'clean' target below
+# and to the '.gitignore' file.
+
 lasercake: $(OBJ_OPT)
 	$(CC) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS)
 
@@ -70,5 +75,6 @@ $(ODIR_GCC45)/%.o: %.cpp
 	clean
 
 clean:
-	rm -rf output lasercake lasercake-debug lasercake-optimized
+	rm -rf output lasercake lasercake-debug lasercake-optimized \
+		lasercake-clang lasercake-gcc45
 
