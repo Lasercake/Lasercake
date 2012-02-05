@@ -72,6 +72,52 @@ void debug_print_microseconds(microseconds_t us) {
 
 
 
+void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+  //glEnable(GL_DEPTH_TEST);
+  glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
+  glLoadIdentity();
+  gluPerspective(80, 1, 0.1, 100);
+  gluLookAt(0, 0, 0,
+            gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
+            gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);
+
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glEnableClientState(GL_COLOR_ARRAY);
+
+  std::vector<size_t> gl_collections_by_distance_order;
+  for(auto const& p : gl_data.stuff_to_draw_as_gl_collections_by_distance) {
+    gl_collections_by_distance_order.push_back(p.first);
+  }
+  //sort in descending order
+  std::sort(gl_collections_by_distance_order.rbegin(), gl_collections_by_distance_order.rend());
+  for(size_t i : gl_collections_by_distance_order) {
+    world_rendering::gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance.find(i)->second;
+    if(const size_t count = coll.quads.vertices.size()) {
+      glVertexPointer(3, GL_FLOAT, 0, &coll.quads.vertices[0]);
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.quads.colors[0]);
+      glDrawArrays(GL_QUADS, 0, count);
+    }
+    if(const size_t count = coll.triangles.vertices.size()) {
+      glVertexPointer(3, GL_FLOAT, 0, &coll.triangles.vertices[0]);
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.triangles.colors[0]);
+      glDrawArrays(GL_TRIANGLES, 0, count);
+    }
+    if(const size_t count = coll.lines.vertices.size()) {
+      glVertexPointer(3, GL_FLOAT, 0, &coll.lines.vertices[0]);
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.lines.colors[0]);
+      glDrawArrays(GL_LINES, 0, count);
+    }
+    if(const size_t count = coll.points.vertices.size()) {
+      glVertexPointer(3, GL_FLOAT, 0, &coll.points.vertices[0]);
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.points.colors[0]);
+      glDrawArrays(GL_POINTS, 0, count);
+    }
+  }
+}
+
+
 
 const vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
 
@@ -188,51 +234,7 @@ srand(time(NULL));
     microseconds_t microseconds_before_GL = get_this_process_microseconds();
     microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-    //glEnable(GL_DEPTH_TEST);
-    glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
-    frame += 1;
-    glLoadIdentity();
-    gluPerspective(80, 1, 0.1, 100);
-    gluLookAt(0, 0, 0,
-              gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
-              gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);
-
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-
-    std::vector<size_t> gl_collections_by_distance_order;
-    for(auto const& p : gl_data.stuff_to_draw_as_gl_collections_by_distance) {
-      gl_collections_by_distance_order.push_back(p.first);
-    }
-    //sort in descending order
-    std::sort(gl_collections_by_distance_order.rbegin(), gl_collections_by_distance_order.rend());
-    for(size_t i : gl_collections_by_distance_order) {
-      world_rendering::gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance[i];
-      if(const size_t count = coll.quads.vertices.size()) {
-        glVertexPointer(3, GL_FLOAT, 0, &coll.quads.vertices[0]);
-        glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.quads.colors[0]);
-        glDrawArrays(GL_QUADS, 0, count);
-      }
-      if(const size_t count = coll.triangles.vertices.size()) {
-        glVertexPointer(3, GL_FLOAT, 0, &coll.triangles.vertices[0]);
-        glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.triangles.colors[0]);
-        glDrawArrays(GL_TRIANGLES, 0, count);
-      }
-      if(const size_t count = coll.lines.vertices.size()) {
-        glVertexPointer(3, GL_FLOAT, 0, &coll.lines.vertices[0]);
-        glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.lines.colors[0]);
-        glDrawArrays(GL_LINES, 0, count);
-      }
-      if(const size_t count = coll.points.vertices.size()) {
-        glVertexPointer(3, GL_FLOAT, 0, &coll.points.vertices[0]);
-        glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.points.colors[0]);
-        glDrawArrays(GL_POINTS, 0, count);
-      }
-    }
-    
-    
+    output_gl_data_to_OpenGL(gl_data);
     glFinish();
     SDL_GL_SwapBuffers();
 
@@ -253,6 +255,7 @@ srand(time(NULL));
     microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
     double fps = 1000000.0 / monotonic_microseconds_for_frame;
 
+    frame += 1;
     std::cerr << "Frame " << frame << ": ";
     debug_print_microseconds(microseconds_for_processing);
     std::cerr << ", ";
