@@ -132,11 +132,11 @@ void mainLoop (std::string scenario)
 srand(time(NULL));
 
   world w(make_world_building_func(scenario));
-  vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
-  shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
-  object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
-  shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
-  shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,4,-1)));
+  const vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
+  const shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
+  const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
+  const shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
+  const shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,4,-1)));
   w.try_create_object(foo);
   w.try_create_object(bar);
 
@@ -179,7 +179,7 @@ srand(time(NULL));
   view_on_the_world view(robot_id, wc);
 
   while ( !done ) {
-    microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
+    const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
 
     /* Check for events */
     while ( SDL_PollEvent (&event) ) {
@@ -216,44 +216,47 @@ srand(time(NULL));
       }
     }
     
-    Uint8 *keystate = SDL_GetKeyState(NULL);
+    Uint8 const* const keystate = SDL_GetKeyState(NULL);
     
-    bool pd_this_time = (p_mode == 1);
+    const bool pd_this_time = (p_mode == 1);
     if(p_mode > 1)--p_mode;
 
     // microseconds_this_program_has_used_so_far
-    microseconds_t microseconds_before_drawing = get_this_process_microseconds();
+    const microseconds_t microseconds_before_drawing = get_this_process_microseconds();
 
     world_rendering::gl_all_data gl_data;
-    world_rendering_config rendering_config;
-    rendering_config.drawing_regular_stuff = drawing_regular_stuff;
-    rendering_config.drawing_debug_stuff = drawing_debug_stuff;
-    rendering_config.keystate = keystate;
-    view.render(w, rendering_config, gl_data);
-
-    microseconds_t microseconds_before_GL = get_this_process_microseconds();
-    microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
+    
+    {
+      world_rendering_config rendering_config;
+      rendering_config.drawing_regular_stuff = drawing_regular_stuff;
+      rendering_config.drawing_debug_stuff = drawing_debug_stuff;
+      rendering_config.keystate = keystate;
+      view.render(w, rendering_config, gl_data);
+    }
+    
+    const microseconds_t microseconds_before_GL = get_this_process_microseconds();
+    const microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
 
     output_gl_data_to_OpenGL(gl_data);
     glFinish();
     SDL_GL_SwapBuffers();
 
-    microseconds_t monotonic_microseconds_after_GL = get_monotonic_microseconds();
-    microseconds_t microseconds_before_processing = get_this_process_microseconds();
+    const microseconds_t monotonic_microseconds_after_GL = get_monotonic_microseconds();
+    const microseconds_t microseconds_before_processing = get_this_process_microseconds();
     
     //doing stuff code here
     if (!pd_this_time) w.update();
 
-    microseconds_t microseconds_after = get_this_process_microseconds();
-    microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
+    const microseconds_t microseconds_after = get_this_process_microseconds();
+    const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
 
     // TODO does the GL code use up "CPU time"? Maybe measure both monotonic and CPU?
-    microseconds_t microseconds_for_processing = microseconds_after - microseconds_before_processing;
-    microseconds_t microseconds_for_drawing = microseconds_before_GL - microseconds_before_drawing;
-    microseconds_t microseconds_for_GL = microseconds_before_processing - microseconds_before_GL;
-    microseconds_t monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
-    microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
-    double fps = 1000000.0 / monotonic_microseconds_for_frame;
+    const microseconds_t microseconds_for_processing = microseconds_after - microseconds_before_processing;
+    const microseconds_t microseconds_for_drawing = microseconds_before_GL - microseconds_before_drawing;
+    const microseconds_t microseconds_for_GL = microseconds_before_processing - microseconds_before_GL;
+    const microseconds_t monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
+    const microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
+    const double fps = 1000000.0 / monotonic_microseconds_for_frame;
 
     frame += 1;
     std::cerr << "Frame " << frame << ": ";
