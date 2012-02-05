@@ -119,7 +119,6 @@ void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
 
 
 
-const vector3<fine_scalar> wc = lower_bound_in_fine_units(world_center_coords);
 
 void mainLoop (std::string scenario)
 {
@@ -132,7 +131,7 @@ void mainLoop (std::string scenario)
 srand(time(NULL));
 
   world w(make_world_building_func(scenario));
-  const vector3<fine_scalar> laser_loc = wc + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
+  const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
   const shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
   const shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
@@ -155,11 +154,11 @@ srand(time(NULL));
     unordered_set<object_or_tile_identifier> tiles_near_start;
     // I choose these distances big enough that, as of the time of writing this comment,
     // the GLOBAL view won't have to realize any new tiles in order to make a complete cycle
-    // around wc.  This is an interim way to get rid of that annoying lag, at the cost
+    // around world-center.  This is an interim way to get rid of that annoying lag, at the cost
     // of a bit more of annoying startup time.
     w.collect_things_exposed_to_collision_intersecting(tiles_near_start, bounding_box(
-      wc - vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80),
-      wc + vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80)
+      world_center_fine_coords - vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80),
+      world_center_fine_coords + vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80)
     ));
     for (object_or_tile_identifier const& id : tiles_near_start) {
       if (tile_location const* locp = id.get_tile_location()) {
@@ -176,7 +175,7 @@ srand(time(NULL));
     std::cerr << " ms\n";
   }
 
-  view_on_the_world view(robot_id, wc);
+  view_on_the_world view(robot_id, world_center_fine_coords);
 
   while ( !done ) {
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();

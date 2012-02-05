@@ -49,7 +49,7 @@ int get_hill(unordered_map<std::pair<tile_coordinate, tile_coordinate>, int> &hi
 tile_coordinate get_height(unordered_map<std::pair<tile_coordinate, tile_coordinate>, tile_coordinate> &height_map, unordered_map<std::pair<tile_coordinate, tile_coordinate>, int> &hills_map, pair<tile_coordinate, tile_coordinate> loc) {
   auto iter = height_map.find(loc);
   if (iter == height_map.end()) {
-    tile_coordinate height = world_center_coord - 100;
+    tile_coordinate height = world_center_tile_coord - 100;
     const tile_coordinate x = loc.first;
     const tile_coordinate y = loc.second;
     for (tile_coordinate x2 = x - max_simple_hill_width; x2 <= x + max_simple_hill_width; ++x2) {
@@ -70,12 +70,12 @@ struct world_building_func {
   unordered_map<std::pair<tile_coordinate, tile_coordinate>, tile_coordinate> height_map;
 
   void operator()(world_building_gun make, tile_bounding_box bounds) {
-    const tile_coordinate wc = world_center_coord;
+    const tile_coordinate wc = world_center_tile_coord;
     if (scenario == "vacuum") return;
     if (scenario == "flat") {
       for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
         for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
-          for (tile_coordinate z = bounds.min.z; z < std::min(world_center_coord, bounds.min.z + bounds.size.z); ++z) {
+          for (tile_coordinate z = bounds.min.z; z < std::min(wc, bounds.min.z + bounds.size.z); ++z) {
             vector3<tile_coordinate> l(x,y,z);
             make(ROCK, l);
           }
@@ -86,8 +86,8 @@ struct world_building_func {
     if (scenario == "plane") {
       for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
         for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
-          for (tile_coordinate z = std::max(bounds.min.z, world_center_coord - 1);
-               z < std::min(world_center_coord, bounds.min.z + bounds.size.z); ++z) {
+          for (tile_coordinate z = std::max(bounds.min.z, wc - 1);
+               z < std::min(wc, bounds.min.z + bounds.size.z); ++z) {
             vector3<tile_coordinate> l(x,y,z);
             make(ROCK, l);
           }
@@ -151,11 +151,11 @@ struct world_building_func {
       }
       return;
     }
-    for (tile_coordinate x = std::max(world_center_coord-1, bounds.min.x); x < std::min(world_center_coord+21, bounds.min.x + bounds.size.x); ++x) {
-      for (tile_coordinate y = std::max(world_center_coord-1, bounds.min.y); y < std::min(world_center_coord+21, bounds.min.y + bounds.size.y); ++y) {
-        for (tile_coordinate z = std::max(world_center_coord-1, bounds.min.z); z < std::min(world_center_coord+21, bounds.min.z + bounds.size.z); ++z) {
+    for (tile_coordinate x = std::max(wc-1, bounds.min.x); x < std::min(wc+21, bounds.min.x + bounds.size.x); ++x) {
+      for (tile_coordinate y = std::max(wc-1, bounds.min.y); y < std::min(wc+21, bounds.min.y + bounds.size.y); ++y) {
+        for (tile_coordinate z = std::max(wc-1, bounds.min.z); z < std::min(wc+21, bounds.min.z + bounds.size.z); ++z) {
           vector3<tile_coordinate> l(x,y,z);
-          if (x == world_center_coord-1 || x == world_center_coord+20 || y == world_center_coord-1 || y == world_center_coord+20 || z == world_center_coord-1 /*|| z == world_center_coord+20*/) {
+          if (x == wc-1 || x == wc+20 || y == wc-1 || y == wc+20 || z == wc-1 /*|| z == wc+20*/) {
             make(ROCK, l);
           }
           else {

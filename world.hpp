@@ -79,9 +79,6 @@ const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
 
 const fine_scalar velocity_scale_factor = (fine_scalar(1) << 6);
 
-const tile_coordinate world_center_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 1));
-const vector3<tile_coordinate> world_center_coords(world_center_coord, world_center_coord, world_center_coord);
-
 const sub_tile_distance min_convincing_speed           = velocity_scale_factor * tile_width / 50;
 const sub_tile_distance gravity_acceleration_magnitude = velocity_scale_factor * tile_width / 200;
 const vector3<sub_tile_distance> gravity_acceleration(0, 0, -gravity_acceleration_magnitude); // in mini-units per frame squared
@@ -150,6 +147,15 @@ inline tile_bounding_box convert_to_smallest_superset_at_tile_resolution(boundin
 inline shape tile_shape(vector3<tile_coordinate> tile) {
   return shape(fine_bounding_box_of_tile(tile));
 }
+
+
+const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 1));
+const vector3<tile_coordinate> world_center_tile_coords(world_center_tile_coord, world_center_tile_coord, world_center_tile_coord);
+const vector3<fine_scalar> world_center_fine_coords = lower_bound_in_fine_units(world_center_tile_coords);
+
+
+
+
 
 typedef uint64_t object_identifier;
 const object_identifier NO_OBJECT = 0;
