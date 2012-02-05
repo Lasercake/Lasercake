@@ -144,7 +144,6 @@ srand(time(NULL));
 
     world_rendering::gl_all_data gl_data;
     world_rendering_config rendering_config;
-    rendering_config.frame = frame;
     rendering_config.drawing_regular_stuff = drawing_regular_stuff;
     rendering_config.drawing_debug_stuff = drawing_debug_stuff;
     rendering_config.keystate = keystate;

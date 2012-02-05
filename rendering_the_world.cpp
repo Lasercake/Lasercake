@@ -193,11 +193,12 @@ void view_on_the_world::render(
       view_towards = view_loc + facing;
     }
     else {
+      double game_time_in_seconds = double(w.game_time_elapsed()) / time_units_per_second;
       view_towards = surveilled_by_global_display;
       view_loc = surveilled_by_global_display + vector3<fine_scalar>(
-        globallocal_view_dist * std::cos((double)rendering_config.frame / 40.0),
-        globallocal_view_dist * std::sin((double)rendering_config.frame / 40.0),
-        (globallocal_view_dist / 2) + (globallocal_view_dist / 4) * std::sin((double)rendering_config.frame / 60.0)
+        globallocal_view_dist * std::cos(game_time_in_seconds * 3 / 4),
+        globallocal_view_dist * std::sin(game_time_in_seconds * 3 / 4),
+        (globallocal_view_dist / 2) + (globallocal_view_dist / 4) * std::sin(game_time_in_seconds / 2)
       );
     }
 
@@ -296,7 +297,7 @@ void view_on_the_world::render(
         vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
 
         // Hack - TODO remove
-        if (rendering_config.frame == 0 && t.contents() == GROUPABLE_WATER) {
+        if (w.game_time_elapsed() == 0 && t.contents() == GROUPABLE_WATER) {
           w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
         }
 

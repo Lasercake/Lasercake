@@ -93,7 +93,6 @@ struct gl_all_data {
 
 
 struct world_rendering_config {
-  int frame; // TODO maybe remove this
   bool drawing_regular_stuff;
   bool drawing_debug_stuff;
   uint8_t const* keystate; // TODO make this non-SDL-specific

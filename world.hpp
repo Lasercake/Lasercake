@@ -63,6 +63,16 @@ using boost::shared_ptr;
 typedef int64_t fine_scalar; // Fine as opposed to coarse, that is.
 typedef int32_t sub_tile_distance; // We can fit it within 32 bits, so we might as well do faster math
 
+typedef int64_t time_unit;
+// Choose a number that makes lots of frames-per-second values multiply in evenly.
+// TODO if we use this more and want a different representation, that would be fine too.
+// TODO where it doesn't already, code should refer to some kind of time unit more,
+//        rather than implicitly relying on frames being a fixed duration.
+const time_unit time_units_per_second = 2*2*2*2 * 3*3*3 * 5*5 * 7 * 11;
+// delete these if we make frames variable length:
+const time_unit fixed_frames_per_second = 30;
+const time_unit time_units_per_fixed_frame = time_units_per_second / fixed_frames_per_second;
+
 const fine_scalar tile_width = (fine_scalar(1) << 10);
 const fine_scalar tile_height = (fine_scalar(1) << 10) / 5 + 1;
 const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
@@ -381,16 +391,24 @@ using tile_physics_impl::tile_physics_state_t;
 
 class world {
 public:
-  world(worldgen_function_t f):tile_physics_state_(*this),next_object_identifier_(1),worldgen_function_(f){}
+  world(worldgen_function_t f)
+   : current_game_time_(0), tile_physics_state_(*this), next_object_identifier_(1), worldgen_function_(f) {}
   
   void update_moving_objects();
   void update_fluids();
+
+  // "Game time" attempts to match real world seconds, but it might
+  // get behind due to slow CPUs or ahead due to someone fast-forwarding
+  // (if that were a thing)
+  // (and currently, also can get ahead because we don't cap the frame-rate.)
+  time_unit game_time_elapsed()const { return current_game_time_; }
 
   inline void update() {
     laser_sfxes.clear();
     update_fluids();
     for (auto& obj : autonomously_active_objects_) obj.second->update(*this, obj.first);
     update_moving_objects();
+    current_game_time_ += time_units_per_fixed_frame;
   }
   
   // I *think* this pointer is valid as long as the shared_ptr exists
@@ -471,6 +489,8 @@ public:
 private:
   friend class world_building_gun;
   friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
+  
+  time_unit current_game_time_;
   
   // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
   unordered_map<vector3<tile_coordinate>, the_decomposition_of_the_world_into_blocks_impl::worldblock> blocks_; 
