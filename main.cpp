@@ -94,6 +94,42 @@ srand(time(NULL));
   w.try_create_object(foo);
   w.try_create_object(bar);
 
+  // HACK - TODO remove at least the second effect
+  // This hack has two effects:
+  // Generating all the worldblocks near the start right away
+  // and
+  // (BIG HACK)
+  // making water (that's near enough to the start) start out ungroupable
+  // which helps us e.g. start with a pillar of water in the air that's about to fall,
+  // so we can test how that physics works.
+  {
+    std::cerr << "\nInit: ";
+    const microseconds_t microseconds_before_init = get_this_process_microseconds();
+
+    unordered_set<object_or_tile_identifier> tiles_near_start;
+    // I choose these distances big enough that, as of the time of writing this comment,
+    // the GLOBAL view won't have to realize any new tiles in order to make a complete cycle
+    // around wc.  This is an interim way to get rid of that annoying lag, at the cost
+    // of a bit more of annoying startup time.
+    w.collect_things_exposed_to_collision_intersecting(tiles_near_start, bounding_box(
+      wc - vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80),
+      wc + vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80)
+    ));
+    for (object_or_tile_identifier const& id : tiles_near_start) {
+      if (tile_location const* locp = id.get_tile_location()) {
+        tile_location const& loc = *locp;
+        if (loc.stuff_at().contents() == GROUPABLE_WATER) {
+          w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
+        }
+      }
+    }
+
+    const microseconds_t microseconds_after_init = get_this_process_microseconds();
+    const microseconds_t microseconds_for_init = microseconds_after_init - microseconds_before_init;
+    debug_print_microseconds(microseconds_for_init);
+    std::cerr << " ms\n";
+  }
+
   view_on_the_world view(robot_id, wc);
 
   while ( !done ) {

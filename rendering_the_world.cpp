@@ -296,11 +296,6 @@ void view_on_the_world::render(
         tile const& t = loc.stuff_at();
         vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
 
-        // Hack - TODO remove
-        if (w.game_time_elapsed() == 0 && t.contents() == GROUPABLE_WATER) {
-          w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
-        }
-
         {
           const color tile_color =
             t.contents() ==              ROCK ? color(((((coords.x + coords.y + coords.z) % 3)
