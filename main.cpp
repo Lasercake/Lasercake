@@ -345,8 +345,6 @@ int main(int argc, char *argv[])
     print_SDL_GL_attributes();
     
     // Init GL state
-    gluPerspective(90, 1, 1, 100);
-    gluLookAt(20,20,20,0,0,0,0,0,1);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     
