@@ -81,6 +81,13 @@ IDENTIFIER_CONSTANT (e.g. enum values. Not an amount of something, just a number
 TemplateArgument
 typedefed_thing or typedefed_thing_t (the latter if it'd be nice to have variables named "typedefed_thing").
 
+GLOBAL_var_name: but global variables are forbidden.  "Global" means in any
+namespace, or function-static or class-static. "Variable" means it can vary;
+constants and functions can't change so they are fine.  Furthermore, any
+part of the code except the UI is also forbidden from using global state via
+libraries that have global state, and from doing any I/O except writing debug
+messages to std::cerr (TODO: do something with the debug messages too).
+
 
 Pointer and reference types put the * or & next to the type, not the name
 (after all a foo* is a pointer, not a foo) :
