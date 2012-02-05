@@ -267,31 +267,8 @@ srand(time(NULL));
 
 
 
-static SDL_Surface* gScreen;
 
-static void initAttributes ()
-{
-    // Setup attributes we want for the OpenGL context
-
-    int value;
-
-    // Don't set color bit sizes (SDL_GL_RED_SIZE, etc)
-    //    Mac OS X will always use 8-8-8-8 ARGB for 32-bit screens and
-    //    5-5-5 RGB for 16-bit screens
-
-    // Request a 16-bit depth buffer (without this, there is no depth buffer)
-    value = 16;
-    SDL_GL_SetAttribute (SDL_GL_DEPTH_SIZE, value);
-
-
-    // Request double-buffered OpenGL
-    //     The fact that windows are double-buffered on Mac OS X has no effect
-    //     on OpenGL double buffering.
-    value = 1;
-    SDL_GL_SetAttribute (SDL_GL_DOUBLEBUFFER, value);
-}
-
-static void printAttributes ()
+void print_SDL_GL_attributes()
 {
     // Print out attributes of the context we created
     int nAttr;
@@ -302,7 +279,7 @@ static void printAttributes ()
 
     const char *desc[] = { "Red size: %d bits\n", "Blue size: %d bits\n", "Green size: %d bits\n",
                      "Alpha size: %d bits\n", "Color buffer size: %d bits\n",
-                     "Depth bufer size: %d bits\n" };
+                     "Depth buffer size: %d bits\n" };
 
     nAttr = sizeof(attr) / sizeof(int);
 
@@ -314,23 +291,38 @@ static void printAttributes ()
     }
 }
 
-static void createSurface (int fullscreen)
+SDL_Surface* create_SDL_GL_surface(bool fullscreen)
 {
-    Uint32 flags = 0;
+  SDL_Surface* result;
 
-    flags = SDL_OPENGL;
-    if (fullscreen)
-        flags |= SDL_FULLSCREEN;
+  // Don't set color bit sizes (SDL_GL_RED_SIZE, etc)
+  //    Mac OS X will always use 8-8-8-8 ARGB for 32-bit screens and
+  //    5-5-5 RGB for 16-bit screens
+  // TODO but is that accurate for the other OSes?
 
-    // Create window
-    gScreen = SDL_SetVideoMode (640, 640, 0, flags);
-    if (gScreen == NULL) {
+  // Request a 16-bit depth buffer (without this, there is no depth buffer)
+  SDL_GL_SetAttribute (SDL_GL_DEPTH_SIZE, 16);
 
-        fprintf (stderr, "Couldn't set 640x640 OpenGL video mode: %s\n",
-                 SDL_GetError());
-                SDL_Quit();
-                exit(2);
-        }
+
+  // Request double-buffered OpenGL
+  //     The fact that windows are double-buffered on Mac OS X has no effect
+  //     on OpenGL double buffering.
+  SDL_GL_SetAttribute (SDL_GL_DOUBLEBUFFER, 1);
+
+  Uint32 sdl_video_mode_flags = SDL_OPENGL;
+  if (fullscreen) {
+    sdl_video_mode_flags |= SDL_FULLSCREEN;
+  }
+
+  // Create window
+  result = SDL_SetVideoMode (640, 640, 0, sdl_video_mode_flags);
+  if (result == NULL) {
+    fprintf (stderr, "Couldn't set 640x640 OpenGL video mode: %s\n", SDL_GetError());
+    SDL_Quit();
+    exit(2);
+  }
+
+  return result;
 }
 
 
@@ -340,38 +332,38 @@ static void createSurface (int fullscreen)
 
 int main(int argc, char *argv[])
 {
-	// Init SDL video subsystem
-	if ( SDL_Init (SDL_INIT_VIDEO) < 0 ) {
-		
-        fprintf(stderr, "Couldn't initialize SDL: %s\n",
-			SDL_GetError());
-		exit(1);
-	}
-
-    // Set GL context attributes
-    initAttributes ();
+    // Init SDL video subsystem
+    if ( SDL_Init (SDL_INIT_VIDEO) < 0 ) {
+      fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
+      exit(1);
+    }
     
     // Create GL context
-    createSurface (0);
+    create_SDL_GL_surface(false);
     
     // Get GL context attributes
-    printAttributes ();
+    print_SDL_GL_attributes();
     
     // Init GL state
-	gluPerspective(90, 1, 1, 100);
-	gluLookAt(20,20,20,0,0,0,0,0,1);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    gluPerspective(90, 1, 1, 100);
+    gluLookAt(20,20,20,0,0,0,0,0,1);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     
     // Draw, get events...
+    std::string scenario;
     if (argc < 2) {
       std::cerr << "You didn't give an argument saying which scenario to use! Using default value...";
-      mainLoop ("default");
+      scenario = "default";
     }
-    else mainLoop (argv[1]);
+    else {
+      scenario = argv[1];
+    }
+    
+    mainLoop(scenario);
     
     // Cleanup
-	SDL_Quit();
-	
+    SDL_Quit();
+    
     return 0;
 }
