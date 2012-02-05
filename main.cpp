@@ -188,6 +188,8 @@ srand(time(NULL));
     microseconds_t microseconds_before_GL = get_this_process_microseconds();
     microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
 
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     //glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
     frame += 1;
@@ -343,10 +345,6 @@ int main(int argc, char *argv[])
     
     // Get GL context attributes
     print_SDL_GL_attributes();
-    
-    // Init GL state
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
     
     // Draw, get events...
     std::string scenario;
