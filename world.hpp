@@ -323,7 +323,7 @@ public:
     worldblock():neighbors_(nullptr),w_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false){}
     worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w = nullptr, vector3<tile_coordinate> global_position = vector3<tile_coordinate>(0,0,0));
   
-    // Only to be used in tile_location::stuff_at():
+    // Prefer to use tile_location::stuff_at().
     inline tile& get_tile(vector3<tile_coordinate> global_coords) {
       return tiles_[global_coords.x - global_position_.x][global_coords.y - global_position_.y][global_coords.z - global_position_.z];
     }
@@ -335,6 +335,9 @@ public:
     template<cardinal_direction Dir> worldblock& ensure_neighbor_realization(level_of_tile_realization_needed realineeded);
     template<cardinal_direction Dir> tile_location get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded);
     tile_location get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords);
+
+    // an implementation detail of ensure_realization
+    template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(tile_coordinate x, tile_coordinate y, tile_coordinate z);
 private:
     std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
     value_for_each_cardinal_direction<worldblock*> neighbors_;
@@ -522,6 +525,7 @@ private:
   void initialize_tile_contents_(tile_location const& loc, tile_contents contents);
   // Used only in the worldblock stuff
   void initialize_tile_local_caches_(tile_location const& loc);
+  void initialize_tile_local_caches_relating_to_this_neighbor_(tile_location const& loc, tile neighbor);
   void initialize_tile_water_group_caches_(tile_location const& loc);
 };
 

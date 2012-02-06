@@ -45,7 +45,7 @@ public:
             const tile_contents new_contents = xyz_to_tile_contents_(l);
             if(new_contents != AIR /*silly slight optimization to do this "if"*/) {
               if (new_contents == ROCK || new_contents == AIR || new_contents == GROUPABLE_WATER || new_contents == RUBBLE) {
-                tile new_tile; new_tile.set_contents(new_contents);
+                tile new_tile; new_tile.set_contents(new_contents); new_tile.set_interiorness(true);
                 make.wb_->get_tile(l) = new_tile;
               }
               else caller_error("Trying to place a type of tile other than AIR, ROCK, GROUPABLE_WATER, and RUBBLE");

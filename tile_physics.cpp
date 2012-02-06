@@ -544,26 +544,45 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
   //check_group_surface_tiles_cache_and_layer_size_caches(state, new_group);
 }
 
-void initialize_tile_local_caches_impl(world_collision_detector& things_exposed_to_collision, tile_location const& loc) {
-  bool should_be_interior = true;
-  std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc, CONTENTS_ONLY);
-  for (tile_location const& adj_loc : neighbors) {
-    if (neighboring_tiles_with_these_contents_are_not_interior(adj_loc.stuff_at().contents(), loc.stuff_at().contents())) {
-      // Between us and them is a 'different types' interface, so we're not interior:
-      should_be_interior = false;
-      break;
+// Per world_building_gun, tiles start out marked interior
+// (usually the common case, and also permits the algorithms here)
+// and don't need to be changed if they actually are interior.
+void initialize_to_not_interior(tile_location const& loc, world_collision_detector& things_exposed_to_collision) {
+  mutable_stuff_at(loc).set_interiorness(false);
+  // A tile is either interior or exposed to collision.
+  // TODO: figure out whether surface air should be collision detected with
+  // (maybe there's something that detects contact with air? Sodium...?)
+  if (loc.stuff_at().contents() != AIR) {
+    things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
+  }
+}
+
+void initialize_tile_local_caches_relating_to_this_neighbor_impl(
+        world_collision_detector& things_exposed_to_collision, tile_location const& loc, tile adj_tile) {
+  const tile tile_here = loc.stuff_at();
+  if (neighboring_tiles_with_these_contents_are_not_interior(adj_tile.contents(), tile_here.contents())) {
+    if(tile_here.is_interior()) {
+      initialize_to_not_interior(loc, things_exposed_to_collision);
     }
   }
-  
-  // A tile is either interior or exposed to collision:
-  if (should_be_interior) {
-    mutable_stuff_at(loc).set_interiorness(true);
+}
+
+void initialize_tile_local_caches_impl(world_collision_detector& things_exposed_to_collision, tile_location const& loc) {
+  const tile tile_here = loc.stuff_at();
+  bool should_be_interior = true;
+  const std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc, CONTENTS_ONLY);
+  for (tile_location const& adj_loc : neighbors) {
+    const tile adj_tile = adj_loc.stuff_at();
+    if (neighboring_tiles_with_these_contents_are_not_interior(adj_tile.contents(), tile_here.contents())) {
+      // Between us and them is a 'different types' interface, so we're not interior:
+      should_be_interior = false;
+      if(adj_tile.is_interior()) {
+        initialize_to_not_interior(adj_loc, things_exposed_to_collision);
+      }
+    }
   }
-  else {
-    // TODO: figure out whether surface air should be collision detected with
-    // (maybe there's something that detects contact with air? Sodium...?)
-    if (loc.stuff_at().contents() != AIR)
-      things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
+  if(should_be_interior == false && tile_here.is_interior()) {
+    initialize_to_not_interior(loc, things_exposed_to_collision);
   }
 }
 
@@ -1763,6 +1782,10 @@ void world::initialize_tile_contents_(tile_location const& loc, tile_contents co
 
 void world::initialize_tile_local_caches_(tile_location const& loc) {
   initialize_tile_local_caches_impl(things_exposed_to_collision_, loc);
+}
+
+void world::initialize_tile_local_caches_relating_to_this_neighbor_(tile_location const& loc, tile neighbor) {
+  initialize_tile_local_caches_relating_to_this_neighbor_impl(things_exposed_to_collision_, loc, neighbor);
 }
 
 void world::initialize_tile_water_group_caches_(tile_location const& loc) {

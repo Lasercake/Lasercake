@@ -26,6 +26,20 @@ using namespace the_decomposition_of_the_world_into_blocks_impl;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
 
+  template<cardinal_direction Dir>
+  void worldblock::check_local_caches_cross_worldblock_neighbor(tile_coordinate x, tile_coordinate y, tile_coordinate z) {
+    const vector3<tile_coordinate> coords(x,y,z);
+    tile& here = this->get_tile(coords);
+
+    vector3<tile_coordinate> adj_coords = coords; cdir_info<Dir>::add_to(adj_coords);
+    const tile adj = neighbors_[Dir]->get_tile(adj_coords);
+
+    if(neighboring_tiles_with_these_contents_are_not_interior(adj.contents(), here.contents())) {
+      const tile_location loc(coords, this);
+      w_->initialize_tile_local_caches_relating_to_this_neighbor_(loc, adj);
+    }
+  }
+
   // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").
   //
   // We would have to make special rules for worldblocks that start out with
@@ -63,12 +77,71 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
+    
+      const tile_contents estimated_most_frequent_tile_contents_type =
+        tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
       
       for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
         for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
           for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
-            tile_location loc(vector3<tile_coordinate>(x,y,z), this);
-            w_->initialize_tile_local_caches_(loc);
+            const vector3<tile_coordinate> coords(x,y,z);
+            tile& here = this->get_tile(coords);
+            if(here.contents() != estimated_most_frequent_tile_contents_type) {
+              const tile_location loc(coords, this);
+              w_->initialize_tile_local_caches_(loc);
+            }
+          }
+        }
+      }
+      
+      // This way, realization doesn't have to be checked for every
+      // get_loc_across_boundary-equivalent (all
+      //     num_cardinal_directions*worldblock_dimension*worldblock_dimension
+      // of them).
+      ensure_neighbor_realization<xminus>(CONTENTS_ONLY);
+      ensure_neighbor_realization<yminus>(CONTENTS_ONLY);
+      ensure_neighbor_realization<zminus>(CONTENTS_ONLY);
+      ensure_neighbor_realization<xplus>(CONTENTS_ONLY);
+      ensure_neighbor_realization<yplus>(CONTENTS_ONLY);
+      ensure_neighbor_realization<zplus>(CONTENTS_ONLY);
+
+      // It makes enough of a performance difference to do this struct
+      // cross_worldblock_neighbor rather than
+      // just call initialize_tile_local_caches_relating_to_this_neighbor_.
+      
+      for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
+        for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
+          {
+            const tile_coordinate z = global_position_.z;
+            this->check_local_caches_cross_worldblock_neighbor<zminus>(x,y,z);
+          }
+          {
+            const tile_coordinate z = global_position_.z + worldblock_dimension - 1;
+            this->check_local_caches_cross_worldblock_neighbor<zplus>(x,y,z);
+          }
+        }
+      }
+      for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
+        for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
+          {
+            const tile_coordinate y = global_position_.y;
+            this->check_local_caches_cross_worldblock_neighbor<yminus>(x,y,z);
+          }
+          {
+            const tile_coordinate y = global_position_.y + worldblock_dimension - 1;
+            this->check_local_caches_cross_worldblock_neighbor<yplus>(x,y,z);
+          }
+        }
+      }
+      for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
+        for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
+          {
+            const tile_coordinate x = global_position_.x;
+            this->check_local_caches_cross_worldblock_neighbor<xminus>(x,y,z);
+          }
+          {
+            const tile_coordinate x = global_position_.x + worldblock_dimension - 1;
+            this->check_local_caches_cross_worldblock_neighbor<xplus>(x,y,z);
           }
         }
       }
