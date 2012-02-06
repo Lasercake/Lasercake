@@ -40,6 +40,18 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     }
   }
 
+  //Best out of 3.  Just taking one random location would be statistically pretty good
+  //but could be twice as slow average as we'd like: for example a bunch of worldblocks
+  //with all rock except one rubble (or a few) would pick rubble one in N times and each
+  //of those times would be almost N times slower (where N = worldblock_dimension cubed).
+  tile_contents worldblock::estimate_most_frequent_tile_contents_type()const {
+    const tile_contents try1 = tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
+    const tile_contents try2 = tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
+    if(try1 == try2) return try1;
+    else return tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
+
+  }
+
   // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").
   //
   // We would have to make special rules for worldblocks that start out with
@@ -77,9 +89,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
-    
-      const tile_contents estimated_most_frequent_tile_contents_type =
-        tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
+
+      const tile_contents estimated_most_frequent_tile_contents_type = this->estimate_most_frequent_tile_contents_type();
       
       for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
         for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {

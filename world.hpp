@@ -338,6 +338,7 @@ public:
 
     // an implementation detail of ensure_realization
     template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(tile_coordinate x, tile_coordinate y, tile_coordinate z);
+    tile_contents estimate_most_frequent_tile_contents_type()const;
 private:
     std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
     value_for_each_cardinal_direction<worldblock*> neighbors_;
