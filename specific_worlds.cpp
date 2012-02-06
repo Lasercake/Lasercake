@@ -20,6 +20,7 @@
 */
 
 #include "world.hpp"
+#include "worldgen.hpp"
 #include "specific_worlds.hpp"
 
 

@@ -524,49 +524,5 @@ private:
   void initialize_tile_water_group_caches_(tile_location const& loc);
 };
 
-
-class world_building_gun {
-public:
-  world_building_gun(world* w, tile_bounding_box bounds,
-                     the_decomposition_of_the_world_into_blocks_impl::worldblock* wb):w_(w),wb_(wb),bounds_(bounds){}
-  void operator()(tile_contents new_contents, vector3<tile_coordinate> locv);
-private:
-  world* w_;
-  the_decomposition_of_the_world_into_blocks_impl::worldblock* wb_;
-  tile_bounding_box bounds_;
-  //template<typename Functor> friend class worldgen_from_tilespec_t;
-public:
-  template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
-  class worldgen_from_tilespec_t {
-  public:
-    worldgen_from_tilespec_t(Functor const& xyz_to_tile_contents) : xyz_to_tile_contents_(xyz_to_tile_contents) {}
-    void operator()(world_building_gun make, tile_bounding_box bounds)const {
-      for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
-        for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
-          for (tile_coordinate z = bounds.min.z; z < bounds.min.z + bounds.size.z; ++z) {
-            const vector3<tile_coordinate> l(x, y, z);
-            const tile_contents new_contents = xyz_to_tile_contents_(l);
-            if(new_contents != AIR /*silly slight optimization to do this "if"*/) {
-              if (new_contents == ROCK || new_contents == AIR || new_contents == GROUPABLE_WATER || new_contents == RUBBLE) {
-                tile new_tile; new_tile.set_contents(new_contents);
-                make.wb_->get_tile(l) = new_tile;
-              }
-              else caller_error("Trying to place a type of tile other than AIR, ROCK, GROUPABLE_WATER, and RUBBLE");
-            }
-          }
-        }
-      }
-    }
-  private:
-    Functor xyz_to_tile_contents_;
-  };
-};
-
-template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
-worldgen_function_t worldgen_from_tilespec(Functor const& xyz_to_tile_contents) {
-  return worldgen_function_t(world_building_gun::worldgen_from_tilespec_t<Functor>(xyz_to_tile_contents));
-}
-
-
 #endif
 

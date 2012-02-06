@@ -22,13 +22,6 @@
 #include <climits>
 #include "world.hpp"
 
-void world_building_gun::operator()(tile_contents new_contents, vector3<tile_coordinate> locv) {
-  caller_correct_if(bounds_.contains(locv), "Trying to use world_building_gun to create tiles outside the given range");
-  if (new_contents == ROCK || new_contents == GROUPABLE_WATER || new_contents == RUBBLE) {
-    w_->initialize_tile_contents_(w_->make_tile_location(locv, COMPLETELY_IMAGINARY), new_contents);
-  }
-  else caller_error("Trying to place a type of tile other than ROCK, GROUPABLE_WATER, and RUBBLE");
-}
 
 bounding_box world::get_bounding_box_of_object_or_tile(object_or_tile_identifier id)const {
   if (tile_location const* tlocp = id.get_tile_location()) {

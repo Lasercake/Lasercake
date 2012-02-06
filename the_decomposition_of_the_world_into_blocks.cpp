@@ -20,6 +20,7 @@
 */
 
 #include "world.hpp"
+#include "worldgen.hpp"
 
 using namespace the_decomposition_of_the_world_into_blocks_impl;
 
