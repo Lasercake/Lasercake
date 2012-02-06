@@ -116,9 +116,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       ensure_neighbor_realization<yplus>(CONTENTS_ONLY);
       ensure_neighbor_realization<zplus>(CONTENTS_ONLY);
 
-      // It makes enough of a performance difference to do this struct
-      // cross_worldblock_neighbor rather than
-      // just call initialize_tile_local_caches_relating_to_this_neighbor_.
+      // It makes enough of a performance difference to do this
+      // check_local_caches_cross_worldblock_neighbor rather than
+      // just call world::initialize_tile_local_caches_relating_to_this_neighbor_.
       
       for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
         for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
