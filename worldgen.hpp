@@ -28,15 +28,6 @@ class world_building_gun {
 public:
   world_building_gun(world* w, tile_bounding_box bounds,
                      the_decomposition_of_the_world_into_blocks_impl::worldblock* wb):w_(w),wb_(wb),bounds_(bounds){}
-  void operator()(tile_contents new_contents, vector3<tile_coordinate> locv) {
-    // TODO this is not currently used and slightly out-of-parallel with the
-    // newer worldgen_from_tilespec stuff; do something sensible about that.
-    caller_correct_if(bounds_.contains(locv), "Trying to use world_building_gun to create tiles outside the given range");
-    if (new_contents == ROCK || new_contents == GROUPABLE_WATER || new_contents == RUBBLE) {
-      w_->initialize_tile_contents_(w_->make_tile_location(locv, COMPLETELY_IMAGINARY), new_contents);
-    }
-    else caller_error("Trying to place a type of tile other than ROCK, GROUPABLE_WATER, and RUBBLE");
-  }
 private:
   world* w_;
   the_decomposition_of_the_world_into_blocks_impl::worldblock* wb_;
