@@ -77,6 +77,7 @@ const fine_scalar tile_width = (fine_scalar(1) << 10);
 const fine_scalar tile_height = (fine_scalar(1) << 10) / 5 + 1;
 const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
 
+// Velocity is currently in units of (fine_unit / velocity_scale_factor) / frame.
 const fine_scalar velocity_scale_factor = (fine_scalar(1) << 6);
 
 const sub_tile_distance min_convincing_speed           = velocity_scale_factor * tile_width / 50;
