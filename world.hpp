@@ -357,6 +357,31 @@ private:
 };
 
 typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
+
+
+template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
+class worldgen_from_tilespec_t {
+public:
+  worldgen_from_tilespec_t(Functor const& xyz_to_tile_contents) : xyz_to_tile_contents_(xyz_to_tile_contents) {}
+  void operator()(world_building_gun make, tile_bounding_box bounds)const {
+    for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
+      for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
+        for (tile_coordinate z = bounds.min.z; z < bounds.min.z + bounds.size.z; ++z) {
+          const vector3<tile_coordinate> l(x, y, z);
+          const tile_contents contents = xyz_to_tile_contents_(l);
+          if(contents != AIR) { make(contents, l); }
+        }
+      }
+    }
+  }
+private:
+  Functor xyz_to_tile_contents_;
+};
+template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
+worldgen_function_t worldgen_from_tilespec(Functor const& xyz_to_tile_contents) {
+  return worldgen_function_t(worldgen_from_tilespec_t<Functor>(xyz_to_tile_contents));
+}
+
 typedef unordered_map<object_identifier, shape> object_shapes_t;
 template<typename ObjectSubtype>
 struct objects_map {

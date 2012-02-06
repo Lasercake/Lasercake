@@ -130,7 +130,12 @@ void mainLoop (std::string scenario)
   bool drawing_debug_stuff = true;
 srand(time(NULL));
 
-  world w(make_world_building_func(scenario));
+  const worldgen_function_t worldgen = make_world_building_func(scenario);
+  if(!worldgen) {
+    std::cerr << "Scenario name given that doesn't exist!: \'" << scenario << "\'\n";
+    exit(4);
+  }
+  world w(worldgen);
   const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
   const shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works

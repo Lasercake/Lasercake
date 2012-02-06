@@ -27,6 +27,8 @@
 
 // There's no particular reason that scenarios need to be identified by strings,
 // that's just how we have it for now.
+// If you pass a string that isn't a scenario, you'll get back
+// nothing (if(result) will be false and calling it will be in error).
 worldgen_function_t make_world_building_func(std::string scenario);
 
 #endif
