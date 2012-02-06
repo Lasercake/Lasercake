@@ -115,25 +115,22 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   template<cardinal_direction Dir> tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded) {
     ensure_realization(realineeded);
     vector3<tile_coordinate> new_coords = old_coords; cdir_info<Dir>::add_to(new_coords);
-    if (crossed_boundary<Dir>(new_coords[cdir_info<Dir>::dimension])) return get_loc_across_boundary<Dir>(new_coords, realineeded);
+    if (crossed_boundary<Dir>(new_coords[cdir_info<Dir>::dimension])) return tile_location(new_coords, &ensure_neighbor_realization<Dir>(realineeded));
     else return tile_location(new_coords, this);
   }
 
-  template<cardinal_direction Dir> tile_location worldblock::get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded) {
+  template<cardinal_direction Dir> worldblock& worldblock::ensure_neighbor_realization(level_of_tile_realization_needed realineeded) {
     if (worldblock* neighbor = neighbors_[Dir]) {
-      neighbor->ensure_realization(realineeded);
-      return tile_location(new_coords, neighbor);
+      return neighbor->ensure_realization(realineeded);
     }
-    else return tile_location(
-      new_coords,
-      (
-        neighbors_[Dir] =
+    else {
+      return *(neighbors_[Dir] =
         w_->ensure_realization_of_and_get_worldblock_(
           global_position_ + vector3<worldblock_dimension_type>(cdir_info<Dir>::as_vector()) * worldblock_dimension,
           realineeded
         )
-      )
-    );
+      );
+    }
   }
 
   tile_location worldblock::get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords) {
