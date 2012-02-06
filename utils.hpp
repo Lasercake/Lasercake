@@ -293,6 +293,13 @@ template<> struct cdir_info<zplus> {
 // Sadly C++ isn't supporting C99's = { [cdiridx_xminus] = cdir_xminus, [...] };.
 const vector3<neighboring_tile_differential> cardinal_direction_vectors[num_cardinal_directions] = { cdir_info<xminus>::as_vector(), cdir_info<yminus>::as_vector(), cdir_info<zminus>::as_vector(), cdir_info<xplus>::as_vector(), cdir_info<yplus>::as_vector(), cdir_info<zplus>::as_vector() };
 
+template<cardinal_direction Dir, typename ThingWithCoordinates>
+ThingWithCoordinates next_in_direction(ThingWithCoordinates const& t) {
+  ThingWithCoordinates result = t;
+  cdir_info<Dir>::add_to(result);
+  return result;
+}
+
 // These are macros (not inline functions) so they can be used in constant expressions:
 // 'constexpr' support in compilers isn't quite functional yet.
 #define which_dimension_is_cardinal_direction(dir) (dir % 3)
