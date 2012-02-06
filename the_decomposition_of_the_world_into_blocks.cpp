@@ -133,6 +133,27 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     }
   }
 
+  // It seems this function is sometimes faster and sometimes slower than
+  //   tile_location(new_coords, &ensure_neighbor_realization<Dir>(realineeded));
+  // ...what?  TODO experiment with the use in worldblock::get_neighboring_loc and/or delete this
+  template<cardinal_direction Dir> tile_location worldblock::get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded) {
+    if (worldblock* neighbor = neighbors_[Dir]) {
+      neighbor->ensure_realization(realineeded);
+      return tile_location(new_coords, neighbor);
+    }
+    else return tile_location(
+      new_coords,
+      (
+        neighbors_[Dir] =
+        w_->ensure_realization_of_and_get_worldblock_(
+          global_position_ + vector3<worldblock_dimension_type>(cdir_info<Dir>::as_vector()) * worldblock_dimension,
+          realineeded
+        )
+      )
+    );
+  }
+
+
   tile_location worldblock::get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords) {
     return tile_location(coords, this);
   }
