@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+echo "set args $*" > output/gdbarg
+echo "run" >> output/gdbarg
+gdb ./lasercake -x output/gdbarg
