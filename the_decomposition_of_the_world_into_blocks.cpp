@@ -49,7 +49,6 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     const tile_contents try2 = tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
     if(try1 == try2) return try1;
     else return tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
-
   }
 
   // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").

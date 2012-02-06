@@ -319,7 +319,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   const worldblock_dimension_type worldblock_dimension = (1 << worldblock_dimension_exp);
 
   class worldblock {
-public:
+  public:
     worldblock():neighbors_(nullptr),w_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false){}
     worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w = nullptr, vector3<tile_coordinate> global_position = vector3<tile_coordinate>(0,0,0));
   
@@ -339,7 +339,7 @@ public:
     // an implementation detail of ensure_realization
     template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(tile_coordinate x, tile_coordinate y, tile_coordinate z);
     tile_contents estimate_most_frequent_tile_contents_type()const;
-private:
+  private:
     std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
     value_for_each_cardinal_direction<worldblock*> neighbors_;
     vector3<tile_coordinate> global_position_; // the lowest x, y, and z among elements in this worldblock
