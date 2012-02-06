@@ -32,7 +32,6 @@ private:
   world* w_;
   the_decomposition_of_the_world_into_blocks_impl::worldblock* wb_;
   tile_bounding_box bounds_;
-  //template<typename Functor> friend class worldgen_from_tilespec_t;
 public:
   template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
   class worldgen_from_tilespec_t {
