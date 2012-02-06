@@ -50,7 +50,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       w_ = w;
       global_position_ = global_position;
       tile_bounding_box bounds(global_position_, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
-      w_->worldgen_function_(world_building_gun(w_, bounds), bounds);
+      w_->worldgen_function_(world_building_gun(w_, bounds, this), bounds);
       //std::cerr << "A worldblock has been created!\n";
       
       current_tile_realization_ = CONTENTS_ONLY;
