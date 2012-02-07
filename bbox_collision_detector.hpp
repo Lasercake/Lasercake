@@ -75,7 +75,24 @@ private:
     if (shift >= 8*sizeof(Coordinate)) return 0;
     return Coordinate(1) << shift; // TODO address the fact that this could put bits higher than the appropriate amount if CoordinateBits isn't the number of bits of the type
   }
-  
+
+  // bbox_collision_detector uses "z-ordering", named such because "z" is a visual for
+  // the zigzag the ordering creates when drawn.  See
+  //     https://en.wikipedia.org/wiki/Z-order_curve
+  //
+  // A zbox is:
+  //
+  // If you interleave the coordinates' bits in the z-ordering way, it is a contiguous
+  // range of interleaved bits from, for example, binary VVVVV000 through VVVVV111,
+  // for some VVVVV.  Consider the zbox to consist of VVVVV and the number of low bits
+  // that vary.
+  // (This example could be a two-dimensional bbox_collision_detector<foo, 4, 2>,
+  // if four-bit integers existed -- imagine lots more bits for a real zbox.)
+  //
+  // Equivalently, a zbox is a square/cube/etc. on a maximally-bit-aligned grid of
+  // square/cubes of its size, or a rectangle/etc. that consists of 2/etc. of these
+  // square/cubes adjacent (in the case that the number of low bits in the first
+  // explanation is not a multiple of NumDimensions).
   struct zbox {
     // TODO: make the rest of zbox's data members private. zbox could REALLY use some
     // data hiding (right now it's pretty clear-cut who's allowed to
