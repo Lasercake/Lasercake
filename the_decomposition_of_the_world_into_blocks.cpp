@@ -103,11 +103,20 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
           }
         }
       }
+
+      // We now have to explicitly check all the neighbor-faces with neighboring worldblocks,
+      // because our optimization to skip the locally-most-common tile contents doesn't help
+      // with these edges (both because the neighboring worldblock might not have the same
+      // most-common-tile as us, and because that worldblock likely won't be
+      // CONTENTS_AND_LOCAL_CACHES_ONLY-initialized at the same time as us).
+      //
+      // There are 6*(worldblock_dimension**2) of these faces-with-foreign-neighbors.
+      // This is a lot better than naively checking all 6*(worldblock_dimension**3) faces
+      // this worldblock's tiles contain.  This is also better than checking all the
+      // 6*(nearly 6*(worldblock_dimension**2)) faces of this worldblock's edge *tiles*.
       
-      // This way, realization doesn't have to be checked for every
-      // get_loc_across_boundary-equivalent (all
-      //     num_cardinal_directions*worldblock_dimension*worldblock_dimension
-      // of them).
+      // By ensuring neighbors' realization first, realization doesn't have to be checked for
+      // every get_loc_across_boundary-equivalent (all 6*(worldblock_dimension**2) of them).
       ensure_neighbor_realization<xminus>(CONTENTS_ONLY);
       ensure_neighbor_realization<yminus>(CONTENTS_ONLY);
       ensure_neighbor_realization<zminus>(CONTENTS_ONLY);
