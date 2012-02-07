@@ -36,6 +36,7 @@ using std::unordered_set;
 
 typedef size_t num_bits_type;
 typedef size_t num_coordinates_type;
+typedef ptrdiff_t signed_num_coordinates_type;
 
 // ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
 // CoordinateBits should usually be 32 or 64. I don't know if it works for other values.
@@ -150,7 +151,7 @@ private:
   static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
     zbox new_box;
     const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored, zb2.num_low_bits_ignored);
-    for (int /* hack... TODO, should possibly be num_coordinates_type, but signed? */ i = NumDimensions - 1; i >= 0; --i) {
+    for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
       int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
       if ((highest_bit_idx+1 + i * CoordinateBits) < max_ignored) highest_bit_idx = max_ignored - i * CoordinateBits - 1;
 #ifdef ASSERT_EVERYTHING
