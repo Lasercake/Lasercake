@@ -94,16 +94,20 @@ private:
   // square/cubes adjacent (in the case that the number of low bits in the first
   // explanation is not a multiple of NumDimensions).
   struct zbox {
-    // TODO: make the rest of zbox's data members private. zbox could REALLY use some
-    // data hiding (right now it's pretty clear-cut who's allowed to
-    // edit zbox data, but it isn't enforced.)
   private:
     // We ensure that every bit except the ones specifically supposed to be on is off.
     std::array<Coordinate, NumDimensions> coords;
     std::array<Coordinate, NumDimensions> interleaved_bits;
-  public:
     num_bits_type num_low_bits_ignored;
     bounding_box bbox;
+
+    void compute_bbox() {
+      bbox.min = coords;
+      for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
+        bbox.size[i] = safe_left_shift_one(num_bits_ignored_by_dimension(i));
+      }
+    }
+  public:
     
     zbox():num_low_bits_ignored(total_bits){ for (num_coordinates_type i = 0; i < NumDimensions; ++i) interleaved_bits[i] = 0; }
 
@@ -180,14 +184,11 @@ private:
       return (num_low_bits_ignored + (NumDimensions - 1) - dim) / NumDimensions;
     }
     // note: gives "size=0" for max-sized things
-    void compute_bbox() {
-      bbox.min = coords;
-      for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-        bbox.size[i] = safe_left_shift_one(num_bits_ignored_by_dimension(i));
-      }
-    }
     bounding_box const& get_bbox()const {
       return bbox;
+    }
+    num_bits_type num_low_bits()const {
+      return num_low_bits_ignored;
     }
   };
   
@@ -229,11 +230,11 @@ private:
     }
     else {
       if (tree->here.subsumes(box)) {
-        if (box.num_low_bits_ignored == tree->here.num_low_bits_ignored) {
+        if (box.num_low_bits() == tree->here.num_low_bits()) {
           tree->objects_here.insert(obj);
         }
         else {
-          if (box.get_bit(tree->here.num_low_bits_ignored - 1)) insert_box(tree->child1, obj, box);
+          if (box.get_bit(tree->here.num_low_bits() - 1)) insert_box(tree->child1, obj, box);
           else                                                  insert_box(tree->child0, obj, box);
         }
       }
@@ -241,14 +242,14 @@ private:
         ztree_node_ptr new_tree(new ztree_node(zbox::smallest_joint_parent(tree->here, box)));
 
 #ifdef ASSERT_EVERYTHING
-        assert(new_tree->here.num_low_bits_ignored > tree->here.num_low_bits_ignored);
+        assert(new_tree->here.num_low_bits() > tree->here.num_low_bits());
         assert(new_tree->here.subsumes(tree->here));
         assert(new_tree->here.subsumes(box));
-        assert(box.subsumes(tree->here) || (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1) != box.get_bit(new_tree->here.num_low_bits_ignored - 1)));
+        assert(box.subsumes(tree->here) || (tree->here.get_bit(new_tree->here.num_low_bits() - 1) != box.get_bit(new_tree->here.num_low_bits - 1)));
 #endif
 
-        if (tree->here.get_bit(new_tree->here.num_low_bits_ignored - 1)) tree.swap(new_tree->child1);
-        else                                                             tree.swap(new_tree->child0);
+        if (tree->here.get_bit(new_tree->here.num_low_bits() - 1)) tree.swap(new_tree->child1);
+        else                                                       tree.swap(new_tree->child0);
 
         tree.swap(new_tree);
         insert_box(tree, obj, box);
@@ -407,7 +408,7 @@ private:
       set_compare(generalized_object_collection_handler *handler):handler(handler){}
       
       bool operator()(ztree_node const* z1, ztree_node const* z2)const {
-        return handler->bbox_ordering(z1->here.bbox, z2->here.bbox);
+        return handler->bbox_ordering(z1->here.get_bbox(), z2->here.get_bbox());
       }
     };
     
@@ -418,7 +419,7 @@ private:
     std::set<ztree_node const*, set_compare> frontier;
     
     void try_add(ztree_node* z) {
-      if (z && handler->should_be_considered__static(z->here.bbox) && handler->should_be_considered__dynamic(z->here.bbox)) {
+      if (z && handler->should_be_considered__static(z->here.get_bbox()) && handler->should_be_considered__dynamic(z->here.get_bbox())) {
         frontier.insert(z);
       }
     }
@@ -429,7 +430,7 @@ private:
       ztree_node const* next = *frontier.begin();
       frontier.erase(frontier.begin());
       
-      if (handler->should_be_considered__dynamic(next->here.bbox)) {
+      if (handler->should_be_considered__dynamic(next->here.get_bbox())) {
         for (const ObjectIdentifier obj : next->objects_here) {
           auto bbox_iter = bboxes_by_object.find(obj);
 #ifdef ASSERT_EVERYTHING
