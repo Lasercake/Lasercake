@@ -320,7 +320,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 
   class worldblock {
   public:
-    worldblock():neighbors_(nullptr),w_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false){}
+    worldblock():neighbors_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false),w_(nullptr){}
     worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w = nullptr, vector3<tile_coordinate> global_position = vector3<tile_coordinate>(0,0,0));
   
     // Prefer to use tile_location::stuff_at().
@@ -340,12 +340,12 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(tile_coordinate x, tile_coordinate y, tile_coordinate z);
     tile_contents estimate_most_frequent_tile_contents_type()const;
   private:
-    std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
     value_for_each_cardinal_direction<worldblock*> neighbors_;
     vector3<tile_coordinate> global_position_; // the lowest x, y, and z among elements in this worldblock
-    world* w_;
     level_of_tile_realization_needed current_tile_realization_;
     bool is_busy_realizing_;
+    world* w_;
+    std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
   };
 }
 inline tile const& tile_location::stuff_at()const { return wb_->get_tile(v_); }
