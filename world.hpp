@@ -231,6 +231,10 @@ public:
 };
 
 
+// world_collision_detector is a wrapping of
+//     bbox_collision_detector<object_or_tile_identifier, 64, 3>
+// to use world-style bounding-boxes rather than bbox_collision_detector-style
+// bounding-boxes.
 class world_collision_detector {
 private:
   typedef bbox_collision_detector<object_or_tile_identifier, 64, 3> internal_t;
