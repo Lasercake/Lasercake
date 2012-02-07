@@ -77,13 +77,73 @@ private:
   }
   
   struct zbox {
+    // TODO: make the rest of zbox's data members private. zbox could REALLY use some
+    // data hiding (right now it's pretty clear-cut who's allowed to
+    // edit zbox data, but it isn't enforced.)
+  private:
     // We ensure that every bit except the ones specifically supposed to be on is off.
     std::array<Coordinate, NumDimensions> coords;
     std::array<Coordinate, NumDimensions> interleaved_bits;
+  public:
     num_bits_type num_low_bits_ignored;
     bounding_box bbox;
     
     zbox():num_low_bits_ignored(total_bits){ for (num_coordinates_type i = 0; i < NumDimensions; ++i) interleaved_bits[i] = 0; }
+
+    // Named constructors
+    static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
+      zbox new_box;
+      const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored, zb2.num_low_bits_ignored);
+      for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
+        int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
+        if ((highest_bit_idx+1 + i * CoordinateBits) < max_ignored) highest_bit_idx = max_ignored - i * CoordinateBits - 1;
+        #ifdef ASSERT_EVERYTHING
+        assert((zb1.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
+        #endif
+        new_box.interleaved_bits[i] = (zb1.interleaved_bits[i]) & (~((safe_left_shift_one(highest_bit_idx + 1)) - 1));
+        if (highest_bit_idx >= 0) {
+          new_box.num_low_bits_ignored = highest_bit_idx+1 + i * CoordinateBits;
+          for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
+            #ifdef ASSERT_EVERYTHING
+            assert(            (zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
+                            == (zb2.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1)));
+            #endif
+            new_box.coords[j] = zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1);
+          }
+          new_box.compute_bbox();
+          return new_box;
+        }
+      }
+      new_box.num_low_bits_ignored = max_ignored;
+      #ifdef ASSERT_EVERYTHING
+      assert(zb1.coords == zb2.coords);
+      #endif
+      new_box.coords = zb1.coords;
+      new_box.compute_bbox();
+      return new_box;
+    }
+
+    static zbox box_from_coords(std::array<Coordinate, NumDimensions> const& coords, num_bits_type num_low_bits_ignored) {
+      zbox result;
+      result.num_low_bits_ignored = num_low_bits_ignored;
+      for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
+        result.coords[i] = coords[i] & (~(safe_left_shift_one(result.num_bits_ignored_by_dimension(i)) - 1));
+      }
+      for (num_bits_type bit_within_interleaved_bits = num_low_bits_ignored;
+                        bit_within_interleaved_bits < total_bits;
+                      ++bit_within_interleaved_bits) {
+        const num_bits_type bit_idx_within_coordinates = bit_within_interleaved_bits / NumDimensions;
+        const num_coordinates_type which_coordinate    = bit_within_interleaved_bits % NumDimensions;
+        const num_bits_type interleaved_bit_array_idx  = bit_within_interleaved_bits / CoordinateBits;
+        const num_bits_type interleaved_bit_local_idx  = bit_within_interleaved_bits % CoordinateBits;
+        #ifdef ASSERT_EVERYTHING
+        assert(bit_idx_within_coordinates >= result.num_bits_ignored_by_dimension(which_coordinate));
+        #endif
+        result.interleaved_bits[interleaved_bit_array_idx] |= ((coords[which_coordinate] >> bit_idx_within_coordinates) & 1) << interleaved_bit_local_idx;
+      }
+      result.compute_bbox();
+      return result;
+    }
     
     bool subsumes(zbox const& other)const {
       if (other.num_low_bits_ignored > num_low_bits_ignored) return false;
@@ -144,63 +204,6 @@ private:
     }
   };
   
-  // TODO: Can we make these functions be constructors of zbox,
-  // and make zbox's members private? zbox could REALLY use some
-  // data hiding (right now it's pretty clear-cut who's allowed to
-  // edit zbox data, but it isn't enforced.)
-  static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
-    zbox new_box;
-    const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored, zb2.num_low_bits_ignored);
-    for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-      int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
-      if ((highest_bit_idx+1 + i * CoordinateBits) < max_ignored) highest_bit_idx = max_ignored - i * CoordinateBits - 1;
-#ifdef ASSERT_EVERYTHING
-      assert((zb1.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
-#endif
-      new_box.interleaved_bits[i] = (zb1.interleaved_bits[i]) & (~((safe_left_shift_one(highest_bit_idx + 1)) - 1));
-      if (highest_bit_idx >= 0) {
-        new_box.num_low_bits_ignored = highest_bit_idx+1 + i * CoordinateBits;
-        for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
-#ifdef ASSERT_EVERYTHING
-          assert(             (zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
-                           == (zb2.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1)));
-#endif
-          new_box.coords[j] = zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1);
-        }
-        new_box.compute_bbox();
-        return new_box;
-      }
-    }
-    new_box.num_low_bits_ignored = max_ignored;
-#ifdef ASSERT_EVERYTHING
-    assert(zb1.coords == zb2.coords);
-#endif
-    new_box.coords = zb1.coords;
-    new_box.compute_bbox();
-    return new_box;
-  }
-  
-  static zbox box_from_coords(std::array<Coordinate, NumDimensions> const& coords, num_bits_type num_low_bits_ignored) {
-    zbox result;
-    result.num_low_bits_ignored = num_low_bits_ignored;
-    for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-      result.coords[i] = coords[i] & (~(safe_left_shift_one(result.num_bits_ignored_by_dimension(i)) - 1));
-    }
-    for (num_bits_type bit_within_interleaved_bits = num_low_bits_ignored;
-                       bit_within_interleaved_bits < total_bits;
-                     ++bit_within_interleaved_bits) {
-      const num_bits_type bit_idx_within_coordinates = bit_within_interleaved_bits / NumDimensions;
-      const num_coordinates_type which_coordinate    = bit_within_interleaved_bits % NumDimensions;
-      const num_bits_type interleaved_bit_array_idx  = bit_within_interleaved_bits / CoordinateBits;
-      const num_bits_type interleaved_bit_local_idx  = bit_within_interleaved_bits % CoordinateBits;
-#ifdef ASSERT_EVERYTHING
-      assert(bit_idx_within_coordinates >= result.num_bits_ignored_by_dimension(which_coordinate));
-#endif
-      result.interleaved_bits[interleaved_bit_array_idx] |= ((coords[which_coordinate] >> bit_idx_within_coordinates) & 1) << interleaved_bit_local_idx;
-    }
-    result.compute_bbox();
-    return result;
-  }
   
   static void insert_box(ztree_node_ptr& tree, ObjectIdentifier const& obj, zbox box) {
     if (!tree) {
@@ -218,7 +221,7 @@ private:
         }
       }
       else {
-        ztree_node_ptr new_tree(new ztree_node(smallest_joint_parent(tree->here, box)));
+        ztree_node_ptr new_tree(new ztree_node(zbox::smallest_joint_parent(tree->here, box)));
 
 #ifdef ASSERT_EVERYTHING
         assert(new_tree->here.num_low_bits_ignored > tree->here.num_low_bits_ignored);
@@ -313,7 +316,7 @@ public:
       for (num_coordinates_type j = dimensions_we_can_double; j < NumDimensions - dimensions_we_can_single; ++j) {
         if ((i << dimensions_we_can_double) & (1<<j)) coords[j] += base_box_size;
       }
-      zbox zb = box_from_coords(coords, exp * NumDimensions + dimensions_we_can_double);
+      zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + dimensions_we_can_double);
       if (zb.get_bbox().overlaps(bbox))
         insert_box(objects_tree, id, zb);
     }
