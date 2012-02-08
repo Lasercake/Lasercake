@@ -516,7 +516,8 @@ private:
   object_shapes_t object_personal_space_shapes_;
   object_shapes_t object_detail_shapes_;
   
-  // This currently means all mobile objects, all water, and surface rock tiles. TODO I haven't actually implemented restricting to sufface rock yet
+  // This currently means all mobile objects,
+  // and all non-interior, non-air tiles.
   world_collision_detector things_exposed_to_collision_;
   
   // Worldgen functions TODO describe them
