@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include "GL/gl.h" // for types e.g. GLfloat, GLubyte
 #include "world.hpp"
+#include "input_representation.hpp"
 
 
 namespace world_rendering {
@@ -93,9 +94,12 @@ struct gl_all_data {
 
 
 struct world_rendering_config {
+  world_rendering_config(bool a, bool b, input_representation::input_news_t const& c)
+  : drawing_regular_stuff(a), drawing_debug_stuff(b), input_news(c) {}
+  
   bool drawing_regular_stuff;
   bool drawing_debug_stuff;
-  uint8_t const* keystate; // TODO make this non-SDL-specific
+  input_representation::input_news_t const& input_news;
 };
 
 class view_on_the_world {

@@ -27,7 +27,6 @@
 
 #include "GL/gl.h" //TODO remove from here?
 #include "GL/glu.h" //TODO remove from here?
-#include "SDL.h" //TODO remove from here!
 
 using namespace world_rendering;
 
@@ -169,24 +168,24 @@ void view_on_the_world::render(
         globallocal_view_dist * std::sin(view_direction),
         0
       );
-      if (rendering_config.keystate[SDLK_u]) {
+      if (rendering_config.input_news.is_currently_pressed("u")) {
         view_loc_for_local_display += vector3<fine_scalar>(
           fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
           fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
           0
         );
       }
-      if (rendering_config.keystate[SDLK_j]) {
+      if (rendering_config.input_news.is_currently_pressed("j")) {
         view_loc_for_local_display -= vector3<fine_scalar>(
           fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
           fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
           0
         );
       }
-      if (rendering_config.keystate[SDLK_h]) { view_direction += 0.06; }
-      if (rendering_config.keystate[SDLK_k]) { view_direction -= 0.06; }
-      if (rendering_config.keystate[SDLK_y]) { view_loc_for_local_display.z += tile_width / 10; }
-      if (rendering_config.keystate[SDLK_n]) { view_loc_for_local_display.z -= tile_width / 10; }
+      if (rendering_config.input_news.is_currently_pressed("h")) { view_direction += 0.06; }
+      if (rendering_config.input_news.is_currently_pressed("k")) { view_direction -= 0.06; }
+      if (rendering_config.input_news.is_currently_pressed("y")) { view_loc_for_local_display.z += tile_width / 10; }
+      if (rendering_config.input_news.is_currently_pressed("n")) { view_loc_for_local_display.z -= tile_width / 10; }
     }
     else if (view_type == ROBOT) {
       bounding_box b = w.get_object_personal_space_shapes().find(robot_id)->second.bounds();

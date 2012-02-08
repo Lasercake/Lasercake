@@ -291,13 +291,8 @@ srand(time(NULL));
 
     world_rendering::gl_all_data gl_data;
     
-    {
-      world_rendering_config rendering_config;
-      rendering_config.drawing_regular_stuff = drawing_regular_stuff;
-      rendering_config.drawing_debug_stuff = drawing_debug_stuff;
-      rendering_config.keystate = keystate;
-      view.render(w, rendering_config, gl_data);
-    }
+    view.render(w, world_rendering_config(drawing_regular_stuff, drawing_debug_stuff, input_news),
+                gl_data);
     
     const microseconds_t microseconds_before_GL = get_this_process_microseconds();
     const microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
