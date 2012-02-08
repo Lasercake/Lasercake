@@ -42,6 +42,8 @@
 
 #include "rendering_the_world.hpp"
 
+#include "input_representation.hpp"
+
 namespace /* anonymous */ {
 
 
@@ -211,6 +213,16 @@ srand(time(NULL));
   while ( !done ) {
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
 
+    using namespace input_representation;
+    
+    key_activity_t key_activity_since_last_frame;
+    
+    // TODO use SDL's TextInput API (and/or switch toolkits)
+    // if that is appropriate for our interface somewhere and/or everywhere.
+
+    // TODO I'd like at least arrow keys to have a different name
+    // - to be Unicode arrow characters rather than e.g. "down".
+    
     /* Check for events */
     while ( SDL_PollEvent (&event) ) {
       switch (event.type) {
@@ -221,21 +233,14 @@ srand(time(NULL));
           break;
           
         case SDL_KEYDOWN:
-          if(event.key.keysym.sym == SDLK_p) ++p_mode;
-          if(event.key.keysym.sym == SDLK_z) drawing_regular_stuff = !drawing_regular_stuff;
-          if(event.key.keysym.sym == SDLK_t) drawing_debug_stuff = !drawing_debug_stuff;
-          if(event.key.keysym.sym == SDLK_q) view.surveilled_by_global_display.x += tile_width;
-          if(event.key.keysym.sym == SDLK_a) view.surveilled_by_global_display.x -= tile_width;
-          if(event.key.keysym.sym == SDLK_w) view.surveilled_by_global_display.y += tile_width;
-          if(event.key.keysym.sym == SDLK_s) view.surveilled_by_global_display.y -= tile_width;
-          if(event.key.keysym.sym == SDLK_e) view.surveilled_by_global_display.z += tile_width;
-          if(event.key.keysym.sym == SDLK_d) view.surveilled_by_global_display.z -= tile_width;
-          if(event.key.keysym.sym == SDLK_r) view.globallocal_view_dist += tile_width;
-          if(event.key.keysym.sym == SDLK_f) view.globallocal_view_dist -= tile_width;
-          if(event.key.keysym.sym == SDLK_l) view.view_type = view_on_the_world::LOCAL;
-          if(event.key.keysym.sym == SDLK_o) view.view_type = view_on_the_world::GLOBAL;
-          if(event.key.keysym.sym == SDLK_i) view.view_type = view_on_the_world::ROBOT;
-          if(event.key.keysym.sym != SDLK_ESCAPE)break;
+          key_activity_since_last_frame.push_back(
+            key_change_t(SDL_GetKeyName(event.key.keysym.sym), PRESSED));
+          break;
+          
+        case SDL_KEYUP:
+          key_activity_since_last_frame.push_back(
+            key_change_t(SDL_GetKeyName(event.key.keysym.sym), RELEASED));
+          break;
           
         case SDL_QUIT:
           done = 1;
@@ -247,6 +252,36 @@ srand(time(NULL));
     }
     
     Uint8 const* const keystate = SDL_GetKeyState(NULL);
+    keys_currently_pressed_t keys_currently_pressed;
+    for(size_t i = SDLK_FIRST; i <= SDLK_LAST; ++i) {
+      if(keystate[i]) {
+        keys_currently_pressed.insert(SDL_GetKeyName((SDLKey)i));
+      }
+    }
+
+    input_news_t input_news(keys_currently_pressed, key_activity_since_last_frame);
+
+    for(key_change_t const& c : key_activity_since_last_frame) {
+      if(c.second == PRESSED) {
+        key_type const& k = c.first;
+        std::cerr << k << '\n';
+        if(k == "p") ++p_mode;
+        if(k == "z") drawing_regular_stuff = !drawing_regular_stuff;
+        if(k == "t") drawing_debug_stuff = !drawing_debug_stuff;
+        if(k == "q") view.surveilled_by_global_display.x += tile_width;
+        if(k == "a") view.surveilled_by_global_display.x -= tile_width;
+        if(k == "w") view.surveilled_by_global_display.y += tile_width;
+        if(k == "s") view.surveilled_by_global_display.y -= tile_width;
+        if(k == "e") view.surveilled_by_global_display.z += tile_width;
+        if(k == "d") view.surveilled_by_global_display.z -= tile_width;
+        if(k == "r") view.globallocal_view_dist += tile_width;
+        if(k == "f") view.globallocal_view_dist -= tile_width;
+        if(k == "l") view.view_type = view_on_the_world::LOCAL;
+        if(k == "o") view.view_type = view_on_the_world::GLOBAL;
+        if(k == "i") view.view_type = view_on_the_world::ROBOT;
+        if(k == "escape") done = 1;
+      }
+    }
     
     const bool pd_this_time = (p_mode == 1);
     if(p_mode > 1)--p_mode;
