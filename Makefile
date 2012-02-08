@@ -9,8 +9,8 @@ CC=$(GCC)
 OPTFLAGS=-O3
 UNOPTFLAGS=-O0
 GENERAL_FLAGS=-Wall -Wextra -fmax-errors=15 -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2 $(CFLAGS) $(CXXFLAGS)
-COMPILE_FLAGS=-std=gnu++0x -I/usr/include/SDL/ $(CPPFLAGS) $(GENERAL_FLAGS)
-LINK_FLAGS=-lSDL -lGL -lGLU -lrt $(GENERAL_FLAGS) $(LDFLAGS)
+COMPILE_FLAGS=-std=gnu++0x $(shell sdl-config --cflags) $(CPPFLAGS) $(GENERAL_FLAGS)
+LINK_FLAGS=$(shell sdl-config --libs) -lGL -lGLU -lrt $(GENERAL_FLAGS) $(LDFLAGS)
 
 
 # The rest of this file is pretty boring.
