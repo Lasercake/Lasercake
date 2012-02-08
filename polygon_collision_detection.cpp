@@ -193,9 +193,8 @@ void convex_polygon::setup_cache_if_needed()const {
     
     ++cache_.amount_twisted;
     for (vector3<int64_t>& v : cache_.adjusted_vertices) v = vector3<int64_t>(v.y, v.z, v.x);
-#ifdef ASSERT_EVERYTHING
-    assert(cache_.amount_twisted <= 2);
-#endif
+    
+    assert_if_ASSERT_EVERYTHING(cache_.amount_twisted <= 2);
   }
   
   // In the formula Skew(T) = I + (z unit vector)*(a(t.x) + b(t.y)) ...

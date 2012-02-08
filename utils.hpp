@@ -40,12 +40,14 @@
   // which in the case of assert would affect the string
   // that is printed when the assert fails.
   #define assert_if_ASSERT_EVERYTHING assert
+  const bool assert_everything = true;
 #else
   // Make sure the code takes no runtime (the compiler will optimize it out)
   // but that it still compiles to a boolean expression (so that turning on
   // ASSERT_EVERYTHING is sure to compile even if we didn't test with it on
   // recently).
   #define assert_if_ASSERT_EVERYTHING(x) ((true) ? (void)0 : ((x) ? (void)0 : (void)0))
+  const bool assert_everything = false;
 #endif
 
 #ifndef ATTRIBUTE_NORETURN

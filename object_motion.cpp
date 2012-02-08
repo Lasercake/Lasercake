@@ -82,9 +82,9 @@ cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& ve
       }
     }
   }
-#ifdef ASSERT_EVERYTHING
-  assert(best != -1);
-#endif
+
+  assert_if_ASSERT_EVERYTHING(best != -1);
+
   return best_dir;
 }
 
