@@ -80,8 +80,18 @@ std::ostream& operator<<(std::ostream& os, ostream_bundle& b) {
   return os << b.str();
 }
 
+// show_decimal(1234567, 1000, 10) --> "1234.5"
+template<typename Integral, typename Integral2>
+std::string show_decimal(Integral us, Integral2 divisor, int places) {
+  Integral divisordivisor = 1;
+  for(int i = 0; i < places; ++i) { divisordivisor *= 10; }
+  
+  return (ostream_bundle() << (us / divisor) << '.'
+    << std::setfill('0') << std::setw(places) << (us / (divisor / divisordivisor) % divisordivisor)).str();
+}
+
 std::string show_microseconds(microseconds_t us) {
-  return (ostream_bundle() << (us / 1000) << '.' << (us / 100 % 10)).str();
+  return show_decimal(us, 1000, 1);
 }
 
 
@@ -272,14 +282,23 @@ srand(time(NULL));
     const microseconds_t microseconds_for_GL = microseconds_before_processing - microseconds_before_GL;
     const microseconds_t monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
     const microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
-    const double fps = 1000000.0 / monotonic_microseconds_for_frame;
+    const int64_t frames_per_kilosecond = 1000000000 / monotonic_microseconds_for_frame;
 
     frame += 1;
-    std::cerr << "Frame " << frame << ": "
-    << show_microseconds(microseconds_for_processing) << ", "
-    << show_microseconds(microseconds_for_drawing) << ", "
-    << show_microseconds(microseconds_for_GL) << "–" << show_microseconds(monotonic_microseconds_for_GL)
-    << " ms; " << fps << " fps; " << get_this_process_rusage().ru_maxrss / 1024 << "MiB\n";
+    std::cerr
+    << "Frame " << std::left << std::setw(4) << frame << std::right << ":"
+    << std::setw(6) << show_microseconds(microseconds_for_processing) << ";"
+    << std::setw(6) << show_microseconds(microseconds_for_drawing) << ";"
+    << std::setw(14) << (ostream_bundle()
+                            << show_microseconds(microseconds_for_GL)
+                            << "–" << show_microseconds(monotonic_microseconds_for_GL)
+                        )
+    << " ms; "
+    << std::setw(7) << show_decimal(frames_per_kilosecond, 1000, 2) << " fps; "
+    //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
+    // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
+    //<< std::ios::fixed << std::setprecision(4) << fps << " fps; "
+    << std::setw(4) << get_this_process_rusage().ru_maxrss / 1024 << "MiB\n";
 
 //    SDL_Delay(50);
   }
