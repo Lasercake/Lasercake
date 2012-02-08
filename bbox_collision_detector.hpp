@@ -96,60 +96,60 @@ private:
   struct zbox {
   private:
     // We ensure that every bit except the ones specifically supposed to be on is off.
-    std::array<Coordinate, NumDimensions> coords;
-    std::array<Coordinate, NumDimensions> interleaved_bits;
-    num_bits_type num_low_bits_ignored;
-    bounding_box bbox;
+    std::array<Coordinate, NumDimensions> coords_;
+    std::array<Coordinate, NumDimensions> interleaved_bits_;
+    num_bits_type num_low_bits_ignored_;
+    bounding_box bbox_;
 
-    void compute_bbox() {
-      bbox.min = coords;
+    void compute_bbox_() {
+      bbox_.min = coords_;
       for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-        bbox.size[i] = safe_left_shift_one(num_bits_ignored_by_dimension(i));
+        bbox_.size[i] = safe_left_shift_one(num_bits_ignored_by_dimension(i));
       }
     }
   public:
     
-    zbox():num_low_bits_ignored(total_bits){ for (num_coordinates_type i = 0; i < NumDimensions; ++i) interleaved_bits[i] = 0; }
+    zbox():num_low_bits_ignored_(total_bits){ for (num_coordinates_type i = 0; i < NumDimensions; ++i) interleaved_bits_[i] = 0; }
 
     // Named constructors
     static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
       zbox new_box;
-      const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored, zb2.num_low_bits_ignored);
+      const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
       for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-        int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
+        int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]);
         if ((highest_bit_idx+1 + i * CoordinateBits) < max_ignored) highest_bit_idx = max_ignored - i * CoordinateBits - 1;
 
-        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
+        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits_[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
 
-        new_box.interleaved_bits[i] = (zb1.interleaved_bits[i]) & (~((safe_left_shift_one(highest_bit_idx + 1)) - 1));
+        new_box.interleaved_bits_[i] = (zb1.interleaved_bits_[i]) & (~((safe_left_shift_one(highest_bit_idx + 1)) - 1));
         if (highest_bit_idx >= 0) {
-          new_box.num_low_bits_ignored = highest_bit_idx+1 + i * CoordinateBits;
+          new_box.num_low_bits_ignored_ = highest_bit_idx+1 + i * CoordinateBits;
           for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
             assert_if_ASSERT_EVERYTHING(
-                 (zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
-              == (zb2.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
+                 (zb1.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
+              == (zb2.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
             );
 
-            new_box.coords[j] = zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1);
+            new_box.coords_[j] = zb1.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1);
           }
-          new_box.compute_bbox();
+          new_box.compute_bbox_();
           return new_box;
         }
       }
-      new_box.num_low_bits_ignored = max_ignored;
+      new_box.num_low_bits_ignored_ = max_ignored;
 
-      assert_if_ASSERT_EVERYTHING(zb1.coords == zb2.coords);
+      assert_if_ASSERT_EVERYTHING(zb1.coords_ == zb2.coords_);
 
-      new_box.coords = zb1.coords;
-      new_box.compute_bbox();
+      new_box.coords_ = zb1.coords_;
+      new_box.compute_bbox_();
       return new_box;
     }
 
     static zbox box_from_coords(std::array<Coordinate, NumDimensions> const& coords, num_bits_type num_low_bits_ignored) {
       zbox result;
-      result.num_low_bits_ignored = num_low_bits_ignored;
+      result.num_low_bits_ignored_ = num_low_bits_ignored;
       for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-        result.coords[i] = coords[i] & (~(safe_left_shift_one(result.num_bits_ignored_by_dimension(i)) - 1));
+        result.coords_[i] = coords[i] & (~(safe_left_shift_one(result.num_bits_ignored_by_dimension(i)) - 1));
       }
       for (num_bits_type bit_within_interleaved_bits = num_low_bits_ignored;
                         bit_within_interleaved_bits < total_bits;
@@ -161,35 +161,35 @@ private:
 
         assert_if_ASSERT_EVERYTHING(bit_idx_within_coordinates >= result.num_bits_ignored_by_dimension(which_coordinate));
 
-        result.interleaved_bits[interleaved_bit_array_idx] |= ((coords[which_coordinate] >> bit_idx_within_coordinates) & 1) << interleaved_bit_local_idx;
+        result.interleaved_bits_[interleaved_bit_array_idx] |= ((coords[which_coordinate] >> bit_idx_within_coordinates) & 1) << interleaved_bit_local_idx;
       }
-      result.compute_bbox();
+      result.compute_bbox_();
       return result;
     }
     
     bool subsumes(zbox const& other)const {
-      if (other.num_low_bits_ignored > num_low_bits_ignored) return false;
-      for (num_coordinates_type i = num_low_bits_ignored / CoordinateBits; i < NumDimensions; ++i) {
+      if (other.num_low_bits_ignored_ > num_low_bits_ignored_) return false;
+      for (num_coordinates_type i = num_low_bits_ignored_ / CoordinateBits; i < NumDimensions; ++i) {
         Coordinate mask = ~Coordinate(0);
-        if (i == num_low_bits_ignored / CoordinateBits) {
-          mask &= ~(safe_left_shift_one(num_low_bits_ignored % CoordinateBits) - 1);
+        if (i == num_low_bits_ignored_ / CoordinateBits) {
+          mask &= ~(safe_left_shift_one(num_low_bits_ignored_ % CoordinateBits) - 1);
         }
-        if ((interleaved_bits[i] & mask) != (other.interleaved_bits[i] & mask)) return false;
+        if ((interleaved_bits_[i] & mask) != (other.interleaved_bits_[i] & mask)) return false;
       }
       return true;
     }
     bool get_bit(num_bits_type bit)const {
-      return interleaved_bits[bit / CoordinateBits] & safe_left_shift_one(bit % CoordinateBits);
+      return interleaved_bits_[bit / CoordinateBits] & safe_left_shift_one(bit % CoordinateBits);
     }
     num_bits_type num_bits_ignored_by_dimension(num_coordinates_type dim)const {
-      return (num_low_bits_ignored + (NumDimensions - 1) - dim) / NumDimensions;
+      return (num_low_bits_ignored_ + (NumDimensions - 1) - dim) / NumDimensions;
     }
     // note: gives "size=0" for max-sized things
     bounding_box const& get_bbox()const {
-      return bbox;
+      return bbox_;
     }
     num_bits_type num_low_bits()const {
-      return num_low_bits_ignored;
+      return num_low_bits_ignored_;
     }
   };
   
