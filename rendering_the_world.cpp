@@ -171,15 +171,17 @@ void view_on_the_world::render(
       );
       if (rendering_config.keystate[SDLK_u]) {
         view_loc_for_local_display += vector3<fine_scalar>(
-        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
-        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
-        0);
+          fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
+          fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
+          0
+        );
       }
       if (rendering_config.keystate[SDLK_j]) {
         view_loc_for_local_display -= vector3<fine_scalar>(
           fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
           fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
-        0);
+          0
+        );
       }
       if (rendering_config.keystate[SDLK_h]) { view_direction += 0.06; }
       if (rendering_config.keystate[SDLK_k]) { view_direction -= 0.06; }
