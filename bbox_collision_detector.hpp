@@ -220,6 +220,7 @@ private:
       here = other.here;
       if(other.child0) child0.reset(new ztree_node(*other.child0));
       if(other.child1) child1.reset(new ztree_node(*other.child1));
+      objects_here = other.objects_here;
       return *this;
     }
   };
