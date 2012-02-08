@@ -84,6 +84,9 @@ public:
     keys_currently_pressed_(keys_currently_pressed),
     key_activity_since_last_frame_(key_activity_since_last_frame) {}
 
+  // These are generally useful for continuous actions (e.g. if you're
+  // moving forwards while you hold down a key).
+  //
   // Worst-case O(log(n)) time where "n" is the number of keys currently pressed.
   bool is_currently_pressed(key_type const& k)const {
     return input_representation::is_currently_pressed(keys_currently_pressed_, k);
@@ -92,6 +95,11 @@ public:
     return input_representation::not_currently_pressed(keys_currently_pressed_, k);
   }
 
+  // These are generally useful for instantaneous actions (e.g. if you
+  // launch an atomic missile each time you hit a certain key).  Note that a
+  // key might have been pressed and released any number of times in-between frames
+  // without being currently pressed at the moment that any frame happens.
+  //
   // O(n) in number of keys pressed since last frame (TODO fix if there are ever
   // more than O(1) times that the game reads this per frame.).
   int32_t num_times_pressed(key_type const& k)const {
