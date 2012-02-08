@@ -399,13 +399,13 @@ public:
 
 private:
   struct generalized_object_collection_walker {
-    generalized_object_collection_handler *handler;
+    generalized_object_collection_handler* handler;
     unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object;
-    generalized_object_collection_walker(generalized_object_collection_handler *handler, unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object):handler(handler),bboxes_by_object(bboxes_by_object),frontier(set_compare(handler)){}
+    generalized_object_collection_walker(generalized_object_collection_handler* handler, unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object):handler(handler),bboxes_by_object(bboxes_by_object),frontier(set_compare(handler)){}
     
     struct set_compare {
-      generalized_object_collection_handler *handler;
-      set_compare(generalized_object_collection_handler *handler):handler(handler){}
+      generalized_object_collection_handler* handler;
+      set_compare(generalized_object_collection_handler* handler):handler(handler){}
       
       bool operator()(ztree_node const* z1, ztree_node const* z2)const {
         return handler->bbox_ordering(z1->here.get_bbox(), z2->here.get_bbox());
