@@ -21,8 +21,6 @@
 
 #include "specific_object_types.hpp"
 
-// TODO HAAAAACK
-#include "SDL/SDL.h"
 
 namespace /* anonymous */ {
 
@@ -123,27 +121,26 @@ void robot::update(world& w, object_identifier my_id) {
     }
   }
     
-  // TODO HAAAAAACK
-  Uint8* keystate = SDL_GetKeyState(NULL);
+  input_representation::input_news_t const& input_news = w.input_news();
   velocity.x -= velocity.x / 2;
   velocity.y -= velocity.y / 2;
   const fine_scalar xymag = i64sqrt(facing_.x*facing_.x + facing_.y*facing_.y);
-  if (keystate[SDLK_x]) {
+  if (input_news.is_currently_pressed("x")) {
     velocity.x = facing_.x * tile_width * velocity_scale_factor / 8 / xymag;
     velocity.y = facing_.y * tile_width * velocity_scale_factor / 8 / xymag;
   }
-  if (keystate[SDLK_RIGHT]) {
+  if (input_news.is_currently_pressed("right")) {
     fine_scalar new_facing_x = facing_.x + facing_.y / 20;
     fine_scalar new_facing_y = facing_.y - facing_.x / 20;
     facing_.x = new_facing_x; facing_.y = new_facing_y;
   }
-  if (keystate[SDLK_LEFT]) {
+  if (input_news.is_currently_pressed("left")) {
     fine_scalar new_facing_x = facing_.x - facing_.y / 20;
     fine_scalar new_facing_y = facing_.y + facing_.x / 20;
     facing_.x = new_facing_x; facing_.y = new_facing_y;
   }
-  if (keystate[SDLK_UP] ^ keystate[SDLK_DOWN]) {
-    const fine_scalar which_way = (keystate[SDLK_UP] ? 1 : -1);
+  if (input_news.is_currently_pressed("up") != input_news.is_currently_pressed("down")) {
+    const fine_scalar which_way = (input_news.is_currently_pressed("up") ? 1 : -1);
     const fine_scalar new_xymag = xymag - (which_way * facing_.z / 20);
     if (new_xymag > tile_width / 8) {
       facing_.z += which_way * xymag / 20;
@@ -155,7 +152,7 @@ void robot::update(world& w, object_identifier my_id) {
   
   vector3<fine_scalar> beam_delta = facing_ * 3 / 2;
   
-  if (keystate[SDLK_c] || keystate[SDLK_v]) {
+  if (input_news.is_currently_pressed("c") || input_news.is_currently_pressed("v")) {
     beam_first_contact_finder finder(w, line_segment(location_, location_ + beam_delta));
     finder.ignores.insert(my_id);
     w.get_things_exposed_to_collision().get_objects_generalized(&finder);
@@ -164,7 +161,7 @@ void robot::update(world& w, object_identifier my_id) {
       // TODO do I have to worry about overflow?
       w.add_laser_sfx(location_, beam_delta * finder.best_intercept_point.second.numerator / finder.best_intercept_point.second.denominator);
       if(tile_location const* locp = finder.thing_hit.get_tile_location()) {
-        if (keystate[SDLK_c] && (carrying_ < robot_max_carrying_capacity) && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
+        if (input_news.is_currently_pressed("c") && (carrying_ < robot_max_carrying_capacity) && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
           ++carrying_;
           w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
         }
@@ -175,14 +172,14 @@ void robot::update(world& w, object_identifier my_id) {
     }
     else {
       w.add_laser_sfx(location_, beam_delta);
-      if (keystate[SDLK_v] && (carrying_ > 0)) {
+      if (input_news.is_currently_pressed("v") && (carrying_ > 0)) {
         --carrying_;
         const tile_location target_loc = w.make_tile_location(get_containing_tile_coordinates(location_ + beam_delta), FULL_REALIZATION);
         w.replace_substance(target_loc, AIR, RUBBLE);
       }
     }
   }
-  if (keystate[SDLK_b]) {
+  if (input_news.is_currently_pressed("b")) {
     const vector3<fine_scalar> offset(-facing_.y / 4, facing_.x / 4, 0);
     fire_standard_laser(w, my_id, location_ + offset, facing_);
     fire_standard_laser(w, my_id, location_ - offset, facing_);

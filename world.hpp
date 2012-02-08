@@ -48,6 +48,7 @@
 #include "polygon_collision_detection.hpp"
 #include "bbox_collision_detector.hpp"
 #include "tiles.hpp"
+#include "input_representation.hpp"
 
 using std::pair;
 using std::make_pair;
@@ -413,13 +414,19 @@ public:
   // (and currently, also can get ahead because we don't cap the frame-rate.)
   time_unit game_time_elapsed()const { return current_game_time_; }
 
-  inline void update() {
+  inline void update(input_representation::input_news_t const& input_news) {
+    input_news_ = input_news;
     laser_sfxes.clear();
     update_fluids();
     for (auto& obj : autonomously_active_objects_) obj.second->update(*this, obj.first);
     update_moving_objects();
     current_game_time_ += time_units_per_fixed_frame;
   }
+
+  // TODO come up with a good way of farming this information out to robots once
+  // we know how we want that to work, and a good way of representing multiple
+  // players' input.
+  input_representation::input_news_t const& input_news() const { return input_news_; }
   
   // I *think* this pointer is valid as long as the shared_ptr exists
   shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects_, id); }
@@ -522,6 +529,8 @@ private:
   
   // Worldgen functions TODO describe them
   worldgen_function_t worldgen_function_;
+
+  input_representation::input_news_t input_news_;
   
   
   the_decomposition_of_the_world_into_blocks_impl::worldblock* ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);

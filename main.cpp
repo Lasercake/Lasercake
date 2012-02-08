@@ -310,7 +310,7 @@ srand(time(NULL));
     const microseconds_t microseconds_before_processing = get_this_process_microseconds();
     
     //doing stuff code here
-    if (!pd_this_time) w.update();
+    if (!pd_this_time) w.update(input_news);
 
     const microseconds_t microseconds_after = get_this_process_microseconds();
     const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
