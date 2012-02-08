@@ -209,7 +209,7 @@ private:
   struct ztree_node;
   typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
   struct ztree_node {
-    zbox here;
+    const zbox here;
     ztree_node_ptr child0;
     ztree_node_ptr child1;
     unordered_set<ObjectIdentifier> objects_here;
