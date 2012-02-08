@@ -118,17 +118,18 @@ private:
       for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
         int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits[i] ^ zb2.interleaved_bits[i]);
         if ((highest_bit_idx+1 + i * CoordinateBits) < max_ignored) highest_bit_idx = max_ignored - i * CoordinateBits - 1;
-        #ifdef ASSERT_EVERYTHING
-        assert((zb1.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
-        #endif
+
+        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
+
         new_box.interleaved_bits[i] = (zb1.interleaved_bits[i]) & (~((safe_left_shift_one(highest_bit_idx + 1)) - 1));
         if (highest_bit_idx >= 0) {
           new_box.num_low_bits_ignored = highest_bit_idx+1 + i * CoordinateBits;
           for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
-            #ifdef ASSERT_EVERYTHING
-            assert(            (zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
-                            == (zb2.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1)));
-            #endif
+            assert_if_ASSERT_EVERYTHING(
+                 (zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
+              == (zb2.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
+            );
+
             new_box.coords[j] = zb1.coords[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1);
           }
           new_box.compute_bbox();
@@ -136,9 +137,9 @@ private:
         }
       }
       new_box.num_low_bits_ignored = max_ignored;
-      #ifdef ASSERT_EVERYTHING
-      assert(zb1.coords == zb2.coords);
-      #endif
+
+      assert_if_ASSERT_EVERYTHING(zb1.coords == zb2.coords);
+
       new_box.coords = zb1.coords;
       new_box.compute_bbox();
       return new_box;
@@ -157,9 +158,9 @@ private:
         const num_coordinates_type which_coordinate    = bit_within_interleaved_bits % NumDimensions;
         const num_bits_type interleaved_bit_array_idx  = bit_within_interleaved_bits / CoordinateBits;
         const num_bits_type interleaved_bit_local_idx  = bit_within_interleaved_bits % CoordinateBits;
-        #ifdef ASSERT_EVERYTHING
-        assert(bit_idx_within_coordinates >= result.num_bits_ignored_by_dimension(which_coordinate));
-        #endif
+
+        assert_if_ASSERT_EVERYTHING(bit_idx_within_coordinates >= result.num_bits_ignored_by_dimension(which_coordinate));
+
         result.interleaved_bits[interleaved_bit_array_idx] |= ((coords[which_coordinate] >> bit_idx_within_coordinates) & 1) << interleaved_bit_local_idx;
       }
       result.compute_bbox();
@@ -241,12 +242,10 @@ private:
       else {
         ztree_node_ptr new_tree(new ztree_node(zbox::smallest_joint_parent(tree->here, box)));
 
-#ifdef ASSERT_EVERYTHING
-        assert(new_tree->here.num_low_bits() > tree->here.num_low_bits());
-        assert(new_tree->here.subsumes(tree->here));
-        assert(new_tree->here.subsumes(box));
-        assert(box.subsumes(tree->here) || (tree->here.get_bit(new_tree->here.num_low_bits() - 1) != box.get_bit(new_tree->here.num_low_bits - 1)));
-#endif
+        assert_if_ASSERT_EVERYTHING(new_tree->here.num_low_bits() > tree->here.num_low_bits());
+        assert_if_ASSERT_EVERYTHING(new_tree->here.subsumes(tree->here));
+        assert_if_ASSERT_EVERYTHING(new_tree->here.subsumes(box));
+        assert_if_ASSERT_EVERYTHING(box.subsumes(tree->here) || (tree->here.get_bit(new_tree->here.num_low_bits() - 1) != box.get_bit(new_tree->here.num_low_bits() - 1)));
 
         if (tree->here.get_bit(new_tree->here.num_low_bits() - 1)) tree.swap(new_tree->child1);
         else                                                       tree.swap(new_tree->child0);
@@ -286,9 +285,9 @@ private:
     if (tree && tree->here.get_bbox().overlaps(bbox)) {
       for (const ObjectIdentifier obj : tree->objects_here) {
         auto bbox_iter = bboxes_by_object.find(obj);      
-#ifdef ASSERT_EVERYTHING
-        assert(bbox_iter != bboxes_by_object.end());
-#endif
+
+        assert_if_ASSERT_EVERYTHING(bbox_iter != bboxes_by_object.end());
+
         if (bbox_iter->second.overlaps(bbox)) results.insert(obj);
       }
       zget_objects_overlapping(tree->child0.get(), results, bbox);
@@ -433,9 +432,9 @@ private:
       if (handler->should_be_considered__dynamic(next->here.get_bbox())) {
         for (const ObjectIdentifier obj : next->objects_here) {
           auto bbox_iter = bboxes_by_object.find(obj);
-#ifdef ASSERT_EVERYTHING
-          assert(bbox_iter != bboxes_by_object.end());
-#endif
+
+          assert_if_ASSERT_EVERYTHING(bbox_iter != bboxes_by_object.end());
+
           if (handler->should_be_considered__static(bbox_iter->second) && handler->should_be_considered__dynamic(bbox_iter->second)) {
             if (handler->found_objects.insert(obj).second) {
               handler->handle_new_find(obj);
