@@ -158,7 +158,7 @@ struct zbox_tester {
     double zsiz = drawn_bbox.size[2] / double(1ULL << 32);
     stupid_draw(xmin,ymin,zmin,xsiz,ysiz,zsiz);
   }
-  void draw_node(collision_detector_t::ztree_node const* tree)const {
+  void draw_node(collision_detector_t::ztree_node_ptr const& tree)const {
     if (tree) {
       if (tree->objects_here.empty()) glColor3f(0.5,0.0,0.0);
       else glColor3f(1.0,0.0,0.0);
