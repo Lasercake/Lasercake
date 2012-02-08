@@ -34,6 +34,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <locale>
 
 #include "world.hpp"
 #include "specific_worlds.hpp"
@@ -82,12 +83,15 @@ std::ostream& operator<<(std::ostream& os, ostream_bundle& b) {
 
 // show_decimal(1234567, 1000, 10) --> "1234.5"
 template<typename Integral, typename Integral2>
-std::string show_decimal(Integral us, Integral2 divisor, int places) {
+std::string show_decimal(Integral us, Integral2 divisor, int places, std::locale const& locale = std::locale("")) {
   Integral divisordivisor = 1;
   for(int i = 0; i < places; ++i) { divisordivisor *= 10; }
   
-  return (ostream_bundle() << (us / divisor) << '.'
-    << std::setfill('0') << std::setw(places) << (us / (divisor / divisordivisor) % divisordivisor)).str();
+  return (ostream_bundle()
+    << (us / divisor)
+    << std::use_facet< std::numpunct<char> >(locale).decimal_point()
+    << std::setfill('0') << std::setw(places) << (us / (divisor / divisordivisor) % divisordivisor)
+  ).str();
 }
 
 std::string show_microseconds(microseconds_t us) {
@@ -371,6 +375,8 @@ SDL_Surface* create_SDL_GL_surface(bool fullscreen)
 
 int main(int argc, char *argv[])
 {
+    std::cerr.imbue(std::locale(""));
+
     // Init SDL video subsystem
     if ( SDL_Init (SDL_INIT_VIDEO) < 0 ) {
       fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
