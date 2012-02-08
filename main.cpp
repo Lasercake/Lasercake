@@ -32,6 +32,8 @@
 #include "GL/glu.h"
 
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 #include "world.hpp"
 #include "specific_worlds.hpp"
@@ -65,11 +67,22 @@ microseconds_t get_monotonic_microseconds() {
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (microseconds_t)ts.tv_sec * 1000000 + (microseconds_t)ts.tv_nsec / 1000;
 }
-void debug_print_microseconds(microseconds_t us) {
-  std::cerr << (us / 1000) << '.' << (us / 100 % 10);
+
+// Usage example:
+// std::cerr << std::setw(6) << (ostream_bundle() << "foo" << 564) << std::endl;
+struct ostream_bundle {
+  template<typename T> ostream_bundle& operator<<(T const& t) { ss_ << t; return *this; }
+  std::string str() { return ss_.str(); }
+private:
+  std::stringstream ss_;
+};
+std::ostream& operator<<(std::ostream& os, ostream_bundle& b) {
+  return os << b.str();
 }
 
-
+std::string show_microseconds(microseconds_t us) {
+  return (ostream_bundle() << (us / 1000) << '.' << (us / 100 % 10)).str();
+}
 
 
 void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
@@ -176,8 +189,7 @@ srand(time(NULL));
 
     const microseconds_t microseconds_after_init = get_this_process_microseconds();
     const microseconds_t microseconds_for_init = microseconds_after_init - microseconds_before_init;
-    debug_print_microseconds(microseconds_for_init);
-    std::cerr << " ms\n";
+    std::cerr << show_microseconds(microseconds_for_init) << " ms\n";
   }
 
   view_on_the_world view(robot_id, world_center_fine_coords);
@@ -263,15 +275,11 @@ srand(time(NULL));
     const double fps = 1000000.0 / monotonic_microseconds_for_frame;
 
     frame += 1;
-    std::cerr << "Frame " << frame << ": ";
-    debug_print_microseconds(microseconds_for_processing);
-    std::cerr << ", ";
-    debug_print_microseconds(microseconds_for_drawing);
-    std::cerr << ", ";
-    debug_print_microseconds(microseconds_for_GL);
-    std::cerr << "–";
-    debug_print_microseconds(monotonic_microseconds_for_GL);
-    std::cerr << " ms; " << fps << " fps; " << get_this_process_rusage().ru_maxrss / 1024 << "MiB\n";
+    std::cerr << "Frame " << frame << ": "
+    << show_microseconds(microseconds_for_processing) << ", "
+    << show_microseconds(microseconds_for_drawing) << ", "
+    << show_microseconds(microseconds_for_GL) << "–" << show_microseconds(monotonic_microseconds_for_GL)
+    << " ms; " << fps << " fps; " << get_this_process_rusage().ru_maxrss / 1024 << "MiB\n";
 
 //    SDL_Delay(50);
   }
