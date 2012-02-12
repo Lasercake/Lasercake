@@ -123,20 +123,21 @@ private:
     // Named constructors
     static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
       zbox new_box;
-      const signed_num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
+      const signed_num_bits_type min_low_bits_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
       for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
         const signed_num_bits_type bits_lower_than_this_part_of_interleaved_bits = i * CoordinateBits;
-        const signed_num_bits_type first_high_bit_idx = std::max(
+        const signed_num_bits_type local_first_high_bit_idx = std::max(
           num_bits_in_integer_that_are_not_leading_zeroes(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]),
-          max_ignored - bits_lower_than_this_part_of_interleaved_bits
+          min_low_bits_ignored - bits_lower_than_this_part_of_interleaved_bits
         );
+        const bool clearly_done = local_first_high_bit_idx > 0;
 
-        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx))
-                                 == (zb2.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx)));
+        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~this_many_low_bits(local_first_high_bit_idx))
+                                 == (zb2.interleaved_bits_[i] & ~this_many_low_bits(local_first_high_bit_idx)));
 
-        new_box.interleaved_bits_[i] = zb1.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx);
-        if (first_high_bit_idx > 0) {
-          new_box.num_low_bits_ignored_ = first_high_bit_idx + bits_lower_than_this_part_of_interleaved_bits;
+        new_box.interleaved_bits_[i] = zb1.interleaved_bits_[i] & ~this_many_low_bits(local_first_high_bit_idx);
+        if (clearly_done) {
+          new_box.num_low_bits_ignored_ = local_first_high_bit_idx + bits_lower_than_this_part_of_interleaved_bits;
           for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
             assert_if_ASSERT_EVERYTHING(
                  (zb1.coords_[j] & ~this_many_low_bits(new_box.num_bits_ignored_by_dimension(j)))
@@ -149,7 +150,7 @@ private:
           return new_box;
         }
       }
-      new_box.num_low_bits_ignored_ = max_ignored;
+      new_box.num_low_bits_ignored_ = min_low_bits_ignored;
 
       assert_if_ASSERT_EVERYTHING(zb1.coords_ == zb2.coords_);
 
