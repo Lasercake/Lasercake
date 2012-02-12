@@ -35,9 +35,8 @@
 using std::unordered_map;
 using std::unordered_set;
 
-typedef size_t num_bits_type;
-typedef size_t num_coordinates_type;
-typedef ptrdiff_t signed_num_coordinates_type;
+typedef ptrdiff_t num_bits_type;
+typedef ptrdiff_t num_coordinates_type;
 
 // ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
 // CoordinateBits should usually be 32 or 64. I don't know if it works for other values.
@@ -45,12 +44,16 @@ template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinate
 class bbox_collision_detector {
   static_assert(NumDimensions >= 0, "You can't make a space with negative dimensions!");
   static_assert(CoordinateBits >= 0, "You can't have an int type with negative bits!");
+  struct generalized_object_collection_walker;
   friend class zbox_tester;
 
 public:
   typedef typename boost::uint_t<CoordinateBits>::fast Coordinate;
+  
   struct bounding_box {
-    std::array<Coordinate, NumDimensions> min, size;
+    std::array<Coordinate, NumDimensions> min;
+    std::array<Coordinate, NumDimensions> size;
+    
     bool overlaps(bounding_box const& other)const {
       for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
         // this should correctly handle zboxes' "size=0" when all bits are ignored
@@ -68,13 +71,106 @@ public:
     objects_tree.reset(other.objects_tree ? new ztree_node(*other.objects_tree) : nullptr);
     return *this;
   }
+
+  void insert(ObjectIdentifier const& id, bounding_box const& bbox) {
+    caller_correct_if(
+      bboxes_by_object.insert(std::make_pair(id, bbox)).second,
+      "bbox_collision_detector::insert() requires for your safety that the id "
+      "is not already in this container.  Use .erase() or .exists() if you need "
+      "any particular behaviour in this case."
+    );
+
+    insert_zboxes_from_bbox(objects_tree, id, bbox);
+  }
+
+  bool exists(ObjectIdentifier const& id)const {
+    return (bboxes_by_object.find(id) != bboxes_by_object.end());
+  }
+
+  bool erase(ObjectIdentifier const& id) {
+    auto bbox_iter = bboxes_by_object.find(id);
+    if (bbox_iter == bboxes_by_object.end()) return false;
+    delete_object(objects_tree, id, bbox_iter->second);
+    bboxes_by_object.erase(bbox_iter);
+    return true;
+  }
+
+  bounding_box const* find_bounding_box(ObjectIdentifier const& id)const {
+    return find_as_pointer(bboxes_by_object, id);
+  }
+
+  void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
+    zget_objects_overlapping(objects_tree.get(), results, bbox);
+  }
+
+  class generalized_object_collection_handler;
+
+  // Derive from
+  //   class bbox_collision_detector<>::generalized_object_collection_handler
+  // and override its virtual functions
+  // to make get_objects_generalized() do something interesting for you.
+  void get_objects_generalized(generalized_object_collection_handler* handler)const {
+    generalized_object_collection_walker data(handler, bboxes_by_object);
+
+    data.try_add(objects_tree.get());
+    while(data.process_next()){}
+  }
+
+  class generalized_object_collection_handler {
+  public:
+    virtual void handle_new_find(ObjectIdentifier) {}
+
+    // Any bbox for which this one of these functions returns false is ignored.
+    // The static one is checked only once for each box; the dynamic one is checked
+    // both before the box is added to the frontier and when it comes up.
+    virtual bool should_be_considered__static(bounding_box const&)const { return true; }
+    virtual bool should_be_considered__dynamic(bounding_box const&)const { return true; }
+
+    // returns "true" if the first one should be considered first, "false" otherwise.
+    // This is primarily intended to allow the caller to run through objects in a specific
+    // in-space order to get the first collision in some direction. One can combine it with
+    // a dynamic should_be_considered function to stop looking in boxes that are entirely
+    // after the first known collision.
+    //
+    // This function must be a Strict Weak Ordering and not change its behavior.
+    // This function is only a heuristic; we don't guarantee that the boxes will be handled
+    // exactly in the given order.
+    virtual bool bbox_ordering(bounding_box const&, bounding_box const&)const { return false; } // arbitrary order
+
+    // This is called often (specifically, every time we call a non-const function of handler);
+    // if it returns true, we stop right away.
+    // Some handlers might know they're done looking before the should_be_considered boxes
+    // run out; this just makes that more efficient.
+    virtual bool done()const { return false; }
+
+    unordered_set<ObjectIdentifier> const& get_found_objects()const { return found_objects; }
+  private:
+    unordered_set<ObjectIdentifier> found_objects;
+    friend struct generalized_object_collection_walker;
+  };
   
 private:
   static const num_bits_type total_bits = CoordinateBits * NumDimensions;
   
   static Coordinate safe_left_shift_one(num_bits_type shift) {
-    if (shift >= 8*sizeof(Coordinate)) return 0;
-    return Coordinate(1) << shift; // TODO address the fact that this could put bits higher than the appropriate amount if CoordinateBits isn't the number of bits of the type
+    if (shift >= CoordinateBits) return 0;
+    return Coordinate(1) << shift;
+  }
+
+  static Coordinate this_many_low_bits(num_bits_type num_bits) {
+    return safe_left_shift_one(num_bits) - 1;
+  }
+
+  static num_bits_type num_bits_in_integer_that_are_not_leading_zeroes(Coordinate i) {
+    int upper_bound = CoordinateBits;
+    int lower_bound = -1;
+    while(true) {
+      int halfway_bit_idx = (upper_bound + lower_bound) >> 1;
+      if (halfway_bit_idx == lower_bound) return (lower_bound + 1);
+
+      if (i & ~this_many_low_bits(halfway_bit_idx)) lower_bound = halfway_bit_idx;
+      else                                          upper_bound = halfway_bit_idx;
+    }
   }
 
   // bbox_collision_detector uses "z-ordering", named such because "z" is a visual for
@@ -112,32 +208,37 @@ private:
     
     zbox():num_low_bits_ignored_(total_bits){ for (num_coordinates_type i = 0; i < NumDimensions; ++i) interleaved_bits_[i] = 0; }
 
-    // Named constructors
+    // Named constructor idiom
     static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
       zbox new_box;
-      const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
-      for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-        int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]);
-        if ((highest_bit_idx+1 + i * CoordinateBits) < max_ignored) highest_bit_idx = max_ignored - i * CoordinateBits - 1;
+      const num_bits_type min_low_bits_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
+      for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
+        const num_bits_type bits_lower_than_this_part_of_interleaved_bits = i * CoordinateBits;
+        const num_bits_type local_first_high_bit_idx = std::max(
+          num_bits_in_integer_that_are_not_leading_zeroes(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]),
+          min_low_bits_ignored - bits_lower_than_this_part_of_interleaved_bits
+        );
+        const bool clearly_done = local_first_high_bit_idx > 0;
 
-        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits_[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
+        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~this_many_low_bits(local_first_high_bit_idx))
+                                 == (zb2.interleaved_bits_[i] & ~this_many_low_bits(local_first_high_bit_idx)));
 
-        new_box.interleaved_bits_[i] = (zb1.interleaved_bits_[i]) & (~((safe_left_shift_one(highest_bit_idx + 1)) - 1));
-        if (highest_bit_idx >= 0) {
-          new_box.num_low_bits_ignored_ = highest_bit_idx+1 + i * CoordinateBits;
+        new_box.interleaved_bits_[i] = zb1.interleaved_bits_[i] & ~this_many_low_bits(local_first_high_bit_idx);
+        if (clearly_done) {
+          new_box.num_low_bits_ignored_ = local_first_high_bit_idx + bits_lower_than_this_part_of_interleaved_bits;
           for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
             assert_if_ASSERT_EVERYTHING(
-                 (zb1.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
-              == (zb2.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
+                 (zb1.coords_[j] & ~this_many_low_bits(new_box.num_bits_ignored_by_dimension(j)))
+              == (zb2.coords_[j] & ~this_many_low_bits(new_box.num_bits_ignored_by_dimension(j)))
             );
 
-            new_box.coords_[j] = zb1.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1);
+            new_box.coords_[j] = zb1.coords_[j] & ~this_many_low_bits(new_box.num_bits_ignored_by_dimension(j));
           }
           new_box.compute_bbox_();
           return new_box;
         }
       }
-      new_box.num_low_bits_ignored_ = max_ignored;
+      new_box.num_low_bits_ignored_ = min_low_bits_ignored;
 
       assert_if_ASSERT_EVERYTHING(zb1.coords_ == zb2.coords_);
 
@@ -150,7 +251,7 @@ private:
       zbox result;
       result.num_low_bits_ignored_ = num_low_bits_ignored;
       for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-        result.coords_[i] = coords[i] & (~(safe_left_shift_one(result.num_bits_ignored_by_dimension(i)) - 1));
+        result.coords_[i] = coords[i] & ~this_many_low_bits(result.num_bits_ignored_by_dimension(i));
       }
       for (num_bits_type bit_within_interleaved_bits = num_low_bits_ignored;
                         bit_within_interleaved_bits < total_bits;
@@ -173,7 +274,7 @@ private:
       for (num_coordinates_type i = num_low_bits_ignored_ / CoordinateBits; i < NumDimensions; ++i) {
         Coordinate mask = ~Coordinate(0);
         if (i == num_low_bits_ignored_ / CoordinateBits) {
-          mask &= ~(safe_left_shift_one(num_low_bits_ignored_ % CoordinateBits) - 1);
+          mask &= ~this_many_low_bits(num_low_bits_ignored_ % CoordinateBits);
         }
         if ((interleaved_bits_[i] & mask) != (other.interleaved_bits_[i] & mask)) return false;
       }
@@ -193,19 +294,52 @@ private:
       return num_low_bits_ignored_;
     }
   };
-  
-  static int idx_of_highest_bit(Coordinate i) {
-    int upper_bound = CoordinateBits;
-    int lower_bound = -1;
-    while(true) {
-      int halfway_bit_idx = (upper_bound + lower_bound) >> 1;
-      if (halfway_bit_idx == lower_bound) return lower_bound;
-      
-      if (i & ~(safe_left_shift_one(halfway_bit_idx) - 1)) lower_bound = halfway_bit_idx;
-      else                                                 upper_bound = halfway_bit_idx;
-    }
-  }
-  
+
+  // The bbox_collision_detector has a "z-tree".  This
+  // is a binary tree.  Keys in the tree are zboxes (see above).
+  // Values are ObjectIdentifiers; each zbox may have any number
+  // of ObjectIdentifiers.  This code is happy for objects to overlap
+  // each other, and besides, even non-overlapping objects often
+  // have a minimal containing zbox in common.
+  //
+  // Because of the definition of zboxes, either they are
+  // A: the same, and thus the same ztree_node
+  // B: one is smaller and fully within the node, and it is a
+  //          descendant of the other
+  // C: they don't overlap at all, and in the ztree neither is a
+  //          descendant of the other.
+  // (In particular, zboxes can't partially overlap each other.)
+  //
+  // An object may need to be in up to (2**NumDimensions) zboxes
+  // so that the area covered by its zboxes is only a constant
+  // factor larger than the object's regular (non-z-order) bounding
+  // box.  Consider an object that's a box of width 2 or 3 with
+  // x min-coordinate 10111111 and max 11000001 (binary).  The minimal
+  // common prefix there is just a single bit; a single bit means
+  // a huge box.  Conceptually, dimensions' bits are interleaved
+  // before looking for a common prefix; any dimension has the
+  // potential to differ in a high bit and disrupt the common prefix.
+  // Splitting the object across two zboxes, for each dimension,
+  // is sufficient to avoid this explosion.
+  //
+  // Specifically, a ztree is a Patricia trie on z-ordered
+  // bits (zboxes), where the bits are seen as a sequence with the
+  // highest-order bits first and the sequence-length equal to the
+  // number of high bits specified by a given key/ztree_node/zbox.
+  // The ztree_node happens to contain (unlike typical tries) the
+  // entire key that it represents, because the key is small and
+  // constant-sized and it's generally easier to do so.
+  //
+  // What goes into child0 vs. child1?  If trying to insert, say,
+  // the zbox B = 10100??? (binary, 5 high bits, 3 low bits) into
+  // A = 10??????, B goes at or below A's child1 because B's next bit
+  // after A's bits is 1.  (Current: 10, next: 101).
+  //
+  // If there would be a node with zero ObjectIdentifiers and
+  // only one child, then that child node goes there directly
+  // instead of that trivial node.  If the tree, to be correct,
+  // needs nodes with two children and zero ObjectIdentifiers,
+  // then it will have them.
   struct ztree_node;
   typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
   struct ztree_node {
@@ -224,9 +358,106 @@ private:
       return *this;
     }
   };
+
+  // A call to insert_zboxes_from_bbox() might be more clearly written
+  //   for(zbox zb : zboxes_from_bbox(bbox)) {
+  //     insert_zbox(objects_tree, id, zb);
+  //   }
+  // The only reason we combine insert_zbox and zboxes_from_bbox is so
+  // we don't have to construct the intermediate container structure.
+  static void insert_zboxes_from_bbox(ztree_node_ptr& objects_tree, ObjectIdentifier const& id, bounding_box const& bbox) {
+    Coordinate max_dim = bbox.size[0];
+    for (num_coordinates_type i = 1; i < NumDimensions; ++i) {
+      if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
+    }
+    // max_dim - 1: power-of-two-sized objects easily squeeze into the next smaller category.
+    // i.e., exp = log2_rounding_up(max_dim)
+    const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_dim - 1);
+    const Coordinate base_box_size = safe_left_shift_one(exp);
+    const Coordinate used_bits_mask = ~(base_box_size - 1);
+
+    // The total number of zboxes we use to cover this bounding_box
+    // is a power of two between 1 and 2**NumDimensions.
+    // Imagine that we start with a set of one box and that,
+    // for each dimension, we start with the previous set of boxes,
+    // then zbox-ify this dimension, using either
+    //   (A) exactly base_box_size width-in-this-dimension, or
+    //   (B) twice base_box_size width-in-this-dimension, or
+    // if the bit parity didn't work out so well, it
+    //   (C) needs to split each zbox into two.
+    num_coordinates_type num_dims_using_one_zbox_of_exactly_base_box_size = 0;
+    num_coordinates_type num_dims_using_one_zbox_of_twice_base_box_size = 0;
+    num_coordinates_type num_dims_using_two_zboxes_each_of_base_box_size;
+
+    // Given that a coordinate is laid out in bits like XYZXYZXYZ,
+    // We're at some exp in there (counted from the right); let's say 3.
+    // Given exp 3, Z is a less-significant bit and X is more-significant.
+    // ('exp' could also be a non-multiple-of-NumDimensions, in which case
+    // the ordering of the dimensions would come out differently.)
+    //
+    // If the object happens to fit, aligned, in X with width base_box_size,
+    // then we can just specify this X bit directly.  If that works for X,
+    // we can try Y; if not, we can't try Y because X is already doing
+    // something nontrivial (perhaps it could be done; the code would
+    // be more complicated).  These are
+    // "num_dimensions_that_need_one_zbox_of_exactly_base_box_size".
+    // This is the best case.
+    //
+    // Then, if we can't specify where in all dimensions we are
+    // z-box-ly yet in one zbox, we try starting from Z:
+    // it's possible that Z (and so forth if Z is) can be included
+    // in the zbox's low_bits.  This would make the zbox twice
+    // as wide in that dimension (e.g. Z) as it would be in the
+    // case of if X fits into a single base_box_size at the scale
+    // we're looking at.  But it's better than making two separate
+    // zboxes that take up that much space anyway.  If the bounding
+    // box didn't happen to be aligned with the right parity,
+    // we'll have to make two boxes for it anyway instead of putting
+    // it in "num_dimensions_that_need_one_zbox_of_twice_base_box_size".
+    //
+    // All the dimensions in between will be split into two zboxes,
+    // each of width base_box_size, for a total width of
+    // twice base_box_size.  This is the worst case,
+    // "num_dimensions_that_need_two_zboxes_each_of_base_box_size".
+    for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
+      if ((bbox.min[i] & used_bits_mask) + base_box_size >= bbox.min[i] + bbox.size[i]) {
+        ++num_dims_using_one_zbox_of_exactly_base_box_size;
+      }
+      else {
+        break;
+      }
+    }
+    for (num_coordinates_type i = 0; i < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++i) {
+      if (!(bbox.min[i] & base_box_size)) {
+        ++num_dims_using_one_zbox_of_twice_base_box_size;
+      }
+      else {
+        break;
+      }
+    }
+    num_dims_using_two_zboxes_each_of_base_box_size = NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size - num_dims_using_one_zbox_of_twice_base_box_size;
+
+    const int number_of_zboxes_to_use_if_necessary = 1 << num_dims_using_two_zboxes_each_of_base_box_size;
+
+    for (int i = 0; i < number_of_zboxes_to_use_if_necessary; ++i) {
+      std::array<Coordinate, NumDimensions> coords = bbox.min;
+      for (num_coordinates_type j = num_dims_using_one_zbox_of_twice_base_box_size; j < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++j) {
+        // By checking this bit of "i" arbitrarily, by the last time
+        // we get through the "number_of_zboxes_to_use_if_necessary" loop,
+        // we have yielded every combination of possibilities of
+        // each dimension that varies varying (between +0 and +base_box_size).
+        if (i & (1 << (j - num_dims_using_one_zbox_of_twice_base_box_size))) {
+          coords[j] += base_box_size;
+        }
+      }
+      const zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + num_dims_using_one_zbox_of_twice_base_box_size);
+      if (zb.get_bbox().overlaps(bbox)) {
+        insert_zbox(objects_tree, id, zb);
+      }
+    }
+  }
   
-  
-  static void insert_box(ztree_node_ptr& tree, ObjectIdentifier const& obj, zbox box) {
+  static void insert_zbox(ztree_node_ptr& tree, ObjectIdentifier const& obj, zbox box) {
     if (!tree) {
       tree.reset(new ztree_node(box));
       tree->objects_here.insert(obj);
@@ -237,8 +468,8 @@ private:
           tree->objects_here.insert(obj);
         }
         else {
-          if (box.get_bit(tree->here.num_low_bits() - 1)) insert_box(tree->child1, obj, box);
-          else                                                  insert_box(tree->child0, obj, box);
+          if (box.get_bit(tree->here.num_low_bits() - 1)) insert_zbox(tree->child1, obj, box);
+          else                                                  insert_zbox(tree->child0, obj, box);
         }
       }
       else {
@@ -253,7 +484,7 @@ private:
         else                                                       tree.swap(new_tree->child0);
 
         tree.swap(new_tree);
-        insert_box(tree, obj, box);
+        insert_zbox(tree, obj, box);
       }
     }
   }
@@ -300,105 +531,6 @@ private:
   unordered_map<ObjectIdentifier, bounding_box> bboxes_by_object;
   ztree_node_ptr objects_tree;
   
-public:
-
-  void insert(ObjectIdentifier const& id, bounding_box const& bbox) {
-    caller_correct_if(
-      bboxes_by_object.insert(std::make_pair(id, bbox)).second,
-      "bbox_collision_detector::insert() requires for your safety that the id "
-      "is not already in this container.  Use .erase() or .exists() if you need "
-      "any particular behaviour in this case."
-    );
-    Coordinate max_dim = bbox.size[0];
-    for (num_coordinates_type i = 1; i < NumDimensions; ++i) {
-      if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
-    }
-    int exp = 0; while ((Coordinate(1) << exp) < max_dim) ++exp;
-    int dimensions_we_can_single = 0;
-    int dimensions_we_can_double = 0;
-    const Coordinate base_box_size = safe_left_shift_one(exp);
-    const Coordinate used_bits_mask = ~(base_box_size - 1);
-    
-    for (int i = NumDimensions - 1; i >= 0; --i) {
-      if ((bbox.min[i] & used_bits_mask) + base_box_size >= bbox.min[i] + bbox.size[i]) ++dimensions_we_can_single;
-      else break;
-    }
-    for (num_coordinates_type i = 0; i < NumDimensions - dimensions_we_can_single; ++i) {
-      if (!(bbox.min[i] & base_box_size)) ++dimensions_we_can_double;
-      else break;
-    }
-    #ifdef ZTREE_TESTING
-    std::cerr << dimensions_we_can_single << "... " << dimensions_we_can_double << "...\n";
-    #endif
-    for (int i = 0; i < (1 << ((NumDimensions - dimensions_we_can_single) - dimensions_we_can_double)); ++i) {
-      std::array<Coordinate, NumDimensions> coords = bbox.min;
-      for (num_coordinates_type j = dimensions_we_can_double; j < NumDimensions - dimensions_we_can_single; ++j) {
-        if ((i << dimensions_we_can_double) & (1<<j)) coords[j] += base_box_size;
-      }
-      zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + dimensions_we_can_double);
-      if (zb.get_bbox().overlaps(bbox))
-        insert_box(objects_tree, id, zb);
-    }
-  }
-  
-  bool exists(ObjectIdentifier const& id)const {
-    return (bboxes_by_object.find(id) != bboxes_by_object.end());
-  }
-  
-  bool erase(ObjectIdentifier const& id) {
-    auto bbox_iter = bboxes_by_object.find(id);
-    if (bbox_iter == bboxes_by_object.end()) return false;
-    delete_object(objects_tree, id, bbox_iter->second);
-    bboxes_by_object.erase(bbox_iter);
-    return true;
-  }
-
-  bounding_box const* find_bounding_box(ObjectIdentifier const& id)const {
-    return find_as_pointer(bboxes_by_object, id);
-  }
-  
-  void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
-    zget_objects_overlapping(objects_tree.get(), results, bbox);
-  }
-  
-private:
-  struct generalized_object_collection_walker;
-
-public:
-  class generalized_object_collection_handler {
-  public:
-    virtual void handle_new_find(ObjectIdentifier) {}
-    
-    // Any bbox for which this one of these functions returns false is ignored.
-    // The static one is checked only once for each box; the dynamic one is checked
-    // both before the box is added to the frontier and when it comes up.
-    virtual bool should_be_considered__static(bounding_box const&)const { return true; }
-    virtual bool should_be_considered__dynamic(bounding_box const&)const { return true; }
-    
-    // returns "true" if the first one should be considered first, "false" otherwise.
-    // This is primarily intended to allow the caller to run through objects in a specific
-    // in-space order to get the first collision in some direction. One can combine it with
-    // a dynamic should_be_considered function to stop looking in boxes that are entirely
-    // after the first known collision.
-    //
-    // This function must be a Strict Weak Ordering and not change its behavior.
-    // This function is only a heuristic; we don't guarantee that the boxes will be handled
-    // exactly in the given order.
-    virtual bool bbox_ordering(bounding_box const&, bounding_box const&)const { return false; } // arbitrary order
-    
-    // This is called often (specifically, every time we call a non-const function of handler);
-    // if it returns true, we stop right away.
-    // Some handlers might know they're done looking before the should_be_considered boxes
-    // run out; this just makes that more efficient.
-    virtual bool done()const { return false; }
-    
-    unordered_set<ObjectIdentifier> const& get_found_objects()const { return found_objects; }
-  private:
-    unordered_set<ObjectIdentifier> found_objects;
-    friend struct generalized_object_collection_walker;
-  };
-
-private:
   struct generalized_object_collection_walker {
     generalized_object_collection_handler* handler;
     unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object;
@@ -451,14 +583,6 @@ private:
       return true;
     }
   };
-    
-public:
-  void get_objects_generalized(generalized_object_collection_handler* handler)const {
-    generalized_object_collection_walker data(handler, bboxes_by_object);
-    
-    data.try_add(objects_tree.get());
-    while(data.process_next()){}
-  }
 };
 
 /*
@@ -474,7 +598,7 @@ tree = ztree_node {
 Two zboxes that differ at bit B:
 child0 of a node with B ignored bits is the child whose Bth bit is 0.
 tree = ztree_node {
-  Z1/Z2, with B ignored bits
+  the common leading bits of Z1 and Z2, with B ignored bits
   ptr to ztree_node {
     Z1
     nullptr
