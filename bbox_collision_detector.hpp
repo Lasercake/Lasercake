@@ -36,6 +36,7 @@ using std::unordered_map;
 using std::unordered_set;
 
 typedef size_t num_bits_type;
+typedef ptrdiff_t signed_num_bits_type;
 typedef size_t num_coordinates_type;
 typedef ptrdiff_t signed_num_coordinates_type;
 
@@ -122,11 +123,13 @@ private:
     // Named constructors
     static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
       zbox new_box;
-      const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
+      const signed_num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
       for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-        const num_bits_type bits_lower_than_this_part_of_interleaved_bits = i * CoordinateBits;
-        int first_high_bit_idx = num_bits_in_integer_that_are_not_leading_zeroes(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]);
-        if ((first_high_bit_idx + bits_lower_than_this_part_of_interleaved_bits) < max_ignored) first_high_bit_idx = max_ignored - bits_lower_than_this_part_of_interleaved_bits;
+        const signed_num_bits_type bits_lower_than_this_part_of_interleaved_bits = i * CoordinateBits;
+        const signed_num_bits_type first_high_bit_idx = std::max(
+          num_bits_in_integer_that_are_not_leading_zeroes(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]),
+          max_ignored - bits_lower_than_this_part_of_interleaved_bits
+        );
 
         assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx))
                                  == (zb2.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx)));
@@ -203,7 +206,7 @@ private:
     }
   };
   
-  static int num_bits_in_integer_that_are_not_leading_zeroes(Coordinate i) {
+  static signed_num_bits_type num_bits_in_integer_that_are_not_leading_zeroes(Coordinate i) {
     int upper_bound = CoordinateBits;
     int lower_bound = -1;
     while(true) {
