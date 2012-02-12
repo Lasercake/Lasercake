@@ -469,7 +469,7 @@ private:
         }
         else {
           if (box.get_bit(tree->here.num_low_bits() - 1)) insert_zbox(tree->child1, obj, box);
-          else                                                  insert_zbox(tree->child0, obj, box);
+          else                                            insert_zbox(tree->child0, obj, box);
         }
       }
       else {
