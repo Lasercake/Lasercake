@@ -237,7 +237,7 @@ private:
   };
   
   
-  static void insert_box(ztree_node_ptr& tree, ObjectIdentifier const& obj, zbox box) {
+  static void insert_zbox(ztree_node_ptr& tree, ObjectIdentifier const& obj, zbox box) {
     if (!tree) {
       tree.reset(new ztree_node(box));
       tree->objects_here.insert(obj);
@@ -248,8 +248,8 @@ private:
           tree->objects_here.insert(obj);
         }
         else {
-          if (box.get_bit(tree->here.num_low_bits() - 1)) insert_box(tree->child1, obj, box);
-          else                                                  insert_box(tree->child0, obj, box);
+          if (box.get_bit(tree->here.num_low_bits() - 1)) insert_zbox(tree->child1, obj, box);
+          else                                                  insert_zbox(tree->child0, obj, box);
         }
       }
       else {
@@ -264,7 +264,7 @@ private:
         else                                                       tree.swap(new_tree->child0);
 
         tree.swap(new_tree);
-        insert_box(tree, obj, box);
+        insert_zbox(tree, obj, box);
       }
     }
   }
@@ -406,7 +406,7 @@ public:
       }
       const zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + num_dims_using_one_zbox_of_twice_base_box_size);
       if (zb.get_bbox().overlaps(bbox)) {
-        insert_box(objects_tree, id, zb);
+        insert_zbox(objects_tree, id, zb);
       }
     }
   }
