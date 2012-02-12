@@ -342,14 +342,23 @@ public:
     #ifdef ZTREE_TESTING
     std::cerr << dimensions_we_can_single << "... " << dimensions_we_can_double << "...\n";
     #endif
-    for (int i = 0; i < (1 << ((NumDimensions - dimensions_we_can_single) - dimensions_we_can_double)); ++i) {
+    const int number_of_zboxes_to_use_if_necessary = 1 << (NumDimensions - dimensions_we_can_single - dimensions_we_can_double);
+    
+    for (int i = 0; i < number_of_zboxes_to_use_if_necessary; ++i) {
       std::array<Coordinate, NumDimensions> coords = bbox.min;
       for (num_coordinates_type j = dimensions_we_can_double; j < NumDimensions - dimensions_we_can_single; ++j) {
-        if ((i << dimensions_we_can_double) & (1<<j)) coords[j] += base_box_size;
+        // By checking this bit of "i" arbitrarily, by the last time
+        // we get through the "number_of_zboxes_to_use_if_necessary" loop,
+        // we have yielded every combination of possibilities of
+        // each dimension that varies varying (between +0 and +base_box_size).
+        if (i & (1 << (j - dimensions_we_can_double))) {
+          coords[j] += base_box_size;
+        }
       }
-      zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + dimensions_we_can_double);
-      if (zb.get_bbox().overlaps(bbox))
+      const zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + dimensions_we_can_double);
+      if (zb.get_bbox().overlaps(bbox)) {
         insert_box(objects_tree, id, zb);
+      }
     }
   }
   
