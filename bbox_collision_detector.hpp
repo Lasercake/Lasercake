@@ -49,8 +49,11 @@ class bbox_collision_detector {
 
 public:
   typedef typename boost::uint_t<CoordinateBits>::fast Coordinate;
+  
   struct bounding_box {
-    std::array<Coordinate, NumDimensions> min, size;
+    std::array<Coordinate, NumDimensions> min;
+    std::array<Coordinate, NumDimensions> size;
+    
     bool overlaps(bounding_box const& other)const {
       for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
         // this should correctly handle zboxes' "size=0" when all bits are ignored
