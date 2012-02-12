@@ -391,7 +391,6 @@ private:
     // i.e., exp = log2_rounding_up(max_width)
     const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_width - 1);
     const Coordinate base_box_size = safe_left_shift_one(exp);
-    const Coordinate used_bits_mask = ~(base_box_size - 1);
 
     // The total number of zboxes we use to cover this bounding_box
     // is a power of two between 1 and 2**NumDimensions.
@@ -437,7 +436,7 @@ private:
     // twice base_box_size.  This is the worst case,
     // "num_dimensions_that_need_two_zboxes_each_of_base_box_size".
     for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-      if ((bbox.min[i] & used_bits_mask) + base_box_size >= bbox.min[i] + bbox.size[i]) {
+      if (bbox.size[i] <= base_box_size - (bbox.min[i] & (base_box_size - 1))) {
         ++num_dims_using_one_zbox_of_exactly_base_box_size;
       }
       else {
