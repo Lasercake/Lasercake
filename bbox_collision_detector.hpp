@@ -120,14 +120,14 @@ private:
       zbox new_box;
       const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
       for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-        int highest_bit_idx = idx_of_highest_bit(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]);
-        if ((highest_bit_idx+1 + i * CoordinateBits) < max_ignored) highest_bit_idx = max_ignored - i * CoordinateBits - 1;
+        int first_high_bit_idx = num_bits_in_integer_that_are_not_leading_zeroes(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]);
+        if ((first_high_bit_idx + i * CoordinateBits) < max_ignored) highest_bit_idx = max_ignored - i * CoordinateBits;
 
-        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)) == (zb2.interleaved_bits_[i] & ~((safe_left_shift_one(highest_bit_idx+1)) - 1)));
+        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~((safe_left_shift_one(first_high_bit_idx)) - 1)) == (zb2.interleaved_bits_[i] & ~((safe_left_shift_one(first_high_bit_idx)) - 1)));
 
-        new_box.interleaved_bits_[i] = (zb1.interleaved_bits_[i]) & (~((safe_left_shift_one(highest_bit_idx + 1)) - 1));
-        if (highest_bit_idx >= 0) {
-          new_box.num_low_bits_ignored_ = highest_bit_idx+1 + i * CoordinateBits;
+        new_box.interleaved_bits_[i] = (zb1.interleaved_bits_[i]) & (~((safe_left_shift_one(first_high_bit_idx)) - 1));
+        if (first_high_bit_idx > 0) {
+          new_box.num_low_bits_ignored_ = first_high_bit_idx + i * CoordinateBits;
           for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
             assert_if_ASSERT_EVERYTHING(
                  (zb1.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
@@ -197,12 +197,12 @@ private:
     }
   };
   
-  static int idx_of_highest_bit(Coordinate i) {
+  static int num_bits_in_integer_that_are_not_leading_zeroes(Coordinate i) {
     int upper_bound = CoordinateBits;
     int lower_bound = -1;
     while(true) {
       int halfway_bit_idx = (upper_bound + lower_bound) >> 1;
-      if (halfway_bit_idx == lower_bound) return lower_bound;
+      if (halfway_bit_idx == lower_bound) return (lower_bound + 1);
       
       if (i & ~(safe_left_shift_one(halfway_bit_idx) - 1)) lower_bound = halfway_bit_idx;
       else                                                 upper_bound = halfway_bit_idx;
