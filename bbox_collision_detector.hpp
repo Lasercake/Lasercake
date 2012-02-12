@@ -80,6 +80,10 @@ private:
     return Coordinate(1) << shift; // TODO address the fact that this could put bits higher than the appropriate amount if CoordinateBits isn't the number of bits of the type
   }
 
+  static Coordinate this_many_low_bits(num_bits_type num_bits) {
+    return safe_left_shift_one(num_bits) - 1;
+  }
+
   // bbox_collision_detector uses "z-ordering", named such because "z" is a visual for
   // the zigzag the ordering creates when drawn.  See
   //     https://en.wikipedia.org/wiki/Z-order_curve
@@ -121,20 +125,21 @@ private:
       const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
       for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
         int first_high_bit_idx = num_bits_in_integer_that_are_not_leading_zeroes(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]);
-        if ((first_high_bit_idx + i * CoordinateBits) < max_ignored) highest_bit_idx = max_ignored - i * CoordinateBits;
+        if ((first_high_bit_idx + i * CoordinateBits) < max_ignored) first_high_bit_idx = max_ignored - i * CoordinateBits;
 
-        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~((safe_left_shift_one(first_high_bit_idx)) - 1)) == (zb2.interleaved_bits_[i] & ~((safe_left_shift_one(first_high_bit_idx)) - 1)));
+        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx))
+                                 == (zb2.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx)));
 
-        new_box.interleaved_bits_[i] = (zb1.interleaved_bits_[i]) & (~((safe_left_shift_one(first_high_bit_idx)) - 1));
+        new_box.interleaved_bits_[i] = zb1.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx);
         if (first_high_bit_idx > 0) {
           new_box.num_low_bits_ignored_ = first_high_bit_idx + i * CoordinateBits;
           for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
             assert_if_ASSERT_EVERYTHING(
-                 (zb1.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
-              == (zb2.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1))
+                 (zb1.coords_[j] & ~this_many_low_bits(new_box.num_bits_ignored_by_dimension(j)))
+              == (zb2.coords_[j] & ~this_many_low_bits(new_box.num_bits_ignored_by_dimension(j)))
             );
 
-            new_box.coords_[j] = zb1.coords_[j] & ~(safe_left_shift_one(new_box.num_bits_ignored_by_dimension(j)) - 1);
+            new_box.coords_[j] = zb1.coords_[j] & ~this_many_low_bits(new_box.num_bits_ignored_by_dimension(j));
           }
           new_box.compute_bbox_();
           return new_box;
@@ -153,7 +158,7 @@ private:
       zbox result;
       result.num_low_bits_ignored_ = num_low_bits_ignored;
       for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-        result.coords_[i] = coords[i] & (~(safe_left_shift_one(result.num_bits_ignored_by_dimension(i)) - 1));
+        result.coords_[i] = coords[i] & ~this_many_low_bits(result.num_bits_ignored_by_dimension(i));
       }
       for (num_bits_type bit_within_interleaved_bits = num_low_bits_ignored;
                         bit_within_interleaved_bits < total_bits;
@@ -176,7 +181,7 @@ private:
       for (num_coordinates_type i = num_low_bits_ignored_ / CoordinateBits; i < NumDimensions; ++i) {
         Coordinate mask = ~Coordinate(0);
         if (i == num_low_bits_ignored_ / CoordinateBits) {
-          mask &= ~(safe_left_shift_one(num_low_bits_ignored_ % CoordinateBits) - 1);
+          mask &= ~this_many_low_bits(num_low_bits_ignored_ % CoordinateBits);
         }
         if ((interleaved_bits_[i] & mask) != (other.interleaved_bits_[i] & mask)) return false;
       }
@@ -204,8 +209,8 @@ private:
       int halfway_bit_idx = (upper_bound + lower_bound) >> 1;
       if (halfway_bit_idx == lower_bound) return (lower_bound + 1);
       
-      if (i & ~(safe_left_shift_one(halfway_bit_idx) - 1)) lower_bound = halfway_bit_idx;
-      else                                                 upper_bound = halfway_bit_idx;
+      if (i & ~this_many_low_bits(halfway_bit_idx)) lower_bound = halfway_bit_idx;
+      else                                          upper_bound = halfway_bit_idx;
     }
   }
   
