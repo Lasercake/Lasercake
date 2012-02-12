@@ -57,12 +57,20 @@ public:
   typedef Coordinate coordinate_type;
   
   struct bounding_box {
+    // Example with NumDimensions=1: bbox A={min=2,size=3}, B={min=5,size=1}
+    // are adjacent but not intersecting.
+    // "size=0" actually denotes "size = 2**CoordinateBits" (which probably
+    // doesn't quite fit in a coordinate.)  This lets us handle objects
+    // that can take up most or all the width in the world.
+    // This makes width-0 objects impossible, thought it's dubious that they
+    // would intersect something anyway.
+    // TODO: we're also doing size - 1 everywhere; should we change size
+    // to *be* one less than it is now? (interface change)
     std::array<Coordinate, NumDimensions> min;
     std::array<Coordinate, NumDimensions> size;
     
     bool overlaps(bounding_box const& other)const {
       for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-        // this should correctly handle zboxes' "size=0" when all bits are ignored
         if (other.min[i] + (other.size[i] - 1) <       min[i]) return false;
         if (      min[i] + (      size[i] - 1) < other.min[i]) return false;
       }
@@ -436,7 +444,7 @@ private:
     // twice base_box_size.  This is the worst case,
     // "num_dimensions_that_need_two_zboxes_each_of_base_box_size".
     for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-      if (bbox.size[i] <= base_box_size - (bbox.min[i] & (base_box_size - 1))) {
+      if ((bbox.size[i] - 1) < base_box_size - (bbox.min[i] & (base_box_size - 1))) {
         ++num_dims_using_one_zbox_of_exactly_base_box_size;
       }
       else {
