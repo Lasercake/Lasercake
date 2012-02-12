@@ -105,6 +105,10 @@ public:
 
   class generalized_object_collection_handler;
 
+  // Derive from
+  //   class bbox_collision_detector<>::generalized_object_collection_handler
+  // and override its virtual functions
+  // to make get_objects_generalized() do something interesting for you.
   void get_objects_generalized(generalized_object_collection_handler* handler)const {
     generalized_object_collection_walker data(handler, bboxes_by_object);
 
@@ -549,7 +553,7 @@ tree = ztree_node {
 Two zboxes that differ at bit B:
 child0 of a node with B ignored bits is the child whose Bth bit is 0.
 tree = ztree_node {
-  Z1/Z2, with B ignored bits
+  the common leading bits of Z1 and Z2, with B ignored bits
   ptr to ztree_node {
     Z1
     nullptr
