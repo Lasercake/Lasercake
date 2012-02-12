@@ -85,6 +85,18 @@ private:
     return safe_left_shift_one(num_bits) - 1;
   }
 
+  static signed_num_bits_type num_bits_in_integer_that_are_not_leading_zeroes(Coordinate i) {
+    int upper_bound = CoordinateBits;
+    int lower_bound = -1;
+    while(true) {
+      int halfway_bit_idx = (upper_bound + lower_bound) >> 1;
+      if (halfway_bit_idx == lower_bound) return (lower_bound + 1);
+
+      if (i & ~this_many_low_bits(halfway_bit_idx)) lower_bound = halfway_bit_idx;
+      else                                          upper_bound = halfway_bit_idx;
+    }
+  }
+
   // bbox_collision_detector uses "z-ordering", named such because "z" is a visual for
   // the zigzag the ordering creates when drawn.  See
   //     https://en.wikipedia.org/wiki/Z-order_curve
@@ -206,18 +218,6 @@ private:
       return num_low_bits_ignored_;
     }
   };
-  
-  static signed_num_bits_type num_bits_in_integer_that_are_not_leading_zeroes(Coordinate i) {
-    int upper_bound = CoordinateBits;
-    int lower_bound = -1;
-    while(true) {
-      int halfway_bit_idx = (upper_bound + lower_bound) >> 1;
-      if (halfway_bit_idx == lower_bound) return (lower_bound + 1);
-      
-      if (i & ~this_many_low_bits(halfway_bit_idx)) lower_bound = halfway_bit_idx;
-      else                                          upper_bound = halfway_bit_idx;
-    }
-  }
   
   struct ztree_node;
   typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
