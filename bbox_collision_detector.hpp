@@ -94,7 +94,7 @@ public:
   }
 
   bool erase(ObjectIdentifier const& id) {
-    auto bbox_iter = bboxes_by_object.find(id);
+    const auto bbox_iter = bboxes_by_object.find(id);
     if (bbox_iter == bboxes_by_object.end()) return false;
     delete_object(objects_tree, id, bbox_iter->second);
     bboxes_by_object.erase(bbox_iter);
