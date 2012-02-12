@@ -325,11 +325,23 @@ public:
       if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
     }
     // max_dim - 1: power-of-two-sized objects easily squeeze into the next smaller category.
+    // i.e., exp = log2_rounding_up(max_dim)
     const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_dim - 1);
-    num_coordinates_type dimensions_we_can_single = 0;
-    num_coordinates_type dimensions_we_can_double = 0;
     const Coordinate base_box_size = safe_left_shift_one(exp);
     const Coordinate used_bits_mask = ~(base_box_size - 1);
+
+    // The total number of zboxes we use to cover this bounding_box
+    // is a power of two between 1 and 2**NumDimensions.
+    // Imagine that we start with a set of one box and that,
+    // for each dimension, we start with the previous set of boxes,
+    // then zbox-ify this dimension, using either
+    //   (A) exactly base_box_size width-in-this-dimension, or
+    //   (B) twice base_box_size width-in-this-dimension, or
+    // if the bit parity didn't work out so well, it
+    //   (C) needs to split each zbox into two.
+    num_coordinates_type num_dims_using_one_zbox_of_exactly_base_box_size = 0;
+    num_coordinates_type num_dims_using_one_zbox_of_twice_base_box_size = 0;
+    num_coordinates_type num_dims_using_two_zboxes_each_of_base_box_size;
 
     // Given that a coordinate is laid out in bits like XYZXYZXYZ,
     // We're at some exp in there (counted from the right); let's say 3.
@@ -341,8 +353,9 @@ public:
     // then we can just specify this X bit directly.  If that works for X,
     // we can try Y; if not, we can't try Y because X is already doing
     // something nontrivial (perhaps it could be done; the code would
-    // be more complicated).  These are "dimensions_we_can_single" because
-    // they're one times the base_box_size.  This is the best case.
+    // be more complicated).  These are
+    // "num_dimensions_that_need_one_zbox_of_exactly_base_box_size".
+    // This is the best case.
     //
     // Then, if we can't specify where in all dimensions we are
     // z-box-ly yet in one zbox, we try starting from Z:
@@ -354,36 +367,44 @@ public:
     // zboxes that take up that much space anyway.  If the bounding
     // box didn't happen to be aligned with the right parity,
     // we'll have to make two boxes for it anyway instead of putting
-    // it in "dimensions_we_can_double".
+    // it in "num_dimensions_that_need_one_zbox_of_twice_base_box_size".
     //
     // All the dimensions in between will be split into two zboxes,
     // each of width base_box_size, for a total width of
-    // twice base_box_size.  This is the worst case.
+    // twice base_box_size.  This is the worst case,
+    // "num_dimensions_that_need_two_zboxes_each_of_base_box_size".
     for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-      if ((bbox.min[i] & used_bits_mask) + base_box_size >= bbox.min[i] + bbox.size[i]) ++dimensions_we_can_single;
-      else break;
+      if ((bbox.min[i] & used_bits_mask) + base_box_size >= bbox.min[i] + bbox.size[i]) {
+        ++num_dims_using_one_zbox_of_exactly_base_box_size;
+      }
+      else {
+        break;
+      }
     }
-    for (num_coordinates_type i = 0; i < NumDimensions - dimensions_we_can_single; ++i) {
-      if (!(bbox.min[i] & base_box_size)) ++dimensions_we_can_double;
-      else break;
+    for (num_coordinates_type i = 0; i < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++i) {
+      if (!(bbox.min[i] & base_box_size)) {
+        ++num_dims_using_one_zbox_of_twice_base_box_size;
+      }
+      else {
+        break;
+      }
     }
-    #ifdef ZTREE_TESTING
-    std::cerr << dimensions_we_can_single << "... " << dimensions_we_can_double << "...\n";
-    #endif
-    const int number_of_zboxes_to_use_if_necessary = 1 << (NumDimensions - dimensions_we_can_single - dimensions_we_can_double);
+    num_dims_using_two_zboxes_each_of_base_box_size = NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size - num_dims_using_one_zbox_of_twice_base_box_size;
+
+    const int number_of_zboxes_to_use_if_necessary = 1 << num_dims_using_two_zboxes_each_of_base_box_size;
     
     for (int i = 0; i < number_of_zboxes_to_use_if_necessary; ++i) {
       std::array<Coordinate, NumDimensions> coords = bbox.min;
-      for (num_coordinates_type j = dimensions_we_can_double; j < NumDimensions - dimensions_we_can_single; ++j) {
+      for (num_coordinates_type j = num_dims_using_one_zbox_of_twice_base_box_size; j < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++j) {
         // By checking this bit of "i" arbitrarily, by the last time
         // we get through the "number_of_zboxes_to_use_if_necessary" loop,
         // we have yielded every combination of possibilities of
         // each dimension that varies varying (between +0 and +base_box_size).
-        if (i & (1 << (j - dimensions_we_can_double))) {
+        if (i & (1 << (j - num_dims_using_one_zbox_of_twice_base_box_size))) {
           coords[j] += base_box_size;
         }
       }
-      const zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + dimensions_we_can_double);
+      const zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + num_dims_using_one_zbox_of_twice_base_box_size);
       if (zb.get_bbox().overlaps(bbox)) {
         insert_box(objects_tree, id, zb);
       }
