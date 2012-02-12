@@ -208,7 +208,7 @@ private:
     
     zbox():num_low_bits_ignored_(total_bits){ for (num_coordinates_type i = 0; i < NumDimensions; ++i) interleaved_bits_[i] = 0; }
 
-    // Named constructors
+    // Named constructor idiom
     static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
       zbox new_box;
       const num_bits_type min_low_bits_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
