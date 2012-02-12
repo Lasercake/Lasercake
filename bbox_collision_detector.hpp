@@ -330,7 +330,35 @@ public:
     num_coordinates_type dimensions_we_can_double = 0;
     const Coordinate base_box_size = safe_left_shift_one(exp);
     const Coordinate used_bits_mask = ~(base_box_size - 1);
-    
+
+    // Given that a coordinate is laid out in bits like XYZXYZXYZ,
+    // We're at some exp in there (counted from the right); let's say 3.
+    // Given exp 3, Z is a less-significant bit and X is more-significant.
+    // ('exp' could also be a non-multiple-of-NumDimensions, in which case
+    // the ordering of the dimensions would come out differently.)
+    //
+    // If the object happens to fit, aligned, in X with width base_box_size,
+    // then we can just specify this X bit directly.  If that works for X,
+    // we can try Y; if not, we can't try Y because X is already doing
+    // something nontrivial (perhaps it could be done; the code would
+    // be more complicated).  These are "dimensions_we_can_single" because
+    // they're one times the base_box_size.  This is the best case.
+    //
+    // Then, if we can't specify where in all dimensions we are
+    // z-box-ly yet in one zbox, we try starting from Z:
+    // it's possible that Z (and so forth if Z is) can be included
+    // in the zbox's low_bits.  This would make the zbox twice
+    // as wide in that dimension (e.g. Z) as it would be in the
+    // case of if X fits into a single base_box_size at the scale
+    // we're looking at.  But it's better than making two separate
+    // zboxes that take up that much space anyway.  If the bounding
+    // box didn't happen to be aligned with the right parity,
+    // we'll have to make two boxes for it anyway instead of putting
+    // it in "dimensions_we_can_double".
+    //
+    // All the dimensions in between will be split into two zboxes,
+    // each of width base_box_size, for a total width of
+    // twice base_box_size.  This is the worst case.
     for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
       if ((bbox.min[i] & used_bits_mask) + base_box_size >= bbox.min[i] + bbox.size[i]) ++dimensions_we_can_single;
       else break;
