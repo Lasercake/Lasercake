@@ -44,6 +44,7 @@ template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinate
 class bbox_collision_detector {
   static_assert(NumDimensions >= 0, "You can't make a space with negative dimensions!");
   static_assert(CoordinateBits >= 0, "You can't have an int type with negative bits!");
+  struct generalized_object_collection_walker;
   friend class zbox_tester;
 
 public:
@@ -70,6 +71,79 @@ public:
     objects_tree.reset(other.objects_tree ? new ztree_node(*other.objects_tree) : nullptr);
     return *this;
   }
+
+  void insert(ObjectIdentifier const& id, bounding_box const& bbox) {
+    caller_correct_if(
+      bboxes_by_object.insert(std::make_pair(id, bbox)).second,
+      "bbox_collision_detector::insert() requires for your safety that the id "
+      "is not already in this container.  Use .erase() or .exists() if you need "
+      "any particular behaviour in this case."
+    );
+
+    insert_zboxes_from_bbox(objects_tree, id, bbox);
+  }
+
+  bool exists(ObjectIdentifier const& id)const {
+    return (bboxes_by_object.find(id) != bboxes_by_object.end());
+  }
+
+  bool erase(ObjectIdentifier const& id) {
+    auto bbox_iter = bboxes_by_object.find(id);
+    if (bbox_iter == bboxes_by_object.end()) return false;
+    delete_object(objects_tree, id, bbox_iter->second);
+    bboxes_by_object.erase(bbox_iter);
+    return true;
+  }
+
+  bounding_box const* find_bounding_box(ObjectIdentifier const& id)const {
+    return find_as_pointer(bboxes_by_object, id);
+  }
+
+  void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
+    zget_objects_overlapping(objects_tree.get(), results, bbox);
+  }
+
+  class generalized_object_collection_handler;
+
+  void get_objects_generalized(generalized_object_collection_handler* handler)const {
+    generalized_object_collection_walker data(handler, bboxes_by_object);
+
+    data.try_add(objects_tree.get());
+    while(data.process_next()){}
+  }
+
+  class generalized_object_collection_handler {
+  public:
+    virtual void handle_new_find(ObjectIdentifier) {}
+
+    // Any bbox for which this one of these functions returns false is ignored.
+    // The static one is checked only once for each box; the dynamic one is checked
+    // both before the box is added to the frontier and when it comes up.
+    virtual bool should_be_considered__static(bounding_box const&)const { return true; }
+    virtual bool should_be_considered__dynamic(bounding_box const&)const { return true; }
+
+    // returns "true" if the first one should be considered first, "false" otherwise.
+    // This is primarily intended to allow the caller to run through objects in a specific
+    // in-space order to get the first collision in some direction. One can combine it with
+    // a dynamic should_be_considered function to stop looking in boxes that are entirely
+    // after the first known collision.
+    //
+    // This function must be a Strict Weak Ordering and not change its behavior.
+    // This function is only a heuristic; we don't guarantee that the boxes will be handled
+    // exactly in the given order.
+    virtual bool bbox_ordering(bounding_box const&, bounding_box const&)const { return false; } // arbitrary order
+
+    // This is called often (specifically, every time we call a non-const function of handler);
+    // if it returns true, we stop right away.
+    // Some handlers might know they're done looking before the should_be_considered boxes
+    // run out; this just makes that more efficient.
+    virtual bool done()const { return false; }
+
+    unordered_set<ObjectIdentifier> const& get_found_objects()const { return found_objects; }
+  private:
+    unordered_set<ObjectIdentifier> found_objects;
+    friend struct generalized_object_collection_walker;
+  };
   
 private:
   static const num_bits_type total_bits = CoordinateBits * NumDimensions;
@@ -408,77 +482,6 @@ private:
   unordered_map<ObjectIdentifier, bounding_box> bboxes_by_object;
   ztree_node_ptr objects_tree;
   
-public:
-
-  void insert(ObjectIdentifier const& id, bounding_box const& bbox) {
-    caller_correct_if(
-      bboxes_by_object.insert(std::make_pair(id, bbox)).second,
-      "bbox_collision_detector::insert() requires for your safety that the id "
-      "is not already in this container.  Use .erase() or .exists() if you need "
-      "any particular behaviour in this case."
-    );
-
-    insert_zboxes_from_bbox(objects_tree, id, bbox);
-  }
-  
-  bool exists(ObjectIdentifier const& id)const {
-    return (bboxes_by_object.find(id) != bboxes_by_object.end());
-  }
-  
-  bool erase(ObjectIdentifier const& id) {
-    auto bbox_iter = bboxes_by_object.find(id);
-    if (bbox_iter == bboxes_by_object.end()) return false;
-    delete_object(objects_tree, id, bbox_iter->second);
-    bboxes_by_object.erase(bbox_iter);
-    return true;
-  }
-
-  bounding_box const* find_bounding_box(ObjectIdentifier const& id)const {
-    return find_as_pointer(bboxes_by_object, id);
-  }
-  
-  void get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
-    zget_objects_overlapping(objects_tree.get(), results, bbox);
-  }
-  
-private:
-  struct generalized_object_collection_walker;
-
-public:
-  class generalized_object_collection_handler {
-  public:
-    virtual void handle_new_find(ObjectIdentifier) {}
-    
-    // Any bbox for which this one of these functions returns false is ignored.
-    // The static one is checked only once for each box; the dynamic one is checked
-    // both before the box is added to the frontier and when it comes up.
-    virtual bool should_be_considered__static(bounding_box const&)const { return true; }
-    virtual bool should_be_considered__dynamic(bounding_box const&)const { return true; }
-    
-    // returns "true" if the first one should be considered first, "false" otherwise.
-    // This is primarily intended to allow the caller to run through objects in a specific
-    // in-space order to get the first collision in some direction. One can combine it with
-    // a dynamic should_be_considered function to stop looking in boxes that are entirely
-    // after the first known collision.
-    //
-    // This function must be a Strict Weak Ordering and not change its behavior.
-    // This function is only a heuristic; we don't guarantee that the boxes will be handled
-    // exactly in the given order.
-    virtual bool bbox_ordering(bounding_box const&, bounding_box const&)const { return false; } // arbitrary order
-    
-    // This is called often (specifically, every time we call a non-const function of handler);
-    // if it returns true, we stop right away.
-    // Some handlers might know they're done looking before the should_be_considered boxes
-    // run out; this just makes that more efficient.
-    virtual bool done()const { return false; }
-    
-    unordered_set<ObjectIdentifier> const& get_found_objects()const { return found_objects; }
-  private:
-    unordered_set<ObjectIdentifier> found_objects;
-    friend struct generalized_object_collection_walker;
-  };
-
-private:
   struct generalized_object_collection_walker {
     generalized_object_collection_handler* handler;
     unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object;
@@ -531,14 +534,6 @@ private:
       return true;
     }
   };
-    
-public:
-  void get_objects_generalized(generalized_object_collection_handler* handler)const {
-    generalized_object_collection_walker data(handler, bboxes_by_object);
-    
-    data.try_add(objects_tree.get());
-    while(data.process_next()){}
-  }
 };
 
 /*
