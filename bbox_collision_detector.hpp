@@ -23,6 +23,7 @@
 #define LASERCAKE_BBOX_COLLISION_DETECTOR_HPP__
 
 #include <boost/integer.hpp>
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
@@ -37,12 +38,15 @@ using std::unordered_set;
 
 typedef ptrdiff_t num_bits_type;
 typedef ptrdiff_t num_coordinates_type;
+typedef ptrdiff_t num_zboxes_type;
 
 // ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
 // CoordinateBits should usually be 32 or 64. I don't know if it works for other values.
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
 class bbox_collision_detector {
   static_assert(NumDimensions >= 0, "You can't make a space with negative dimensions!");
+  static_assert(NumDimensions < std::numeric_limits<num_zboxes_type>::digits - 1,
+    "We don't permit so many dimensions that one bounding_box might need more zboxes than we can count.");
   static_assert(CoordinateBits >= 0, "You can't have an int type with negative bits!");
   struct generalized_object_collection_walker;
   friend class zbox_tester;
@@ -437,9 +441,9 @@ private:
     }
     num_dims_using_two_zboxes_each_of_base_box_size = NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size - num_dims_using_one_zbox_of_twice_base_box_size;
 
-    const int number_of_zboxes_to_use_if_necessary = 1 << num_dims_using_two_zboxes_each_of_base_box_size;
+    const num_zboxes_type number_of_zboxes_to_use_if_necessary = num_zboxes_type(1) << num_dims_using_two_zboxes_each_of_base_box_size;
 
-    for (int i = 0; i < number_of_zboxes_to_use_if_necessary; ++i) {
+    for (num_zboxes_type i = 0; i < number_of_zboxes_to_use_if_necessary; ++i) {
       std::array<Coordinate, NumDimensions> coords = bbox.min;
       for (num_coordinates_type j = num_dims_using_one_zbox_of_twice_base_box_size; j < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++j) {
         // By checking this bit of "i" arbitrarily, by the last time
