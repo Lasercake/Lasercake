@@ -48,11 +48,13 @@ class bbox_collision_detector {
   static_assert(NumDimensions < std::numeric_limits<num_zboxes_type>::digits - 1,
     "We don't permit so many dimensions that one bounding_box might need more zboxes than we can count.");
   static_assert(CoordinateBits >= 0, "You can't have an int type with negative bits!");
+  
+  typedef typename boost::uint_t<CoordinateBits>::fast Coordinate;
   struct generalized_object_collection_walker;
   friend class zbox_tester;
 
 public:
-  typedef typename boost::uint_t<CoordinateBits>::fast Coordinate;
+  typedef Coordinate coordinate_type;
   
   struct bounding_box {
     std::array<Coordinate, NumDimensions> min;
