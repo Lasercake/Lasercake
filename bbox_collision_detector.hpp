@@ -179,6 +179,19 @@ private:
     }
   }
 
+  static Coordinate max_in_array_of_unsigned(std::array<Coordinate, NumDimensions> const& arr) {
+    if(NumDimensions == 0) {
+      return 0;
+    }
+    else {
+      Coordinate max_val = arr[0];
+      for (num_coordinates_type i = 1; i < NumDimensions; ++i) {
+        if (arr[i] > max_val) max_val = arr[i];
+      }
+      return max_val;
+    }
+  }
+
   // bbox_collision_detector uses "z-ordering", named such because "z" is a visual for
   // the zigzag the ordering creates when drawn.  See
   //     https://en.wikipedia.org/wiki/Z-order_curve
@@ -372,13 +385,10 @@ private:
   // The only reason we combine insert_zbox and zboxes_from_bbox is so
   // we don't have to construct the intermediate container structure.
   static void insert_zboxes_from_bbox(ztree_node_ptr& objects_tree, ObjectIdentifier const& id, bounding_box const& bbox) {
-    Coordinate max_dim = bbox.size[0];
-    for (num_coordinates_type i = 1; i < NumDimensions; ++i) {
-      if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
-    }
-    // max_dim - 1: power-of-two-sized objects easily squeeze into the next smaller category.
-    // i.e., exp = log2_rounding_up(max_dim)
-    const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_dim - 1);
+    const Coordinate max_width = max_in_array_of_unsigned(bbox.size);
+    // max_width - 1: power-of-two-sized objects easily squeeze into the next smaller category.
+    // i.e., exp = log2_rounding_up(max_width)
+    const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_width - 1);
     const Coordinate base_box_size = safe_left_shift_one(exp);
     const Coordinate used_bits_mask = ~(base_box_size - 1);
 
@@ -522,8 +532,8 @@ private:
   
   void zget_objects_overlapping(ztree_node const* tree, unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
     if (tree && tree->here.get_bbox().overlaps(bbox)) {
-      for (const ObjectIdentifier obj : tree->objects_here) {
-        auto bbox_iter = bboxes_by_object.find(obj);      
+      for (ObjectIdentifier const& obj : tree->objects_here) {
+        const auto bbox_iter = bboxes_by_object.find(obj);
 
         assert_if_ASSERT_EVERYTHING(bbox_iter != bboxes_by_object.end());
 
@@ -566,12 +576,12 @@ private:
     bool process_next() {
       if (frontier.empty()) return false;
       
-      ztree_node const* next = *frontier.begin();
+      ztree_node const* const next = *frontier.begin();
       frontier.erase(frontier.begin());
       
       if (handler->should_be_considered__dynamic(next->here.get_bbox())) {
         for (const ObjectIdentifier obj : next->objects_here) {
-          auto bbox_iter = bboxes_by_object.find(obj);
+          const auto bbox_iter = bboxes_by_object.find(obj);
 
           assert_if_ASSERT_EVERYTHING(bbox_iter != bboxes_by_object.end());
 
