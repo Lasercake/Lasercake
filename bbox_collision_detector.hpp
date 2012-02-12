@@ -294,7 +294,52 @@ private:
       return num_low_bits_ignored_;
     }
   };
-  
+
+  // The bbox_collision_detector has a "z-tree".  This
+  // is a binary tree.  Keys in the tree are zboxes (see above).
+  // Values are ObjectIdentifiers; each zbox may have any number
+  // of ObjectIdentifiers.  This code is happy for objects to overlap
+  // each other, and besides, even non-overlapping objects often
+  // have a minimal containing zbox in common.
+  //
+  // Because of the definition of zboxes, either they are
+  // A: the same, and thus the same ztree_node
+  // B: one is smaller and fully within the node, and it is a
+  //          descendant of the other
+  // C: they don't overlap at all, and in the ztree neither is a
+  //          descendant of the other.
+  // (In particular, zboxes can't partially overlap each other.)
+  //
+  // An object may need to be in up to (2**NumDimensions) zboxes
+  // so that the area covered by its zboxes is only a constant
+  // factor larger than the object's regular (non-z-order) bounding
+  // box.  Consider an object that's a box of width 2 or 3 with
+  // x min-coordinate 10111111 and max 11000001 (binary).  The minimal
+  // common prefix there is just a single bit; a single bit means
+  // a huge box.  Conceptually, dimensions' bits are interleaved
+  // before looking for a common prefix; any dimension has the
+  // potential to differ in a high bit and disrupt the common prefix.
+  // Splitting the object across two zboxes, for each dimension,
+  // is sufficient to avoid this explosion.
+  //
+  // Specifically, a ztree is a Patricia trie on z-ordered
+  // bits (zboxes), where the bits are seen as a sequence with the
+  // highest-order bits first and the sequence-length equal to the
+  // number of high bits specified by a given key/ztree_node/zbox.
+  // The ztree_node happens to contain (unlike typical tries) the
+  // entire key that it represents, because the key is small and
+  // constant-sized and it's generally easier to do so.
+  //
+  // What goes into child0 vs. child1?  If trying to insert, say,
+  // the zbox B = 10100??? (binary, 5 high bits, 3 low bits) into
+  // A = 10??????, B goes at or below A's child1 because B's next bit
+  // after A's bits is 1.  (Current: 10, next: 101).
+  //
+  // If there would be a node with zero ObjectIdentifiers and
+  // only one child, then that child node goes there directly
+  // instead of that trivial node.  If the tree, to be correct,
+  // needs nodes with two children and zero ObjectIdentifiers,
+  // then it will have them.
   struct ztree_node;
   typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
   struct ztree_node {
