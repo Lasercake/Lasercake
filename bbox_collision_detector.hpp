@@ -35,10 +35,8 @@
 using std::unordered_map;
 using std::unordered_set;
 
-typedef size_t num_bits_type;
-typedef ptrdiff_t signed_num_bits_type;
-typedef size_t num_coordinates_type;
-typedef ptrdiff_t signed_num_coordinates_type;
+typedef ptrdiff_t num_bits_type;
+typedef ptrdiff_t num_coordinates_type;
 
 // ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
 // CoordinateBits should usually be 32 or 64. I don't know if it works for other values.
@@ -77,7 +75,7 @@ private:
   static const num_bits_type total_bits = CoordinateBits * NumDimensions;
   
   static Coordinate safe_left_shift_one(num_bits_type shift) {
-    if (shift >= 8*sizeof(Coordinate)) return 0;
+    if (shift >= num_bits_type(8*sizeof(Coordinate))) return 0;
     return Coordinate(1) << shift; // TODO address the fact that this could put bits higher than the appropriate amount if CoordinateBits isn't the number of bits of the type
   }
 
@@ -85,7 +83,7 @@ private:
     return safe_left_shift_one(num_bits) - 1;
   }
 
-  static signed_num_bits_type num_bits_in_integer_that_are_not_leading_zeroes(Coordinate i) {
+  static num_bits_type num_bits_in_integer_that_are_not_leading_zeroes(Coordinate i) {
     int upper_bound = CoordinateBits;
     int lower_bound = -1;
     while(true) {
@@ -135,10 +133,10 @@ private:
     // Named constructors
     static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
       zbox new_box;
-      const signed_num_bits_type min_low_bits_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
-      for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-        const signed_num_bits_type bits_lower_than_this_part_of_interleaved_bits = i * CoordinateBits;
-        const signed_num_bits_type local_first_high_bit_idx = std::max(
+      const num_bits_type min_low_bits_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
+      for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
+        const num_bits_type bits_lower_than_this_part_of_interleaved_bits = i * CoordinateBits;
+        const num_bits_type local_first_high_bit_idx = std::max(
           num_bits_in_integer_that_are_not_leading_zeroes(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]),
           min_low_bits_ignored - bits_lower_than_this_part_of_interleaved_bits
         );
@@ -327,13 +325,13 @@ public:
       if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
     }
     // max_dim - 1: power-of-two-sized objects easily squeeze into the next smaller category.
-    const int exp = num_bits_in_integer_that_are_not_leading_zeroes(max_dim - 1);
-    int dimensions_we_can_single = 0;
-    int dimensions_we_can_double = 0;
+    const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_dim - 1);
+    num_coordinates_type dimensions_we_can_single = 0;
+    num_coordinates_type dimensions_we_can_double = 0;
     const Coordinate base_box_size = safe_left_shift_one(exp);
     const Coordinate used_bits_mask = ~(base_box_size - 1);
     
-    for (int i = NumDimensions - 1; i >= 0; --i) {
+    for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
       if ((bbox.min[i] & used_bits_mask) + base_box_size >= bbox.min[i] + bbox.size[i]) ++dimensions_we_can_single;
       else break;
     }
