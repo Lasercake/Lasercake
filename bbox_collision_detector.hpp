@@ -75,8 +75,8 @@ private:
   static const num_bits_type total_bits = CoordinateBits * NumDimensions;
   
   static Coordinate safe_left_shift_one(num_bits_type shift) {
-    if (shift >= num_bits_type(8*sizeof(Coordinate))) return 0;
-    return Coordinate(1) << shift; // TODO address the fact that this could put bits higher than the appropriate amount if CoordinateBits isn't the number of bits of the type
+    if (shift >= CoordinateBits) return 0;
+    return Coordinate(1) << shift;
   }
 
   static Coordinate this_many_low_bits(num_bits_type num_bits) {
