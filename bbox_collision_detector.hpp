@@ -326,7 +326,8 @@ public:
     for (num_coordinates_type i = 1; i < NumDimensions; ++i) {
       if (bbox.size[i] > max_dim) max_dim = bbox.size[i];
     }
-    int exp = 0; while ((Coordinate(1) << exp) < max_dim) ++exp;
+    // max_dim - 1: power-of-two-sized objects easily squeeze into the next smaller category.
+    const int exp = num_bits_in_integer_that_are_not_leading_zeroes(max_dim - 1);
     int dimensions_we_can_single = 0;
     int dimensions_we_can_double = 0;
     const Coordinate base_box_size = safe_left_shift_one(exp);
