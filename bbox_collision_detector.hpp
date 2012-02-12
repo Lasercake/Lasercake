@@ -384,7 +384,7 @@ private:
   //   }
   // The only reason we combine insert_zbox and zboxes_from_bbox is so
   // we don't have to construct the intermediate container structure.
-  static void insert_zboxes_from_bbox(ztree_node_ptr& objects_tree, ObjectIdentifier const& id, bounding_box const& bbox) {
+  static void insert_zboxes_from_bbox(ztree_node_ptr& objects_tree, ObjectIdentifier const& obj_id, bounding_box const& bbox) {
     const Coordinate max_width = max_in_array_of_unsigned(bbox.size);
     // max_width - 1: power-of-two-sized objects easily squeeze into the next smaller category.
     // i.e., exp = log2_rounding_up(max_width)
@@ -468,24 +468,24 @@ private:
       }
       const zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + num_dims_using_one_zbox_of_twice_base_box_size);
       if (zb.get_bbox().overlaps(bbox)) {
-        insert_zbox(objects_tree, id, zb);
+        insert_zbox(objects_tree, obj_id, zb);
       }
     }
   }
   
-  static void insert_zbox(ztree_node_ptr& tree, ObjectIdentifier const& obj, zbox box) {
+  static void insert_zbox(ztree_node_ptr& tree, ObjectIdentifier const& obj_id, zbox box) {
     if (!tree) {
       tree.reset(new ztree_node(box));
-      tree->objects_here.insert(obj);
+      tree->objects_here.insert(obj_id);
     }
     else {
       if (tree->here.subsumes(box)) {
         if (box.num_low_bits() == tree->here.num_low_bits()) {
-          tree->objects_here.insert(obj);
+          tree->objects_here.insert(obj_id);
         }
         else {
-          if (box.get_bit(tree->here.num_low_bits() - 1)) insert_zbox(tree->child1, obj, box);
-          else                                            insert_zbox(tree->child0, obj, box);
+          if (box.get_bit(tree->here.num_low_bits() - 1)) insert_zbox(tree->child1, obj_id, box);
+          else                                            insert_zbox(tree->child0, obj_id, box);
         }
       }
       else {
@@ -500,17 +500,17 @@ private:
         else                                                       tree.swap(new_tree->child0);
 
         tree.swap(new_tree);
-        insert_zbox(tree, obj, box);
+        insert_zbox(tree, obj_id, box);
       }
     }
   }
   
-  static void delete_object(ztree_node_ptr& tree, ObjectIdentifier const& obj, bounding_box const& bbox) {
+  static void delete_object(ztree_node_ptr& tree, ObjectIdentifier const& obj_id, bounding_box const& bbox) {
     if (!tree) return;
     if (tree->here.get_bbox().overlaps(bbox)) {
-      tree->objects_here.erase(obj);
-      delete_object(tree->child0, obj, bbox);
-      delete_object(tree->child1, obj, bbox);
+      tree->objects_here.erase(obj_id);
+      delete_object(tree->child0, obj_id, bbox);
+      delete_object(tree->child1, obj_id, bbox);
       
       if (tree->objects_here.empty()) {
         if (tree->child0) {
