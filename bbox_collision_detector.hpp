@@ -124,15 +124,16 @@ private:
       zbox new_box;
       const num_bits_type max_ignored = std::max(zb1.num_low_bits_ignored_, zb2.num_low_bits_ignored_);
       for (signed_num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
+        const num_bits_type bits_lower_than_this_part_of_interleaved_bits = i * CoordinateBits;
         int first_high_bit_idx = num_bits_in_integer_that_are_not_leading_zeroes(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]);
-        if ((first_high_bit_idx + i * CoordinateBits) < max_ignored) first_high_bit_idx = max_ignored - i * CoordinateBits;
+        if ((first_high_bit_idx + bits_lower_than_this_part_of_interleaved_bits) < max_ignored) first_high_bit_idx = max_ignored - bits_lower_than_this_part_of_interleaved_bits;
 
         assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx))
                                  == (zb2.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx)));
 
         new_box.interleaved_bits_[i] = zb1.interleaved_bits_[i] & ~this_many_low_bits(first_high_bit_idx);
         if (first_high_bit_idx > 0) {
-          new_box.num_low_bits_ignored_ = first_high_bit_idx + i * CoordinateBits;
+          new_box.num_low_bits_ignored_ = first_high_bit_idx + bits_lower_than_this_part_of_interleaved_bits;
           for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
             assert_if_ASSERT_EVERYTHING(
                  (zb1.coords_[j] & ~this_many_low_bits(new_box.num_bits_ignored_by_dimension(j)))
