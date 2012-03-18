@@ -27,7 +27,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
-#include <set>
+#include <stack>
 #include <cassert>
 #include <cstdlib>
 #include <boost/scoped_ptr.hpp>
@@ -151,7 +151,6 @@ public:
     // a dynamic should_be_considered function to stop looking in boxes that are entirely
     // after the first known collision.
     //
-    // This function must be a Strict Weak Ordering and not change its behavior.
     // This function is only a heuristic; we don't guarantee that the boxes will be handled
     // exactly in the given order.
     virtual bool bbox_less_than(bounding_box const&, bounding_box const&)const { return false; } // arbitrary order
@@ -566,34 +565,26 @@ private:
   struct custom_walker {
     visitor* handler;
     unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object;
-    custom_walker(visitor* handler, unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object):handler(handler),bboxes_by_object(bboxes_by_object),frontier(set_compare(handler)){}
+    custom_walker(visitor* handler, unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object):handler(handler),bboxes_by_object(bboxes_by_object){}
     
-    struct set_compare {
-      visitor* handler;
-      set_compare(visitor* handler):handler(handler){}
-      
-      bool operator()(ztree_node const* z1, ztree_node const* z2)const {
-        return handler->bbox_less_than(z1->here.get_bbox(), z2->here.get_bbox());
-      }
-    };
-    
-    // will only contain nonnull pointers (since it would be a waste of time to
-    // insert null pointers into the set).
+    // The search's frontier (nodes for which we have explored their parent
+    // but not them yet).
     //
-    // TODO: we can probably find a more optimal data structure to use here than std::set.
-    std::set<ztree_node const*, set_compare> frontier;
+    // This only contains nonnull pointers (since it would be a
+    // waste of time to insert null pointers into the frontier).
+    std::stack<ztree_node const*> frontier;
     
-    void try_add(ztree_node* z) {
+    void try_add(ztree_node const* z) {
       if (z && handler->should_be_considered__static(z->here.get_bbox()) && handler->should_be_considered__dynamic(z->here.get_bbox())) {
-        frontier.insert(z);
+        frontier.push(z);
       }
     }
       
     bool process_next() {
       if (frontier.empty()) return false;
       
-      ztree_node const* const next = *frontier.begin();
-      frontier.erase(frontier.begin());
+      ztree_node const* const next = frontier.top();
+      frontier.pop();
       
       if (handler->should_be_considered__dynamic(next->here.get_bbox())) {
         for (const ObjectIdentifier obj : next->objects_here) {
@@ -608,8 +599,13 @@ private:
             }
           }
         }
-        try_add(next->child0.get());
-        try_add(next->child1.get());
+
+        ztree_node const* children[2] = { next->child0.get(), next->child1.get() };
+        // If either child is nullptr, the order doesn't matter (and can't be checked).
+        const bool child0_next = children[0] && children[1] &&
+            handler->bbox_less_than(children[0]->here.get_bbox(), children[1]->here.get_bbox());
+        try_add(child0_next ? children[0] : children[1]);
+        try_add(child0_next ? children[1] : children[0]);
       }
       
       return true;
