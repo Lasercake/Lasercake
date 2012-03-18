@@ -24,7 +24,7 @@
 
 namespace /* anonymous */ {
 
-struct beam_first_contact_finder : world_collision_detector::generalized_object_collection_handler {
+struct beam_first_contact_finder : world_collision_detector::visitor {
   beam_first_contact_finder(world const& w, line_segment beam):w(w),beam(beam),best_intercept_point(false, 1){}
   world const& w;
   line_segment beam;
@@ -73,7 +73,7 @@ void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar>
   
   beam_first_contact_finder finder(w, line_segment(location, location + facing * 50));
   finder.ignores.insert(my_id);
-  w.get_things_exposed_to_collision().get_objects_generalized(&finder);
+  w.get_things_exposed_to_collision().search(&finder);
   
   if (finder.best_intercept_point.first) {
     // TODO do I have to worry about overflow?
@@ -155,7 +155,7 @@ void robot::update(world& w, object_identifier my_id) {
   if (input_news.is_currently_pressed("c") || input_news.is_currently_pressed("v")) {
     beam_first_contact_finder finder(w, line_segment(location_, location_ + beam_delta));
     finder.ignores.insert(my_id);
-    w.get_things_exposed_to_collision().get_objects_generalized(&finder);
+    w.get_things_exposed_to_collision().search(&finder);
     
     if (finder.best_intercept_point.first) {
       // TODO do I have to worry about overflow?

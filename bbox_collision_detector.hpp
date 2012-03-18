@@ -50,7 +50,7 @@ class bbox_collision_detector {
   static_assert(CoordinateBits >= 0, "You can't have an int type with negative bits!");
   
   typedef typename boost::uint_t<CoordinateBits>::fast Coordinate;
-  struct generalized_object_collection_walker;
+  struct custom_walker;
   friend class zbox_tester;
 
 public:
@@ -117,20 +117,25 @@ public:
     zget_objects_overlapping(objects_tree.get(), results, bbox);
   }
 
-  class generalized_object_collection_handler;
+  class visitor;
 
   // Derive from
-  //   class bbox_collision_detector<>::generalized_object_collection_handler
+  //   class bbox_collision_detector<>::visitor
   // and override its virtual functions
-  // to make get_objects_generalized() do something interesting for you.
-  void get_objects_generalized(generalized_object_collection_handler* handler)const {
-    generalized_object_collection_walker data(handler, bboxes_by_object);
+  // to make search() do something interesting for you.
+  void search(visitor* handler)const {
+    custom_walker data(handler, bboxes_by_object);
 
     data.try_add(objects_tree.get());
     while(data.process_next()){}
   }
 
-  class generalized_object_collection_handler {
+  // This describes how to traverse the elements of a bbox_collision_detector
+  //   optionally excluding areas you're uninterested in
+  //   and optionally in an order partly of your choosing.
+  //
+  // a la http://www.boost.org/doc/libs/1_48_0/libs/graph/doc/visitor_concepts.html
+  class visitor {
   public:
     virtual void handle_new_find(ObjectIdentifier) {}
 
@@ -149,18 +154,18 @@ public:
     // This function must be a Strict Weak Ordering and not change its behavior.
     // This function is only a heuristic; we don't guarantee that the boxes will be handled
     // exactly in the given order.
-    virtual bool bbox_ordering(bounding_box const&, bounding_box const&)const { return false; } // arbitrary order
+    virtual bool bbox_less_than(bounding_box const&, bounding_box const&)const { return false; } // arbitrary order
 
     // This is called often (specifically, every time we call a non-const function of handler);
     // if it returns true, we stop right away.
     // Some handlers might know they're done looking before the should_be_considered boxes
     // run out; this just makes that more efficient.
-    virtual bool done()const { return false; }
+    virtual bool should_exit_early()const { return false; }
 
     unordered_set<ObjectIdentifier> const& get_found_objects()const { return found_objects; }
   private:
     unordered_set<ObjectIdentifier> found_objects;
-    friend struct generalized_object_collection_walker;
+    friend struct custom_walker;
   };
   
 private:
@@ -554,18 +559,21 @@ private:
   
   unordered_map<ObjectIdentifier, bounding_box> bboxes_by_object;
   ztree_node_ptr objects_tree;
-  
-  struct generalized_object_collection_walker {
-    generalized_object_collection_handler* handler;
+
+  // With a bit of work, this could be an iterator ("custom_iterator"?).
+  // process_next() is increment.
+  // iterator == end is (frontier.empty() || handler->should_exit_early()).
+  struct custom_walker {
+    visitor* handler;
     unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object;
-    generalized_object_collection_walker(generalized_object_collection_handler* handler, unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object):handler(handler),bboxes_by_object(bboxes_by_object),frontier(set_compare(handler)){}
+    custom_walker(visitor* handler, unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object):handler(handler),bboxes_by_object(bboxes_by_object),frontier(set_compare(handler)){}
     
     struct set_compare {
-      generalized_object_collection_handler* handler;
-      set_compare(generalized_object_collection_handler* handler):handler(handler){}
+      visitor* handler;
+      set_compare(visitor* handler):handler(handler){}
       
       bool operator()(ztree_node const* z1, ztree_node const* z2)const {
-        return handler->bbox_ordering(z1->here.get_bbox(), z2->here.get_bbox());
+        return handler->bbox_less_than(z1->here.get_bbox(), z2->here.get_bbox());
       }
     };
     
@@ -596,7 +604,7 @@ private:
           if (handler->should_be_considered__static(bbox_iter->second) && handler->should_be_considered__dynamic(bbox_iter->second)) {
             if (handler->found_objects.insert(obj).second) {
               handler->handle_new_find(obj);
-              if (handler->done()) return false;
+              if (handler->should_exit_early()) return false;
             }
           }
         }

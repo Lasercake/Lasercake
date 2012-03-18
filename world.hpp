@@ -239,7 +239,6 @@ public:
 class world_collision_detector {
 private:
   typedef bbox_collision_detector<object_or_tile_identifier, 64, 3> internal_t;
-  typedef internal_t::generalized_object_collection_handler igoch;
   typedef internal_t::bounding_box ibb;
   static ibb convert_bb_(bounding_box const& bb) {
     caller_correct_if(bb.is_anywhere, "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
@@ -286,31 +285,31 @@ public:
     else return bounding_box();
   }
   
-  class generalized_object_collection_handler {
+  class visitor {
   public:
-    generalized_object_collection_handler():intermediary_(this){}
+    visitor():intermediary_(this){}
     virtual void handle_new_find(object_or_tile_identifier) {}
     virtual bool should_be_considered__static(bounding_box const&)const { return true; }
     virtual bool should_be_considered__dynamic(bounding_box const&)const { return true; }
-    virtual bool bbox_ordering(bounding_box const& bb1, bounding_box const& bb2)const { return bb1.min < bb2.min; }
-    virtual bool done()const { return false; }
+    virtual bool bbox_less_than(bounding_box const& bb1, bounding_box const& bb2)const { return bb1.min < bb2.min; }
+    virtual bool should_exit_early()const { return false; }
     unordered_set<object_or_tile_identifier> const& get_found_objects()const { return intermediary_.get_found_objects(); }
   private:
     friend class world_collision_detector;
-    struct impl_ : public igoch {
-      world_collision_detector::generalized_object_collection_handler *outer;
-      impl_(world_collision_detector::generalized_object_collection_handler *outer):outer(outer){}
+    struct impl_ : public internal_t::visitor {
+      world_collision_detector::visitor *outer;
+      impl_(world_collision_detector::visitor *outer):outer(outer){}
       void handle_new_find(object_or_tile_identifier id) { outer->handle_new_find(id); }
       bool should_be_considered__static(ibb const& bb)const { return outer->should_be_considered__static(convert_bb_(bb)); }
       bool should_be_considered__dynamic(ibb const& bb)const { return outer->should_be_considered__dynamic(convert_bb_(bb)); }
-      bool bbox_ordering(ibb const& bb1, ibb const& bb2)const { return outer->bbox_ordering(convert_bb_(bb1), convert_bb_(bb2)); }
-      bool done()const { return outer->done(); }
+      bool bbox_less_than(ibb const& bb1, ibb const& bb2)const { return outer->bbox_less_than(convert_bb_(bb1), convert_bb_(bb2)); }
+      bool should_exit_early()const { return outer->should_exit_early(); }
     };
     impl_ intermediary_;
   };
   
-  void get_objects_generalized(generalized_object_collection_handler *handler)const {
-    detector.get_objects_generalized(&handler->intermediary_);
+  void search(visitor *handler)const {
+    detector.search(&handler->intermediary_);
   }
   
 private:
