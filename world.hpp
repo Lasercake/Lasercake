@@ -418,14 +418,7 @@ public:
   // (and currently, also can get ahead because we don't cap the frame-rate.)
   time_unit game_time_elapsed()const { return current_game_time_; }
 
-  inline void update(input_representation::input_news_t const& input_news) {
-    input_news_ = input_news;
-    laser_sfxes.clear();
-    update_fluids();
-    for (auto& obj : autonomously_active_objects_) obj.second->update(*this, obj.first);
-    update_moving_objects();
-    current_game_time_ += time_units_per_fixed_frame;
-  }
+  void update(input_representation::input_news_t const& input_news);
 
   // TODO come up with a good way of farming this information out to robots once
   // we know how we want that to work, and a good way of representing multiple
