@@ -21,7 +21,11 @@
 
 #include <climits>
 #include "world.hpp"
+#include "worldgen.hpp"
 
+
+world::world(worldgen_function_t f)
+   : current_game_time_(0), tile_physics_state_(*this), next_object_identifier_(1), worldgen_function_(f) {}
 
 bounding_box world::get_bounding_box_of_object_or_tile(object_or_tile_identifier id)const {
   if (tile_location const* tlocp = id.get_tile_location()) {

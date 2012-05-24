@@ -401,8 +401,13 @@ using tile_physics_impl::tile_physics_state_t;
 
 class world {
 public:
-  world(worldgen_function_t f)
-   : current_game_time_(0), tile_physics_state_(*this), next_object_identifier_(1), worldgen_function_(f) {}
+  world(worldgen_function_t f);
+  
+  // If worlds being copiable is ever needed (a world is totally copiable in principle),
+  // the error will remind us to make sure to implement the copy-constructor correctly
+  // (e.g. without sharing any data via pointers by accident).
+  world(world const& other) = delete;
+  world& operator=(world const& other) = delete;
   
   void update_moving_objects();
   void update_fluids();
