@@ -211,6 +211,13 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     else return tile_location(new_coords, this);
   }
 
+  template tile_location worldblock::get_neighboring_loc<xminus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
+  template tile_location worldblock::get_neighboring_loc<yminus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
+  template tile_location worldblock::get_neighboring_loc<zminus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
+  template tile_location worldblock::get_neighboring_loc<xplus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
+  template tile_location worldblock::get_neighboring_loc<yplus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
+  template tile_location worldblock::get_neighboring_loc<zplus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
+
   template<cardinal_direction Dir> worldblock& worldblock::ensure_neighbor_realization(level_of_tile_realization_needed realineeded) {
     if (worldblock* neighbor = neighbors_[Dir]) {
       return neighbor->ensure_realization(realineeded);

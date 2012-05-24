@@ -353,7 +353,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   };
 }
 inline tile const& tile_location::stuff_at()const { return wb_->get_tile(v_); }
-template<cardinal_direction Dir> tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
+template<cardinal_direction Dir> inline tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
   return wb_->get_neighboring_loc<Dir>(v_, realineeded);
 }
 
