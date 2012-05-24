@@ -95,5 +95,6 @@ $(ODIR_GCC46)/%.o: %.cpp
 
 clean:
 	rm -rf output lasercake lasercake-debug lasercake-optimized \
-		lasercake-clang lasercake-gcc45 lasercake-assert-everything
+		lasercake-clang lasercake-gcc45 lasercake-gcc46 \
+		lasercake-assert-everything
 
