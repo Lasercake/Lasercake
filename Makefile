@@ -69,6 +69,7 @@ lasercake-test-concurrent: $(ODIR_TESTS)/concurrency_utils_tests.o $(ODIR_TESTS)
 
 include $(DEPS)
 
+$(ODIR_TESTS)/concurrency_utils_tests.o: concurrency_utils.hpp
 $(ODIR_TESTS)/%.o: tests/%.cpp
 	@mkdir -p $(ODIR_TESTS)
 	$(CC) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
