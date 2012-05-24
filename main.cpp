@@ -44,6 +44,8 @@
 
 #include "input_representation.hpp"
 
+#include "concurrency_utils.hpp"
+
 namespace /* anonymous */ {
 
 
@@ -59,6 +61,11 @@ struct rusage get_this_process_rusage() {
   struct rusage ret;
   getrusage(RUSAGE_SELF, &ret);
   return ret;
+}
+microseconds_t get_this_thread_microseconds() {
+  struct timespec ts;
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
+  return (microseconds_t)ts.tv_sec * 1000000 + (microseconds_t)ts.tv_nsec / 1000;
 }
 microseconds_t get_this_process_microseconds() {
   struct timespec ts;
@@ -146,26 +153,7 @@ void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
   }
 }
 
-
-
-
-void mainLoop (std::string scenario)
-{
-  SDL_Event event;
-  int done = 0;
-  int frame = 0;
-  bool paused = false;
-  int steps_queued_to_do_while_paused = 0;
-  bool drawing_regular_stuff = true;
-  bool drawing_debug_stuff = true;
-srand(time(NULL));
-
-  const worldgen_function_t worldgen = make_world_building_func(scenario);
-  if(!worldgen) {
-    std::cerr << "Scenario name given that doesn't exist!: \'" << scenario << "\'\n";
-    exit(4);
-  }
-  world w(worldgen);
+object_identifier init_test_world_and_return_our_robot(world& w) {
   const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
   const shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
@@ -209,12 +197,94 @@ srand(time(NULL));
     std::cerr << show_microseconds(microseconds_for_init) << " ms\n";
   }
 
-  view_on_the_world view(robot_id, world_center_fine_coords);
+  return robot_id;
+}
+
+typedef world_rendering::gl_all_data gl_data_t;
+
+//is a pointer to avoid copying around all that data
+typedef shared_ptr<gl_data_t> gl_data_ptr_t;
+
+struct frame_output_t {
+  gl_data_ptr_t gl_data_ptr;
+  microseconds_t cpu_microseconds_to_draw_this_frame;
+  microseconds_t cpu_microseconds_to_simulate_this_frame;
+};
+
+
+void mainLoop (std::string scenario)
+{
+  using namespace input_representation;
+  
+  concurrent::m_var<input_news_t> input_news_pipe;
+  concurrent::m_var<frame_output_t> frame_output_pipe;
+  
+  const worldgen_function_t worldgen = make_world_building_func(scenario);
+  if(!worldgen) {
+    std::cerr << "Scenario name given that doesn't exist!: \'" << scenario << "\'\n";
+    exit(4);
+  }
+  
+  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen]() {
+    world w(worldgen);
+    const object_identifier robot_id = init_test_world_and_return_our_robot(w);
+    input_news_t input_news;
+    bool drawing_regular_stuff = true;
+    bool drawing_debug_stuff = true;
+    view_on_the_world view(robot_id, world_center_fine_coords);
+    microseconds_t microseconds_before_drawing;
+    microseconds_t microseconds_after_drawing;
+    microseconds_t microseconds_before_simulating = 0;
+    microseconds_t microseconds_after_simulating = 0;
+    while(true) {
+      for(key_change_t const& c : input_news.key_activity_since_last_frame()) {
+        if(c.second == PRESSED) {
+          key_type const& k = c.first;
+          if(k == "z") drawing_regular_stuff = !drawing_regular_stuff;
+          if(k == "t") drawing_debug_stuff = !drawing_debug_stuff;
+          if(k == "q") view.surveilled_by_global_display.x += tile_width;
+          if(k == "a") view.surveilled_by_global_display.x -= tile_width;
+          if(k == "w") view.surveilled_by_global_display.y += tile_width;
+          if(k == "s") view.surveilled_by_global_display.y -= tile_width;
+          if(k == "e") view.surveilled_by_global_display.z += tile_width;
+          if(k == "d") view.surveilled_by_global_display.z -= tile_width;
+          if(k == "r") view.globallocal_view_dist += tile_width;
+          if(k == "f") view.globallocal_view_dist -= tile_width;
+          if(k == "l") view.view_type = view_on_the_world::LOCAL;
+          if(k == "o") view.view_type = view_on_the_world::GLOBAL;
+          if(k == "i") view.view_type = view_on_the_world::ROBOT;
+        }
+      }
+      // microseconds_this_program_has_used_so_far
+      //const microseconds_t
+      microseconds_before_drawing = get_this_thread_microseconds();
+      gl_data_ptr_t gl_data(new gl_data_t());
+      view.render(w,
+                  world_rendering_config(drawing_regular_stuff, drawing_debug_stuff, input_news),
+                  *gl_data);
+      microseconds_after_drawing = get_this_thread_microseconds();
+
+      frame_output_pipe.put((frame_output_t){
+        gl_data,
+        microseconds_after_drawing - microseconds_before_drawing,
+        microseconds_after_simulating - microseconds_before_simulating
+      });
+      
+      input_news = input_news_pipe.take();
+      microseconds_before_simulating = get_this_thread_microseconds();
+      w.update(input_news);
+      microseconds_after_simulating = get_this_thread_microseconds();
+    }
+  });
+
+  frame_output_t last_frame_output;
+  int done = 0;
+  int frame = 0;
+  bool paused = false;
+  int steps_queued_to_do_while_paused = 0;
 
   while ( !done ) {
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
-
-    using namespace input_representation;
     
     key_activity_t key_activity_since_last_frame;
     
@@ -225,6 +295,7 @@ srand(time(NULL));
     // - to be Unicode arrow characters rather than e.g. "down".
     
     /* Check for events */
+    SDL_Event event;
     while ( SDL_PollEvent (&event) ) {
       switch (event.type) {
         case SDL_MOUSEMOTION:
@@ -268,19 +339,6 @@ srand(time(NULL));
         std::cerr << k << '\n';
         if(k == "p") { paused = !paused; steps_queued_to_do_while_paused = 0;}
         if(k == "g") { if(paused) { ++steps_queued_to_do_while_paused; } }
-        if(k == "z") drawing_regular_stuff = !drawing_regular_stuff;
-        if(k == "t") drawing_debug_stuff = !drawing_debug_stuff;
-        if(k == "q") view.surveilled_by_global_display.x += tile_width;
-        if(k == "a") view.surveilled_by_global_display.x -= tile_width;
-        if(k == "w") view.surveilled_by_global_display.y += tile_width;
-        if(k == "s") view.surveilled_by_global_display.y -= tile_width;
-        if(k == "e") view.surveilled_by_global_display.z += tile_width;
-        if(k == "d") view.surveilled_by_global_display.z -= tile_width;
-        if(k == "r") view.globallocal_view_dist += tile_width;
-        if(k == "f") view.globallocal_view_dist -= tile_width;
-        if(k == "l") view.view_type = view_on_the_world::LOCAL;
-        if(k == "o") view.view_type = view_on_the_world::GLOBAL;
-        if(k == "i") view.view_type = view_on_the_world::ROBOT;
         if(k == "escape") done = 1;
       }
     }
@@ -290,34 +348,31 @@ srand(time(NULL));
       --steps_queued_to_do_while_paused;
     }
 
-    // microseconds_this_program_has_used_so_far
-    const microseconds_t microseconds_before_drawing = get_this_process_microseconds();
+    if(!paused_this_time) {
+      input_news_pipe.put(input_news);
+      last_frame_output = frame_output_pipe.take();
+    }
+    
+    if(last_frame_output.gl_data_ptr == nullptr) {
+      last_frame_output.gl_data_ptr.reset(new gl_data_t);
+    }
 
-    world_rendering::gl_all_data gl_data;
-    
-    view.render(w, world_rendering_config(drawing_regular_stuff, drawing_debug_stuff, input_news),
-                gl_data);
-    
     const microseconds_t microseconds_before_GL = get_this_process_microseconds();
     const microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
 
-    output_gl_data_to_OpenGL(gl_data);
+    output_gl_data_to_OpenGL(*last_frame_output.gl_data_ptr);
     glFinish();
     SDL_GL_SwapBuffers();
 
     const microseconds_t monotonic_microseconds_after_GL = get_monotonic_microseconds();
-    const microseconds_t microseconds_before_processing = get_this_process_microseconds();
+    const microseconds_t microseconds_after_GL = get_this_process_microseconds();
     
-    //doing stuff code here
-    if (!paused_this_time) w.update(input_news);
-
-    const microseconds_t microseconds_after = get_this_process_microseconds();
     const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
 
     // TODO does the GL code use up "CPU time"? Maybe measure both monotonic and CPU?
-    const microseconds_t microseconds_for_processing = microseconds_after - microseconds_before_processing;
-    const microseconds_t microseconds_for_drawing = microseconds_before_GL - microseconds_before_drawing;
-    const microseconds_t microseconds_for_GL = microseconds_before_processing - microseconds_before_GL;
+    const microseconds_t microseconds_for_processing = last_frame_output.cpu_microseconds_to_simulate_this_frame;
+    const microseconds_t microseconds_for_drawing = last_frame_output.cpu_microseconds_to_draw_this_frame;
+    const microseconds_t microseconds_for_GL = microseconds_after_GL - microseconds_before_GL;
     const microseconds_t monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
     const microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
     const int64_t frames_per_kilosecond = 1000000000 / monotonic_microseconds_for_frame;
@@ -343,6 +398,9 @@ srand(time(NULL));
 
 //    SDL_Delay(50);
   }
+
+  simulation_thread.interrupt();
+  simulation_thread.join();
 }
 
 
