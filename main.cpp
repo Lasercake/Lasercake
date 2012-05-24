@@ -154,7 +154,8 @@ void mainLoop (std::string scenario)
   SDL_Event event;
   int done = 0;
   int frame = 0;
-  int p_mode = 0;
+  bool paused = false;
+  int steps_queued_to_do_while_paused = 0;
   bool drawing_regular_stuff = true;
   bool drawing_debug_stuff = true;
 srand(time(NULL));
@@ -265,7 +266,8 @@ srand(time(NULL));
       if(c.second == PRESSED) {
         key_type const& k = c.first;
         std::cerr << k << '\n';
-        if(k == "p") ++p_mode;
+        if(k == "p") { paused = !paused; steps_queued_to_do_while_paused = 0;}
+        if(k == "g") { if(paused) { ++steps_queued_to_do_while_paused; } }
         if(k == "z") drawing_regular_stuff = !drawing_regular_stuff;
         if(k == "t") drawing_debug_stuff = !drawing_debug_stuff;
         if(k == "q") view.surveilled_by_global_display.x += tile_width;
@@ -283,8 +285,10 @@ srand(time(NULL));
       }
     }
     
-    const bool pd_this_time = (p_mode == 1);
-    if(p_mode > 1)--p_mode;
+    const bool paused_this_time = paused && steps_queued_to_do_while_paused == 0;
+    if(steps_queued_to_do_while_paused > 0) {
+      --steps_queued_to_do_while_paused;
+    }
 
     // microseconds_this_program_has_used_so_far
     const microseconds_t microseconds_before_drawing = get_this_process_microseconds();
@@ -305,7 +309,7 @@ srand(time(NULL));
     const microseconds_t microseconds_before_processing = get_this_process_microseconds();
     
     //doing stuff code here
-    if (!pd_this_time) w.update(input_news);
+    if (!paused_this_time) w.update(input_news);
 
     const microseconds_t microseconds_after = get_this_process_microseconds();
     const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
