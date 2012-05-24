@@ -3,6 +3,7 @@
 GCC=g++
 CLANG=clang++
 GCC45=g++-4.5
+GCC46=g++-4.6
 
 CC=$(GCC)
 
@@ -22,6 +23,7 @@ ODIR_UNOPT=output/unoptimized
 ODIR_ASREV=output/assert-everything
 ODIR_CLANG=output/clang
 ODIR_GCC45=output/gcc45
+ODIR_GCC46=output/gcc46
 
 SOURCES = $(wildcard *.cpp)
 DEPS      = $(patsubst %,$(ODIR_DEPS)/%,$(SOURCES:.cpp=.makedeps))
@@ -30,6 +32,7 @@ OBJ_ASREV = $(patsubst %,$(ODIR_ASREV)/%,$(SOURCES:.cpp=.o))
 OBJ_UNOPT = $(patsubst %,$(ODIR_UNOPT)/%,$(SOURCES:.cpp=.o))
 OBJ_CLANG = $(patsubst %,$(ODIR_CLANG)/%,$(SOURCES:.cpp=.o))
 OBJ_GCC45 = $(patsubst %,$(ODIR_GCC45)/%,$(SOURCES:.cpp=.o))
+OBJ_GCC46 = $(patsubst %,$(ODIR_GCC46)/%,$(SOURCES:.cpp=.o))
 
 $(ODIR_DEPS)/%.makedeps: %.cpp
 	@set -e; mkdir -p $(ODIR_DEPS); rm -f $@; \
@@ -57,6 +60,9 @@ lasercake-clang: $(OBJ_CLANG)
 lasercake-gcc45: $(OBJ_GCC45)
 	$(GCC45) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS)
 
+lasercake-gcc46: $(OBJ_GCC46)
+	$(GCC46) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS)
+
 include $(DEPS)
 
 
@@ -79,6 +85,10 @@ $(ODIR_CLANG)/%.o: %.cpp
 $(ODIR_GCC45)/%.o: %.cpp
 	@mkdir -p $(ODIR_GCC45)
 	$(GCC45) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
+
+$(ODIR_GCC46)/%.o: %.cpp
+	@mkdir -p $(ODIR_GCC46)
+	$(GCC46) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
 
 .PHONY :
 	clean
