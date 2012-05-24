@@ -60,11 +60,12 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   // If we try to use a level-X value from a worldblock while it's busy computing a realization
   // level less-than-or-equal-to X, then we justly receive get an assertion failure.
   // Realizing a worldblock at a given level must not require same-level information.
-  worldblock& worldblock::ensure_realization(level_of_tile_realization_needed realineeded, world *w, vector3<tile_coordinate> global_position) {
+  worldblock& worldblock::ensure_realization(level_of_tile_realization_needed realineeded) {
     // This function gets called to do nothing a LOT more than it gets called to actually do something;
     // bail ASAP if we don't have to do anything.
     if (realineeded <= current_tile_realization_) return *this;
-    
+
+    assert(this->is_constructed());
     caller_correct_if(realineeded >= COMPLETELY_IMAGINARY && realineeded <= FULL_REALIZATION, "Calling ensure_realization with an invalid realization level");
     
     if ((              realineeded >= CONTENTS_ONLY) &&
@@ -73,10 +74,6 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
-      caller_error_if(w == nullptr, "Initial worldblock initialization must provide the containing world.");
-      assert(w_ == nullptr);
-      w_ = w;
-      global_position_ = global_position;
       tile_bounding_box bounds(global_position_, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
       w_->worldgen_function_(world_building_gun(w_, bounds, this), bounds);
       //std::cerr << "A worldblock has been created!\n";
@@ -289,7 +286,15 @@ tile_location world::make_tile_location(vector3<tile_coordinate> const& coords, 
 }
 
 worldblock* world::ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded) {
-  return &(blocks_[position].ensure_realization(realineeded, this, position));
+  worldblock& wb = blocks_[position]; //default-construct in place if not there
+  if(!wb.is_constructed()) {
+    // Worldblocks are on the order of a kilobyte, and std containers have
+    // no way to give elements proper constructor arguments for in-place
+    // construction, so we do this sequence.
+    wb.construct(this, position);
+  }
+  wb.ensure_realization(realineeded);
+  return &wb;
 }
 
 void world::ensure_realization_of_space_(tile_bounding_box space, level_of_tile_realization_needed realineeded) {

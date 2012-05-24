@@ -325,7 +325,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   class worldblock {
   public:
     worldblock():neighbors_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false),w_(nullptr){}
-    worldblock& ensure_realization(level_of_tile_realization_needed realineeded, world *w = nullptr, vector3<tile_coordinate> global_position = vector3<tile_coordinate>(0,0,0));
+    void construct(world* w, vector3<tile_coordinate> global_position) { w_ = w; global_position_ = global_position; }
+    bool is_constructed() const { return w_ != nullptr; }
+    worldblock& ensure_realization(level_of_tile_realization_needed realineeded);
   
     // Prefer to use tile_location::stuff_at().
     inline tile& get_tile(vector3<tile_coordinate> global_coords) {
