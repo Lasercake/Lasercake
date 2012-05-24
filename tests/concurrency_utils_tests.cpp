@@ -51,3 +51,18 @@ BOOST_AUTO_TEST_CASE( test_m_var_concurrent )
   BOOST_CHECK_EQUAL(v.take(), 2);
   BOOST_CHECK_EQUAL(v.take(), 3);
 }
+
+struct something {
+};
+struct restricted {
+  // no default-constructor.
+  explicit restricted(something){}
+  bool operator==(restricted const& other) const { return true; }
+};
+BOOST_AUTO_TEST_CASE( test_m_var_does_not_require_default_constructible )
+{
+  // partly just a compile-test
+  m_var<restricted> v;
+  BOOST_CHECK_EQUAL(v.try_take(), boost::none);
+  v.try_put(restricted(something()));
+}
