@@ -72,7 +72,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
-      
+
+      caller_error_if(w == nullptr, "Initial worldblock initialization must provide the containing world.");
+      assert(w_ == nullptr);
       w_ = w;
       global_position_ = global_position;
       tile_bounding_box bounds(global_position_, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
