@@ -331,8 +331,11 @@ srand(time(NULL));
                             << show_microseconds(microseconds_for_GL)
                             << "–" << show_microseconds(monotonic_microseconds_for_GL)
                         )
-    << " ms; "
-    << std::setw(7) << show_decimal(frames_per_kilosecond, 1000, 2) << " fps; "
+    << " ms;"
+    << std::setw(24) << (ostream_bundle()
+                            << show_microseconds(monotonic_microseconds_for_frame) << " ms ="
+                            << std::setw(6) << show_decimal(frames_per_kilosecond, 1000, 2) << " fps; "
+                       )
     //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
     // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
     //<< std::ios::fixed << std::setprecision(4) << fps << " fps; "
