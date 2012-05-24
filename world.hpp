@@ -327,7 +327,14 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     worldblock():neighbors_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false),w_(nullptr){}
     void construct(world* w, vector3<tile_coordinate> global_position) { w_ = w; global_position_ = global_position; }
     bool is_constructed() const { return w_ != nullptr; }
-    worldblock& ensure_realization(level_of_tile_realization_needed realineeded);
+    worldblock& ensure_realization(level_of_tile_realization_needed realineeded) {
+      // This function gets called to do nothing a LOT more than it gets called to actually do something;
+      // return ASAP if we don't have to do anything.
+      if (realineeded > current_tile_realization_) { this->ensure_realization_impl(realineeded); }
+      return *this;
+    }
+    // ensure_realization_impl is a lot of code, with nontrivial duration, and should not be inlined.
+    worldblock& ensure_realization_impl(level_of_tile_realization_needed realineeded);
   
     // Prefer to use tile_location::stuff_at().
     inline tile& get_tile(vector3<tile_coordinate> global_coords) {
@@ -353,10 +360,6 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     world* w_;
     std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
   };
-}
-inline tile const& tile_location::stuff_at()const { return wb_->get_tile(v_); }
-template<cardinal_direction Dir> inline tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
-  return wb_->get_neighboring_loc<Dir>(v_, realineeded);
 }
 
 class world_building_gun;
@@ -542,6 +545,42 @@ private:
   void initialize_tile_local_caches_relating_to_this_neighbor_(tile_location const& loc, tile neighbor);
   void initialize_tile_water_group_caches_(tile_location const& loc);
 };
+
+
+// some worldblock-related impls here for inlining purposes (speed)
+inline tile const& tile_location::stuff_at()const { return wb_->get_tile(v_); }
+template<cardinal_direction Dir> inline tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
+  return wb_->get_neighboring_loc<Dir>(v_, realineeded);
+}
+namespace the_decomposition_of_the_world_into_blocks_impl {
+  template<> inline bool worldblock::crossed_boundary<xminus>(tile_coordinate new_coord) { return new_coord < global_position_.x; }
+  template<> inline bool worldblock::crossed_boundary<yminus>(tile_coordinate new_coord) { return new_coord < global_position_.y; }
+  template<> inline bool worldblock::crossed_boundary<zminus>(tile_coordinate new_coord) { return new_coord < global_position_.z; }
+  template<> inline bool worldblock::crossed_boundary<xplus>(tile_coordinate new_coord) { return new_coord >= global_position_.x + worldblock_dimension; }
+  template<> inline bool worldblock::crossed_boundary<yplus>(tile_coordinate new_coord) { return new_coord >= global_position_.y + worldblock_dimension; }
+  template<> inline bool worldblock::crossed_boundary<zplus>(tile_coordinate new_coord) { return new_coord >= global_position_.z + worldblock_dimension; }
+
+  template<cardinal_direction Dir> inline tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded) {
+    ensure_realization(realineeded);
+    vector3<tile_coordinate> new_coords = old_coords; cdir_info<Dir>::add_to(new_coords);
+    if (crossed_boundary<Dir>(new_coords[cdir_info<Dir>::dimension])) return tile_location(new_coords, &ensure_neighbor_realization<Dir>(realineeded));
+    else return tile_location(new_coords, this);
+  }
+
+  template<cardinal_direction Dir> inline worldblock& worldblock::ensure_neighbor_realization(level_of_tile_realization_needed realineeded) {
+    if (worldblock* neighbor = neighbors_[Dir]) {
+      return neighbor->ensure_realization(realineeded);
+    }
+    else {
+      return *(neighbors_[Dir] =
+        w_->ensure_realization_of_and_get_worldblock_(
+          global_position_ + vector3<worldblock_dimension_type>(cdir_info<Dir>::as_vector()) * worldblock_dimension,
+          realineeded
+        )
+      );
+    }
+  }
+}
 
 #endif
 

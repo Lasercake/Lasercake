@@ -60,11 +60,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   // If we try to use a level-X value from a worldblock while it's busy computing a realization
   // level less-than-or-equal-to X, then we justly receive get an assertion failure.
   // Realizing a worldblock at a given level must not require same-level information.
-  worldblock& worldblock::ensure_realization(level_of_tile_realization_needed realineeded) {
-    // This function gets called to do nothing a LOT more than it gets called to actually do something;
-    // bail ASAP if we don't have to do anything.
-    if (realineeded <= current_tile_realization_) return *this;
-
+  worldblock& worldblock::ensure_realization_impl(level_of_tile_realization_needed realineeded) {
     assert(this->is_constructed());
     caller_correct_if(realineeded >= COMPLETELY_IMAGINARY && realineeded <= FULL_REALIZATION, "Calling ensure_realization with an invalid realization level");
     
@@ -194,41 +190,6 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     }
     
     return (*this);
-  }
-  
-  template<> bool worldblock::crossed_boundary<xminus>(tile_coordinate new_coord) { return new_coord < global_position_.x; }
-  template<> bool worldblock::crossed_boundary<yminus>(tile_coordinate new_coord) { return new_coord < global_position_.y; }
-  template<> bool worldblock::crossed_boundary<zminus>(tile_coordinate new_coord) { return new_coord < global_position_.z; }
-  template<> bool worldblock::crossed_boundary<xplus>(tile_coordinate new_coord) { return new_coord >= global_position_.x + worldblock_dimension; }
-  template<> bool worldblock::crossed_boundary<yplus>(tile_coordinate new_coord) { return new_coord >= global_position_.y + worldblock_dimension; }
-  template<> bool worldblock::crossed_boundary<zplus>(tile_coordinate new_coord) { return new_coord >= global_position_.z + worldblock_dimension; }
-
-  template<cardinal_direction Dir> tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded) {
-    ensure_realization(realineeded);
-    vector3<tile_coordinate> new_coords = old_coords; cdir_info<Dir>::add_to(new_coords);
-    if (crossed_boundary<Dir>(new_coords[cdir_info<Dir>::dimension])) return tile_location(new_coords, &ensure_neighbor_realization<Dir>(realineeded));
-    else return tile_location(new_coords, this);
-  }
-
-  template tile_location worldblock::get_neighboring_loc<xminus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
-  template tile_location worldblock::get_neighboring_loc<yminus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
-  template tile_location worldblock::get_neighboring_loc<zminus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
-  template tile_location worldblock::get_neighboring_loc<xplus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
-  template tile_location worldblock::get_neighboring_loc<yplus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
-  template tile_location worldblock::get_neighboring_loc<zplus>(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
-
-  template<cardinal_direction Dir> worldblock& worldblock::ensure_neighbor_realization(level_of_tile_realization_needed realineeded) {
-    if (worldblock* neighbor = neighbors_[Dir]) {
-      return neighbor->ensure_realization(realineeded);
-    }
-    else {
-      return *(neighbors_[Dir] =
-        w_->ensure_realization_of_and_get_worldblock_(
-          global_position_ + vector3<worldblock_dimension_type>(cdir_info<Dir>::as_vector()) * worldblock_dimension,
-          realineeded
-        )
-      );
-    }
   }
 
   // It seems this function is sometimes faster and sometimes slower than
