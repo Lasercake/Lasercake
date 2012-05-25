@@ -363,38 +363,10 @@ void mainLoop (std::string scenario)
     if(!paused_this_time) {
       input_news_pipe.put(input_news);
       last_frame_output = frame_output_pipe.take();
-    }
-    if(!paused_this_time) {
       if(last_frame_output.gl_data_ptr == nullptr) {
         last_frame_output.gl_data_ptr.reset(new gl_data_t);
       }
     }
-
-    if(frame != 0) {
-      std::string frames_per_second_str = " inf ";
-      if(monotonic_microseconds_for_frame > 0) {
-        const int64_t frames_per_kilosecond = 1000000000 / monotonic_microseconds_for_frame;
-        frames_per_second_str = show_decimal(frames_per_kilosecond, 1000, 2);
-      }
-      std::cerr
-      << "Frame " << std::left << std::setw(4) << frame << std::right << ":"
-      //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
-      // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
-      //<< std::ios::fixed << std::setprecision(4) << fps << " fps; "
-      << std::setw(4) << get_this_process_rusage().ru_maxrss / 1024 << "MiB; "
-      << std::setw(6) << frames_per_second_str << "fps"
-      << std::setw(6) << show_microseconds(monotonic_microseconds_for_frame) << "ms"
-      << ":"
-      << std::setw(7) << show_microseconds(microseconds_for_processing) << "sim"
-      << std::setw(6) << show_microseconds(microseconds_for_drawing) << "draw"
-      << ":" << std::setw(6) << show_microseconds(microseconds_for_processing + microseconds_for_drawing) << "sd"
-      << " -> " << (ostream_bundle()
-                              << ((microseconds_for_GL < monotonic_microseconds_for_GL) ? (show_microseconds(microseconds_for_GL) + "–") : std::string())
-                              << show_microseconds(monotonic_microseconds_for_GL)
-                          )
-      << "gl\n";
-    }
-
 
     const microseconds_t microseconds_before_GL = get_this_process_microseconds();
     const microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
@@ -416,6 +388,29 @@ void mainLoop (std::string scenario)
     const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
 
     monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
+    
+    std::string frames_per_second_str = " inf ";
+    if(monotonic_microseconds_for_frame > 0) {
+      const int64_t frames_per_kilosecond = 1000000000 / monotonic_microseconds_for_frame;
+      frames_per_second_str = show_decimal(frames_per_kilosecond, 1000, 2);
+    }
+    std::cerr
+    << "Frame " << std::left << std::setw(4) << frame << std::right << ":"
+    //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
+    // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
+    //<< std::ios::fixed << std::setprecision(4) << fps << " fps; "
+    << std::setw(4) << get_this_process_rusage().ru_maxrss / 1024 << "MiB; "
+    << std::setw(6) << frames_per_second_str << "fps"
+    << std::setw(6) << show_microseconds(monotonic_microseconds_for_frame) << "ms"
+    << ":"
+    << std::setw(7) << show_microseconds(microseconds_for_processing) << "sim"
+    << std::setw(6) << show_microseconds(microseconds_for_drawing) << "draw"
+    << ":" << std::setw(6) << show_microseconds(microseconds_for_processing + microseconds_for_drawing) << "sd"
+    << " -> " << (ostream_bundle()
+                            << ((microseconds_for_GL < monotonic_microseconds_for_GL) ? (show_microseconds(microseconds_for_GL) + "–") : std::string())
+                            << show_microseconds(monotonic_microseconds_for_GL)
+                        )
+    << "gl\n";
   }
 
   simulation_thread.interrupt();
