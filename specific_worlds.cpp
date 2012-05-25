@@ -163,7 +163,7 @@ worldgen_function_t make_world_building_func(std::string scenario) {
     return worldgen_from_tilespec(with_state<hills>());
   }
   if (scenario == "pressure_tunnel") {
-    return worldgen_from_tilespec([](coords l) {
+    return worldgen_from_tilespec([](coords l)->tile_contents {
       const coord tower_lower_coord = wcc;
       const coord tower_upper_coord = wcc+10;
       const coord tower_height = 200;
@@ -192,7 +192,7 @@ worldgen_function_t make_world_building_func(std::string scenario) {
     });
   }
   if (scenario == "stepped_pools") {
-    return worldgen_from_tilespec([](coords l) {
+    return worldgen_from_tilespec([](coords l)->tile_contents {
       const int64_t block_width = 30;
       const int64_t border_width = 3;
       const int64_t block_height_shift = 30;
