@@ -218,9 +218,6 @@ void mainLoop (std::string scenario)
   
   concurrent::m_var<input_news_t> input_news_pipe;
   concurrent::m_var<frame_output_t> frame_output_pipe;
-  // It's hard to send, in a given message, how long it took to send that message! So that
-  // has its own pipe, which should more-or-less work out.
-  concurrent::m_var<microseconds_t> sim_sync_time_pipe;
   
   const worldgen_function_t worldgen = make_world_building_func(scenario);
   if(!worldgen) {
@@ -228,7 +225,7 @@ void mainLoop (std::string scenario)
     exit(4);
   }
   
-  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, &sim_sync_time_pipe, worldgen]() {
+  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen]() {
     world w(worldgen);
     const object_identifier robot_id = init_test_world_and_return_our_robot(w);
     input_news_t input_news;
@@ -237,8 +234,6 @@ void mainLoop (std::string scenario)
     view_on_the_world view(robot_id, world_center_fine_coords);
     microseconds_t microseconds_before_drawing = 0;
     microseconds_t microseconds_after_drawing = 0;
-    microseconds_t microseconds_before_sync = 0;
-    microseconds_t microseconds_after_sync = 0;
     microseconds_t microseconds_before_simulating = 0;
     microseconds_t microseconds_after_simulating = 0;
     while(true) {
@@ -255,12 +250,8 @@ void mainLoop (std::string scenario)
         microseconds_after_simulating - microseconds_before_simulating
       };
       
-      microseconds_before_sync = get_monotonic_microseconds();
       frame_output_pipe.put(output);
       input_news = input_news_pipe.take();
-      microseconds_after_sync = get_monotonic_microseconds();
-
-      sim_sync_time_pipe.put(microseconds_after_sync - microseconds_before_sync);
       
       microseconds_before_simulating = get_this_thread_microseconds();
       w.update(input_news);
@@ -303,9 +294,6 @@ void mainLoop (std::string scenario)
   microseconds_t monotonic_microseconds_for_frame = 0;
   microseconds_t microseconds_for_processing = 0;
   microseconds_t microseconds_for_drawing = 0;
-  microseconds_t microseconds_waiting_for_sim_thread = 0;
-  microseconds_t microseconds_waiting_for_home_thread = 0;
-  microseconds_t observed_microseconds_waiting_for_sim_thread = 0;
 
   while ( !done ) {
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
@@ -372,21 +360,15 @@ void mainLoop (std::string scenario)
       --steps_queued_to_do_while_paused;
     }
 
-    microseconds_waiting_for_home_thread = 0;
-    const microseconds_t microseconds_before_sync = get_monotonic_microseconds();
     if(!paused_this_time) {
       input_news_pipe.put(input_news);
       last_frame_output = frame_output_pipe.take();
-      microseconds_waiting_for_home_thread = sim_sync_time_pipe.take();
     }
-    const microseconds_t microseconds_after_sync = get_monotonic_microseconds();
     if(!paused_this_time) {
       if(last_frame_output.gl_data_ptr == nullptr) {
         last_frame_output.gl_data_ptr.reset(new gl_data_t);
       }
     }
-    observed_microseconds_waiting_for_sim_thread = microseconds_waiting_for_sim_thread;
-    microseconds_waiting_for_sim_thread = microseconds_after_sync - microseconds_before_sync;
 
     if(frame != 0) {
       std::string frames_per_second_str = " inf ";
@@ -403,17 +385,14 @@ void mainLoop (std::string scenario)
       << std::setw(6) << frames_per_second_str << "fps"
       << std::setw(6) << show_microseconds(monotonic_microseconds_for_frame) << "ms"
       << ":"
-      << std::setw(8) << (ostream_bundle() << "(" << std::setw(5) << show_microseconds(microseconds_for_processing)) << "sim"
+      << std::setw(7) << show_microseconds(microseconds_for_processing) << "sim"
       << std::setw(6) << show_microseconds(microseconds_for_drawing) << "draw"
-      << std::setw(6) << show_microseconds(microseconds_waiting_for_home_thread) << "wait"
-      << " | "
-      << std::setw(6) << show_microseconds(observed_microseconds_waiting_for_sim_thread) << "wait" //waiting for simulation thread
-      << "  "
-      << (ostream_bundle()
+      << ":" << std::setw(6) << show_microseconds(microseconds_for_processing + microseconds_for_drawing) << "sd"
+      << " -> " << (ostream_bundle()
                               << ((microseconds_for_GL < monotonic_microseconds_for_GL) ? (show_microseconds(microseconds_for_GL) + "–") : std::string())
                               << show_microseconds(monotonic_microseconds_for_GL)
                           )
-      << "gl )\n";
+      << "gl\n";
     }
 
 
