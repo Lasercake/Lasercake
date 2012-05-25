@@ -257,16 +257,20 @@ void mainLoop (std::string scenario)
     std::cerr << "Scenario name given that doesn't exist!: \'" << scenario << "\'\n";
     exit(4);
   }
-  
+
+#if !LASERCAKE_NO_THREADS
   concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen]() {
+#endif
     world w(worldgen);
     const object_identifier robot_id = init_test_world_and_return_our_robot(w);
     view_on_the_world view(robot_id, world_center_fine_coords);
     sim_thread_step(w, view, nullptr, false, true, &frame_output_pipe);
+#if !LASERCAKE_NO_THREADS
     while(true) {
       sim_thread_step(w, view, &input_news_pipe, true, true, &frame_output_pipe);
     }
   });
+#endif
 
   const bool exploit_parallelism = true;
   if(!exploit_parallelism) {
@@ -288,6 +292,10 @@ void mainLoop (std::string scenario)
 
   while ( !done ) {
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
+
+#if LASERCAKE_NO_THREADS
+    if(frame != 0) {sim_thread_step(w, view, &input_news_pipe, true, true, &frame_output_pipe);}
+#endif
     
     key_activity_t key_activity_since_last_frame;
     
@@ -404,8 +412,10 @@ void mainLoop (std::string scenario)
     << "gl\n";
   }
 
+#if !LASERCAKE_NO_THREADS
   simulation_thread.interrupt();
   simulation_thread.join();
+#endif
 }
 
 

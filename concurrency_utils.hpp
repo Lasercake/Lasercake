@@ -22,7 +22,9 @@
 #ifndef LASERCAKE_CONCURRENCY_UTILS_HPP__
 #define LASERCAKE_CONCURRENCY_UTILS_HPP__
 
+#ifndef LASERCAKE_NO_THREADS
 #include <boost/thread.hpp>
+#endif
 #include <boost/optional.hpp>
 
 // I wish there was a better library out there building on boost::thread/std::thread,
@@ -30,11 +32,13 @@
 
 namespace concurrent {
 
+#ifndef LASERCAKE_NO_THREADS
 using boost::thread;
 using boost::condition_variable;
 using boost::mutex;
 using boost::unique_lock;
 using boost::lock_guard;
+#endif
 
 // m_var mimicing this API:
 // http://www.haskell.org/ghc/docs/7.4.1/html/libraries/base-4.5.0.0/Control-Concurrent-MVar.html
@@ -54,10 +58,12 @@ public:
   // (Blocks until there is such a value.)
   // Postcondition: m_var is empty.
   value_type take() {
+#if !LASERCAKE_NO_THREADS
     unique_lock<mutex> lock(mutex_);
     while(!contents_) {
       readers_wait_on_.wait(lock);
     }
+#endif
     value_type result = preconditions_hold_take_();
     return result;
   }
@@ -66,10 +72,12 @@ public:
   // (Blocks until there is space in the container.)
   // Postcondition: m_var is full.
   void put(value_type const& v) {
+#if !LASERCAKE_NO_THREADS
     unique_lock<mutex> lock(mutex_);
     while(contents_) {
       writers_wait_on_.wait(lock);
     }
+#endif
     preconditions_hold_put_(v);
   }
 
@@ -80,7 +88,9 @@ public:
   // (Nonblocking.)
   // Postcondition: m_var is empty.
   boost::optional<value_type> try_take() {
+#if !LASERCAKE_NO_THREADS
     lock_guard<mutex> lock(mutex_);
+#endif
     boost::optional<value_type> result;
     if(contents_) {
       result.reset(preconditions_hold_take_());
@@ -92,7 +102,9 @@ public:
   // Returns true if successful, false if the container was already full.
   // Postcondition: m_var is full.
   bool try_put(value_type const& v) {
+#if !LASERCAKE_NO_THREADS
     lock_guard<mutex> lock(mutex_);
+#endif
     if(!contents_) {
       preconditions_hold_put_(v);
       return true;
@@ -105,20 +117,32 @@ public:
 private:
   // Is this the fastest and most correct implementation?
   boost::optional<value_type> contents_;
+#if !LASERCAKE_NO_THREADS
   mutex mutex_;
   condition_variable readers_wait_on_;
   condition_variable writers_wait_on_;
+#endif
   // utility functions; require a lock to already be taken
   // and the container to already be full/empty as applicable.
   // Use these functions everywhere that modifies contents_.
   void preconditions_hold_put_(value_type const& v) {
+    if(LASERCAKE_NO_THREADS) {
+      caller_error_if(contents_, "'put' into a full m_var in single-threaded mode blocks.");
+    }
     contents_.reset(v);
+#if !LASERCAKE_NO_THREADS
     readers_wait_on_.notify_one();
+#endif
   }
   value_type preconditions_hold_take_() {
+    if(LASERCAKE_NO_THREADS) {
+      caller_error_if(!contents_, "'take' from an empty m_var in single-threaded mode blocks.");
+    }
     value_type result = contents_.get();
     contents_.reset();
+#if !LASERCAKE_NO_THREADS
     writers_wait_on_.notify_one();
+#endif
     return result;
   }
 };

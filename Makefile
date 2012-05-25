@@ -11,7 +11,8 @@ OPTFLAGS=-O3
 UNOPTFLAGS=-O0
 GENERAL_FLAGS=-Wall -Wextra -fmax-errors=15 -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2 $(CFLAGS) $(CXXFLAGS)
 COMPILE_FLAGS=-std=gnu++0x $(shell sdl-config --cflags) $(CPPFLAGS) $(GENERAL_FLAGS)
-LINK_FLAGS=$(shell sdl-config --libs) -lGL -lGLU -lrt -lboost_thread $(GENERAL_FLAGS) $(LDFLAGS)
+LINK_FLAGS_NO_THREADS=$(shell sdl-config --libs) -lGL -lGLU -lrt $(GENERAL_FLAGS) $(LDFLAGS)
+LINK_FLAGS=-lboost_thread $(LINK_FLAGS_NO_THREADS)
 
 
 # The rest of this file is pretty boring.
@@ -25,6 +26,7 @@ ODIR_ASREV=output/assert-everything
 ODIR_CLANG=output/clang
 ODIR_GCC45=output/gcc45
 ODIR_GCC46=output/gcc46
+ODIR_NOTHR=output/no-threads
 
 SOURCES = $(wildcard *.cpp)
 DEPS      = $(patsubst %,$(ODIR_DEPS)/%,$(SOURCES:.cpp=.makedeps))
@@ -34,6 +36,7 @@ OBJ_UNOPT = $(patsubst %,$(ODIR_UNOPT)/%,$(SOURCES:.cpp=.o))
 OBJ_CLANG = $(patsubst %,$(ODIR_CLANG)/%,$(SOURCES:.cpp=.o))
 OBJ_GCC45 = $(patsubst %,$(ODIR_GCC45)/%,$(SOURCES:.cpp=.o))
 OBJ_GCC46 = $(patsubst %,$(ODIR_GCC46)/%,$(SOURCES:.cpp=.o))
+OBJ_NOTHR = $(patsubst %,$(ODIR_NOTHR)/%,$(SOURCES:.cpp=.o))
 
 $(ODIR_DEPS)/%.makedeps: %.cpp
 	@set -e; mkdir -p $(ODIR_DEPS); rm -f $@; \
@@ -63,6 +66,9 @@ lasercake-gcc45: $(OBJ_GCC45)
 
 lasercake-gcc46: $(OBJ_GCC46)
 	$(GCC46) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS)
+
+lasercake-no-threads: $(OBJ_NOTHR)
+	$(CC) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS_NO_THREADS)
 
 lasercake-test-concurrent: $(ODIR_TESTS)/concurrency_utils_tests.o $(ODIR_TESTS)/test_main.o
 	$(CC) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS) -lboost_unit_test_framework
@@ -98,11 +104,16 @@ $(ODIR_GCC46)/%.o: %.cpp
 	@mkdir -p $(ODIR_GCC46)
 	$(GCC46) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
 
+$(ODIR_NOTHR)/%.o: %.cpp
+	@mkdir -p $(ODIR_NOTHR)
+	$(CC) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS) -DLASERCAKE_NO_THREADS=1
+
 .PHONY :
 	clean
 
 clean:
 	rm -rf output lasercake lasercake-debug lasercake-optimized \
 		lasercake-clang lasercake-gcc45 lasercake-gcc46 \
-		lasercake-assert-everything
+		lasercake-assert-everything lasercake-no-threads \
+		lasercake-test-concurrent
 

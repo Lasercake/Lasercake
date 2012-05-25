@@ -70,6 +70,12 @@ Also, as a debugging hack, main.cpp may use things in _impl namespaces in
 its drawing code in order to draw implementation-detail states-of-being.
 
 
+Conditional compilation (e.g. #ifdef) should be avoided where practical,
+because it means the less commonly tested possibility might not even
+*compile*.  If a compile-time conditional is necessary at all, use
+if(BOOLEAN_CONSTANT) where practical; the compiler will optimize this out.
+
+
 
 Various names look like:
 

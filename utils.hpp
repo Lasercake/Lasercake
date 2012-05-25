@@ -61,6 +61,10 @@
 #endif
 #endif
 
+#if !LASERCAKE_NO_THREADS
+const bool LASERCAKE_NO_THREADS = false;
+#endif
+
 // It's not polite for library functions to assert() because the library's users
 // misused a correct library; use these for that case.
 inline ATTRIBUTE_NORETURN void caller_error(const char* error) {
