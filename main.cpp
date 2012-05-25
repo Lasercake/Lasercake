@@ -207,8 +207,8 @@ typedef shared_ptr<gl_data_t> gl_data_ptr_t;
 
 struct frame_output_t {
   gl_data_ptr_t gl_data_ptr;
-  microseconds_t cpu_microseconds_to_draw_this_frame;
-  microseconds_t cpu_microseconds_to_simulate_this_frame;
+  microseconds_t microseconds_for_drawing;
+  microseconds_t microseconds_for_simulation;
 };
 
 
@@ -230,29 +230,29 @@ void mainLoop (std::string scenario)
     const object_identifier robot_id = init_test_world_and_return_our_robot(w);
     input_news_t input_news;
     view_on_the_world view(robot_id, world_center_fine_coords);
-    microseconds_t microseconds_before_drawing = 0;
-    microseconds_t microseconds_after_drawing = 0;
-    microseconds_t microseconds_before_simulating = 0;
-    microseconds_t microseconds_after_simulating = 0;
+    microseconds_t microseconds_for_drawing = 0;
+    microseconds_t microseconds_for_simulation = 0;
     while(true) {
-      microseconds_before_drawing = microseconds_after_simulating = get_this_thread_microseconds();
+      const microseconds_t microseconds_before_drawing = get_this_thread_microseconds();
       gl_data_ptr_t gl_data(new gl_data_t());
       view.input(input_news);
       view.render(w, world_rendering_config(), *gl_data);
-      microseconds_after_drawing = get_this_thread_microseconds();
+      const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
+      microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
 
       const frame_output_t output = {
         gl_data,
-        microseconds_after_drawing - microseconds_before_drawing,
-        microseconds_after_simulating - microseconds_before_simulating
+        microseconds_for_drawing,
+        microseconds_for_simulation
       };
       
       frame_output_pipe.put(output);
       input_news = input_news_pipe.take();
       
-      microseconds_before_simulating = get_this_thread_microseconds();
+      const microseconds_t microseconds_before_simulating = get_this_thread_microseconds();
       w.update(input_news);
-      
+      const microseconds_t microseconds_after_simulating = get_this_thread_microseconds();
+      microseconds_for_simulation = microseconds_after_simulating - microseconds_before_simulating;
     }
   });
 
@@ -271,7 +271,7 @@ void mainLoop (std::string scenario)
   microseconds_t microseconds_for_GL = 0;
   microseconds_t monotonic_microseconds_for_GL = 0;
   microseconds_t monotonic_microseconds_for_frame = 0;
-  microseconds_t microseconds_for_processing = 0;
+  microseconds_t microseconds_for_simulation = 0;
   microseconds_t microseconds_for_drawing = 0;
 
   while ( !done ) {
@@ -359,8 +359,8 @@ void mainLoop (std::string scenario)
 
     frame += 1;
 
-    microseconds_for_processing = last_frame_output.cpu_microseconds_to_simulate_this_frame;
-    microseconds_for_drawing = last_frame_output.cpu_microseconds_to_draw_this_frame;
+    microseconds_for_simulation = last_frame_output.microseconds_for_simulation;
+    microseconds_for_drawing = last_frame_output.microseconds_for_drawing;
     microseconds_for_GL = microseconds_after_GL - microseconds_before_GL;
     monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
     
@@ -382,9 +382,9 @@ void mainLoop (std::string scenario)
     << std::setw(6) << frames_per_second_str << "fps"
     << std::setw(6) << show_microseconds(monotonic_microseconds_for_frame) << "ms"
     << ":"
-    << std::setw(7) << show_microseconds(microseconds_for_processing) << "sim"
+    << std::setw(7) << show_microseconds(microseconds_for_simulation) << "sim"
     << std::setw(6) << show_microseconds(microseconds_for_drawing) << "draw"
-    << ":" << std::setw(6) << show_microseconds(microseconds_for_processing + microseconds_for_drawing) << "sd"
+    << ":" << std::setw(6) << show_microseconds(microseconds_for_simulation + microseconds_for_drawing) << "sd"
     << " -> " << (ostream_bundle()
                             << ((microseconds_for_GL < monotonic_microseconds_for_GL) ? (show_microseconds(microseconds_for_GL) + "–") : std::string())
                             << show_microseconds(monotonic_microseconds_for_GL)
