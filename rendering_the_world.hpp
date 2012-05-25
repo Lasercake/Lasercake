@@ -94,11 +94,9 @@ struct gl_all_data {
 
 
 struct world_rendering_config {
-  world_rendering_config(bool a, bool b, input_representation::input_news_t const& c)
-  : drawing_regular_stuff(a), drawing_debug_stuff(b), input_news(c) {}
+  world_rendering_config(input_representation::input_news_t const& news)
+  : input_news(news) {}
   
-  bool drawing_regular_stuff;
-  bool drawing_debug_stuff;
   input_representation::input_news_t const& input_news;
 };
 
@@ -116,6 +114,8 @@ public:
   double view_direction;
   vector3<fine_scalar> surveilled_by_global_display;
   fine_scalar globallocal_view_dist;
+  bool drawing_regular_stuff;
+  bool drawing_debug_stuff;
 };
 
 

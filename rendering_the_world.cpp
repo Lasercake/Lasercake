@@ -144,7 +144,9 @@ view_on_the_world::view_on_the_world(object_identifier robot_id, vector3<fine_sc
   view_type(GLOBAL),
   view_direction(0),
   surveilled_by_global_display(approx_initial_center + vector3<fine_scalar>(5*tile_width, 5*tile_width, 5*tile_width)),
-  globallocal_view_dist(20*tile_width)
+  globallocal_view_dist(20*tile_width),
+  drawing_regular_stuff(true),
+  drawing_debug_stuff(true)
 {}
 
 
@@ -209,7 +211,7 @@ void view_on_the_world::render(
       vector3<tile_coordinate>(101,101,101)
     ));*/
     // this is a bloody stupid hack, TODO do something different
-    if (rendering_config.drawing_regular_stuff) {
+    if (this->drawing_regular_stuff) {
     w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box(
       view_loc - vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50),
       view_loc + vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50)
@@ -217,7 +219,7 @@ void view_on_the_world::render(
     }
 
     // this is a bloody stupid hack, TODO do something different
-    if (rendering_config.drawing_debug_stuff) {
+    if (this->drawing_debug_stuff) {
     for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
       tile_physics_impl::persistent_water_group_info const& g = p.second;
 
@@ -394,7 +396,7 @@ void view_on_the_world::render(
           }
         }
 
-        if (is_fluid(t.contents()) && rendering_config.drawing_debug_stuff) {
+        if (is_fluid(t.contents()) && this->drawing_debug_stuff) {
           if (tile_physics_impl::active_fluid_tile_info const* fluid =
                 find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
             push_line(coll,

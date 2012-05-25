@@ -229,8 +229,6 @@ void mainLoop (std::string scenario)
     world w(worldgen);
     const object_identifier robot_id = init_test_world_and_return_our_robot(w);
     input_news_t input_news;
-    bool drawing_regular_stuff = true;
-    bool drawing_debug_stuff = true;
     view_on_the_world view(robot_id, world_center_fine_coords);
     microseconds_t microseconds_before_drawing = 0;
     microseconds_t microseconds_after_drawing = 0;
@@ -239,9 +237,7 @@ void mainLoop (std::string scenario)
     while(true) {
       microseconds_before_drawing = microseconds_after_simulating = get_this_thread_microseconds();
       gl_data_ptr_t gl_data(new gl_data_t());
-      view.render(w,
-                  world_rendering_config(drawing_regular_stuff, drawing_debug_stuff, input_news),
-                  *gl_data);
+      view.render(w, world_rendering_config(input_news), *gl_data);
       microseconds_after_drawing = get_this_thread_microseconds();
 
       const frame_output_t output = {
@@ -258,8 +254,8 @@ void mainLoop (std::string scenario)
       for(key_change_t const& c : input_news.key_activity_since_last_frame()) {
         if(c.second == PRESSED) {
           key_type const& k = c.first;
-          if(k == "z") drawing_regular_stuff = !drawing_regular_stuff;
-          if(k == "t") drawing_debug_stuff = !drawing_debug_stuff;
+          if(k == "z") view.drawing_regular_stuff = !view.drawing_regular_stuff;
+          if(k == "t") view.drawing_debug_stuff = !view.drawing_debug_stuff;
           if(k == "q") view.surveilled_by_global_display.x += tile_width;
           if(k == "a") view.surveilled_by_global_display.x -= tile_width;
           if(k == "w") view.surveilled_by_global_display.y += tile_width;
