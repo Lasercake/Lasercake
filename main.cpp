@@ -99,7 +99,7 @@ std::string show_decimal(Integral us, Integral2 divisor, int places, std::locale
   return (ostream_bundle()
     << (us / divisor)
     << std::use_facet< std::numpunct<char> >(locale).decimal_point()
-    << std::setfill('0') << std::setw(places) << (us / (divisor / divisordivisor) % divisordivisor)
+    << std::setfill('0') << std::setw(places) << std::abs(us / (divisor / divisordivisor) % divisordivisor)
   ).str();
 }
 
