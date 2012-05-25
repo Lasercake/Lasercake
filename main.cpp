@@ -211,6 +211,39 @@ struct frame_output_t {
   microseconds_t microseconds_for_simulation;
 };
 
+using input_representation::input_news_t;
+
+void sim_thread_step(
+          world& w,
+          view_on_the_world& view,
+          concurrent::m_var<input_news_t>* take_input, //nullptr to not take input
+          bool simulate,
+          bool draw,
+          concurrent::m_var<frame_output_t>* put_output //nullptr to not put output
+                    ) {
+  input_news_t input_news;
+  if(take_input) {input_news = take_input->take();}
+
+  const microseconds_t microseconds_before_simulating = get_this_thread_microseconds();
+  if(simulate) {w.update(input_news);}
+  const microseconds_t microseconds_after_simulating = get_this_thread_microseconds();
+  const microseconds_t microseconds_for_simulation = microseconds_after_simulating - microseconds_before_simulating;
+
+  const microseconds_t microseconds_before_drawing = get_this_thread_microseconds();
+  if(take_input) {view.input(input_news);}
+  gl_data_ptr_t gl_data_ptr(new gl_data_t());
+  if(draw) {view.render(w, world_rendering_config(), *gl_data_ptr);}
+  const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
+  const microseconds_t microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
+
+  const frame_output_t output = {
+    gl_data_ptr,
+    microseconds_for_drawing,
+    microseconds_for_simulation
+  };
+
+  if(put_output) {put_output->put(output);}
+}
 
 void mainLoop (std::string scenario)
 {
@@ -228,31 +261,10 @@ void mainLoop (std::string scenario)
   concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen]() {
     world w(worldgen);
     const object_identifier robot_id = init_test_world_and_return_our_robot(w);
-    input_news_t input_news;
     view_on_the_world view(robot_id, world_center_fine_coords);
-    microseconds_t microseconds_for_drawing = 0;
-    microseconds_t microseconds_for_simulation = 0;
+    sim_thread_step(w, view, nullptr, false, true, &frame_output_pipe);
     while(true) {
-      const microseconds_t microseconds_before_drawing = get_this_thread_microseconds();
-      gl_data_ptr_t gl_data(new gl_data_t());
-      view.input(input_news);
-      view.render(w, world_rendering_config(), *gl_data);
-      const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
-      microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
-
-      const frame_output_t output = {
-        gl_data,
-        microseconds_for_drawing,
-        microseconds_for_simulation
-      };
-      
-      frame_output_pipe.put(output);
-      input_news = input_news_pipe.take();
-      
-      const microseconds_t microseconds_before_simulating = get_this_thread_microseconds();
-      w.update(input_news);
-      const microseconds_t microseconds_after_simulating = get_this_thread_microseconds();
-      microseconds_for_simulation = microseconds_after_simulating - microseconds_before_simulating;
+      sim_thread_step(w, view, &input_news_pipe, true, true, &frame_output_pipe);
     }
   });
 
