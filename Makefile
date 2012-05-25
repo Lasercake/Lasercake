@@ -24,6 +24,7 @@ ODIR_OPT=output/optimized
 ODIR_UNOPT=output/unoptimized
 ODIR_ASREV=output/assert-everything
 ODIR_CLANG=output/clang
+ODIR_CLLIB=output/clang-libcxx
 ODIR_GCC45=output/gcc45
 ODIR_GCC46=output/gcc46
 ODIR_NOTHR=output/no-threads
@@ -34,6 +35,7 @@ OBJ_OPT   = $(patsubst %,$(ODIR_OPT)/%,$(SOURCES:.cpp=.o))
 OBJ_ASREV = $(patsubst %,$(ODIR_ASREV)/%,$(SOURCES:.cpp=.o))
 OBJ_UNOPT = $(patsubst %,$(ODIR_UNOPT)/%,$(SOURCES:.cpp=.o))
 OBJ_CLANG = $(patsubst %,$(ODIR_CLANG)/%,$(SOURCES:.cpp=.o))
+OBJ_CLLIB = $(patsubst %,$(ODIR_CLLIB)/%,$(SOURCES:.cpp=.o))
 OBJ_GCC45 = $(patsubst %,$(ODIR_GCC45)/%,$(SOURCES:.cpp=.o))
 OBJ_GCC46 = $(patsubst %,$(ODIR_GCC46)/%,$(SOURCES:.cpp=.o))
 OBJ_NOTHR = $(patsubst %,$(ODIR_NOTHR)/%,$(SOURCES:.cpp=.o))
@@ -60,6 +62,10 @@ lasercake-debug: $(OBJ_UNOPT)
 
 lasercake-clang: $(OBJ_CLANG)
 	$(CLANG) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS)
+
+lasercake-clang-libcxx: $(OBJ_CLLIB)
+	$(CLANG) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS) -stdlib=libc++ -Wl,-lstdc++ \
+		#that -Wl was necessary for me but is it right?
 
 lasercake-gcc45: $(OBJ_GCC45)
 	$(GCC45) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS)
@@ -96,6 +102,10 @@ $(ODIR_CLANG)/%.o: %.cpp
 	@mkdir -p $(ODIR_CLANG)
 	$(CLANG) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
 
+$(ODIR_CLLIB)/%.o: %.cpp
+	@mkdir -p $(ODIR_CLLIB)
+	$(CLANG) -stdlib=libc++ -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
+
 $(ODIR_GCC45)/%.o: %.cpp
 	@mkdir -p $(ODIR_GCC45)
 	$(GCC45) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
@@ -113,7 +123,7 @@ $(ODIR_NOTHR)/%.o: %.cpp
 
 clean:
 	rm -rf output lasercake lasercake-debug lasercake-optimized \
-		lasercake-clang lasercake-gcc45 lasercake-gcc46 \
-		lasercake-assert-everything lasercake-no-threads \
-		lasercake-test-concurrent
+		lasercake-clang lasercake-clang-libcxx lasercake-gcc45 \
+		lasercake-gcc46 lasercake-assert-everything \
+		lasercake-no-threads lasercake-test-concurrent
 

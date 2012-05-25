@@ -39,6 +39,8 @@
 #include "world.hpp"
 #include "specific_worlds.hpp"
 #include "specific_object_types.hpp"
+#include "worldgen.hpp" //only so that world_building_gun is a complete type for
+  // http://stackoverflow.com/questions/10730682/does-stdfunctions-copy-constructor-require-the-template-types-argument-types
 
 #include "rendering_the_world.hpp"
 
