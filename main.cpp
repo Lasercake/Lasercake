@@ -406,18 +406,16 @@ void mainLoop (std::string scenario)
       << std::setw(8) << (ostream_bundle() << "(" << std::setw(5) << show_microseconds(microseconds_for_processing)) << "sim"
       << std::setw(6) << show_microseconds(microseconds_for_drawing) << "draw"
       << std::setw(6) << show_microseconds(microseconds_waiting_for_home_thread) << "wait"
-      << " )" << std::setw(6) << show_microseconds(observed_microseconds_waiting_for_sim_thread) << "wait" //waiting for simulation thread
+      << " | "
+      << std::setw(6) << show_microseconds(observed_microseconds_waiting_for_sim_thread) << "wait" //waiting for simulation thread
       << "  "
       << (ostream_bundle()
                               << ((microseconds_for_GL < monotonic_microseconds_for_GL) ? (show_microseconds(microseconds_for_GL) + "–") : std::string())
                               << show_microseconds(monotonic_microseconds_for_GL)
                           )
-      << "gl"
-      << "\n";
+      << "gl )\n";
     }
 
-    microseconds_for_processing = last_frame_output.cpu_microseconds_to_simulate_this_frame;
-    microseconds_for_drawing = last_frame_output.cpu_microseconds_to_draw_this_frame;
 
     const microseconds_t microseconds_before_GL = get_this_process_microseconds();
     const microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
@@ -430,7 +428,9 @@ void mainLoop (std::string scenario)
     const microseconds_t microseconds_after_GL = get_this_process_microseconds();
 
     frame += 1;
-    
+
+    microseconds_for_processing = last_frame_output.cpu_microseconds_to_simulate_this_frame;
+    microseconds_for_drawing = last_frame_output.cpu_microseconds_to_draw_this_frame;
     microseconds_for_GL = microseconds_after_GL - microseconds_before_GL;
     monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
     
