@@ -94,15 +94,16 @@ struct gl_all_data {
 
 
 struct world_rendering_config {
-  world_rendering_config(input_representation::input_news_t const& news)
-  : input_news(news) {}
-  
-  input_representation::input_news_t const& input_news;
+  world_rendering_config() {}
+  //no config presently
 };
 
 class view_on_the_world {
 public:
   view_on_the_world(object_identifier robot_id, vector3<fine_scalar> approx_initial_center);
+
+  // Call this every frame that you want user-input to have view-related effects.
+  void input(input_representation::input_news_t const& input_news);
 
   // To call, default-construct the result and then pass it as a reference.
   void render(world /*TODO const*/& w, world_rendering_config c, world_rendering::gl_all_data& result);

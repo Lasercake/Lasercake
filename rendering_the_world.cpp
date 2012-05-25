@@ -149,10 +149,51 @@ view_on_the_world::view_on_the_world(object_identifier robot_id, vector3<fine_sc
   drawing_debug_stuff(true)
 {}
 
+void view_on_the_world::input(input_representation::input_news_t const& input_news) {
+  using namespace input_representation;
+  for(key_change_t const& c : input_news.key_activity_since_last_frame()) {
+    if(c.second == PRESSED) {
+      key_type const& k = c.first;
+      if(k == "z") drawing_regular_stuff = !drawing_regular_stuff;
+      if(k == "t") drawing_debug_stuff = !drawing_debug_stuff;
+      if(k == "q") surveilled_by_global_display.x += tile_width;
+      if(k == "a") surveilled_by_global_display.x -= tile_width;
+      if(k == "w") surveilled_by_global_display.y += tile_width;
+      if(k == "s") surveilled_by_global_display.y -= tile_width;
+      if(k == "e") surveilled_by_global_display.z += tile_width;
+      if(k == "d") surveilled_by_global_display.z -= tile_width;
+      if(k == "r") globallocal_view_dist += tile_width;
+      if(k == "f") globallocal_view_dist -= tile_width;
+      if(k == "l") view_type = view_on_the_world::LOCAL;
+      if(k == "o") view_type = view_on_the_world::GLOBAL;
+      if(k == "i") view_type = view_on_the_world::ROBOT;
+    }
+  }
+  if (view_type == LOCAL) {
+    if (input_news.is_currently_pressed("u")) {
+      view_loc_for_local_display += vector3<fine_scalar>(
+        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
+        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
+        0
+      );
+    }
+    if (input_news.is_currently_pressed("j")) {
+      view_loc_for_local_display -= vector3<fine_scalar>(
+        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
+        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
+        0
+      );
+    }
+    if (input_news.is_currently_pressed("h")) { view_direction += 0.06; }
+    if (input_news.is_currently_pressed("k")) { view_direction -= 0.06; }
+    if (input_news.is_currently_pressed("y")) { view_loc_for_local_display.z += tile_width / 10; }
+    if (input_news.is_currently_pressed("n")) { view_loc_for_local_display.z -= tile_width / 10; }
+  }
+}
 
 void view_on_the_world::render(
   world /*TODO const*/& w,
-  world_rendering_config rendering_config,
+  world_rendering_config /*rendering_config*/,
   world_rendering::gl_all_data& gl_data //result
 ) {
     //for short
@@ -162,7 +203,7 @@ void view_on_the_world::render(
     //These values are computed every rendering-frame.
     vector3<fine_scalar> view_loc;
     vector3<fine_scalar> view_towards;
-    
+
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
       view_towards = view_loc + vector3<fine_scalar>(
@@ -170,24 +211,6 @@ void view_on_the_world::render(
         globallocal_view_dist * std::sin(view_direction),
         0
       );
-      if (rendering_config.input_news.is_currently_pressed("u")) {
-        view_loc_for_local_display += vector3<fine_scalar>(
-          fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
-          fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
-          0
-        );
-      }
-      if (rendering_config.input_news.is_currently_pressed("j")) {
-        view_loc_for_local_display -= vector3<fine_scalar>(
-          fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
-          fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
-          0
-        );
-      }
-      if (rendering_config.input_news.is_currently_pressed("h")) { view_direction += 0.06; }
-      if (rendering_config.input_news.is_currently_pressed("k")) { view_direction -= 0.06; }
-      if (rendering_config.input_news.is_currently_pressed("y")) { view_loc_for_local_display.z += tile_width / 10; }
-      if (rendering_config.input_news.is_currently_pressed("n")) { view_loc_for_local_display.z -= tile_width / 10; }
     }
     else if (view_type == ROBOT) {
       bounding_box b = w.get_object_personal_space_shapes().find(robot_id)->second.bounds();

@@ -237,7 +237,8 @@ void mainLoop (std::string scenario)
     while(true) {
       microseconds_before_drawing = microseconds_after_simulating = get_this_thread_microseconds();
       gl_data_ptr_t gl_data(new gl_data_t());
-      view.render(w, world_rendering_config(input_news), *gl_data);
+      view.input(input_news);
+      view.render(w, world_rendering_config(), *gl_data);
       microseconds_after_drawing = get_this_thread_microseconds();
 
       const frame_output_t output = {
@@ -251,24 +252,6 @@ void mainLoop (std::string scenario)
       
       microseconds_before_simulating = get_this_thread_microseconds();
       w.update(input_news);
-      for(key_change_t const& c : input_news.key_activity_since_last_frame()) {
-        if(c.second == PRESSED) {
-          key_type const& k = c.first;
-          if(k == "z") view.drawing_regular_stuff = !view.drawing_regular_stuff;
-          if(k == "t") view.drawing_debug_stuff = !view.drawing_debug_stuff;
-          if(k == "q") view.surveilled_by_global_display.x += tile_width;
-          if(k == "a") view.surveilled_by_global_display.x -= tile_width;
-          if(k == "w") view.surveilled_by_global_display.y += tile_width;
-          if(k == "s") view.surveilled_by_global_display.y -= tile_width;
-          if(k == "e") view.surveilled_by_global_display.z += tile_width;
-          if(k == "d") view.surveilled_by_global_display.z -= tile_width;
-          if(k == "r") view.globallocal_view_dist += tile_width;
-          if(k == "f") view.globallocal_view_dist -= tile_width;
-          if(k == "l") view.view_type = view_on_the_world::LOCAL;
-          if(k == "o") view.view_type = view_on_the_world::GLOBAL;
-          if(k == "i") view.view_type = view_on_the_world::ROBOT;
-        }
-      }
       
     }
   });
