@@ -218,6 +218,9 @@ void mainLoop (std::string scenario)
   
   concurrent::m_var<input_news_t> input_news_pipe;
   concurrent::m_var<frame_output_t> frame_output_pipe;
+  // It's hard to send, in a given message, how long it took to send that message! So that
+  // has its own pipe, which should more-or-less work out.
+  concurrent::m_var<microseconds_t> sim_sync_time_pipe;
   
   const worldgen_function_t worldgen = make_world_building_func(scenario);
   if(!worldgen) {
@@ -225,18 +228,42 @@ void mainLoop (std::string scenario)
     exit(4);
   }
   
-  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen]() {
+  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, &sim_sync_time_pipe, worldgen]() {
     world w(worldgen);
     const object_identifier robot_id = init_test_world_and_return_our_robot(w);
     input_news_t input_news;
     bool drawing_regular_stuff = true;
     bool drawing_debug_stuff = true;
     view_on_the_world view(robot_id, world_center_fine_coords);
-    microseconds_t microseconds_before_drawing;
-    microseconds_t microseconds_after_drawing;
+    microseconds_t microseconds_before_drawing = 0;
+    microseconds_t microseconds_after_drawing = 0;
+    microseconds_t microseconds_before_sync = 0;
+    microseconds_t microseconds_after_sync = 0;
     microseconds_t microseconds_before_simulating = 0;
     microseconds_t microseconds_after_simulating = 0;
     while(true) {
+      microseconds_before_drawing = microseconds_after_simulating = get_this_thread_microseconds();
+      gl_data_ptr_t gl_data(new gl_data_t());
+      view.render(w,
+                  world_rendering_config(drawing_regular_stuff, drawing_debug_stuff, input_news),
+                  *gl_data);
+      microseconds_after_drawing = get_this_thread_microseconds();
+
+      const frame_output_t output = {
+        gl_data,
+        microseconds_after_drawing - microseconds_before_drawing,
+        microseconds_after_simulating - microseconds_before_simulating
+      };
+      
+      microseconds_before_sync = get_monotonic_microseconds();
+      frame_output_pipe.put(output);
+      input_news = input_news_pipe.take();
+      microseconds_after_sync = get_monotonic_microseconds();
+
+      sim_sync_time_pipe.put(microseconds_after_sync - microseconds_before_sync);
+      
+      microseconds_before_simulating = get_this_thread_microseconds();
+      w.update(input_news);
       for(key_change_t const& c : input_news.key_activity_since_last_frame()) {
         if(c.second == PRESSED) {
           key_type const& k = c.first;
@@ -255,33 +282,30 @@ void mainLoop (std::string scenario)
           if(k == "i") view.view_type = view_on_the_world::ROBOT;
         }
       }
-      // microseconds_this_program_has_used_so_far
-      //const microseconds_t
-      microseconds_before_drawing = get_this_thread_microseconds();
-      gl_data_ptr_t gl_data(new gl_data_t());
-      view.render(w,
-                  world_rendering_config(drawing_regular_stuff, drawing_debug_stuff, input_news),
-                  *gl_data);
-      microseconds_after_drawing = get_this_thread_microseconds();
-
-      frame_output_pipe.put((frame_output_t){
-        gl_data,
-        microseconds_after_drawing - microseconds_before_drawing,
-        microseconds_after_simulating - microseconds_before_simulating
-      });
       
-      input_news = input_news_pipe.take();
-      microseconds_before_simulating = get_this_thread_microseconds();
-      w.update(input_news);
-      microseconds_after_simulating = get_this_thread_microseconds();
     }
   });
 
+  const bool exploit_parallelism = true;
+  if(!exploit_parallelism) {
+    frame_output_pipe.take(); //ignore the result
+  }
+
   frame_output_t last_frame_output;
+  last_frame_output.gl_data_ptr.reset(new gl_data_t); //init in case necessary
   int done = 0;
   int frame = 0;
   bool paused = false;
   int steps_queued_to_do_while_paused = 0;
+
+  microseconds_t microseconds_for_GL = 0;
+  microseconds_t monotonic_microseconds_for_GL = 0;
+  microseconds_t monotonic_microseconds_for_frame = 0;
+  microseconds_t microseconds_for_processing = 0;
+  microseconds_t microseconds_for_drawing = 0;
+  microseconds_t microseconds_waiting_for_sim_thread = 0;
+  microseconds_t microseconds_waiting_for_home_thread = 0;
+  microseconds_t observed_microseconds_waiting_for_sim_thread = 0;
 
   while ( !done ) {
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
@@ -348,16 +372,52 @@ void mainLoop (std::string scenario)
       --steps_queued_to_do_while_paused;
     }
 
+    microseconds_waiting_for_home_thread = 0;
     const microseconds_t microseconds_before_sync = get_monotonic_microseconds();
     if(!paused_this_time) {
       input_news_pipe.put(input_news);
       last_frame_output = frame_output_pipe.take();
+      microseconds_waiting_for_home_thread = sim_sync_time_pipe.take();
     }
     const microseconds_t microseconds_after_sync = get_monotonic_microseconds();
-    
-    if(last_frame_output.gl_data_ptr == nullptr) {
-      last_frame_output.gl_data_ptr.reset(new gl_data_t);
+    if(!paused_this_time) {
+      if(last_frame_output.gl_data_ptr == nullptr) {
+        last_frame_output.gl_data_ptr.reset(new gl_data_t);
+      }
     }
+    observed_microseconds_waiting_for_sim_thread = microseconds_waiting_for_sim_thread;
+    microseconds_waiting_for_sim_thread = microseconds_after_sync - microseconds_before_sync;
+
+    if(frame != 0) {
+      std::string frames_per_second_str = " inf ";
+      if(monotonic_microseconds_for_frame > 0) {
+        const int64_t frames_per_kilosecond = 1000000000 / monotonic_microseconds_for_frame;
+        frames_per_second_str = show_decimal(frames_per_kilosecond, 1000, 2);
+      }
+      std::cerr
+      << "Frame " << std::left << std::setw(4) << frame << std::right << ":"
+      //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
+      // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
+      //<< std::ios::fixed << std::setprecision(4) << fps << " fps; "
+      << std::setw(4) << get_this_process_rusage().ru_maxrss / 1024 << "MiB; "
+      << std::setw(6) << frames_per_second_str << "fps"
+      << std::setw(6) << show_microseconds(monotonic_microseconds_for_frame) << "ms"
+      << ":"
+      << std::setw(8) << (ostream_bundle() << "(" << std::setw(5) << show_microseconds(microseconds_for_processing)) << "sim"
+      << std::setw(6) << show_microseconds(microseconds_for_drawing) << "draw"
+      << std::setw(6) << show_microseconds(microseconds_waiting_for_home_thread) << "wait"
+      << " )" << std::setw(6) << show_microseconds(observed_microseconds_waiting_for_sim_thread) << "wait" //waiting for simulation thread
+      << "  "
+      << (ostream_bundle()
+                              << ((microseconds_for_GL < monotonic_microseconds_for_GL) ? (show_microseconds(microseconds_for_GL) + "–") : std::string())
+                              << show_microseconds(monotonic_microseconds_for_GL)
+                          )
+      << "gl"
+      << "\n";
+    }
+
+    microseconds_for_processing = last_frame_output.cpu_microseconds_to_simulate_this_frame;
+    microseconds_for_drawing = last_frame_output.cpu_microseconds_to_draw_this_frame;
 
     const microseconds_t microseconds_before_GL = get_this_process_microseconds();
     const microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
@@ -368,40 +428,15 @@ void mainLoop (std::string scenario)
 
     const microseconds_t monotonic_microseconds_after_GL = get_monotonic_microseconds();
     const microseconds_t microseconds_after_GL = get_this_process_microseconds();
+
+    frame += 1;
+    
+    microseconds_for_GL = microseconds_after_GL - microseconds_before_GL;
+    monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
     
     const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
 
-    // TODO does the GL code use up "CPU time"? Maybe measure both monotonic and CPU?
-    const microseconds_t microseconds_for_processing = last_frame_output.cpu_microseconds_to_simulate_this_frame;
-    const microseconds_t microseconds_for_drawing = last_frame_output.cpu_microseconds_to_draw_this_frame;
-    const microseconds_t microseconds_for_GL = microseconds_after_GL - microseconds_before_GL;
-    const microseconds_t monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
-    const microseconds_t microseconds_for_sync = microseconds_after_sync - microseconds_before_sync;
-    const microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
-    const int64_t frames_per_kilosecond = 1000000000 / monotonic_microseconds_for_frame;
-
-    frame += 1;
-    std::cerr
-    << "Frame " << std::left << std::setw(4) << frame << std::right << ":"
-    //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
-    // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
-    //<< std::ios::fixed << std::setprecision(4) << fps << " fps; "
-    << std::setw(4) << get_this_process_rusage().ru_maxrss / 1024 << "MiB; "
-    << std::setw(6) << show_decimal(frames_per_kilosecond, 1000, 2) << "fps"
-    << std::setw(6) << show_microseconds(monotonic_microseconds_for_frame) << "ms"
-    << ":"
-    << std::setw(8) << (ostream_bundle() << "(" << std::setw(5) << show_microseconds(microseconds_for_processing)) << "sim"
-    << std::setw(6) << show_microseconds(microseconds_for_drawing) << "draw"
-    << " )" << std::setw(6) << show_microseconds(microseconds_for_sync) << "wait" //waiting for simulation thread
-    << "  "
-    << (ostream_bundle()
-                            << ((microseconds_for_GL < monotonic_microseconds_for_GL) ? (show_microseconds(microseconds_for_GL) + "–") : std::string())
-                            << show_microseconds(monotonic_microseconds_for_GL)
-                        )
-    << "gl"
-    << "\n";
-
-//    SDL_Delay(50);
+    monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
   }
 
   simulation_thread.interrupt();
