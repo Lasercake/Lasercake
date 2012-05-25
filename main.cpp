@@ -348,10 +348,12 @@ void mainLoop (std::string scenario)
       --steps_queued_to_do_while_paused;
     }
 
+    const microseconds_t microseconds_before_sync = get_monotonic_microseconds();
     if(!paused_this_time) {
       input_news_pipe.put(input_news);
       last_frame_output = frame_output_pipe.take();
     }
+    const microseconds_t microseconds_after_sync = get_monotonic_microseconds();
     
     if(last_frame_output.gl_data_ptr == nullptr) {
       last_frame_output.gl_data_ptr.reset(new gl_data_t);
@@ -374,27 +376,30 @@ void mainLoop (std::string scenario)
     const microseconds_t microseconds_for_drawing = last_frame_output.cpu_microseconds_to_draw_this_frame;
     const microseconds_t microseconds_for_GL = microseconds_after_GL - microseconds_before_GL;
     const microseconds_t monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
+    const microseconds_t microseconds_for_sync = microseconds_after_sync - microseconds_before_sync;
     const microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
     const int64_t frames_per_kilosecond = 1000000000 / monotonic_microseconds_for_frame;
 
     frame += 1;
     std::cerr
     << "Frame " << std::left << std::setw(4) << frame << std::right << ":"
-    << std::setw(6) << show_microseconds(microseconds_for_processing) << ";"
-    << std::setw(6) << show_microseconds(microseconds_for_drawing) << ";"
-    << std::setw(14) << (ostream_bundle()
-                            << show_microseconds(microseconds_for_GL)
-                            << "–" << show_microseconds(monotonic_microseconds_for_GL)
-                        )
-    << " ms;"
-    << std::setw(24) << (ostream_bundle()
-                            << show_microseconds(monotonic_microseconds_for_frame) << " ms ="
-                            << std::setw(6) << show_decimal(frames_per_kilosecond, 1000, 2) << " fps; "
-                       )
     //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
     // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
     //<< std::ios::fixed << std::setprecision(4) << fps << " fps; "
-    << std::setw(4) << get_this_process_rusage().ru_maxrss / 1024 << "MiB\n";
+    << std::setw(4) << get_this_process_rusage().ru_maxrss / 1024 << "MiB; "
+    << std::setw(6) << show_decimal(frames_per_kilosecond, 1000, 2) << "fps"
+    << std::setw(6) << show_microseconds(monotonic_microseconds_for_frame) << "ms"
+    << ":"
+    << std::setw(8) << (ostream_bundle() << "(" << std::setw(5) << show_microseconds(microseconds_for_processing)) << "sim"
+    << std::setw(6) << show_microseconds(microseconds_for_drawing) << "draw"
+    << " )" << std::setw(6) << show_microseconds(microseconds_for_sync) << "wait" //waiting for simulation thread
+    << "  "
+    << (ostream_bundle()
+                            << ((microseconds_for_GL < monotonic_microseconds_for_GL) ? (show_microseconds(microseconds_for_GL) + "–") : std::string())
+                            << show_microseconds(monotonic_microseconds_for_GL)
+                        )
+    << "gl"
+    << "\n";
 
 //    SDL_Delay(50);
   }
