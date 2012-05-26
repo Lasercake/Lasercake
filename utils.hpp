@@ -403,66 +403,6 @@ template<typename IntType> struct non_normalized_rational {
     return numerator*o.denominator != o.numerator*denominator; }
 };
 
-class bounds_checked_int {
-public:
-  bounds_checked_int():value(0){}
-  bounds_checked_int(int value) : value(value) {
-    caller_correct_if(value != -(1LL << 31), "bounds_checked_int underflow in constructor");
-  }
-  bounds_checked_int& operator=(int other) { value = other; return *this; }
-  bounds_checked_int operator+()const { return *this; }
-  bounds_checked_int operator-()const { return bounds_checked_int(-value); }
-  bounds_checked_int operator+(int other)const {
-    caller_correct_if((int64_t)value + (int64_t)other < (1LL << 31), "bounds_checked_int overflow in +");
-    caller_correct_if((int64_t)value + (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in +");
-    return bounds_checked_int(value + other);
-  }
-  bounds_checked_int& operator+=(int other) {
-    return *this = *this + other;
-  }
-  bounds_checked_int& operator++() {
-    *this += 1; return *this;
-  }
-  bounds_checked_int operator++(int) {
-    bounds_checked_int result(value);
-    *this += 1;
-    return result;
-  }
-  bounds_checked_int& operator--() {
-    *this -= 1; return *this;
-  }
-  bounds_checked_int operator--(int) {
-    bounds_checked_int result(value);
-    *this -= 1;
-    return result;
-  }
-  bounds_checked_int operator-(int other)const {
-    caller_correct_if((int64_t)value - (int64_t)other < (1LL << 31), "bounds_checked_int overflow in -");
-    caller_correct_if((int64_t)value - (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in -");
-    return bounds_checked_int(value - other);
-  }
-  bounds_checked_int& operator-=(int other) {
-    return *this = *this - other;
-  }
-  bounds_checked_int operator*(int other)const {
-    caller_correct_if((int64_t)value * (int64_t)other < (1LL << 31), "bounds_checked_int overflow in *");
-    caller_correct_if((int64_t)value * (int64_t)other > -(1LL << 31), "bounds_checked_int underflow in *");
-    return bounds_checked_int(value * other);
-  }
-  bounds_checked_int& operator*=(int other) {
-    return *this = *this * other;
-  }
-  bounds_checked_int operator/(int other)const {
-    return bounds_checked_int(value / other);
-  }
-  bounds_checked_int& operator/=(int other) {
-    return *this = *this / other;
-  }
-  operator int()const{ return value; }
-private:
-  int value;
-};
-
 template<typename Stuff> struct literally_random_access_removable_stuff {
 public:
   void insert(Stuff const& stuff) {

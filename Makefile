@@ -79,9 +79,13 @@ lasercake-no-threads: $(OBJ_NOTHR)
 lasercake-test-concurrent: $(ODIR_TESTS)/concurrency_utils_tests.o $(ODIR_TESTS)/test_main.o
 	$(CC) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS) -lboost_unit_test_framework
 
+lasercake-test-bounds-checked-int: $(ODIR_TESTS)/bounds_checked_int_tests.o $(ODIR_TESTS)/test_main.o
+	$(CC) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS) -lboost_unit_test_framework
+
 include $(DEPS)
 
 $(ODIR_TESTS)/concurrency_utils_tests.o: concurrency_utils.hpp
+$(ODIR_TESTS)/bounds_checked_int_tests.o: bounds_checked_int.hpp utils.hpp
 $(ODIR_TESTS)/%.o: tests/%.cpp
 	@mkdir -p $(ODIR_TESTS)
 	$(CC) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS)
@@ -125,5 +129,6 @@ clean:
 	rm -rf output lasercake lasercake-debug lasercake-optimized \
 		lasercake-clang lasercake-clang-libcxx lasercake-gcc45 \
 		lasercake-gcc46 lasercake-assert-everything \
-		lasercake-no-threads lasercake-test-concurrent
+		lasercake-no-threads lasercake-test-concurrent \
+		lasercake-test-bounds-checked-int
 
