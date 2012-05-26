@@ -32,14 +32,22 @@ typedef bounds_checked_int<int64_t> i64;
 
 BOOST_AUTO_TEST_CASE( boundses ) {
   {
-    bounds_checked_int<uint32_t> i(0);
+    bounds_checked_int<uint32_t> i;
+  }
+  {
+    bounds_checked_int<uint32_t> i(0u);
+    BOOST_CHECK_EQUAL((i = 0) = 0, u32(0));
     BOOST_CHECK_THROW(--i, std::logic_error);
-    BOOST_CHECK_THROW(i + u32(1) + u32(0xffffffff), std::logic_error);
-    BOOST_CHECK_EQUAL(i + u32(0xffffffff), u32(0xffffffff));
-    BOOST_CHECK_EQUAL(-- ++i, u32(0));
+    BOOST_CHECK_THROW(i + u32(1u) + u32(0xffffffffu), std::logic_error);
+    BOOST_CHECK_EQUAL(i + u32(0xffffffffu), u32(0xffffffff));
+    BOOST_CHECK_EQUAL(-- ++i, u32(0u));
     BOOST_CHECK(!i);
-    BOOST_CHECK_EQUAL(i += u32(7), u32(7));
+    BOOST_CHECK_EQUAL(i += u32(7u), u32(7u));
     BOOST_CHECK(i);
+    BOOST_CHECK_EQUAL(i++, u32(7u));
+    BOOST_CHECK_EQUAL(i, u32(8u));
+    BOOST_CHECK_EQUAL(i--, u32(8u));
+    BOOST_CHECK_EQUAL(i, u32(7u));
   }
 
   {
@@ -48,12 +56,49 @@ BOOST_AUTO_TEST_CASE( boundses ) {
     BOOST_CHECK_THROW(-i, std::logic_error);
     BOOST_CHECK_THROW(i / i64(-1), std::logic_error);
 
-//    BOOST_CHECK_EQUAL(u32(1) + u64(2), u64(3));
-//    BOOST_CHECK_EQUAL(u64(1) + u32(2), u64(3));
+    BOOST_CHECK_EQUAL(u32(1u) + u64(2u), u64(3u));
+    BOOST_CHECK_EQUAL(u64(1u) + u32(2u), u64(3u));
+    BOOST_CHECK_EQUAL(u32(1u) + 2u, u32(3u));
+    BOOST_CHECK_EQUAL(2 * i32(3), i32(6));
+    BOOST_CHECK_EQUAL(i32(3) << 2, i32(12));
+    BOOST_CHECK_EQUAL(i32(3) << 28, i32(0x30000000));
+    BOOST_CHECK_EQUAL(i32(3) << 29, i32(0x60000000));
+    BOOST_CHECK_THROW(i32(3) << 30, std::logic_error);
+    BOOST_CHECK_THROW(i32(3) << 31, std::logic_error);
+    BOOST_CHECK_THROW(i32(3) << 32, std::logic_error);
+    BOOST_CHECK_THROW(i32(3) << 65ull, std::logic_error);
+    BOOST_CHECK_THROW(i32(3) << -2, std::logic_error);
+    BOOST_CHECK_THROW(i32(3) << i32(-7), std::logic_error);
+    BOOST_CHECK_THROW(i32(3) >> 65, std::logic_error);
+    BOOST_CHECK_EQUAL(i32(3) >> 2, i32(0));
     BOOST_CHECK_EQUAL(u64(0xffffffffull) * u64(0x100000001ull), u64(std::numeric_limits<uint64_t>::max()));
     BOOST_CHECK_THROW(u64(0xffffffffull) * u64(0x100000002ull), std::logic_error);
     BOOST_CHECK_THROW(u64(0xffffffffull) * u64(0x100000002ull), std::logic_error);
 
+    BOOST_CHECK_EQUAL(7 + i32(3), i32(10));
+    BOOST_CHECK_EQUAL(7 - i32(3), i32(4));
+    BOOST_CHECK_EQUAL(7 * i32(3), i32(21));
+    BOOST_CHECK_EQUAL(7 / i32(3), i32(2));
+    BOOST_CHECK_EQUAL(7 % i32(3), i32(1));
+    BOOST_CHECK_EQUAL(2 & i32(3), i32(2));
+    BOOST_CHECK_EQUAL(5 | i32(3), i32(7));
+    BOOST_CHECK_EQUAL(5 ^ i32(3), i32(6));
+    BOOST_CHECK_EQUAL(~i32(3), i32(-4));
+    BOOST_CHECK_EQUAL(-i32(3), i32(-3));
+    BOOST_CHECK_EQUAL(+i32(-2), i32(-2));
+    BOOST_CHECK_EQUAL(2 == i32(2), true);
+    BOOST_CHECK_EQUAL(2 != i32(2), false);
+    BOOST_CHECK_EQUAL(2 < i32(2), false);
+    BOOST_CHECK_EQUAL(2 > i32(2), false);
+    BOOST_CHECK_EQUAL(2 <= i32(2), true);
+    BOOST_CHECK_EQUAL(2 >= i32(2), true);
+    BOOST_CHECK_EQUAL(2 < i32(3), true);
+    BOOST_CHECK_EQUAL(2 > i32(3), false);
+    BOOST_CHECK_EQUAL(2 <= i32(3), true);
+    BOOST_CHECK_EQUAL(2 >= i32(3), false);
+
+    BOOST_CHECK_EQUAL(i32(3).get(), 3);
+    
     typedef bounds_checked_int<int32_t, -10, 10> tenz;
     tenz p(9);
     BOOST_CHECK_THROW(p*tenz(2), std::logic_error);
