@@ -65,6 +65,9 @@
 const bool LASERCAKE_NO_THREADS = false;
 #endif
 
+// (not enabled unless you enable it) #define USE_BOUNDS_CHECKED_INTS 1
+
+
 // It's not polite for library functions to assert() because the library's users
 // misused a correct library; use these for that case.
 inline ATTRIBUTE_NORETURN void caller_error(const char* error) {
@@ -107,8 +110,12 @@ typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key
 }
 
 #include "bounds_checked_int.hpp"
-template<typename Int> struct lasercake_int { typedef Int type; };
 
+#if USE_BOUNDS_CHECKED_INTS
+template<typename Int> struct lasercake_int { typedef bounds_checked_int<Int> type; };
+#else
+template<typename Int> struct lasercake_int { typedef Int type; };
+#endif
 
 template<typename ScalarType1, typename ScalarType2> auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor) -> decltype(dividend/divisor)
 {
