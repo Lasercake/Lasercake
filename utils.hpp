@@ -140,6 +140,9 @@ auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
 
 inline int32_t i64log2(uint64_t argument) {
   caller_error_if(argument == 0, "the logarithm of zero is undefined");
+#if defined(__GNUC__)
+  return 63 - __builtin_clzll(argument);
+#else
   int32_t shift
          = argument &  (((1ULL << 32) - 1) << 32)           ? 32 : 0;
   shift += argument & ((((1ULL << 16) - 1) << 16) << shift) ? 16 : 0;
@@ -148,19 +151,14 @@ inline int32_t i64log2(uint64_t argument) {
   shift += argument & ((((1ULL <<  2) - 1) <<  2) << shift) ?  2 : 0;
   shift += argument & ((((1ULL <<  1) - 1) <<  1) << shift) ?  1 : 0;
   return shift;
+#endif
 }
 
 inline uint32_t i64sqrt(uint64_t radicand)
 {
   if(radicand == 0)return 0;
   
-  int shift = radicand & (((1ULL << 32) - 1) << 32) ? 32 : 0;
-  shift += radicand & ((((1ULL << 16) - 1) << 16) << shift) ? 16 : 0;
-  shift += radicand & ((((1ULL << 8) - 1) << 8) << shift) ? 8 : 0;
-  shift += radicand & ((((1ULL << 4) - 1) << 4) << shift) ? 4 : 0;
-  shift += radicand & ((((1ULL << 2) - 1) << 2) << shift) ? 2 : 0;
-  //I would just lose this piece of accuracy when I divide shift by 2 below:
-  //shift += radicand & ((((uint64_t)1 << 1) - 1) << shift) ? 1 : 0;
+  int shift = i64log2(radicand);
   
   //shift should now be the log base 2 of radicand, rounded down.
   uint32_t lower_bound = 1 << (shift >> 1);
