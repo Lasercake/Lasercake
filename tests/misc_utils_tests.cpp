@@ -22,6 +22,7 @@
 #include "../utils.hpp"
 #include <limits>
 #include <array>
+#include <algorithm>
 
 //#define BOOST_TEST_DYN_LINK
 //#define BOOST_TEST_MODULE utils test
@@ -45,7 +46,7 @@ BOOST_AUTO_TEST_CASE( my_sqrt ) {
     0x100000001ull, 0xffffffffffffffffull, 0xfffffffffffffffeull,
     0xeeeeeeeeeeeeeeeeull, 0xfffffffe00000001ull, 0xfffffffe00000000ull
   }};
-  BOOST_PARAM_TEST_CASE(i64sqrt_test, numbers_to_test.begin(), numbers_to_test.end());
+  std::for_each(numbers_to_test.begin(), numbers_to_test.end(), &i64sqrt_test);
 }
 
 }  /* end anonymous namespace */
