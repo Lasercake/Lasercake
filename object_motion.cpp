@@ -88,11 +88,11 @@ cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& ve
   return best_dir;
 }
 
-  
-const int64_t whole_frame_duration = 1ULL << 32;
+typedef lasercake_int<int64_t>::type stepping_time_type;
+const stepping_time_type whole_frame_duration = 1ULL << 32;
 
 // Currently unused...
-void cap_remaining_displacement_to_new_velocity(vector3<fine_scalar>& remaining_displacement, vector3<fine_scalar> const& new_velocity, int64_t remaining_time) {
+void cap_remaining_displacement_to_new_velocity(vector3<fine_scalar>& remaining_displacement, vector3<fine_scalar> const& new_velocity, stepping_time_type remaining_time) {
   for (int i = 0; i < 3; ++i) {
     if (new_velocity[i] * remaining_displacement[i] > 0) {
       const fine_scalar natural_remaining_displacement_in_this_direction = divide_rounding_towards_zero(new_velocity[i] * remaining_time, whole_frame_duration);
@@ -165,7 +165,7 @@ void update_moving_objects_impl(
     object_trajectory_info(){}
     object_trajectory_info(vector3<fine_scalar>r):last_step_time(0),remaining_displacement(r),accumulated_displacement(0,0,0){}
     
-    int64_t last_step_time;
+    stepping_time_type last_step_time;
     vector3<fine_scalar> remaining_displacement;
     vector3<fine_scalar> accumulated_displacement;
   };
@@ -173,8 +173,8 @@ void update_moving_objects_impl(
   unordered_map<object_identifier, object_trajectory_info> trajinfo;
   
   struct stepping_times {
-    int64_t current_time;
-    std::multimap<int64_t, object_identifier> queued_steps;
+    stepping_time_type current_time;
+    std::multimap<stepping_time_type, object_identifier> queued_steps;
     stepping_times():current_time(0){}
     
     void queue_next_step(object_identifier id, object_trajectory_info info) {
@@ -182,7 +182,7 @@ void update_moving_objects_impl(
       
       fine_scalar dispmag = info.remaining_displacement.magnitude_within_32_bits();
       
-      int64_t step_time;
+      stepping_time_type step_time;
       if (dispmag == 0) step_time = whole_frame_duration;
       else {
         // We're content to move in increments of tile_width >> 5 or less
@@ -190,7 +190,7 @@ void update_moving_objects_impl(
         // With (max step distance) = (max step time) * (speed)
         // (max step time) = (max step distance) / speed
         // Recall that dispmag is in regular fine units instead of velocity units.
-        const int64_t max_normal_step_duration = (((tile_width >> 5) * (whole_frame_duration - info.last_step_time)) / dispmag);
+        const stepping_time_type max_normal_step_duration = (((tile_width >> 5) * (whole_frame_duration - info.last_step_time)) / dispmag);
         if (info.last_step_time + max_normal_step_duration > current_time) step_time = info.last_step_time + max_normal_step_duration;
         else step_time = current_time;
       }

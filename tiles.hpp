@@ -39,8 +39,8 @@ using std::unordered_set;
 
 
 
-typedef uint32_t tile_coordinate;
-typedef int32_t tile_coordinate_signed_type;
+typedef lasercake_int<uint32_t>::type tile_coordinate;
+typedef lasercake_int<int32_t>::type tile_coordinate_signed_type;
 
 struct tile_bounding_box {
   vector3<tile_coordinate> min, size;

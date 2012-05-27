@@ -193,18 +193,19 @@ worldgen_function_t make_world_building_func(std::string scenario) {
   }
   if (scenario == "stepped_pools") {
     return worldgen_from_tilespec([](coords l)->tile_contents {
-      const int64_t block_width = 30;
-      const int64_t border_width = 3;
-      const int64_t block_height_shift = 30;
-      const int64_t pool_steepness = 1;
-      const int64_t pool_top_layers_missing = 1;
+      typedef lasercake_int<int64_t>::type number;
+      const number block_width = 30;
+      const number border_width = 3;
+      const number block_height_shift = 30;
+      const number pool_steepness = 1;
+      const number pool_top_layers_missing = 1;
 
       // "lmwc" = "l minus world center": the position relative to the "center" of the world.
-      const vector3<int64_t> lmwc = vector3<int64_t>(l) - vector3<int64_t>(wcc,wcc,wcc);
-      const int64_t base_height = -20LL + (int64_t(l.x / block_width) - int64_t(wcc / block_width)) * block_height_shift;
-      const int64_t dist_from_block_edge = std::min(
-        std::min(int64_t(l.x % block_width), block_width - 1 - (l.x % block_width)),
-        std::min(int64_t(l.y % block_width), block_width - 1 - (l.y % block_width)));
+      const vector3<number> lmwc = vector3<number>(l) - vector3<number>(wcc,wcc,wcc);
+      const number base_height = -20LL + (number(l.x / block_width) - number(wcc / block_width)) * block_height_shift;
+      const number dist_from_block_edge = std::min(
+        std::min(number(l.x % block_width), block_width - 1 - (l.x % block_width)),
+        std::min(number(l.y % block_width), block_width - 1 - (l.y % block_width)));
       
       if (dist_from_block_edge <= border_width) {
         return (lmwc.z <= base_height) ? ROCK : AIR;

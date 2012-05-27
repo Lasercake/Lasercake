@@ -24,11 +24,14 @@
 
 namespace /* anonymous */ {
 
+typedef non_normalized_rational<polygon_int_type> rational;
+typedef std::pair<bool, rational> bool_and_rational;
+
 struct beam_first_contact_finder : world_collision_detector::visitor {
-  beam_first_contact_finder(world const& w, line_segment beam):w(w),beam(beam),best_intercept_point(false, 1){}
+  beam_first_contact_finder(world const& w, line_segment beam):w(w),beam(beam),best_intercept_point(false, rational(1)){}
   world const& w;
   line_segment beam;
-  std::pair<bool, non_normalized_rational<int64_t>> best_intercept_point;
+  bool_and_rational best_intercept_point;
   unordered_set<object_or_tile_identifier> ignores;
   object_or_tile_identifier thing_hit;
   
@@ -36,7 +39,7 @@ struct beam_first_contact_finder : world_collision_detector::visitor {
     if (ignores.find(id) != ignores.end()) return;
     
     // TODO : long beams, overflow?
-    std::pair<bool, non_normalized_rational<int64_t>> result = w.get_detail_shape_of_object_or_tile(id).first_intersection(beam);
+    bool_and_rational result = w.get_detail_shape_of_object_or_tile(id).first_intersection(beam);
     if (result.first) {
       if (!best_intercept_point.first || result.second < best_intercept_point.second) {
         best_intercept_point = result;
@@ -50,7 +53,7 @@ struct beam_first_contact_finder : world_collision_detector::visitor {
       // if there might be overflow, only do a bounds check
       return beam.bounds().overlaps(bb);
     }
-    std::pair<bool, non_normalized_rational<int64_t>> result = shape(bb).first_intersection(beam);
+    bool_and_rational result = shape(bb).first_intersection(beam);
     return result.first && (!best_intercept_point.first || result.second < best_intercept_point.second);
   }
   virtual bool bbox_ordering(bounding_box const& bb1, bounding_box const& bb2)const {

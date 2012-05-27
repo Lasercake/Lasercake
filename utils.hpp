@@ -106,6 +106,8 @@ typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key
   else return &(i->second);
 }
 
+template<typename Int> struct lasercake_int { typedef Int type; };
+
 template<typename ScalarType> ScalarType divide_rounding_towards_zero(ScalarType dividend, ScalarType divisor)
 {
   caller_correct_if(divisor != 0, "divisor must be nonzero");
@@ -231,16 +233,17 @@ public:
            (OutputType)y * (OutputType)other.y +
            (OutputType)z * (OutputType)other.z;
   }
-  
-  ScalarType magnitude_within_32_bits()const { return (ScalarType)i64sqrt(dot<int64_t>(*this)); }
+
+  typedef lasercake_int<int64_t>::type int64_type_to_use_with_dot;
+  ScalarType magnitude_within_32_bits()const { return ScalarType(get_un_bounds_checked_int(i64sqrt(dot<int64_type_to_use_with_dot>(*this)))); }
   
   // Choose these the way you'd choose dot's output type (see the comment above)
   // we had trouble making these templates, so now they just always use int64_t
   bool magnitude_within_32_bits_is_less_than(ScalarType amount)const {
-    return dot<int64_t>(*this) < (int64_t)amount * (int64_t)amount;
+    return dot<int64_type_to_use_with_dot>(*this) < (int64_type_to_use_with_dot)amount * (int64_type_to_use_with_dot)amount;
   }
   bool magnitude_within_32_bits_is_greater_than(ScalarType amount)const {
-    return dot<int64_t>(*this) > (int64_t)amount * (int64_t)amount;
+    return dot<int64_type_to_use_with_dot>(*this) > (int64_type_to_use_with_dot)amount * (int64_type_to_use_with_dot)amount;
   }
   bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
 };

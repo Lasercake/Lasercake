@@ -106,12 +106,12 @@ void push_quad(gl_collection& coll,
 // TODO allow choosing each polygon vertex's color?
 void push_convex_polygon(vector3<fine_scalar> const& view_loc,
                          gl_collection& coll,
-                         std::vector<vector3<int64_t> > const& vertices,
+                         std::vector<vector3<polygon_int_type> > const& vertices,
                          color const& c) {
   if(vertices.size() >= 3) {
     // draw convex polygon via (sides - 2) triangles
-    std::vector< vector3<int64_t> >::const_iterator vertices_i = vertices.begin();
-    const std::vector< vector3<int64_t> >::const_iterator vertices_end = vertices.end();
+    std::vector< vector3<polygon_int_type> >::const_iterator vertices_i = vertices.begin();
+    const std::vector< vector3<polygon_int_type> >::const_iterator vertices_end = vertices.end();
     const vertex first_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));
     ++vertices_i;
     vertex prev_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));

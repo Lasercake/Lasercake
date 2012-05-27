@@ -32,30 +32,32 @@
 // 64 bits though these ints are, you can't really do collision detection with them except for things
 //  with a max distance of about 14 bits between any of the parts of them.
 
+typedef lasercake_int<int64_t>::type polygon_int_type;
+
 struct polygon_collision_info_cache {
   polygon_collision_info_cache():is_valid(false){}
   bool is_valid;
-  vector3<int64_t> translation_amount;
-  int64_t denom;
-  int64_t a_times_denom;
-  int64_t b_times_denom;
+  vector3<polygon_int_type> translation_amount;
+  polygon_int_type denom;
+  polygon_int_type a_times_denom;
+  polygon_int_type b_times_denom;
   int amount_twisted;
-  std::vector<vector3<int64_t>> adjusted_vertices;
+  std::vector<vector3<polygon_int_type>> adjusted_vertices;
 };
 
 struct bounding_box {
   bounding_box():is_anywhere(false){}
-  bounding_box(vector3<int64_t> loc):is_anywhere(true),min(loc),max(loc){}
-  bounding_box(vector3<int64_t> min, vector3<int64_t> max):is_anywhere(true),min(min),max(max){}
+  bounding_box(vector3<polygon_int_type> loc):is_anywhere(true),min(loc),max(loc){}
+  bounding_box(vector3<polygon_int_type> min, vector3<polygon_int_type> max):is_anywhere(true),min(min),max(max){}
   
   bool is_anywhere;
-  vector3<int64_t> min, max;
+  vector3<polygon_int_type> min, max;
   
-  bool contains(vector3<int64_t> const& v)const;
+  bool contains(vector3<polygon_int_type> const& v)const;
   bool overlaps(bounding_box const& o)const;
   void combine_with(bounding_box const& o);
   void restrict_to(bounding_box const& o);
-  void translate(vector3<int64_t> t);
+  void translate(vector3<polygon_int_type> t);
 };
 inline bool operator==(bounding_box const& b1, bounding_box const& b2) {
   return (b1.is_anywhere == false && b2.is_anywhere == false) ||
@@ -70,24 +72,24 @@ inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
 
 // TODO: rays and lines
 struct line_segment {
-  line_segment(std::array<vector3<int64_t>, 2> ends):ends(ends){}
-  line_segment(vector3<int64_t> end1, vector3<int64_t> end2):ends({{end1, end2}}){}
-  std::array<vector3<int64_t>, 2> ends;
+  line_segment(std::array<vector3<polygon_int_type>, 2> ends):ends(ends){}
+  line_segment(vector3<polygon_int_type> end1, vector3<polygon_int_type> end2):ends({{end1, end2}}){}
+  std::array<vector3<polygon_int_type>, 2> ends;
   
-  void translate(vector3<int64_t> t);
+  void translate(vector3<polygon_int_type> t);
   bounding_box bounds()const;
 };
 
 struct convex_polygon {
   // The structure simply trusts that you will provide a convex, coplanar sequence of points. Failure to do so will result in undefined behavior.
   void setup_cache_if_needed()const;
-  convex_polygon(std::vector<vector3<int64_t>> const& vertices):vertices_(vertices){ caller_error_if(vertices_.size() < 3, "Trying to construct a polygon with fewer than three vertices"); } // And there's also something wrong with a polygon where all the points are collinear, but it's more complicated to check that.
+  convex_polygon(std::vector<vector3<polygon_int_type>> const& vertices):vertices_(vertices){ caller_error_if(vertices_.size() < 3, "Trying to construct a polygon with fewer than three vertices"); } // And there's also something wrong with a polygon where all the points are collinear, but it's more complicated to check that.
   polygon_collision_info_cache const& get_cache()const { return cache_; }
-  std::vector<vector3<int64_t>> const& get_vertices()const { return vertices_; }
-  void translate(vector3<int64_t> t);
+  std::vector<vector3<polygon_int_type>> const& get_vertices()const { return vertices_; }
+  void translate(vector3<polygon_int_type> t);
   bounding_box bounds()const;
 private:
-  std::vector<vector3<int64_t>> vertices_;
+  std::vector<vector3<polygon_int_type>> vertices_;
   mutable polygon_collision_info_cache cache_;
 };
 
@@ -101,13 +103,13 @@ public:
   
   shape(shape const& o):bounds_cache_(o.bounds_cache_),bounds_cache_is_valid_(o.bounds_cache_is_valid_),segments_(o.segments_),polygons_(o.polygons_),boxes_(o.boxes_) {}
   
-  void translate(vector3<int64_t> t);
+  void translate(vector3<polygon_int_type> t);
   
   bool intersects(shape const& other)const;
   // returns (was there an intersection?, what fraction of the length of the line segment was the first)
-  std::pair<bool, non_normalized_rational<int64_t>> first_intersection(line_segment const& other)const;
+  std::pair<bool, non_normalized_rational<polygon_int_type>> first_intersection(line_segment const& other)const;
   bounding_box bounds()const;
-  vector3<int64_t> arbitrary_interior_point()const;
+  vector3<polygon_int_type> arbitrary_interior_point()const;
   
   std::vector<  line_segment> const& get_segments()const { return segments_; }
   std::vector<convex_polygon> const& get_polygons()const { return polygons_; }

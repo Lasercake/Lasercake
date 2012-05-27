@@ -29,7 +29,7 @@ l1, l2
 
 
 Clockwiseness pointClockwisenessFromOrderedSegment(LineSegment ray, Point p) {
-  const int64_t temp = (((p.y - ray.e1.y) * (ray.e2.x - ray.e1.x)) - ((ray.e2.y - ray.e1.y) * (p.x - ray.e1.x)));
+  const polygon_int_type temp = (((p.y - ray.e1.y) * (ray.e2.x - ray.e1.x)) - ((ray.e2.y - ray.e1.y) * (p.x - ray.e1.x)));
   if (temp > 0) return COUNTERCLOCKWISE;
   if (temp < 0) return CLOCKWISE;
   return COLLINEAR;
@@ -110,7 +110,7 @@ lt*(Dy2 - Dy1) = sl1x * ol2x*y2 - sl2x * ol2x*y1
 
 #include "polygon_collision_detection.hpp"
 
-bool bounding_box::contains(vector3<int64_t> const& v)const {
+bool bounding_box::contains(vector3<polygon_int_type> const& v)const {
   if (!is_anywhere) return false;
   return (v.x >= min.x && v.x <= max.x &&
           v.y >= min.y && v.y <= max.y &&
@@ -154,9 +154,9 @@ shape::shape(bounding_box const& init): bounds_cache_is_valid(true) {
   if (!init.is_anywhere) return;
   
   for (int i = 0; i < 3; ++i) {
-    std::vector<vector3<int64_t>> vertices1, vertices2;
-    vector3<int64_t> base2(init.min); base2[i] = init.max[i];
-    vector3<int64_t> diff1(0,0,0), diff2(0,0,0);
+    std::vector<vector3<polygon_int_type>> vertices1, vertices2;
+    vector3<polygon_int_type> base2(init.min); base2[i] = init.max[i];
+    vector3<polygon_int_type> diff1(0,0,0), diff2(0,0,0);
     diff1[(i+1)%3] = init.max[(i+1)%3] - init.min[(i+1)%3];
     diff2[(i+2)%3] = init.max[(i+2)%3] - init.min[(i+2)%3];
     vertices1.push_back(init.min                );
@@ -181,7 +181,7 @@ void convex_polygon::setup_cache_if_needed()const {
   
   // Translate everything to a more convenient location. Translations are linear and hence preserve everything we need.
   cache_.translation_amount = -vertices_[0];
-  for (vector3<int64_t>& v : cache_.adjusted_vertices) v += cache_.translation_amount;
+  for (vector3<polygon_int_type>& v : cache_.adjusted_vertices) v += cache_.translation_amount;
   
   cache_.amount_twisted = 0;
   while (true) {
@@ -192,7 +192,7 @@ void convex_polygon::setup_cache_if_needed()const {
     // These are rotations, which are linear and hence preserve everything we need.
     
     ++cache_.amount_twisted;
-    for (vector3<int64_t>& v : cache_.adjusted_vertices) v = vector3<int64_t>(v.y, v.z, v.x);
+    for (vector3<polygon_int_type>& v : cache_.adjusted_vertices) v = vector3<polygon_int_type>(v.y, v.z, v.x);
     
     assert_if_ASSERT_EVERYTHING(cache_.amount_twisted <= 2);
   }
@@ -207,20 +207,20 @@ void convex_polygon::setup_cache_if_needed()const {
   // and because of that, hereafter we just don't need to refer to the z coordinates at all.
 }
 
-void bounding_box::translate(vector3<int64_t> t) {
+void bounding_box::translate(vector3<polygon_int_type> t) {
   min += t; max += t;
 }
 
-void line_segment::translate(vector3<int64_t> t) {
-  for (vector3<int64_t>& v : ends) v += t;
+void line_segment::translate(vector3<polygon_int_type> t) {
+  for (vector3<polygon_int_type>& v : ends) v += t;
 }
 
-void convex_polygon::translate(vector3<int64_t> t) {
-  for (vector3<int64_t>& v : vertices_) v += t;
+void convex_polygon::translate(vector3<polygon_int_type> t) {
+  for (vector3<polygon_int_type>& v : vertices_) v += t;
   cache_.translation_amount -= t;
 }
 
-void shape::translate(vector3<int64_t> t) {
+void shape::translate(vector3<polygon_int_type> t) {
   for (  line_segment& l : segments_) l.translate(t);
   for (convex_polygon& p : polygons_) p.translate(t);
   for (  bounding_box& b : boxes_   ) b.translate(t);
@@ -233,13 +233,13 @@ void shape::translate(vector3<int64_t> t) {
 
 bounding_box line_segment::bounds()const {
   bounding_box result;
-  for (vector3<int64_t> const& v : ends) result.combine_with(bounding_box(v));
+  for (vector3<polygon_int_type> const& v : ends) result.combine_with(bounding_box(v));
   return result;
 }
 
 bounding_box convex_polygon::bounds()const {
   bounding_box result;
-  for (vector3<int64_t> const& v : vertices_) result.combine_with(bounding_box(v));
+  for (vector3<polygon_int_type> const& v : vertices_) result.combine_with(bounding_box(v));
   return result;
 }
 
@@ -253,7 +253,7 @@ bounding_box shape::bounds()const {
   return bounds_cache_;
 }
 
-vector3<int64_t> shape::arbitrary_interior_point()const {
+vector3<polygon_int_type> shape::arbitrary_interior_point()const {
   if (!segments_.empty()) return segments_[0].ends[0];
   if (!polygons_.empty()) return polygons_[0].get_vertices()[0];
   for (bounding_box const& bb : boxes_) { if (bb.is_anywhere) { return bb.min; }}
@@ -261,7 +261,9 @@ vector3<int64_t> shape::arbitrary_interior_point()const {
 }
 
 namespace /*anonymous*/ {
-std::pair<bool, non_normalized_rational<int64_t>> get_intersection(int64_t sl1x, int64_t sl1y, int64_t sl2x, int64_t sl2y, int64_t ol1x, int64_t ol1y, int64_t ol2x, int64_t ol2y) {
+typedef non_normalized_rational<polygon_int_type> rational;
+typedef std::pair<bool, rational> bool_and_rational;
+bool_and_rational get_intersection(polygon_int_type sl1x, polygon_int_type sl1y, polygon_int_type sl2x, polygon_int_type sl2y, polygon_int_type ol1x, polygon_int_type ol1y, polygon_int_type ol2x, polygon_int_type ol2y) {
   // assume ol1 is (0, 0)
   ol2x -= ol1x;
   sl1x -= ol1x;
@@ -272,52 +274,52 @@ std::pair<bool, non_normalized_rational<int64_t>> get_intersection(int64_t sl1x,
   if (ol2x == 0) {
     return get_intersection(sl1y, sl1x, sl2y, sl2x, 0, 0, ol2y, ol2x);
   }
-  const int64_t D = ol2x;
-  const int64_t A = -ol2y;
-  const int64_t Dy1 = D*sl1y + A*sl1x;
-  const int64_t Dy2 = D*sl2y + A*sl2x;
-  const int64_t Dy2mDy1 = Dy2 - Dy1;
-  const int64_t ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
-  if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return std::make_pair(false, 1);
-  else                                               return std::make_pair(true, non_normalized_rational<int64_t>(Dy1, Dy1 - Dy2));
+  const polygon_int_type D = ol2x;
+  const polygon_int_type A = -ol2y;
+  const polygon_int_type Dy1 = D*sl1y + A*sl1x;
+  const polygon_int_type Dy2 = D*sl2y + A*sl2x;
+  const polygon_int_type Dy2mDy1 = Dy2 - Dy1;
+  const polygon_int_type ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
+  if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return bool_and_rational(false, rational(1));
+  else                                               return bool_and_rational(true, non_normalized_rational<polygon_int_type>(Dy1, Dy1 - Dy2));
 }
 
-std::pair<bool, non_normalized_rational<int64_t>> get_intersection(line_segment const& l, bounding_box const& bb) {
-  if (!bb.is_anywhere) return std::make_pair(false, 1);
+bool_and_rational get_intersection(line_segment const& l, bounding_box const& bb) {
+  if (!bb.is_anywhere) return bool_and_rational(false, rational(1));
   
   // Check for common, simple cases to save time.
-  if (l.ends[0].x < bb.min.x && l.ends[1].x < bb.min.x) return std::make_pair(false, 1);
-  if (l.ends[0].y < bb.min.y && l.ends[1].y < bb.min.y) return std::make_pair(false, 1);
-  if (l.ends[0].z < bb.min.z && l.ends[1].z < bb.min.z) return std::make_pair(false, 1);
-  if (l.ends[0].x > bb.max.x && l.ends[1].x > bb.max.x) return std::make_pair(false, 1);
-  if (l.ends[0].y > bb.max.y && l.ends[1].y > bb.max.y) return std::make_pair(false, 1);
-  if (l.ends[0].z > bb.max.z && l.ends[1].z > bb.max.z) return std::make_pair(false, 1);
-  if (bb.contains(l.ends[0])) return std::make_pair(true, 0);
+  if (l.ends[0].x < bb.min.x && l.ends[1].x < bb.min.x) return bool_and_rational(false, rational(1));
+  if (l.ends[0].y < bb.min.y && l.ends[1].y < bb.min.y) return bool_and_rational(false, rational(1));
+  if (l.ends[0].z < bb.min.z && l.ends[1].z < bb.min.z) return bool_and_rational(false, rational(1));
+  if (l.ends[0].x > bb.max.x && l.ends[1].x > bb.max.x) return bool_and_rational(false, rational(1));
+  if (l.ends[0].y > bb.max.y && l.ends[1].y > bb.max.y) return bool_and_rational(false, rational(1));
+  if (l.ends[0].z > bb.max.z && l.ends[1].z > bb.max.z) return bool_and_rational(false, rational(1));
+  if (bb.contains(l.ends[0])) return bool_and_rational(true, rational(0));
   
-  non_normalized_rational<int64_t> intersecting_min(0);
-  non_normalized_rational<int64_t> intersecting_max(1);
+  non_normalized_rational<polygon_int_type> intersecting_min(0);
+  non_normalized_rational<polygon_int_type> intersecting_max(1);
 
 // This macro is specific to this function.  It only uses its arguments
 // at the beginning of the macro definition, except for LESS_THAN_OR_GREATER_THAN.
 // (Can you find a way to do this that's nicer without being lots messier?)
 #define CHECK(MIN_OR_MAX, MAX_OR_MIN, LESS_THAN_OR_GREATER_THAN, DIMENSION) \
   { \
-    vector3<int64_t> const& bb_min_or_max = bb.MIN_OR_MAX; \
-    vector3<int64_t> const& bb_max_or_min = bb.MAX_OR_MIN; \
-    non_normalized_rational<int64_t>& intersecting_min_or_max = intersecting_##MIN_OR_MAX; \
+    vector3<polygon_int_type> const& bb_min_or_max = bb.MIN_OR_MAX; \
+    vector3<polygon_int_type> const& bb_max_or_min = bb.MAX_OR_MIN; \
+    non_normalized_rational<polygon_int_type>& intersecting_min_or_max = intersecting_##MIN_OR_MAX; \
     const int dim = (DIMENSION); \
     \
     if (l.ends[0][dim] == l.ends[1][dim]) { \
-      if (l.ends[0][dim] LESS_THAN_OR_GREATER_THAN bb_min_or_max[dim]) return std::make_pair(false, 1); \
+      if (l.ends[0][dim] LESS_THAN_OR_GREATER_THAN bb_min_or_max[dim]) return bool_and_rational(false, rational(1)); \
     } \
     else { \
-      const non_normalized_rational<int64_t> checkval( \
+      const non_normalized_rational<polygon_int_type> checkval( \
         (l.ends[1][dim] > l.ends[0][dim] ? bb_min_or_max[dim] : bb_max_or_min[dim]) - l.ends[0][dim], \
         l.ends[1][dim] - l.ends[0][dim] \
       ); \
       if (intersecting_min_or_max LESS_THAN_OR_GREATER_THAN checkval) { \
         intersecting_min_or_max = checkval; \
-        if (intersecting_min > intersecting_max) return std::make_pair(false, 1); \
+        if (intersecting_min > intersecting_max) return bool_and_rational(false, rational(1)); \
       } \
     } \
   }
@@ -330,32 +332,32 @@ std::pair<bool, non_normalized_rational<int64_t>> get_intersection(line_segment 
   CHECK(max, min, >, Z)
 #undef CHECK
   
-  return std::make_pair(true, intersecting_min);
+  return bool_and_rational(true, intersecting_min);
 }
 
-std::pair<bool, non_normalized_rational<int64_t>> get_intersection(line_segment l, convex_polygon const& p) {
+bool_and_rational get_intersection(line_segment l, convex_polygon const& p) {
   p.setup_cache_if_needed();
   polygon_collision_info_cache const& c = p.get_cache();
   
   // Translate and twist, as we did with the polygon.
-  for (vector3<int64_t>& v : l.ends) v += c.translation_amount;
-  for (vector3<int64_t>& v : l.ends) v = vector3<int64_t>(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
+  for (vector3<polygon_int_type>& v : l.ends) v += c.translation_amount;
+  for (vector3<polygon_int_type>& v : l.ends) v = vector3<polygon_int_type>(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
   // Now skew the z values. Skews are linear and hence preserve everything we need.
   // The line's z values are scaled up as well as skewed.
-  for (vector3<int64_t>& v : l.ends) { v.z = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y); }
+  for (vector3<polygon_int_type>& v : l.ends) { v.z = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y); }
   
   if (sign(l.ends[0].z) == sign(l.ends[1].z)) {
     if (l.ends[0].z != 0) {
       // If the endpoints are on the same side, they're not colliding, obviously!
-      return std::make_pair(false, 1);
+      return bool_and_rational(false, rational(1));
     }
     else {
       // Now, we need to do 2D line vs. polygon collisions, which are just a bunch of 2D line vs. line collisions.
       // We just ignore the z values for these purposes.
-      std::pair<bool, non_normalized_rational<int64_t>> result(false, 1);
+      bool_and_rational result(false, rational(1));
       for (size_t i = 0; i < c.adjusted_vertices.size(); ++i) {
         const int next_i = (i + 1) % c.adjusted_vertices.size();
-        std::pair<bool, non_normalized_rational<int64_t>> here = get_intersection(l.ends[0].x, l.ends[0].y, l.ends[1].x, l.ends[1].y, c.adjusted_vertices[i].x, c.adjusted_vertices[i].y, c.adjusted_vertices[next_i].x, c.adjusted_vertices[next_i].y);
+        bool_and_rational here = get_intersection(l.ends[0].x, l.ends[0].y, l.ends[1].x, l.ends[1].y, c.adjusted_vertices[i].x, c.adjusted_vertices[i].y, c.adjusted_vertices[next_i].x, c.adjusted_vertices[next_i].y);
         if (here.first && (!result.first || here.second < result.second)) {
           result = here;
         }
@@ -364,20 +366,20 @@ std::pair<bool, non_normalized_rational<int64_t>> get_intersection(line_segment 
     }
   }
   
-  const int64_t denom2 = l.ends[1].z - l.ends[0].z;
+  const polygon_int_type denom2 = l.ends[1].z - l.ends[0].z;
   // Find the point in the plane (scaled up by denom2, which was scaled up by denom...)
   
-  const vector3<int64_t> point_in_plane_times_denom2(
+  const vector3<polygon_int_type> point_in_plane_times_denom2(
     l.ends[1].z*l.ends[0].x - l.ends[0].z*l.ends[1].x,
     l.ends[1].z*l.ends[0].y - l.ends[0].z*l.ends[1].y,
     0
   );
   
   // Don't assume which clockwiseness the polygon is - but the point can never be on the same side of all the lines if it's outside the polygon, and always will be if it's inside.
-  int previous_clockwiseness = 0;
+  polygon_int_type previous_clockwiseness = 0;
   for (size_t i = 0; i < c.adjusted_vertices.size(); ++i) {
-    const int next_i = (i + 1) % c.adjusted_vertices.size();
-    const int64_t clockwiseness = sign(
+    const size_t next_i = (i + 1) % c.adjusted_vertices.size();
+    const polygon_int_type clockwiseness = sign(
         ((point_in_plane_times_denom2.y - c.adjusted_vertices[i].y*denom2) * (c.adjusted_vertices[next_i].x - c.adjusted_vertices[i].x))
       - ((point_in_plane_times_denom2.x - c.adjusted_vertices[i].x*denom2) * (c.adjusted_vertices[next_i].y - c.adjusted_vertices[i].y))
     );
@@ -386,16 +388,16 @@ std::pair<bool, non_normalized_rational<int64_t>> get_intersection(line_segment 
         previous_clockwiseness = clockwiseness;
       }
       else {
-        if (clockwiseness != previous_clockwiseness) return std::make_pair(false, non_normalized_rational<int64_t>(1));
+        if (clockwiseness != previous_clockwiseness) return bool_and_rational(false, rational(1));
       }
     }
   }
   
-  return std::make_pair(true, non_normalized_rational<int64_t>(l.ends[0].z, l.ends[0].z - l.ends[1].z));
+  return bool_and_rational(true, rational(l.ends[0].z, l.ends[0].z - l.ends[1].z));
 }
 
 bool nonshape_intersects_onesided(convex_polygon const& p1, convex_polygon const& p2) {
-  std::vector<vector3<int64_t>> const& vs = p1.get_vertices();
+  std::vector<vector3<polygon_int_type>> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
     if (get_intersection(line_segment(vs[i], vs[next_i]), p2).first) return true;
@@ -410,7 +412,7 @@ bool nonshape_intersects(convex_polygon const& p1, convex_polygon const& p2) {
 bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
   if (!bb.is_anywhere) return false;
   
-  std::vector<vector3<int64_t>> const& vs = p.get_vertices();
+  std::vector<vector3<polygon_int_type>> const& vs = p.get_vertices();
   if (bb.contains(vs[0])) return true;
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
@@ -418,17 +420,17 @@ bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
   }
   // TODO: come up with a nicer, generalizable way to do something for every edge of a bounding box
   for (int x = 0; x < 2; ++x) { for (int y = 0; y < 2; ++y) { for (int z = 0; z < 2; ++z) {
-    vector3<int64_t> base(x ? bb.min.x : bb.max.x, y ? bb.min.y : bb.max.y, z ? bb.min.z : bb.max.z);
+    vector3<polygon_int_type> base(x ? bb.min.x : bb.max.x, y ? bb.min.y : bb.max.y, z ? bb.min.z : bb.max.z);
     if (x == 0) {
-      vector3<int64_t> other = base; other.x = bb.max.x;
+      vector3<polygon_int_type> other = base; other.x = bb.max.x;
       if (get_intersection(line_segment(base, other), p).first) return true;
     }
     if (y == 0) {
-      vector3<int64_t> other = base; other.y = bb.max.y;
+      vector3<polygon_int_type> other = base; other.y = bb.max.y;
       if (get_intersection(line_segment(base, other), p).first) return true;
     }
     if (z == 0) {
-      vector3<int64_t> other = base; other.z = bb.max.z;
+      vector3<polygon_int_type> other = base; other.z = bb.max.z;
       if (get_intersection(line_segment(base, other), p).first) return true;
     }
   }}}
@@ -475,16 +477,16 @@ bool shape::intersects(shape const& other)const {
   return false;
 }
 
-std::pair<bool, non_normalized_rational<int64_t>> shape::first_intersection(line_segment const& other)const {
-  std::pair<bool, non_normalized_rational<int64_t>> result(false, 1);
+bool_and_rational shape::first_intersection(line_segment const& other)const {
+  bool_and_rational result(false, rational(1));
   for (convex_polygon const& p : polygons_) {
-    std::pair<bool, non_normalized_rational<int64_t>> here = get_intersection(other, p);
+    bool_and_rational here = get_intersection(other, p);
     if (here.first && (!result.first || here.second < result.second)) {
       result = here;
     }
   }
   for (bounding_box const& bb : boxes_) {
-    std::pair<bool, non_normalized_rational<int64_t>> here = get_intersection(other, bb);
+    bool_and_rational here = get_intersection(other, bb);
     if (here.first && (!result.first || here.second < result.second)) {
       result = here;
     }
