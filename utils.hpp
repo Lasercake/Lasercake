@@ -106,12 +106,15 @@ typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key
   else return &(i->second);
 }
 
+#include "bounds_checked_int.hpp"
 template<typename Int> struct lasercake_int { typedef Int type; };
 
-template<typename ScalarType> ScalarType divide_rounding_towards_zero(ScalarType dividend, ScalarType divisor)
+
+template<typename ScalarType1, typename ScalarType2> auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor) -> decltype(dividend/divisor)
 {
   caller_correct_if(divisor != 0, "divisor must be nonzero");
-  const ScalarType abs_result = std::abs(dividend) / std::abs(divisor);
+  using namespace std;
+  const auto abs_result = abs(dividend) / abs(divisor);
   if ((dividend > 0) == (divisor > 0)) return abs_result;
   else return -abs_result;
 }
@@ -247,6 +250,12 @@ public:
   }
   bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
 };
+
+// Make sure this is declared so that overload resolution on vector3 ostream <<
+// will choose this for the component types (rather than choosing bool(!)).
+template<typename Int, Int Min, Int Max>
+std::ostream& operator<<(std::ostream& os, bounds_checked_int<Int,Min,Max> i);
+
 template<typename T> inline std::ostream& operator<<(std::ostream& os, vector3<T>const& v) {
   return os << '(' << v.x << ',' << v.y << ',' << v.z << ')';
 }

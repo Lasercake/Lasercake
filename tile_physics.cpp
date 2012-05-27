@@ -1371,7 +1371,6 @@ void update_fluids_impl(state_t& state) {
   // ==============================================================================
   
   vector<wanted_move> wanted_moves;
-  
   for (pair<const tile_location, active_fluid_tile_info>& p : active_fluids) {
     tile_location const& loc = p.first;
     active_fluid_tile_info& fluid = p.second;
@@ -1434,7 +1433,7 @@ void update_fluids_impl(state_t& state) {
               const sub_tile_distance amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_distance>(-cardinal_direction_vectors[dir]);
               // This velocity pushes us towards opposite_loc, and pressure is a measure of how much water wants to
               // *go to* the height pressure is being measured at, so we measure at opposite_loc.
-              const sub_tile_distance deficiency_of_vel = i64sqrt(2*pressure) - amount_of_vel_in_pressure_receiving_dir;
+              const sub_tile_distance deficiency_of_vel = sub_tile_distance(i64sqrt(2*pressure)) - amount_of_vel_in_pressure_receiving_dir;
               if (deficiency_of_vel > 0) {
                 fluid.velocity += vector3<sub_tile_distance>(-cardinal_direction_vectors[dir]) * deficiency_of_vel;
               }

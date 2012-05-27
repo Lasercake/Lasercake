@@ -65,7 +65,7 @@ coord get_height(
     const coord y = loc.second;
     for (coord x2 = x - max_simple_hill_width; x2 <= x + max_simple_hill_width; ++x2) {
       for (coord y2 = y - max_simple_hill_width; y2 <= y + max_simple_hill_width; ++y2) {
-        height += std::max(0, get_hill(hills_map, make_pair(x2, y2)) - (int)i64sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y)));
+        height += std::max(0, get_hill(hills_map, make_pair(x2, y2)) - get_un_bounds_checked<int>(i64sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y))));
       }
     }
     height_map.insert(make_pair(loc, height));

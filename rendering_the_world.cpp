@@ -32,8 +32,12 @@ using namespace world_rendering;
 
 namespace /* anonymous */ {
 
+vector3<GLfloat> cast_vector3_to_float(vector3<fine_scalar> v) {
+  return vector3<GLfloat>(get_un_bounds_checked_double(v.x), get_un_bounds_checked_double(v.y), get_un_bounds_checked_double(v.z));
+}
+
 vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
-  return vector3<GLfloat>(input - view_center) / tile_width;
+  return cast_vector3_to_float(input - view_center) / get_un_bounds_checked_double(tile_width);
 }
 
 
@@ -172,15 +176,15 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
   if (view_type == LOCAL) {
     if (input_news.is_currently_pressed("u")) {
       view_loc_for_local_display += vector3<fine_scalar>(
-        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
-        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
+        fine_scalar(get_un_bounds_checked_double(tile_width) * std::cos(view_direction)) / 10,
+        fine_scalar(get_un_bounds_checked_double(tile_width) * std::sin(view_direction)) / 10,
         0
       );
     }
     if (input_news.is_currently_pressed("j")) {
       view_loc_for_local_display -= vector3<fine_scalar>(
-        fine_scalar(double(tile_width) * std::cos(view_direction)) / 10,
-        fine_scalar(double(tile_width) * std::sin(view_direction)) / 10,
+        fine_scalar(get_un_bounds_checked_double(tile_width) * std::cos(view_direction)) / 10,
+        fine_scalar(get_un_bounds_checked_double(tile_width) * std::sin(view_direction)) / 10,
         0
       );
     }
@@ -207,8 +211,8 @@ void view_on_the_world::render(
     if (view_type == LOCAL) {
       view_loc = view_loc_for_local_display;
       view_towards = view_loc + vector3<fine_scalar>(
-        globallocal_view_dist * std::cos(view_direction),
-        globallocal_view_dist * std::sin(view_direction),
+        get_un_bounds_checked_double(globallocal_view_dist) * std::cos(view_direction),
+        get_un_bounds_checked_double(globallocal_view_dist) * std::sin(view_direction),
         0
       );
     }
@@ -219,12 +223,12 @@ void view_on_the_world::render(
       view_towards = view_loc + facing;
     }
     else {
-      double game_time_in_seconds = double(w.game_time_elapsed()) / time_units_per_second;
+      double game_time_in_seconds = get_un_bounds_checked_double(w.game_time_elapsed()) / get_un_bounds_checked_double(time_units_per_second);
       view_towards = surveilled_by_global_display;
       view_loc = surveilled_by_global_display + vector3<fine_scalar>(
-        globallocal_view_dist * std::cos(game_time_in_seconds * 3 / 4),
-        globallocal_view_dist * std::sin(game_time_in_seconds * 3 / 4),
-        (globallocal_view_dist / 2) + (globallocal_view_dist / 4) * std::sin(game_time_in_seconds / 2)
+        get_un_bounds_checked_double(globallocal_view_dist) * std::cos(game_time_in_seconds * 3 / 4),
+        get_un_bounds_checked_double(globallocal_view_dist) * std::sin(game_time_in_seconds * 3 / 4),
+        get_un_bounds_checked_double(globallocal_view_dist / 2) + get_un_bounds_checked_double(globallocal_view_dist / 4) * std::sin(game_time_in_seconds / 2)
       );
     }
 
@@ -250,7 +254,7 @@ void view_on_the_world::render(
         for(tile_location const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
           gl_collection& coll = gl_collections_by_distance[
-            tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc)
+            get_un_bounds_checked_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
           ];
           push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
         }
@@ -259,7 +263,7 @@ void view_on_the_world::render(
         for(tile_location const& bar : foo.second.as_unordered_set()) {
           vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
           gl_collection& coll = gl_collections_by_distance[
-            tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc)
+            get_un_bounds_checked_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
           ];
           push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
         }
@@ -277,9 +281,9 @@ void view_on_the_world::render(
 
       for (int i = 0; i <= length; ++i) {
         gl_collection& coll = gl_collections_by_distance[
-          tile_manhattan_distance_to_bounding_box_rounding_down(
+          get_un_bounds_checked_int(tile_manhattan_distance_to_bounding_box_rounding_down(
             bounding_box(p.first + (p.second * i / length), p.first + (p.second * (i+1) / length)),
-            view_loc)
+            view_loc))
         ];
         const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
         push_quad(coll,
@@ -294,7 +298,7 @@ void view_on_the_world::render(
 
     for (object_or_tile_identifier const& id : tiles_to_draw) {
       gl_collection& coll = gl_collections_by_distance[
-        tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc)
+        get_un_bounds_checked_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
       ];
       if (object_identifier const* mid = id.get_object_identifier()) {
         shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(*mid)));
@@ -309,9 +313,9 @@ void view_on_the_world::render(
             push_line(coll,
                       vertex(locv.x, locv.y, locv.z),
                       vertex(
-                        locv.x + ((GLfloat)objp->velocity.x / (tile_width)),
-                        locv.y + ((GLfloat)objp->velocity.y / (tile_width)),
-                        locv.z + ((GLfloat)objp->velocity.z / (tile_width))),
+                        locv.x + (get_un_bounds_checked_double(objp->velocity.x) / get_un_bounds_checked_double(tile_width)),
+                        locv.y + (get_un_bounds_checked_double(objp->velocity.y) / get_un_bounds_checked_double(tile_width)),
+                        locv.z + (get_un_bounds_checked_double(objp->velocity.z) / get_un_bounds_checked_double(tile_width))),
                       color(0x00ff0077));
           }
         }
@@ -324,8 +328,8 @@ void view_on_the_world::render(
 
         {
           const color tile_color =
-            t.contents() ==              ROCK ? color(((((coords.x + coords.y + coords.z) % 3)
-                                                        * 0x222222u + 0x333333u) << 8) + 0xff) :
+            t.contents() ==              ROCK ? color(((((get_un_bounds_checked<uint32_t>(coords.x) + get_un_bounds_checked<uint32_t>(coords.y) + get_un_bounds_checked<uint32_t>(coords.z)) % 3)
+                                                        * 0x222222u + 0x333333u) << 8) + 0xffu) :
             t.contents() ==            RUBBLE ? color(0xffff0077) :
             t.contents() ==   GROUPABLE_WATER ? color(0x0000ff77) :
             t.contents() == UNGROUPABLE_WATER ? color(0x6666ff77) :
@@ -425,17 +429,17 @@ void view_on_the_world::render(
             push_line(coll,
                       vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
                       vertex(
-                        locv.x + 0.5 + ((GLfloat)fluid->velocity.x / (tile_width)),
-                        locv.y + 0.5 + ((GLfloat)fluid->velocity.y / (tile_width)),
-                        locv.z + 0.1 + ((GLfloat)fluid->velocity.z / (tile_width))),
+                        locv.x + 0.5 + (get_un_bounds_checked_double(fluid->velocity.x) / get_un_bounds_checked_double(tile_width)),
+                        locv.y + 0.5 + (get_un_bounds_checked_double(fluid->velocity.y) / get_un_bounds_checked_double(tile_width)),
+                        locv.z + 0.1 + (get_un_bounds_checked_double(fluid->velocity.z) / get_un_bounds_checked_double(tile_width))),
                       color(0x00ff0077));
 
             for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
               const sub_tile_distance prog = fluid->progress[dir];
               if (prog > 0) {
                 vector3<GLfloat> directed_prog =
-                  (vector3<GLfloat>(cardinal_direction_vectors[dir]) * prog) /
-                  tile_physics_impl::progress_necessary(dir);
+                  (vector3<GLfloat>(cardinal_direction_vectors[dir]) * get_un_bounds_checked_double(prog)) /
+                  get_un_bounds_checked_double(tile_physics_impl::progress_necessary(dir));
 
                 push_line(coll,
                             vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
@@ -454,7 +458,7 @@ void view_on_the_world::render(
       }
     }
 
-    gl_data.facing = vector3<GLfloat>(view_towards - view_loc) / tile_width;
+    gl_data.facing = cast_vector3_to_float(view_towards - view_loc) / get_un_bounds_checked_double(tile_width);
     gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
 
 }
