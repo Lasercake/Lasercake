@@ -83,6 +83,7 @@ namespace bounds_checked_int_impl {
   
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wtype-limits"
+  #pragma clang diagnostic ignored "-Wtautological-compare" /*Clang uses GCC's warning pragma stack*/
   template<typename Int, typename ShiftAmountType>
   inline void check_shift_amount_valid(ShiftAmountType shift) {
     // Such shifts do not work as you'd mathematically expect on some CPUs' bare metal,
@@ -161,6 +162,7 @@ public:
 private:
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wtype-limits"
+  #pragma clang diagnostic ignored "-Wtautological-compare"
   template<typename OtherType>
   int_type check_valid_(OtherType val) {
     //If Max or Min doesn't fit into OtherType, then clearly val cannot exceed that boundary
