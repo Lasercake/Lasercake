@@ -300,6 +300,9 @@ void mainLoop (std::string scenario)
   microseconds_t microseconds_for_simulation = 0;
   microseconds_t microseconds_for_drawing = 0;
 
+  microseconds_t monotonic_microseconds_at_beginning_of_ten_frame_block = get_monotonic_microseconds();
+  microseconds_t monotonic_microseconds_at_beginning_of_hundred_frame_block = monotonic_microseconds_at_beginning_of_ten_frame_block;
+
   while ( !done ) {
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
 
@@ -415,6 +418,19 @@ void mainLoop (std::string scenario)
                             << show_microseconds(monotonic_microseconds_for_GL)
                         )
     << "gl\n";
+
+    if(frame % 10 == 0) {
+      const microseconds_t beginning = monotonic_microseconds_at_beginning_of_ten_frame_block;
+      monotonic_microseconds_at_beginning_of_ten_frame_block = end_frame_monotonic_microseconds;
+      const microseconds_t ending = monotonic_microseconds_at_beginning_of_ten_frame_block;
+      std::cerr << show_microseconds_per_frame_as_fps((ending - beginning) / 10) << " fps over the last ten frames " << (frame-10) << "–" << frame << ".\n";
+    }
+    if(frame % 100 == 0) {
+      const microseconds_t beginning = monotonic_microseconds_at_beginning_of_hundred_frame_block;
+      monotonic_microseconds_at_beginning_of_hundred_frame_block = end_frame_monotonic_microseconds;
+      const microseconds_t ending = monotonic_microseconds_at_beginning_of_hundred_frame_block;
+      std::cerr << show_microseconds_per_frame_as_fps((ending - beginning) / 100) << " fps over the last hundred frames " << (frame-100) << "–" << frame << ".\n";
+    }
   }
 
 #if !LASERCAKE_NO_THREADS
