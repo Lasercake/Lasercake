@@ -49,4 +49,16 @@ BOOST_AUTO_TEST_CASE( my_sqrt ) {
   std::for_each(numbers_to_test.begin(), numbers_to_test.end(), &i64sqrt_test);
 }
 
+BOOST_AUTO_TEST_CASE( divide_rounding_towards_zero_test ) {
+  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,1), 3);
+  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,2), 1);
+  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(0,3), 0);
+  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(0,-3), 0);
+  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(-3,3), -1);
+  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(-3,2), -1);
+  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,-2), -1);
+  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(-3,-2), 1);
+  BOOST_CHECK_THROW(divide_rounding_towards_zero(-3,0), std::logic_error);
+}
+
 }  /* end anonymous namespace */
