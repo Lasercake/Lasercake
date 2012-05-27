@@ -25,8 +25,8 @@
 #include "world.hpp"
 
 namespace tile_physics_impl {
-typedef lasercake_int<uint64_t>::type water_tile_count;
-typedef lasercake_int<uint64_t>::type water_group_identifier;
+typedef lasercake_int<int64_t>::type water_tile_count;
+typedef lasercake_int<int64_t>::type water_group_identifier;
 const water_group_identifier NO_WATER_GROUP = 0;
 
 struct state_t;
