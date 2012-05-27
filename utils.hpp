@@ -117,7 +117,9 @@ template<typename Int> struct lasercake_int { typedef bounds_checked_int<Int> ty
 template<typename Int> struct lasercake_int { typedef Int type; };
 #endif
 
-template<typename ScalarType1, typename ScalarType2> auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor) -> decltype(dividend/divisor)
+template<typename ScalarType1, typename ScalarType2>
+auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
+  -> decltype(dividend/divisor) /*C++11 syntax for return type that lets it refer to argument names*/
 {
   caller_correct_if(divisor != 0, "divisor must be nonzero");
   using namespace std;
