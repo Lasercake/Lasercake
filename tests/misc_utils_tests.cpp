@@ -86,4 +86,16 @@ BOOST_AUTO_TEST_CASE( non_normalized_rational_test ) {
   BOOST_CHECK(rational(-3,-6) >= rational(-2,4));
 }
 
+BOOST_AUTO_TEST_CASE( signs_test ) {
+  BOOST_CHECK_EQUAL(sign(2), 1);
+  BOOST_CHECK_EQUAL(sign(-2), -1);
+  BOOST_CHECK_EQUAL(sign(0), 0);
+  BOOST_CHECK_EQUAL(sign(std::numeric_limits<int32_t>::min()), -1);
+
+  BOOST_CHECK_EQUAL(is_negative(2), false);
+  BOOST_CHECK_EQUAL(is_negative(-2), true);
+  BOOST_CHECK_EQUAL(is_negative(0), false);
+  BOOST_CHECK_EQUAL(is_negative(std::numeric_limits<int32_t>::min()), true);
+}
+
 }  /* end anonymous namespace */

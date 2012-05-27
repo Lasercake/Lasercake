@@ -90,9 +90,19 @@ inline void caller_correct_if(bool cond, const char* error) {
 }
 
 
-template <typename SignedType>
-inline SignedType sign(SignedType input) {
-  return (input > 0) - (input < 0);
+// returns the signum (-1, 0, or 1)
+template <typename Number>
+inline Number sign(Number n) {
+  return (n > 0) - (n < 0);
+}
+
+template <typename Number>
+inline bool is_negative(Number n) {
+  // this is (very slightly) the fastest comparison-with-zero among < 0, <= 0, > 0, >= 0:
+  // in signed two's complement, it's the value of the highest bit:
+  // which leads to one less x86 instruction (small code = more fits in cache).
+  // (Once inlined and optimized in context, the chosen comparison might make no difference.)
+  return (n < 0);
 }
 
 template<typename Map>
@@ -124,7 +134,7 @@ auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
   caller_correct_if(divisor != 0, "divisor must be nonzero");
   using namespace std;
   const auto abs_result = abs(dividend) / abs(divisor);
-  if ((dividend > 0) == (divisor > 0)) return abs_result;
+  if (is_negative(dividend) == is_negative(divisor)) return abs_result;
   else return -abs_result;
 }
 
@@ -395,32 +405,38 @@ template<typename IntType> struct non_normalized_rational {
   non_normalized_rational(IntType n):numerator(n),denominator(1){}
   non_normalized_rational():numerator(0),denominator(1){}
   bool operator< (non_normalized_rational const& o)const {
-    if (sign(denominator) == sign(o.denominator))
+    assert(denominator != 0 && o.denominator != 0);
+    if (is_negative(denominator) == is_negative(o.denominator))
       return numerator*o.denominator <  o.numerator*denominator;
     else
       return numerator*o.denominator >  o.numerator*denominator;
   }
   bool operator> (non_normalized_rational const& o)const {
-    if (sign(denominator) == sign(o.denominator))
+    assert(denominator != 0 && o.denominator != 0);
+    if (is_negative(denominator) == is_negative(o.denominator))
       return numerator*o.denominator >  o.numerator*denominator;
     else
       return numerator*o.denominator <  o.numerator*denominator;
   }
   bool operator<=(non_normalized_rational const& o)const {
-    if (sign(denominator) == sign(o.denominator))
+    assert(denominator != 0 && o.denominator != 0);
+    if (is_negative(denominator) == is_negative(o.denominator))
       return numerator*o.denominator <= o.numerator*denominator;
     else
       return numerator*o.denominator >= o.numerator*denominator;
   }
   bool operator>=(non_normalized_rational const& o)const {
-    if (sign(denominator) == sign(o.denominator))
+    assert(denominator != 0 && o.denominator != 0);
+    if (is_negative(denominator) == is_negative(o.denominator))
       return numerator*o.denominator >= o.numerator*denominator;
     else
       return numerator*o.denominator <= o.numerator*denominator;
   }
   bool operator==(non_normalized_rational const& o)const {
+    assert(denominator != 0 && o.denominator != 0);
     return numerator*o.denominator == o.numerator*denominator; }
   bool operator!=(non_normalized_rational const& o)const {
+    assert(denominator != 0 && o.denominator != 0);
     return numerator*o.denominator != o.numerator*denominator; }
 };
 template<typename IntType> inline std::ostream& operator<<(std::ostream& os, non_normalized_rational<IntType>const& r) {
