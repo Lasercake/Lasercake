@@ -33,8 +33,10 @@
 
 #include <ostream>
 
+#ifndef HAVE_INT128_T
 // TODO make this better detected/configured somehow
 #define HAVE_INT128_T 1
+#endif
 
 namespace bounds_checked_int_impl {
   template<int bits, bool is_signed> struct int_types;
