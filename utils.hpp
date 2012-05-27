@@ -138,6 +138,17 @@ auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
   else return -abs_result;
 }
 
+inline int32_t i64log2(uint64_t argument) {
+  caller_error_if(argument == 0, "the logarithm of zero is undefined");
+  int32_t shift
+         = argument &  (((1ULL << 32) - 1) << 32)           ? 32 : 0;
+  shift += argument & ((((1ULL << 16) - 1) << 16) << shift) ? 16 : 0;
+  shift += argument & ((((1ULL <<  8) - 1) <<  8) << shift) ?  8 : 0;
+  shift += argument & ((((1ULL <<  4) - 1) <<  4) << shift) ?  4 : 0;
+  shift += argument & ((((1ULL <<  2) - 1) <<  2) << shift) ?  2 : 0;
+  shift += argument & ((((1ULL <<  1) - 1) <<  1) << shift) ?  1 : 0;
+  return shift;
+}
 
 inline uint32_t i64sqrt(uint64_t radicand)
 {

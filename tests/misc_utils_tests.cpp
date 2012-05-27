@@ -49,6 +49,27 @@ BOOST_AUTO_TEST_CASE( my_sqrt ) {
   std::for_each(numbers_to_test.begin(), numbers_to_test.end(), &i64sqrt_test);
 }
 
+
+void i64log2_test(uint64_t argument) {
+  uint64_t log_result = i64log2(argument);
+  BOOST_CHECK(1ull << log_result <= argument);
+  if(log_result != 63) {
+    BOOST_CHECK(1ull << (log_result+1) > argument);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( my_log ) {
+  BOOST_CHECK_THROW(i64log2(0), std::logic_error);
+  std::array<uint64_t, 18> numbers_to_test = {{ 1, 2, 3, 4, 5, 17, 232, 500,
+    78978978, 8948954789789349789ull, 0xfffffffful, 0x100000000ull,
+    0x100000001ull, 0xffffffffffffffffull, 0xfffffffffffffffeull,
+    0xeeeeeeeeeeeeeeeeull, 0xfffffffe00000001ull, 0xfffffffe00000000ull
+  }};
+  std::for_each(numbers_to_test.begin(), numbers_to_test.end(), &i64log2_test);
+}
+
+
+
 BOOST_AUTO_TEST_CASE( divide_rounding_towards_zero_test ) {
   BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,1), 3);
   BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,2), 1);
