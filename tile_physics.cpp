@@ -1384,8 +1384,9 @@ void update_fluids_impl(state_t& state) {
     fluid.velocity += gravity_acceleration;
       
     // Slight air resistance proportional to the square of the velocity (mostly there to make a natural cap velocity for falling water)
-    fluid.velocity -= (fluid.velocity * fluid.velocity.magnitude_within_32_bits()) / air_resistance_constant;
-      
+    fluid.velocity -= vector3<sub_tile_distance>(vector3<large_sub_tile_distance>(fluid.velocity)
+                                * fluid.velocity.magnitude_within_32_bits() / air_resistance_constant);
+
     // Relatively large friction against the ground
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       if (fluid.blockage_amount_this_frame[dir] > 0) {

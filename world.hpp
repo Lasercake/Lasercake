@@ -64,6 +64,7 @@ using boost::shared_ptr;
 
 typedef lasercake_int<int64_t>::type fine_scalar; // Fine as opposed to coarse, that is.
 typedef lasercake_int<int32_t>::type sub_tile_distance; // We can fit it within 32 bits, so we might as well do faster math
+typedef lasercake_int<int64_t>::type large_sub_tile_distance;
 
 typedef lasercake_int<int64_t>::type time_unit;
 // Choose a number that makes lots of frames-per-second values multiply in evenly.
