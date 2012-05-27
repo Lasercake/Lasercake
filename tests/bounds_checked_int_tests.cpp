@@ -71,10 +71,13 @@ BOOST_AUTO_TEST_CASE( boundses ) {
     BOOST_CHECK_THROW(i32(3) << i32(-7), std::logic_error);
     BOOST_CHECK_THROW(i32(3) >> 65, std::logic_error);
     BOOST_CHECK_EQUAL(i32(3) >> 2, i32(0));
+    BOOST_CHECK_EQUAL(i32(33) >> 2, i32(8));
+    BOOST_CHECK_THROW(i32(33) >> 32, std::logic_error);
     BOOST_CHECK_EQUAL(u64(0xffffffffull) * u64(0x100000001ull), u64(std::numeric_limits<uint64_t>::max()));
     BOOST_CHECK_THROW(u64(0xffffffffull) * u64(0x100000002ull), std::logic_error);
     BOOST_CHECK_THROW(u64(0xffffffffull) * u64(0x100000002ull), std::logic_error);
-
+  }
+  {
     BOOST_CHECK_EQUAL(7 + i32(3), i32(10));
     BOOST_CHECK_EQUAL(7 - i32(3), i32(4));
     BOOST_CHECK_EQUAL(7 * i32(3), i32(21));
@@ -96,6 +99,20 @@ BOOST_AUTO_TEST_CASE( boundses ) {
     BOOST_CHECK_EQUAL(2 > i32(3), false);
     BOOST_CHECK_EQUAL(2 <= i32(3), true);
     BOOST_CHECK_EQUAL(2 >= i32(3), false);
+    bounds_checked_int<int32_t> i;
+    BOOST_CHECK_EQUAL(i = 3, i32(3));
+    BOOST_CHECK_EQUAL(i += i32(3), i32(6));
+    BOOST_CHECK_EQUAL(i -= i32(-2), i32(8));
+    BOOST_CHECK_EQUAL(i *= i32(-3), i32(-24));
+    BOOST_CHECK_EQUAL(i /= i32(-4), i32(6));
+    BOOST_CHECK_EQUAL(i %= i32(4), i32(2));
+    i = 3;
+    BOOST_CHECK_EQUAL(i |= i32(5), i32(7));
+    BOOST_CHECK_EQUAL(i &= i32(0x12), i32(2));
+    BOOST_CHECK_EQUAL(i ^= i32(6), i32(4));
+    BOOST_CHECK_EQUAL(i >>= i32(1), i32(2));
+    BOOST_CHECK_EQUAL(i <<= i32(3), i32(16));
+    BOOST_CHECK_THROW(i <<= 31, std::logic_error);
 
     BOOST_CHECK_EQUAL(i32(3).get(), 3);
     
@@ -104,6 +121,8 @@ BOOST_AUTO_TEST_CASE( boundses ) {
     BOOST_CHECK_THROW(p*tenz(2), std::logic_error);
     BOOST_CHECK_EQUAL(p/tenz(-1), tenz(-9));
     BOOST_CHECK_THROW(p/tenz(-1) - tenz(2), std::logic_error);
+
+    BOOST_CHECK_EQUAL(i32(3.5), 3);
   }
   
   //test not convertable signed/unsigned or wrong way somehow? boost is_convertible?
