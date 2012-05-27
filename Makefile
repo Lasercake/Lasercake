@@ -30,6 +30,7 @@ ODIR_GCC46=output/gcc46
 ODIR_NOTHR=output/no-threads
 
 SOURCES = $(wildcard *.cpp)
+TEST_SOURCES = $(wildcard tests/*.cpp)
 DEPS      = $(patsubst %,$(ODIR_DEPS)/%,$(SOURCES:.cpp=.makedeps))
 OBJ_OPT   = $(patsubst %,$(ODIR_OPT)/%,$(SOURCES:.cpp=.o))
 OBJ_ASREV = $(patsubst %,$(ODIR_ASREV)/%,$(SOURCES:.cpp=.o))
@@ -39,6 +40,7 @@ OBJ_CLLIB = $(patsubst %,$(ODIR_CLLIB)/%,$(SOURCES:.cpp=.o))
 OBJ_GCC45 = $(patsubst %,$(ODIR_GCC45)/%,$(SOURCES:.cpp=.o))
 OBJ_GCC46 = $(patsubst %,$(ODIR_GCC46)/%,$(SOURCES:.cpp=.o))
 OBJ_NOTHR = $(patsubst %,$(ODIR_NOTHR)/%,$(SOURCES:.cpp=.o))
+OBJ_TESTS = $(patsubst tests/%,$(ODIR_TESTS)/%,$(TEST_SOURCES:.cpp=.o))
 
 $(ODIR_DEPS)/%.makedeps: %.cpp
 	@set -e; mkdir -p $(ODIR_DEPS); rm -f $@; \
@@ -82,6 +84,8 @@ lasercake-test-concurrent: $(ODIR_TESTS)/concurrency_utils_tests.o $(ODIR_TESTS)
 lasercake-test-bounds-checked-int: $(ODIR_TESTS)/bounds_checked_int_tests.o $(ODIR_TESTS)/test_main.o
 	$(CC) -o $@ $^ $(OPTFLAGS) $(LINK_FLAGS) -lboost_unit_test_framework
 
+compile: $(OBJ_OPT) $(OBJ_TESTS)
+
 include $(DEPS)
 
 $(ODIR_TESTS)/concurrency_utils_tests.o: concurrency_utils.hpp utils.hpp
@@ -123,7 +127,7 @@ $(ODIR_NOTHR)/%.o: %.cpp
 	$(CC) -c -o $@ $< $(OPTFLAGS) $(COMPILE_FLAGS) -DLASERCAKE_NO_THREADS=1
 
 .PHONY :
-	clean
+	clean compile
 
 clean:
 	rm -rf output lasercake lasercake-debug lasercake-optimized \
