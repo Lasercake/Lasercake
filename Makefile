@@ -84,7 +84,7 @@ lasercake-test-bounds-checked-int: $(ODIR_TESTS)/bounds_checked_int_tests.o $(OD
 
 include $(DEPS)
 
-$(ODIR_TESTS)/concurrency_utils_tests.o: concurrency_utils.hpp
+$(ODIR_TESTS)/concurrency_utils_tests.o: concurrency_utils.hpp utils.hpp
 $(ODIR_TESTS)/bounds_checked_int_tests.o: bounds_checked_int.hpp utils.hpp
 $(ODIR_TESTS)/%.o: tests/%.cpp
 	@mkdir -p $(ODIR_TESTS)

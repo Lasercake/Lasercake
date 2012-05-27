@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_CONCURRENCY_UTILS_HPP__
 #define LASERCAKE_CONCURRENCY_UTILS_HPP__
 
+#include "utils.hpp" //for LASERCAKE_NO_THREADS
+
 #ifndef LASERCAKE_NO_THREADS
 #include <boost/thread.hpp>
 #endif
