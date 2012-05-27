@@ -61,4 +61,29 @@ BOOST_AUTO_TEST_CASE( divide_rounding_towards_zero_test ) {
   BOOST_CHECK_THROW(divide_rounding_towards_zero(-3,0), std::logic_error);
 }
 
+BOOST_AUTO_TEST_CASE( non_normalized_rational_test ) {
+  typedef non_normalized_rational<int32_t> rational;
+  BOOST_CHECK_EQUAL(rational(3,6), rational(2,4));
+  BOOST_CHECK(rational(3,6) != rational(3,5));
+  BOOST_CHECK(rational(3,6) < rational(3,5));
+  BOOST_CHECK(rational(3,6) <= rational(3,5));
+  BOOST_CHECK(rational(3,5) > rational(3,6));
+  BOOST_CHECK(rational(3,5) >= rational(3,6));
+  BOOST_CHECK(rational(3,6) <= rational(2,4));
+  BOOST_CHECK(rational(3,6) >= rational(2,4));
+  
+  BOOST_CHECK_EQUAL(rational(0,1), rational(0,2));
+  BOOST_CHECK_EQUAL(rational(0,2), rational(0,-1));
+  BOOST_CHECK_EQUAL(rational(-3,-6), rational(2,4));
+  BOOST_CHECK_EQUAL(rational(3,-6), rational(2,-4));
+  BOOST_CHECK_EQUAL(rational(3,-6), rational(-2,4));
+  BOOST_CHECK(rational(3,6) != rational(3,5));
+  BOOST_CHECK(rational(3,-6) < rational(3,5));
+  BOOST_CHECK(rational(3,6) >= rational(-3,5));
+  BOOST_CHECK(rational(3,-5) < rational(3,-6));
+  BOOST_CHECK(rational(-100,3) >= rational(-1000,4));
+  BOOST_CHECK(rational(-3,-6) <= rational(2,4));
+  BOOST_CHECK(rational(-3,-6) >= rational(-2,4));
+}
+
 }  /* end anonymous namespace */

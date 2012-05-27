@@ -423,6 +423,9 @@ template<typename IntType> struct non_normalized_rational {
   bool operator!=(non_normalized_rational const& o)const {
     return numerator*o.denominator != o.numerator*denominator; }
 };
+template<typename IntType> inline std::ostream& operator<<(std::ostream& os, non_normalized_rational<IntType>const& r) {
+  return os << r.numerator << '/' << r.denominator;
+}
 
 template<typename Stuff> struct literally_random_access_removable_stuff {
 public:
