@@ -9,7 +9,7 @@ CC=$(GCC)
 
 OPTFLAGS=-O3
 UNOPTFLAGS=-O0
-GENERAL_FLAGS=-Wall -Wextra -fmax-errors=15 -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2 $(CFLAGS) $(CXXFLAGS)
+GENERAL_FLAGS=-Wall -Wextra -Wno-unknown-pragmas -fmax-errors=15 -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2 $(CFLAGS) $(CXXFLAGS)
 COMPILE_FLAGS=-std=gnu++0x $(shell sdl-config --cflags) $(CPPFLAGS) $(GENERAL_FLAGS)
 LINK_FLAGS_NO_THREADS=$(shell sdl-config --libs) -lGL -lGLU -lrt $(GENERAL_FLAGS) $(LDFLAGS)
 LINK_FLAGS=-lboost_thread $(LINK_FLAGS_NO_THREADS)
