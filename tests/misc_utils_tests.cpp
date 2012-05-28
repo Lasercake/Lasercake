@@ -33,9 +33,9 @@ namespace /* anonymous */ {
 
 void i64sqrt_test(uint64_t radicand) {
   uint64_t sqrt_result = i64sqrt(radicand); //implicit cast the result to 64 bits so we can square it
-  BOOST_CHECK(sqrt_result * sqrt_result <= radicand);
+  BOOST_CHECK_LE(sqrt_result * sqrt_result, radicand);
   if(sqrt_result != std::numeric_limits<uint32_t>::max()) {
-    BOOST_CHECK((sqrt_result+1) * (sqrt_result+1) > radicand);
+    BOOST_CHECK_GT((sqrt_result+1) * (sqrt_result+1), radicand);
   }
 }
 
@@ -52,9 +52,9 @@ BOOST_AUTO_TEST_CASE( my_sqrt ) {
 
 void i64log2_test(uint64_t argument) {
   uint64_t log_result = i64log2(argument);
-  BOOST_CHECK(1ull << log_result <= argument);
+  BOOST_CHECK_LE(1ull << log_result, argument);
   if(log_result != 63) {
-    BOOST_CHECK(1ull << (log_result+1) > argument);
+    BOOST_CHECK_GT(1ull << (log_result+1), argument);
   }
 }
 
