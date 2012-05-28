@@ -76,6 +76,7 @@ public:
       }
       return true;
     }
+    typedef std::ostream hack_to_make_bbox_collision_detector_bounding_box_ostreamable;
   };
   
   bbox_collision_detector():objects_tree(nullptr){}
@@ -168,6 +169,8 @@ public:
   };
   
 private:
+  friend class bbox_collision_detector_tester;
+  
   static const num_bits_type total_bits = CoordinateBits * NumDimensions;
   
   static Coordinate safe_left_shift_one(num_bits_type shift) {
@@ -237,6 +240,7 @@ private:
       }
     }
   public:
+    typedef std::ostream hack_to_make_bbox_collision_detector_zbox_ostreamable;
     
     zbox():num_low_bits_(total_bits){ for (num_coordinates_type i = 0; i < NumDimensions; ++i) interleaved_bits_[i] = 0; }
 
@@ -324,6 +328,12 @@ private:
     }
     num_bits_type num_low_bits()const {
       return num_low_bits_;
+    }
+    bool operator==(zbox const& other)const {
+      return num_low_bits_ == other.num_low_bits_ && coords_ == other.coords_;
+    }
+    bool operator!=(zbox const& other)const {
+      return !(*this == other);
     }
   };
 
@@ -612,6 +622,21 @@ private:
     }
   };
 };
+
+template<typename BoundingBox>
+inline typename BoundingBox::hack_to_make_bbox_collision_detector_bounding_box_ostreamable& operator<<(std::ostream& os, BoundingBox const& bb) {
+  os << '[';
+  for (size_t i = 0; i < bb.min.size(); ++i) {
+    if(i != 0) os << ',';
+    os << bb.min[i] << '+' << bb.size[i];
+  }
+  os << ']';
+  return os;
+}
+template<typename Zbox>
+inline typename Zbox::hack_to_make_bbox_collision_detector_zbox_ostreamable& operator<<(std::ostream& os, Zbox const& zb) {
+  return os << "0x" << std::hex << zb.get_bbox() << std::dec;
+}
 
 /*
 
