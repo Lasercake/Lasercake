@@ -57,7 +57,7 @@ struct something {
 struct restricted {
   // no default-constructor.
   explicit restricted(something){}
-  bool operator==(restricted const& other) const { return true; }
+  bool operator==(restricted const& /*other*/) const { return true; }
 };
 BOOST_AUTO_TEST_CASE( test_m_var_does_not_require_default_constructible )
 {
