@@ -70,10 +70,6 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   BOOST_CHECK(bb6.overlaps(bb4));
 }
 
-template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
-std::ostream& operator<<(std::ostream& os, typename bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::zbox const& zb);
-//std::ostream& operator<<(std::ostream& os, detector_2d::zbox const& zb);
-
 class bbox_collision_detector_tester {
   // (friend of bbox_collision_detector, so we can test e.g. zbox on its own)
 public:
@@ -128,7 +124,6 @@ public:
     BOOST_CHECK(!rect_in_quartant.subsumes(quartant));
   }
 };
-
 
 BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
   bbox_collision_detector_tester::test_zbox();
