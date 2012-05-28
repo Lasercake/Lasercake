@@ -224,7 +224,7 @@ private:
   // square/cubes of its size, or a rectangle/etc. that consists of 2/etc. of these
   // square/cubes adjacent (in the case that the number of low bits in the first
   // explanation is not a multiple of NumDimensions).
-  struct zbox {
+  class zbox {
   private:
     // We ensure that every bit except the ones specifically supposed to be on is off.
     // (Specifically, the "low bits" are zero.)
