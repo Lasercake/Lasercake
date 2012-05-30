@@ -2,6 +2,7 @@
 callgrind.out.*
 sim
 /output
+/build
 /lasercake
 /lasercake-*
 .*.swp
