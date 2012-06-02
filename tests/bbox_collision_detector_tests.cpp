@@ -83,6 +83,30 @@ public:
     const detector_2d::zbox rect_in_quartant = detector_2d::zbox::box_from_coords(boxcoords2, 30*2+1);
     const detector_2d::zbox one_by_one_2 = detector_2d::zbox::box_from_coords(boxcoords3, 0);
 
+    // bits are ordered ZYXZYXZYX... (or in 2D, YXYXYX...)
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(63), true);
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(62), true);
+    
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(61), true);
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(60), false);
+    
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(59), false);
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(58), false);
+    
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(57), false);
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(56), false);
+    
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(1), true);
+    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(0), false);
+
+    BOOST_CHECK_EQUAL(quartant.num_low_bits(), 62);
+    BOOST_CHECK_EQUAL(quartant.num_low_bits_by_dimension(X), 31);
+    BOOST_CHECK_EQUAL(quartant.num_low_bits_by_dimension(Y), 31);
+    
+    BOOST_CHECK_EQUAL(rect_in_quartant.num_low_bits(), 61);
+    BOOST_CHECK_EQUAL(rect_in_quartant.num_low_bits_by_dimension(X), 31);
+    BOOST_CHECK_EQUAL(rect_in_quartant.num_low_bits_by_dimension(Y), 30);
+    
     // Both the size *and* location have to be the same for equality.
     BOOST_CHECK_EQUAL(one_by_one, one_by_one);
     BOOST_CHECK_NE(one_by_one, one_by_one_2);
