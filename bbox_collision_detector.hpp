@@ -198,15 +198,8 @@ private:
   }
 
   static num_bits_type num_bits_in_integer_that_are_not_leading_zeroes(Coordinate i) {
-    int upper_bound = CoordinateBits;
-    int lower_bound = -1;
-    while(true) {
-      int halfway_bit_idx = (upper_bound + lower_bound) >> 1;
-      if (halfway_bit_idx == lower_bound) return (lower_bound + 1);
-
-      if (i & ~this_many_low_bits(halfway_bit_idx)) lower_bound = halfway_bit_idx;
-      else                                          upper_bound = halfway_bit_idx;
-    }
+    if(i == 0) return 0;
+    else return i64log2(i) + 1;
   }
 
   static Coordinate max_in_array_of_unsigned(std::array<Coordinate, NumDimensions> const& arr) {
