@@ -40,6 +40,21 @@ typedef ptrdiff_t num_bits_type;
 typedef ptrdiff_t num_coordinates_type;
 typedef ptrdiff_t num_zboxes_type;
 
+template<typename BoundingBox>
+inline typename BoundingBox::hack_to_make_bbox_collision_detector_bounding_box_ostreamable& operator<<(std::ostream& os, BoundingBox const& bb) {
+  os << '[';
+  for (size_t i = 0; i < bb.min.size(); ++i) {
+    if(i != 0) os << ',';
+    os << bb.min[i] << '+' << bb.size[i];
+  }
+  os << ']';
+  return os;
+}
+template<typename Zbox>
+inline typename Zbox::hack_to_make_bbox_collision_detector_zbox_ostreamable& operator<<(std::ostream& os, Zbox const& zb) {
+  return os << "0x" << std::hex << zb.get_bbox() << std::dec;
+}
+
 // ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
 // CoordinateBits should usually be 32 or 64. I don't know if it works for other values.
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
@@ -623,20 +638,6 @@ private:
   };
 };
 
-template<typename BoundingBox>
-inline typename BoundingBox::hack_to_make_bbox_collision_detector_bounding_box_ostreamable& operator<<(std::ostream& os, BoundingBox const& bb) {
-  os << '[';
-  for (size_t i = 0; i < bb.min.size(); ++i) {
-    if(i != 0) os << ',';
-    os << bb.min[i] << '+' << bb.size[i];
-  }
-  os << ']';
-  return os;
-}
-template<typename Zbox>
-inline typename Zbox::hack_to_make_bbox_collision_detector_zbox_ostreamable& operator<<(std::ostream& os, Zbox const& zb) {
-  return os << "0x" << std::hex << zb.get_bbox() << std::dec;
-}
 
 /*
 
