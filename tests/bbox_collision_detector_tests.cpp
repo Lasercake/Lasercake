@@ -78,28 +78,31 @@ public:
     const std::array<detector_2d::coordinate_type, 2> boxcoords2 = {{ 0x80000000u, 0x80000000u }};
     const std::array<detector_2d::coordinate_type, 2> boxcoords3 = {{ 0x80000000u, 0xc0000013u }};
     const std::array<detector_2d::coordinate_type, 2> boxcoords4 = {{ 0xc0000000u, 0xc0000013u }};
+    const std::array<detector_2d::coordinate_type, 2> boxcoords5 = {{ 0xc0000000u, 0x80000000u }};
     const detector_2d::zbox everywhere = detector_2d::zbox::box_from_coords(boxcoords1, 32*2); //32bits * 2dimensions
     const detector_2d::zbox one_by_one = detector_2d::zbox::box_from_coords(boxcoords1, 0);
     const detector_2d::zbox quartant = detector_2d::zbox::box_from_coords(boxcoords2, 31*2);
     const detector_2d::zbox rect_in_quartant = detector_2d::zbox::box_from_coords(boxcoords2, 30*2+1);
-    const detector_2d::zbox one_by_one_2 = detector_2d::zbox::box_from_coords(boxcoords3, 0);
-    const detector_2d::zbox one_by_one_3 = detector_2d::zbox::box_from_coords(boxcoords4, 0);
+    //const detector_2d::zbox one_by_one_2 = detector_2d::zbox::box_from_coords(boxcoords2, 0);
+    const detector_2d::zbox one_by_one_3 = detector_2d::zbox::box_from_coords(boxcoords3, 0);
+    const detector_2d::zbox one_by_one_4 = detector_2d::zbox::box_from_coords(boxcoords4, 0);
+    const detector_2d::zbox one_by_one_5 = detector_2d::zbox::box_from_coords(boxcoords5, 0);
 
     // bits are ordered ZYXZYXZYX... (or in 2D, YXYXYX...)
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(63), true);
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(62), true);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(63), true);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(62), true);
     
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(61), true);
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(60), false);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(61), true);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(60), false);
     
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(59), false);
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(58), false);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(59), false);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(58), false);
     
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(57), false);
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(56), false);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(57), false);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(56), false);
     
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(1), true);
-    BOOST_CHECK_EQUAL(one_by_one_2.get_bit(0), false);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(1), true);
+    BOOST_CHECK_EQUAL(one_by_one_3.get_bit(0), false);
 
     BOOST_CHECK_EQUAL(quartant.num_low_bits(), 62);
     BOOST_CHECK_EQUAL(quartant.num_low_bits_by_dimension(X), 31);
@@ -111,7 +114,7 @@ public:
     
     // Both the size *and* location have to be the same for equality.
     BOOST_CHECK_EQUAL(one_by_one, one_by_one);
-    BOOST_CHECK_NE(one_by_one, one_by_one_2);
+    BOOST_CHECK_NE(one_by_one, one_by_one_3);
     BOOST_CHECK_NE(one_by_one, everywhere);
     
     // subsumes is reflexive
@@ -119,28 +122,28 @@ public:
     BOOST_CHECK(one_by_one.subsumes(one_by_one));
     BOOST_CHECK(quartant.subsumes(quartant));
     BOOST_CHECK(rect_in_quartant.subsumes(rect_in_quartant));
-    BOOST_CHECK(one_by_one_2.subsumes(one_by_one_2));
+    BOOST_CHECK(one_by_one_3.subsumes(one_by_one_3));
     
     // 'everywhere' subsumes everywhere
     BOOST_CHECK(everywhere.subsumes(everywhere));
     BOOST_CHECK(everywhere.subsumes(one_by_one));
     BOOST_CHECK(everywhere.subsumes(quartant));
     BOOST_CHECK(everywhere.subsumes(rect_in_quartant));
-    BOOST_CHECK(everywhere.subsumes(one_by_one_2));
+    BOOST_CHECK(everywhere.subsumes(one_by_one_3));
 
     // subsumes is antisymmetric (two things can only subsume each other if they are equal).
     BOOST_CHECK(!one_by_one.subsumes(everywhere));
     BOOST_CHECK(!quartant.subsumes(everywhere));
     BOOST_CHECK(!rect_in_quartant.subsumes(everywhere));
-    BOOST_CHECK(!one_by_one_2.subsumes(everywhere));
+    BOOST_CHECK(!one_by_one_3.subsumes(everywhere));
     
     // because they're zboxes, either one subsumes the other or they don't overlap.
     // (not tested thoroughly.)
 
     // smallest_joint_parent can create non-square rectangles correctly:
-    const detector_2d::zbox should_be_a_rect = detector_2d::zbox::smallest_joint_parent(one_by_one_2, one_by_one_3);
-    BOOST_CHECK(should_be_a_rect.subsumes(one_by_one_2));
+    const detector_2d::zbox should_be_a_rect = detector_2d::zbox::smallest_joint_parent(one_by_one_3, one_by_one_4);
     BOOST_CHECK(should_be_a_rect.subsumes(one_by_one_3));
+    BOOST_CHECK(should_be_a_rect.subsumes(one_by_one_4));
     BOOST_CHECK_EQUAL(should_be_a_rect.num_low_bits(), 61);
     BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(63), true);
     BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(62), true);
@@ -148,15 +151,19 @@ public:
     BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(60), false);
     BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(59), false);
     BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(58), false);
+
+    // but rectangles shaped in the other direction are impossible:
+    const detector_2d::zbox should_not_be_a_rect = detector_2d::zbox::smallest_joint_parent(one_by_one_4, one_by_one_5);
+    BOOST_CHECK_EQUAL(should_not_be_a_rect, quartant);
     
-    BOOST_CHECK(!rect_in_quartant.subsumes(one_by_one_2));
-    BOOST_CHECK(!one_by_one_2.subsumes(rect_in_quartant));
-    const detector_2d::zbox joint_parent = detector_2d::zbox::smallest_joint_parent(rect_in_quartant, one_by_one_2);
+    BOOST_CHECK(!rect_in_quartant.subsumes(one_by_one_3));
+    BOOST_CHECK(!one_by_one_3.subsumes(rect_in_quartant));
+    const detector_2d::zbox joint_parent = detector_2d::zbox::smallest_joint_parent(rect_in_quartant, one_by_one_3);
     BOOST_CHECK_EQUAL(joint_parent, quartant);
     BOOST_CHECK_NE(joint_parent, rect_in_quartant);
-    BOOST_CHECK_NE(joint_parent, one_by_one_2);
+    BOOST_CHECK_NE(joint_parent, one_by_one_3);
     BOOST_CHECK(joint_parent.subsumes(rect_in_quartant));
-    BOOST_CHECK(joint_parent.subsumes(one_by_one_2));
+    BOOST_CHECK(joint_parent.subsumes(one_by_one_3));
     const detector_2d::zbox joint_parent_2 = detector_2d::zbox::smallest_joint_parent(rect_in_quartant, quartant);
     BOOST_CHECK_EQUAL(joint_parent_2, quartant);
     BOOST_CHECK(!rect_in_quartant.subsumes(quartant));
