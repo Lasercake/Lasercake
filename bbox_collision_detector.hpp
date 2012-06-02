@@ -237,7 +237,6 @@ private:
     // We ensure that every bit except the ones specifically supposed to be on is off.
     // (Specifically, the "low bits" are zero.)
     std::array<Coordinate, NumDimensions> coords_;
-    std::array<Coordinate, NumDimensions> interleaved_bits_;
     num_bits_type num_low_bits_;
     bounding_box bbox_;
 
@@ -250,43 +249,39 @@ private:
   public:
     typedef std::ostream hack_to_make_bbox_collision_detector_zbox_ostreamable;
     
-    zbox():num_low_bits_(total_bits){ for (num_coordinates_type i = 0; i < NumDimensions; ++i) interleaved_bits_[i] = 0; }
+    zbox():num_low_bits_(total_bits){}
 
     // Named constructor idiom
     static zbox smallest_joint_parent(zbox zb1, zbox zb2) {
       zbox new_box;
-      const num_bits_type min_low_bits = std::max(zb1.num_low_bits_, zb2.num_low_bits_);
-      for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-        const num_bits_type bits_lower_than_this_part_of_interleaved_bits = i * CoordinateBits;
-        const num_bits_type local_first_high_bit_idx = std::max(
-          num_bits_in_integer_that_are_not_leading_zeroes(zb1.interleaved_bits_[i] ^ zb2.interleaved_bits_[i]),
-          min_low_bits - bits_lower_than_this_part_of_interleaved_bits
-        );
-        const bool clearly_done = local_first_high_bit_idx > 0;
-
-        assert_if_ASSERT_EVERYTHING((zb1.interleaved_bits_[i] & ~this_many_low_bits(local_first_high_bit_idx))
-                                 == (zb2.interleaved_bits_[i] & ~this_many_low_bits(local_first_high_bit_idx)));
-
-        new_box.interleaved_bits_[i] = zb1.interleaved_bits_[i] & ~this_many_low_bits(local_first_high_bit_idx);
-        if (clearly_done) {
-          new_box.num_low_bits_ = local_first_high_bit_idx + bits_lower_than_this_part_of_interleaved_bits;
-          for (num_coordinates_type j = 0; j < NumDimensions; ++j) {
-            assert_if_ASSERT_EVERYTHING(
-                 (zb1.coords_[j] & ~this_many_low_bits(new_box.num_low_bits_by_dimension(j)))
-              == (zb2.coords_[j] & ~this_many_low_bits(new_box.num_low_bits_by_dimension(j)))
-            );
-
-            new_box.coords_[j] = zb1.coords_[j] & ~this_many_low_bits(new_box.num_low_bits_by_dimension(j));
-          }
-          new_box.compute_bbox_();
-          return new_box;
-        }
+      num_bits_type dim_low_bits_heuristic[NumDimensions];
+      num_bits_type largest_dim_low_bits = 0;
+      for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
+        const Coordinate uncommon_bits =
+            (zb1.coords_[i] | this_many_low_bits(zb2.num_low_bits_by_dimension(i)))
+          ^ (zb2.coords_[i] & ~this_many_low_bits(zb1.num_low_bits_by_dimension(i)));
+        const num_bits_type this_dimension_low_bits = num_bits_in_integer_that_are_not_leading_zeroes(uncommon_bits);
+        dim_low_bits_heuristic[i] = this_dimension_low_bits;
+        if(largest_dim_low_bits < this_dimension_low_bits) largest_dim_low_bits = this_dimension_low_bits;
       }
-      new_box.num_low_bits_ = min_low_bits;
-
-      assert_if_ASSERT_EVERYTHING(zb1.coords_ == zb2.coords_);
-
-      new_box.coords_ = zb1.coords_;
+      const num_bits_type low_bits_minor = largest_dim_low_bits - 1;
+      const num_bits_type low_bits_major = largest_dim_low_bits;
+      num_bits_type lim_low_bits = low_bits_minor;
+      num_bits_type dim_low_bits[NumDimensions];
+      num_bits_type total_low_bits = 0;
+      for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
+        if(dim_low_bits_heuristic[i] ==/*a.k.a.>=*/ low_bits_major) lim_low_bits = low_bits_major;
+        dim_low_bits[i] = lim_low_bits;
+        total_low_bits += lim_low_bits;
+      }
+      new_box.num_low_bits_ = total_low_bits;
+      for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
+        assert_if_ASSERT_EVERYTHING(
+             (zb1.coords_[i] & ~this_many_low_bits(dim_low_bits[i]))
+          == (zb2.coords_[i] & ~this_many_low_bits(dim_low_bits[i]))
+        );
+        new_box.coords_[i] = zb1.coords_[i] & ~this_many_low_bits(dim_low_bits[i]);
+      }
       new_box.compute_bbox_();
       return new_box;
     }
@@ -294,20 +289,8 @@ private:
     static zbox box_from_coords(std::array<Coordinate, NumDimensions> const& coords, num_bits_type num_low_bits) {
       zbox result;
       result.num_low_bits_ = num_low_bits;
-      for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
+      for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
         result.coords_[i] = coords[i] & ~this_many_low_bits(result.num_low_bits_by_dimension(i));
-      }
-      for (num_bits_type bit_within_interleaved_bits = num_low_bits;
-                        bit_within_interleaved_bits < total_bits;
-                      ++bit_within_interleaved_bits) {
-        const num_bits_type bit_idx_within_coordinates = bit_within_interleaved_bits / NumDimensions;
-        const num_coordinates_type which_coordinate    = bit_within_interleaved_bits % NumDimensions;
-        const num_bits_type interleaved_bit_array_idx  = bit_within_interleaved_bits / CoordinateBits;
-        const num_bits_type interleaved_bit_local_idx  = bit_within_interleaved_bits % CoordinateBits;
-
-        assert_if_ASSERT_EVERYTHING(bit_idx_within_coordinates >= result.num_low_bits_by_dimension(which_coordinate));
-
-        result.interleaved_bits_[interleaved_bit_array_idx] |= ((coords[which_coordinate] >> bit_idx_within_coordinates) & 1) << interleaved_bit_local_idx;
       }
       result.compute_bbox_();
       return result;
@@ -315,17 +298,13 @@ private:
     
     bool subsumes(zbox const& other)const {
       if (other.num_low_bits_ > num_low_bits_) return false;
-      for (num_coordinates_type i = num_low_bits_ / CoordinateBits; i < NumDimensions; ++i) {
-        Coordinate mask = ~Coordinate(0);
-        if (i == num_low_bits_ / CoordinateBits) {
-          mask &= ~this_many_low_bits(num_low_bits_ % CoordinateBits);
-        }
-        if ((interleaved_bits_[i] & mask) != (other.interleaved_bits_[i] & mask)) return false;
+      for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
+        if (coords_[i] != (other.coords_[i] & ~this_many_low_bits(num_low_bits_by_dimension(i)))) return false;
       }
       return true;
     }
     bool get_bit(num_bits_type bit)const {
-      return interleaved_bits_[bit / CoordinateBits] & safe_left_shift_one(bit % CoordinateBits);
+      return coords_[bit % NumDimensions] & safe_left_shift_one(bit / NumDimensions);
     }
     num_bits_type num_low_bits_by_dimension(num_coordinates_type dim)const {
       return (num_low_bits_ + (NumDimensions - 1) - dim) / NumDimensions;
