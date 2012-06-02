@@ -77,11 +77,13 @@ public:
     const std::array<detector_2d::coordinate_type, 2> boxcoords1 = {{ 0, 0 }};
     const std::array<detector_2d::coordinate_type, 2> boxcoords2 = {{ 0x80000000u, 0x80000000u }};
     const std::array<detector_2d::coordinate_type, 2> boxcoords3 = {{ 0x80000000u, 0xc0000013u }};
+    const std::array<detector_2d::coordinate_type, 2> boxcoords4 = {{ 0xc0000000u, 0xc0000013u }};
     const detector_2d::zbox everywhere = detector_2d::zbox::box_from_coords(boxcoords1, 32*2); //32bits * 2dimensions
     const detector_2d::zbox one_by_one = detector_2d::zbox::box_from_coords(boxcoords1, 0);
     const detector_2d::zbox quartant = detector_2d::zbox::box_from_coords(boxcoords2, 31*2);
     const detector_2d::zbox rect_in_quartant = detector_2d::zbox::box_from_coords(boxcoords2, 30*2+1);
     const detector_2d::zbox one_by_one_2 = detector_2d::zbox::box_from_coords(boxcoords3, 0);
+    const detector_2d::zbox one_by_one_3 = detector_2d::zbox::box_from_coords(boxcoords4, 0);
 
     // bits are ordered ZYXZYXZYX... (or in 2D, YXYXYX...)
     BOOST_CHECK_EQUAL(one_by_one_2.get_bit(63), true);
@@ -134,6 +136,18 @@ public:
     
     // because they're zboxes, either one subsumes the other or they don't overlap.
     // (not tested thoroughly.)
+
+    // smallest_joint_parent can create non-square rectangles correctly:
+    const detector_2d::zbox should_be_a_rect = detector_2d::zbox::smallest_joint_parent(one_by_one_2, one_by_one_3);
+    BOOST_CHECK(should_be_a_rect.subsumes(one_by_one_2));
+    BOOST_CHECK(should_be_a_rect.subsumes(one_by_one_3));
+    BOOST_CHECK_EQUAL(should_be_a_rect.num_low_bits(), 61);
+    BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(63), true);
+    BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(62), true);
+    BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(61), true);
+    BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(60), false);
+    BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(59), false);
+    BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(58), false);
     
     BOOST_CHECK(!rect_in_quartant.subsumes(one_by_one_2));
     BOOST_CHECK(!one_by_one_2.subsumes(rect_in_quartant));
