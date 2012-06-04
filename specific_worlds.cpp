@@ -162,8 +162,9 @@ worldgen_function_t make_world_building_func(std::string scenario) {
     };
     return worldgen_from_tilespec(with_state<hills>());
   }
-  if (scenario == "pressure_tunnel") {
-    return worldgen_from_tilespec([](coords l)->tile_contents {
+  if (scenario == "pressure_tunnel" || scenario == "pressure_tunnel_ground") {
+    const bool has_ground = (scenario == "pressure_tunnel_ground");
+    return worldgen_from_tilespec([has_ground](coords l)->tile_contents {
       const coord tower_lower_coord = wcc;
       const coord tower_upper_coord = wcc+10;
       const coord tower_height = 200;
@@ -186,6 +187,9 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         ( l.x >= tower_lower_coord-1 && l.x < tower_upper_coord+1 &&
           l.y >= tower_lower_coord-1 && l.y < tower_upper_coord+1 &&
           l.z >= wcc-1 && l.z < wcc + tower_height+1
+        ) ? ROCK :
+
+        ( l.z <= wcc-1 && has_ground
         ) ? ROCK :
         
         AIR;
