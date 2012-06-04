@@ -69,17 +69,19 @@ shape world::get_detail_shape_of_object_or_tile(object_or_tile_identifier id)con
 
 
 tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_top() {
-  map_t::reverse_iterator iter = data_.rbegin();
-  const tile_location result = iter->second.get_random();
-  iter->second.erase(result);
-  if (iter->second.empty()) data_.erase(iter->first); // can't erase from a reverse_iterator
+  const map_t::iterator iter_at_top = boost::prior(data_.end());
+  literally_random_access_removable_stuff<tile_location>& tiles_at_top = iter_at_top->second;
+  const tile_location result = tiles_at_top.get_random();
+  tiles_at_top.erase(result);
+  if (tiles_at_top.empty()) data_.erase(iter_at_top);
   return result;
 }
 tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_bottom() {
-  map_t::iterator iter = data_.begin();
-  const tile_location result = iter->second.get_random();
-  iter->second.erase(result);
-  if (iter->second.empty()) data_.erase(iter);
+  const map_t::iterator iter_at_bottom = data_.begin();
+  literally_random_access_removable_stuff<tile_location>& tiles_at_bottom = iter_at_bottom->second;
+  const tile_location result = tiles_at_bottom.get_random();
+  tiles_at_bottom.erase(result);
+  if (tiles_at_bottom.empty()) data_.erase(iter_at_bottom);
   return result;
 }
 bool literally_random_access_removable_tiles_by_height::erase(tile_location const& loc) {
