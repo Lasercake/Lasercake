@@ -41,38 +41,46 @@ namespace /* anonymous */ {
 
 const coord wcc = world_center_tile_coord;
 
-const int max_simple_hill_width = 20;
+class simple_hills {
+public:
+  tile_contents operator()(coords l) {
+    const coord height = get_height(make_pair(l.x, l.y));
+    return
+      (l.z < height) ? ROCK : AIR;
+  }
+private:
+  unordered_map<std::pair<coord, coord>, int> hills_map_;
+  unordered_map<std::pair<coord, coord>, coord> height_map_;
+  
+  static const int max_simple_hill_width = 20;
 
-int get_hill(
-          unordered_map<std::pair<coord, coord>, int>& hills_map,
-          pair<coord, coord> loc) {
-  const auto iter = hills_map.find(loc);
-  if (iter == hills_map.end()) {
-    int hill = (rand()&255) ? 0 : (1 + (rand()%max_simple_hill_width));
-    hills_map.insert(make_pair(loc, hill));
-    return hill;
-  }
-  else return iter->second;
-}
-coord get_height(
-          unordered_map<std::pair<coord, coord>, coord>& height_map,
-          unordered_map<std::pair<coord, coord>, int>& hills_map,
-          pair<coord, coord> loc) {
-  const auto iter = height_map.find(loc);
-  if (iter == height_map.end()) {
-    coord height = world_center_tile_coord - 100;
-    const coord x = loc.first;
-    const coord y = loc.second;
-    for (coord x2 = x - max_simple_hill_width; x2 <= x + max_simple_hill_width; ++x2) {
-      for (coord y2 = y - max_simple_hill_width; y2 <= y + max_simple_hill_width; ++y2) {
-        height += std::max(0, get_hill(hills_map, make_pair(x2, y2)) - get_un_bounds_checked<int>(i64sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y))));
-      }
+  int get_hill(pair<coord, coord> loc) {
+    const auto iter = hills_map_.find(loc);
+    if (iter == hills_map_.end()) {
+      int hill = (rand()&255) ? 0 : (1 + (rand()%max_simple_hill_width));
+      hills_map_.insert(make_pair(loc, hill));
+      return hill;
     }
-    height_map.insert(make_pair(loc, height));
-    return height;
+    else return iter->second;
   }
-  else return iter->second;
-}
+  
+  coord get_height(pair<coord, coord> loc) {
+    const auto iter = height_map_.find(loc);
+    if (iter == height_map_.end()) {
+      coord height = world_center_tile_coord - 100;
+      const coord x = loc.first;
+      const coord y = loc.second;
+      for (coord x2 = x - max_simple_hill_width; x2 <= x + max_simple_hill_width; ++x2) {
+        for (coord y2 = y - max_simple_hill_width; y2 <= y + max_simple_hill_width; ++y2) {
+          height += std::max(0, get_hill(make_pair(x2, y2)) - get_un_bounds_checked<int>(i64sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y))));
+        }
+      }
+      height_map_.insert(make_pair(loc, height));
+      return height;
+    }
+    else return iter->second;
+  }
+};
 
 
 
@@ -151,16 +159,7 @@ worldgen_function_t make_world_building_func(std::string scenario) {
     });
   }
   if (scenario == "simple_hills") {
-    struct hills {
-      unordered_map<std::pair<coord, coord>, int> hills_map;
-      unordered_map<std::pair<coord, coord>, coord> height_map;
-      tile_contents operator()(coords l) {
-        const coord height = get_height(height_map, hills_map, make_pair(l.x, l.y));
-        return
-          (l.z < height) ? ROCK : AIR;
-      }
-    };
-    return worldgen_from_tilespec(with_state<hills>());
+    return worldgen_from_tilespec(with_state<simple_hills>());
   }
   if (scenario == "pressure_tunnel" || scenario == "pressure_tunnel_ground") {
     const bool has_ground = (scenario == "pressure_tunnel_ground");
