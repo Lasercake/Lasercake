@@ -179,7 +179,7 @@ struct zbox_tester {
 };
 
 
-static void mainLoop (std::string scenario)
+static void mainLoop (std::string /*scenario*/)
 {
   SDL_Event event;
   int done = 0;
