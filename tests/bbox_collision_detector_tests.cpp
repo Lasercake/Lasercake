@@ -80,7 +80,7 @@ public:
     const std::array<detector_2d::coordinate_type, 2> boxcoords4 = {{ 0xc0000000u, 0xc0000013u }};
     const std::array<detector_2d::coordinate_type, 2> boxcoords5 = {{ 0xc0000000u, 0x80000000u }};
     const detector_2d::zbox everywhere = detector_2d::zbox::box_from_coords(boxcoords1, 32*2); //32bits * 2dimensions
-    const detector_2d::zbox one_by_one = detector_2d::zbox::box_from_coords(boxcoords1, 0);
+    const detector_2d::zbox one_by_one_1 = detector_2d::zbox::box_from_coords(boxcoords1, 0);
     const detector_2d::zbox quartant = detector_2d::zbox::box_from_coords(boxcoords2, 31*2);
     const detector_2d::zbox rect_in_quartant = detector_2d::zbox::box_from_coords(boxcoords2, 30*2+1);
     //const detector_2d::zbox one_by_one_2 = detector_2d::zbox::box_from_coords(boxcoords2, 0);
@@ -113,26 +113,26 @@ public:
     BOOST_CHECK_EQUAL(rect_in_quartant.num_low_bits_by_dimension(Y), 30);
     
     // Both the size *and* location have to be the same for equality.
-    BOOST_CHECK_EQUAL(one_by_one, one_by_one);
-    BOOST_CHECK_NE(one_by_one, one_by_one_3);
-    BOOST_CHECK_NE(one_by_one, everywhere);
+    BOOST_CHECK_EQUAL(one_by_one_1, one_by_one_1);
+    BOOST_CHECK_NE(one_by_one_1, one_by_one_3);
+    BOOST_CHECK_NE(one_by_one_1, everywhere);
     
     // subsumes is reflexive
     BOOST_CHECK(everywhere.subsumes(everywhere));
-    BOOST_CHECK(one_by_one.subsumes(one_by_one));
+    BOOST_CHECK(one_by_one_1.subsumes(one_by_one_1));
     BOOST_CHECK(quartant.subsumes(quartant));
     BOOST_CHECK(rect_in_quartant.subsumes(rect_in_quartant));
     BOOST_CHECK(one_by_one_3.subsumes(one_by_one_3));
     
     // 'everywhere' subsumes everywhere
     BOOST_CHECK(everywhere.subsumes(everywhere));
-    BOOST_CHECK(everywhere.subsumes(one_by_one));
+    BOOST_CHECK(everywhere.subsumes(one_by_one_1));
     BOOST_CHECK(everywhere.subsumes(quartant));
     BOOST_CHECK(everywhere.subsumes(rect_in_quartant));
     BOOST_CHECK(everywhere.subsumes(one_by_one_3));
 
     // subsumes is antisymmetric (two things can only subsume each other if they are equal).
-    BOOST_CHECK(!one_by_one.subsumes(everywhere));
+    BOOST_CHECK(!one_by_one_1.subsumes(everywhere));
     BOOST_CHECK(!quartant.subsumes(everywhere));
     BOOST_CHECK(!rect_in_quartant.subsumes(everywhere));
     BOOST_CHECK(!one_by_one_3.subsumes(everywhere));
