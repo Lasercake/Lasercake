@@ -112,7 +112,7 @@ struct floating_poly {
   bool collided;
 };
 
-static void mainLoop (std::string scenario)
+static void mainLoop (std::string /*scenario*/)
 {
   SDL_Event event;
   int done = 0;
@@ -156,7 +156,7 @@ for (int i = 0; i < 50; ++i) {
     laer.push_back(vector3<int64_t>(0, -20, 0));
     convex_polygon oafe(laer);
     line_segment flwj(vector3<int64_t>(0, 0, 50), vector3<int64_t>(0, 0, -50));
-    assert(intersects(flwj, oafe));
+    assert(shape(flwj).intersects(oafe));
  }
     
   while ( !done ) {
@@ -235,7 +235,7 @@ for (int i = 0; i < 50; ++i) {
     }
     for (floating_line& foo : lines) {
       for (floating_poly& bar : polys) {
-        if (intersects(line_segment(foo.ends), convex_polygon(bar.vertices))) {
+        if (shape(line_segment(foo.ends)).intersects(convex_polygon(bar.vertices))) {
           foo.collided = true;
           bar.collided = true;
       std::cerr << "GRONK\n";
