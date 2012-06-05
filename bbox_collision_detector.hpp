@@ -303,6 +303,15 @@ private:
       }
       return true;
     }
+    bool overlaps(zbox const& other)const {
+      for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
+        if ( (coords_[i] & ~this_many_low_bits(other.num_low_bits_by_dimension(i)))
+          != (other.coords_[i] & ~this_many_low_bits(num_low_bits_by_dimension(i)))) {
+            return false;
+        }
+      }
+      return true;
+    }
     bool get_bit(num_bits_type bit)const {
       return coords_[bit % NumDimensions] & safe_left_shift_one(bit / NumDimensions);
     }
