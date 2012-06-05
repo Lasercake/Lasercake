@@ -23,6 +23,7 @@
 #define LASERCAKE_BBOX_COLLISION_DETECTOR_HPP__
 
 #include <boost/integer.hpp>
+#include <boost/integer/static_log2.hpp>
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
@@ -55,6 +56,15 @@ inline typename Zbox::hack_to_make_bbox_collision_detector_zbox_ostreamable& ope
   return os << "0x" << std::hex << zb.get_bbox() << std::dec;
 }
 
+template<num_bits_type Bits>
+struct static_num_bits_in_integer_that_are_not_leading_zeroes {
+  static const num_bits_type value = boost::static_log2<Bits>::value + 1;
+};
+template<>
+struct static_num_bits_in_integer_that_are_not_leading_zeroes<0> {
+  static const num_bits_type value = 0;
+};
+
 // ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
 // CoordinateBits should usually be 32 or 64. I don't know if it works for other values.
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
@@ -65,6 +75,8 @@ class bbox_collision_detector {
   static_assert(CoordinateBits >= 0, "You can't have an int type with negative bits!");
   
   typedef typename boost::uint_t<CoordinateBits>::fast Coordinate;
+  //small_num_bits_type can represent at least [0,CoordinateBits] inclusive.
+  typedef typename boost::uint_t<static_num_bits_in_integer_that_are_not_leading_zeroes<CoordinateBits>::value>::least small_num_bits_type;
   struct custom_walker;
   friend class zbox_tester;
 
@@ -237,15 +249,9 @@ private:
     // We ensure that every bit except the ones specifically supposed to be on is off.
     // (Specifically, the "low bits" are zero.)
     std::array<Coordinate, NumDimensions> coords_;
-    num_bits_type num_low_bits_;
-    bounding_box bbox_;
+    small_num_bits_type num_low_bits_;
+    std::array<small_num_bits_type, NumDimensions> dim_num_low_bits_;
 
-    void compute_bbox_() {
-      bbox_.min = coords_;
-      for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-        bbox_.size[i] = safe_left_shift_one(num_low_bits_by_dimension(i));
-      }
-    }
   public:
     typedef std::ostream hack_to_make_bbox_collision_detector_zbox_ostreamable;
     
@@ -272,6 +278,7 @@ private:
       for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
         if(dim_low_bits_heuristic[i] ==/*a.k.a.>=*/ low_bits_major) lim_low_bits = low_bits_major;
         dim_low_bits[i] = lim_low_bits;
+        new_box.dim_num_low_bits_[i] = lim_low_bits;
         total_low_bits += lim_low_bits;
       }
       new_box.num_low_bits_ = total_low_bits;
@@ -282,17 +289,18 @@ private:
         );
         new_box.coords_[i] = zb1.coords_[i] & ~this_many_low_bits(dim_low_bits[i]);
       }
-      new_box.compute_bbox_();
       return new_box;
     }
 
     static zbox box_from_coords(std::array<Coordinate, NumDimensions> const& coords, num_bits_type num_low_bits) {
       zbox result;
       result.num_low_bits_ = num_low_bits;
+      const num_bits_type base_num_low_bits = num_low_bits / NumDimensions;
+      const num_bits_type tweak_num_low_bits = num_low_bits % NumDimensions;
       for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
+        result.dim_num_low_bits_[i] = base_num_low_bits + (i < tweak_num_low_bits);
         result.coords_[i] = coords[i] & ~this_many_low_bits(result.num_low_bits_by_dimension(i));
       }
-      result.compute_bbox_();
       return result;
     }
     
@@ -312,15 +320,28 @@ private:
       }
       return true;
     }
+    bool overlaps(bounding_box const& bbox)const {
+      for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
+        const Coordinate this_size_i = safe_left_shift_one(num_low_bits_by_dimension(i));
+        if (bbox.min[i] + (bbox.size[i] - 1) <  coords_[i]) return false;
+        if ( coords_[i] + (this_size_i  - 1) < bbox.min[i]) return false;
+      }
+      return true;
+    }
     bool get_bit(num_bits_type bit)const {
       return coords_[bit % NumDimensions] & safe_left_shift_one(bit / NumDimensions);
     }
     num_bits_type num_low_bits_by_dimension(num_coordinates_type dim)const {
-      return (num_low_bits_ + (NumDimensions - 1) - dim) / NumDimensions;
+      return dim_num_low_bits_[dim];
     }
     // note: gives "size=0" for max-sized things
-    bounding_box const& get_bbox()const {
-      return bbox_;
+    bounding_box get_bbox()const {
+      bounding_box bbox;
+      bbox.min = coords_;
+      for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
+        bbox.size[i] = safe_left_shift_one(num_low_bits_by_dimension(i));
+      }
+      return bbox;
     }
     num_bits_type num_low_bits()const {
       return num_low_bits_;
@@ -485,12 +506,11 @@ private:
         }
       }
       const zbox zb = zbox::box_from_coords(coords, exp * NumDimensions + num_dims_using_one_zbox_of_twice_base_box_size);
-      if (zb.get_bbox().overlaps(bbox)) {
+      if (zb.overlaps(bbox)) {
         insert_zbox(objects_tree, obj_id, zb);
       }
     }
   }
-  
   static void insert_zbox(ztree_node_ptr& tree, ObjectIdentifier const& obj_id, zbox box) {
     if (!tree) {
       tree.reset(new ztree_node(box));
@@ -525,7 +545,7 @@ private:
   
   static void delete_object(ztree_node_ptr& tree, ObjectIdentifier const& obj_id, bounding_box const& bbox) {
     if (!tree) return;
-    if (tree->here.get_bbox().overlaps(bbox)) {
+    if (tree->here.overlaps(bbox)) {
       tree->objects_here.erase(obj_id);
       delete_object(tree->child0, obj_id, bbox);
       delete_object(tree->child1, obj_id, bbox);
@@ -549,7 +569,7 @@ private:
   }
   
   void zget_objects_overlapping(ztree_node const* tree, unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
-    if (tree && tree->here.get_bbox().overlaps(bbox)) {
+    if (tree && tree->here.overlaps(bbox)) {
       for (ObjectIdentifier const& obj : tree->objects_here) {
         const auto bbox_iter = bboxes_by_object.find(obj);
 
