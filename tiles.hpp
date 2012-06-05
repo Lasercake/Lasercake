@@ -267,8 +267,8 @@ class literally_random_access_removable_tiles_by_height {
 public:
   typedef map<tile_coordinate, literally_random_access_removable_stuff<tile_location>> map_t;
 
-  tile_location get_and_erase_random_from_the_top();
-  tile_location get_and_erase_random_from_the_bottom();
+  template<typename RNG> tile_location get_and_erase_random_from_the_top(RNG& rng);
+  template<typename RNG> tile_location get_and_erase_random_from_the_bottom(RNG& rng);
   bool erase(tile_location const& loc);
   void insert(tile_location const& loc);
   bool any_above(tile_coordinate height)const;
@@ -278,6 +278,28 @@ public:
 private:
   map_t data_;
 };
+
+
+//in header file because they're templates:
+
+template<typename RNG> inline
+tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_top(RNG& rng) {
+  const map_t::iterator iter_at_top = boost::prior(data_.end());
+  literally_random_access_removable_stuff<tile_location>& tiles_at_top = iter_at_top->second;
+  const tile_location result = tiles_at_top.get_random(rng);
+  tiles_at_top.erase(result);
+  if (tiles_at_top.empty()) data_.erase(iter_at_top);
+  return result;
+}
+template<typename RNG> inline
+tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_bottom(RNG& rng) {
+  const map_t::iterator iter_at_bottom = data_.begin();
+  literally_random_access_removable_stuff<tile_location>& tiles_at_bottom = iter_at_bottom->second;
+  const tile_location result = tiles_at_bottom.get_random(rng);
+  tiles_at_bottom.erase(result);
+  if (tiles_at_bottom.empty()) data_.erase(iter_at_bottom);
+  return result;
+}
 
 #endif
 

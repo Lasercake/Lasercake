@@ -51,13 +51,18 @@ public:
 private:
   unordered_map<std::pair<coord, coord>, int> hills_map_;
   unordered_map<std::pair<coord, coord>, coord> height_map_;
-  
+  // RNG default-initialized for now
+  // (so, deterministic except for worldblock realization order)
+  large_fast_noncrypto_rng rng_;
+
   static const int max_simple_hill_width = 20;
 
   int get_hill(pair<coord, coord> loc) {
     const auto iter = hills_map_.find(loc);
     if (iter == hills_map_.end()) {
-      int hill = (rand()&255) ? 0 : (1 + (rand()%max_simple_hill_width));
+      const boost::random::uniform_int_distribution<int> random_in_256(0,255);
+      const boost::random::uniform_int_distribution<int> random_hill_height(1,max_simple_hill_width);
+      int hill = (random_in_256(rng_) != 0 ? 0 : random_hill_height(rng_));
       hills_map_.insert(make_pair(loc, hill));
       return hill;
     }

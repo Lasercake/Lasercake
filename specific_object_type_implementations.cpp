@@ -206,14 +206,15 @@ void laser_emitter::update(world& w, object_identifier my_id) {
   const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
   
   location_ = middle;
+  const boost::random::uniform_int_distribution<fine_scalar> random_delta(-1023, 1023);
   for (int i = 0; i < 100; ++i) {
-  do {
-    facing_.x = (rand()&2047) - 1024;
-    facing_.y = (rand()&2047) - 1024;
-    facing_.z = (rand()&2047) - 1024;
-  } while (facing_.magnitude_within_32_bits_is_greater_than(1023) || facing_.magnitude_within_32_bits_is_less_than(512));
+    do {
+      facing_.x = random_delta(w.get_rng());
+      facing_.y = random_delta(w.get_rng());
+      facing_.z = random_delta(w.get_rng());
+    } while (facing_.magnitude_within_32_bits_is_greater_than(1023) || facing_.magnitude_within_32_bits_is_less_than(512));
 
-  fire_standard_laser(w, my_id, location_, facing_);
+    fire_standard_laser(w, my_id, location_, facing_);
   }
 }
 

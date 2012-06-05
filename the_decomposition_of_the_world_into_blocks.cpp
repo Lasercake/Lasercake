@@ -45,10 +45,15 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   //with all rock except one rubble (or a few) would pick rubble one in N times and each
   //of those times would be almost N times slower (where N = worldblock_dimension cubed).
   tile_contents worldblock::estimate_most_frequent_tile_contents_type()const {
-    const tile_contents try1 = tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
-    const tile_contents try2 = tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
+    // It doesn't really matter what RNG we use here - having good
+    // randomness only affects speed.  The *correctness* of worldblock
+    // would be maintained even with an RNG here that always returned 0.
+    auto& rng = w_->get_rng();
+    const boost::random::uniform_int_distribution<worldblock_dimension_type> random_coord(0, worldblock_dimension-1);
+    const tile_contents try1 = tiles_[random_coord(rng)][random_coord(rng)][random_coord(rng)].contents();
+    const tile_contents try2 = tiles_[random_coord(rng)][random_coord(rng)][random_coord(rng)].contents();
     if(try1 == try2) return try1;
-    else return tiles_[rand()%worldblock_dimension][rand()%worldblock_dimension][rand()%worldblock_dimension].contents();
+    else return tiles_[random_coord(rng)][random_coord(rng)][random_coord(rng)].contents();
   }
 
   // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").

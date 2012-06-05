@@ -138,7 +138,7 @@ private:
 
 struct state_t {
   //state_t(world_collision_detector& d):next_water_group_identifier(1), things_exposed_to_collision(d){}
-  state_t(world& w):next_water_group_identifier(1), access_the_world(w){}
+  state_t(world& w):next_water_group_identifier(1), access_the_world(w), rng(w.get_rng()){}
 
   water_group_identifier next_water_group_identifier;
   water_groups_by_location_t water_groups_by_surface_tile;
@@ -148,7 +148,8 @@ struct state_t {
 
   //only used in replace_substance(), to get world_collision_detector& things_exposed_to_collision:
   world& access_the_world;
-  //world_collision_detector& things_exposed_to_collision;
+
+  large_fast_noncrypto_rng& rng;
 };
 
 } // end namespace tile_physics_impl

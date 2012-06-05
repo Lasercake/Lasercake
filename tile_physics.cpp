@@ -740,7 +740,7 @@ bool persistent_water_group_info::mark_tile_as_suckable_and_return_true_if_it_is
     suckable_tiles_by_height.insert(loc);
     return false;
   }
-  const tile_location pushed_tile = pushable_tiles_by_height.get_and_erase_random_from_the_bottom();
+  const tile_location pushed_tile = pushable_tiles_by_height.get_and_erase_random_from_the_bottom(state.rng);
   suck_out_suckable_water(state, loc, active_fluids);
   push_water_into_pushable_tile(state, pushed_tile, active_fluids);
   return true;
@@ -750,15 +750,15 @@ bool persistent_water_group_info::mark_tile_as_pushable_and_return_true_if_it_is
     pushable_tiles_by_height.insert(loc);
     return false;
   }
-  const tile_location sucked_tile = suckable_tiles_by_height.get_and_erase_random_from_the_top();
+  const tile_location sucked_tile = suckable_tiles_by_height.get_and_erase_random_from_the_top(state.rng);
   suck_out_suckable_water(state, sucked_tile, active_fluids);
   push_water_into_pushable_tile(state, loc, active_fluids);
   return true;
 }
 void correct_all_suckable_pushable_pairs(state_t& state, persistent_water_group_info& g, active_fluids_t& active_fluids) {
   while (!g.suckable_tiles_by_height.as_map().empty() && !g.pushable_tiles_by_height.as_map().empty() && g.suckable_tiles_by_height.as_map().rbegin()->first > g.pushable_tiles_by_height.as_map().begin()->first) {
-    const tile_location sucked_tile = g.suckable_tiles_by_height.get_and_erase_random_from_the_top();
-    const tile_location pushed_tile = g.pushable_tiles_by_height.get_and_erase_random_from_the_bottom();
+    const tile_location sucked_tile = g.suckable_tiles_by_height.get_and_erase_random_from_the_top(state.rng);
+    const tile_location pushed_tile = g.pushable_tiles_by_height.get_and_erase_random_from_the_bottom(state.rng);
     suck_out_suckable_water      (state, sucked_tile, active_fluids);
     push_water_into_pushable_tile(state, pushed_tile, active_fluids);
   }
@@ -854,7 +854,7 @@ void replace_substance_impl(
     }
     
     if (!adj_tiles_that_want_to_fill_us_via_pressure.empty()) {
-      tile_location const& tile_pulled_from = adj_tiles_that_want_to_fill_us_via_pressure[rand()%(adj_tiles_that_want_to_fill_us_via_pressure.size())];
+      tile_location const& tile_pulled_from = *random_element_of_sequence(adj_tiles_that_want_to_fill_us_via_pressure, state.rng);
       water_group_identifier group_id = get_water_group_id_by_grouped_tile(state, tile_pulled_from);
       persistent_water_group_info& group = persistent_water_groups.find(group_id)->second;
       
@@ -1505,7 +1505,8 @@ void update_fluids_impl(state_t& state) {
   // ==============================================================================
   
   
-  std::random_shuffle(wanted_moves.begin(), wanted_moves.end());
+  std::random_shuffle(wanted_moves.begin(), wanted_moves.end(),
+                      boost::random::random_number_generator<large_fast_noncrypto_rng, size_t>(state.rng));
   std::unordered_set<tile_location> disturbed_tiles;
   
   

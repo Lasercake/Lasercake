@@ -433,6 +433,8 @@ public:
   // we know how we want that to work, and a good way of representing multiple
   // players' input.
   input_representation::input_news_t const& input_news() const { return input_news_; }
+
+  large_fast_noncrypto_rng& get_rng() { return rng_; }
   
   // I *think* this pointer is valid as long as the shared_ptr exists
   shared_ptr<object>* get_object(object_identifier id) { return find_as_pointer(objects_, id); }
@@ -537,6 +539,9 @@ private:
   worldgen_function_t worldgen_function_;
 
   input_representation::input_news_t input_news_;
+
+  // RNG, default-initialized for now
+  large_fast_noncrypto_rng rng_;
   
   
   the_decomposition_of_the_world_into_blocks_impl::worldblock* ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);

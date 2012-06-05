@@ -29,6 +29,10 @@
 #include <inttypes.h>
 #include <boost/functional/hash.hpp>
 #include <boost/throw_exception.hpp>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/taus88.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+#include <boost/random/random_number_generator.hpp>
 #include <stdexcept>
 
 // Some asserts take too much runtime to turn on by default.
@@ -153,6 +157,17 @@ inline int32_t i64log2(uint64_t argument) {
   return shift;
 #endif
 }
+inline int32_t count_trailing_zeroes_64(uint64_t argument) {
+  if(argument == 0) return 64;
+  int32_t shift
+         = argument &  ((1ULL << 32) - 1)           ? 0 : 32;
+  shift += argument & (((1ULL << 16) - 1) << shift) ? 0 : 16;
+  shift += argument & (((1ULL <<  8) - 1) << shift) ? 0 : 8;
+  shift += argument & (((1ULL <<  4) - 1) << shift) ? 0 : 4;
+  shift += argument & (((1ULL <<  2) - 1) << shift) ? 0 : 2;
+  shift += argument & (((1ULL <<  1) - 1) << shift) ? 0 : 1;
+  return shift;
+}
 
 inline uint32_t i64sqrt(uint64_t radicand)
 {
@@ -178,6 +193,26 @@ inline uint32_t i64sqrt(uint64_t radicand)
   }
   
   return lower_bound;
+}
+
+// TODO think more about what RNGs go where, and so forth
+// (e.g. for increased determinacy, maintained speed, and
+// if networked then cryptographic-secureness could be nice too).
+// The larger RNG here takes up a few kilobytes (RAM/cache) but produces nicer random numbers.
+typedef boost::random::mt19937 large_fast_noncrypto_rng;
+typedef boost::random::taus88 small_fast_noncrypto_rng;
+
+template<typename RandomAccessRange, typename RNG> inline typename
+RandomAccessRange::const_iterator random_element_of_sequence(RandomAccessRange const& c, RNG& rng) {
+  caller_error_if(c.size() == 0, "random_element_of_sequence() on empty sequence");
+  const boost::random::uniform_int_distribution<size_t> random_index(0, c.size()-1);
+  return c.begin() + random_index(rng);
+}
+template<typename RandomAccessRange, typename RNG> inline typename
+RandomAccessRange::iterator random_element_of_sequence(RandomAccessRange& c, RNG& rng) {
+  caller_error_if(c.size() == 0, "random_element_of_sequence() on empty sequence");
+  const boost::random::uniform_int_distribution<size_t> random_index(0, c.size()-1);
+  return c.begin() + random_index(rng);
 }
 
 // If you need to pass around a dimension for use as an index to
@@ -468,11 +503,13 @@ public:
     }
     return false;
   }
-  Stuff const& get_random()const {
+  template<typename RNG>
+  Stuff const& get_random(RNG& rng)const {
     caller_error_if(stuffs_set.empty(), "Trying to get a random element of an empty literally_random_access_removable_stuff");
     size_t idx;
+    const boost::random::uniform_int_distribution<size_t> random_item_idx(0, stuffs_superset_vector.size()-1);
     do {
-      idx = (size_t)(rand()%(stuffs_superset_vector.size()));
+      idx = random_item_idx(rng);
     } while (stuffs_set.find(stuffs_superset_vector[idx]) == stuffs_set.end());
     return stuffs_superset_vector[idx];
   }
