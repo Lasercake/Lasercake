@@ -255,7 +255,7 @@ void sim_thread_step(
   if(put_output) {put_output->put(output);}
 }
 
-void mainLoop (std::string scenario)
+void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code)
 {
   using namespace input_representation;
   
@@ -269,15 +269,15 @@ void mainLoop (std::string scenario)
   }
 
 #if !LASERCAKE_NO_THREADS
-  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen]() {
+  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen, run_drawing_code]() {
 #endif
     world w(worldgen);
     const object_identifier robot_id = init_test_world_and_return_our_robot(w);
     view_on_the_world view(robot_id, world_center_fine_coords);
-    sim_thread_step(w, view, nullptr, false, true, &frame_output_pipe);
+    sim_thread_step(w, view, nullptr, false, run_drawing_code, &frame_output_pipe);
 #if !LASERCAKE_NO_THREADS
     while(true) {
-      sim_thread_step(w, view, &input_news_pipe, true, true, &frame_output_pipe);
+      sim_thread_step(w, view, &input_news_pipe, true, run_drawing_code, &frame_output_pipe);
     }
   });
 #endif
@@ -310,8 +310,6 @@ void mainLoop (std::string scenario)
     if(frame != 0) {sim_thread_step(w, view, &input_news_pipe, true, true, &frame_output_pipe);}
 #endif
     
-    key_activity_t key_activity_since_last_frame;
-    
     // TODO use SDL's TextInput API (and/or switch toolkits)
     // if that is appropriate for our interface somewhere and/or everywhere.
 
@@ -319,39 +317,42 @@ void mainLoop (std::string scenario)
     // - to be Unicode arrow characters rather than e.g. "down".
     
     /* Check for events */
-    SDL_Event event;
-    while ( SDL_PollEvent (&event) ) {
-      switch (event.type) {
-        case SDL_MOUSEMOTION:
-          break;
-          
-        case SDL_MOUSEBUTTONDOWN:
-          break;
-          
-        case SDL_KEYDOWN:
-          key_activity_since_last_frame.push_back(
-            key_change_t(SDL_GetKeyName(event.key.keysym.sym), PRESSED));
-          break;
-          
-        case SDL_KEYUP:
-          key_activity_since_last_frame.push_back(
-            key_change_t(SDL_GetKeyName(event.key.keysym.sym), RELEASED));
-          break;
-          
-        case SDL_QUIT:
-          done = 1;
-          break;
-          
-        default:
-          break;
-      }
-    }
-    
-    Uint8 const* const keystate = SDL_GetKeyState(NULL);
+    key_activity_t key_activity_since_last_frame;
     keys_currently_pressed_t keys_currently_pressed;
-    for(size_t i = SDLK_FIRST; i <= SDLK_LAST; ++i) {
-      if(keystate[i]) {
-        keys_currently_pressed.insert(SDL_GetKeyName((SDLKey)i));
+    if(have_gui) {
+      SDL_Event event;
+      while ( SDL_PollEvent (&event) ) {
+        switch (event.type) {
+          case SDL_MOUSEMOTION:
+            break;
+
+          case SDL_MOUSEBUTTONDOWN:
+            break;
+
+          case SDL_KEYDOWN:
+            key_activity_since_last_frame.push_back(
+              key_change_t(SDL_GetKeyName(event.key.keysym.sym), PRESSED));
+            break;
+
+          case SDL_KEYUP:
+            key_activity_since_last_frame.push_back(
+              key_change_t(SDL_GetKeyName(event.key.keysym.sym), RELEASED));
+            break;
+
+          case SDL_QUIT:
+            done = 1;
+            break;
+
+          default:
+            break;
+        }
+      }
+
+      Uint8 const* const keystate = SDL_GetKeyState(NULL);
+      for(size_t i = SDLK_FIRST; i <= SDLK_LAST; ++i) {
+        if(keystate[i]) {
+          keys_currently_pressed.insert(SDL_GetKeyName((SDLKey)i));
+        }
       }
     }
 
@@ -383,9 +384,11 @@ void mainLoop (std::string scenario)
     const microseconds_t microseconds_before_GL = get_this_process_microseconds();
     const microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
 
-    output_gl_data_to_OpenGL(*last_frame_output.gl_data_ptr);
-    glFinish();
-    SDL_GL_SwapBuffers();
+    if(have_gui) {
+      output_gl_data_to_OpenGL(*last_frame_output.gl_data_ptr);
+      glFinish();
+      SDL_GL_SwapBuffers();
+    }
 
     const microseconds_t monotonic_microseconds_after_GL = get_monotonic_microseconds();
     const microseconds_t microseconds_after_GL = get_this_process_microseconds();
@@ -508,26 +511,38 @@ int main(int argc, char *argv[])
 {
   std::cerr.imbue(std::locale(""));
 
+  bool have_gui = true;
+  bool run_drawing_code = true;
   std::string scenario;
-  if (argc < 2) {
+  // TODO someday use real getopt code
+  int scen_idx = 1;
+  if(argc >= 2 && std::string(argv[1]) == "-n") {
+    // for profiling purposes, still run drawing code
+    have_gui = false;
+    ++scen_idx;
+  }
+  if(argc < scen_idx+1) {
     std::cerr << "You didn't give an argument saying which scenario to use! Using default value...";
     scenario = "default";
   }
   else {
-    scenario = argv[1];
+    scenario = argv[scen_idx];
   }
 
-  if ( SDL_Init (SDL_INIT_VIDEO) < 0 ) {
-    fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
-    exit(1);
+  if(have_gui) {
+    if(SDL_Init (SDL_INIT_VIDEO) < 0) {
+      fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
+      exit(1);
+    }
+    create_SDL_GL_surface(false);
+    print_SDL_GL_attributes();
   }
 
-  create_SDL_GL_surface(false);
-  print_SDL_GL_attributes();
+  mainLoop(scenario, have_gui, run_drawing_code);
 
-  mainLoop(scenario);
-
-  SDL_Quit();
+  if(have_gui) {
+    SDL_Quit();
+  }
 
   return 0;
 }
