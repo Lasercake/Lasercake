@@ -508,19 +508,6 @@ int main(int argc, char *argv[])
 {
   std::cerr.imbue(std::locale(""));
 
-  // Init SDL video subsystem
-  if ( SDL_Init (SDL_INIT_VIDEO) < 0 ) {
-    fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
-    exit(1);
-  }
-
-  // Create GL context
-  create_SDL_GL_surface(false);
-
-  // Get GL context attributes
-  print_SDL_GL_attributes();
-
-  // Draw, get events...
   std::string scenario;
   if (argc < 2) {
     std::cerr << "You didn't give an argument saying which scenario to use! Using default value...";
@@ -530,9 +517,16 @@ int main(int argc, char *argv[])
     scenario = argv[1];
   }
 
+  if ( SDL_Init (SDL_INIT_VIDEO) < 0 ) {
+    fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
+    exit(1);
+  }
+
+  create_SDL_GL_surface(false);
+  print_SDL_GL_attributes();
+
   mainLoop(scenario);
 
-  // Cleanup
   SDL_Quit();
 
   return 0;
