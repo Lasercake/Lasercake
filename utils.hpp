@@ -158,6 +158,10 @@ inline int32_t i64log2(uint64_t argument) {
 #endif
 }
 inline int32_t count_trailing_zeroes_64(uint64_t argument) {
+  caller_error_if(argument == 0, "the number of trailing zeroes of zero is undefined");
+#if defined(__GNUC__)
+  return __builtin_ctzll(argument);
+#else
   if(argument == 0) return 64;
   int32_t shift
          = argument &  ((1ULL << 32) - 1)           ? 0 : 32;
@@ -167,6 +171,7 @@ inline int32_t count_trailing_zeroes_64(uint64_t argument) {
   shift += argument & (((1ULL <<  2) - 1) << shift) ? 0 : 2;
   shift += argument & (((1ULL <<  1) - 1) << shift) ? 0 : 1;
   return shift;
+#endif
 }
 
 inline uint32_t i64sqrt(uint64_t radicand)

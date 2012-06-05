@@ -68,7 +68,14 @@ BOOST_AUTO_TEST_CASE( my_log ) {
   std::for_each(numbers_to_test.begin(), numbers_to_test.end(), &i64log2_test);
 }
 
-
+BOOST_AUTO_TEST_CASE( my_ctz ) {
+  BOOST_CHECK_THROW(count_trailing_zeroes_64(0), std::logic_error);
+  BOOST_CHECK_EQUAL(count_trailing_zeroes_64(0xe), 1);
+  BOOST_CHECK_EQUAL(count_trailing_zeroes_64(0xf), 0);
+  BOOST_CHECK_EQUAL(count_trailing_zeroes_64(0xf0), 4);
+  BOOST_CHECK_EQUAL(count_trailing_zeroes_64(0xe0), 5);
+  BOOST_CHECK_EQUAL(count_trailing_zeroes_64(0x8000000000000000ull), 63);
+}
 
 BOOST_AUTO_TEST_CASE( divide_rounding_towards_zero_test ) {
   BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,1), 3);
