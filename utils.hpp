@@ -145,7 +145,7 @@ auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
 inline int32_t i64log2(uint64_t argument) {
   caller_error_if(argument == 0, "the logarithm of zero is undefined");
 #if defined(__GNUC__)
-  return 63 - __builtin_clzll(argument);
+  return (sizeof(long long)*8) - 1 - __builtin_clzll(argument);
 #else
   int32_t shift
          = argument &  (((1ULL << 32) - 1) << 32)           ? 32 : 0;
