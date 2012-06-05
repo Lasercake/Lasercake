@@ -117,7 +117,8 @@ static void mainLoop (std::string /*scenario*/)
   SDL_Event event;
   int done = 0;
   int p_mode = 0;
-srand(time(NULL));
+large_fast_noncrypto_rng rng(time(NULL));
+typedef boost::random::uniform_int_distribution<int64_t> uniform_random;
   
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
 int frame = 0;
@@ -126,17 +127,17 @@ std::vector<floating_poly> polys;
 
 for (int i = 0; i < 50; ++i) {
   floating_line foo;
-  vector3<int64_t> first(rand()%1024, rand()%1024, 300 + rand()%100);
-  vector3<int64_t> diff((rand()%200) - 100, (rand()%200) - 100, 10 + rand()%100);
+  vector3<int64_t> first(uniform_random(0, 1023)(rng), uniform_random(0, 1023)(rng), uniform_random(300, 399)(rng));
+  vector3<int64_t> diff(uniform_random(-99, 99)(rng), uniform_random(-99, 99)(rng), uniform_random(10, 109)(rng));
   foo.ends[0] = first;
   foo.ends[1] = first + diff;
   lines.push_back(foo);
 }
 for (int i = 0; i < 50; ++i) {
   floating_poly foo;
-  vector3<int64_t> first(rand()%1024, rand()%1024, -300 + rand()%100);
-  vector3<int64_t> diff1((rand()%200), (rand()%200), 5 + rand()%20);
-  vector3<int64_t> diff2((rand()%200) - 250, (rand()%200) - 250, 5 + rand()%20);
+  vector3<int64_t> first(uniform_random(0, 1023)(rng), uniform_random(0, 1023)(rng), uniform_random(-300, -201)(rng));
+  vector3<int64_t> diff1(uniform_random(0, 199)(rng), uniform_random(0, 199)(rng), uniform_random(5, 24)(rng));
+  vector3<int64_t> diff2(uniform_random(-250, -51)(rng), uniform_random(-250, -51)(rng), uniform_random(5, 24)(rng));
   foo.vertices.push_back(first);
   foo.vertices.push_back(first+diff1);
   foo.vertices.push_back(first+diff1+diff2);
