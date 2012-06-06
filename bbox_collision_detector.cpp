@@ -466,19 +466,18 @@ struct ztree_ops {
       delete_object(tree->child0, id_and_bbox);
       delete_object(tree->child1, id_and_bbox);
 
+      // collapse nodes with no objects and 0-1 children.
       if (tree->objects_here.empty()) {
-        if (tree->child0) {
-          if (!tree->child1) {
-            ztree_node_ptr dead_tree;
-            dead_tree.swap(tree);
-            dead_tree->child0.swap(tree);
-          }
-        }
-        else {
-          // old 'child1' a.k.a. new 'tree' could be null
+        if (!tree->child0) {
+          // (old 'child1' a.k.a. new 'tree' could be nullptr)
           ztree_node_ptr dead_tree;
           dead_tree.swap(tree);
           dead_tree->child1.swap(tree);
+        }
+        else if (!tree->child1) {
+          ztree_node_ptr dead_tree;
+          dead_tree.swap(tree);
+          dead_tree->child0.swap(tree);
         }
       }
     }
