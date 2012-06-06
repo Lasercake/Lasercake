@@ -281,8 +281,10 @@ struct ztree_node {
   const zbox here;
   ztree_node_ptr child0;
   ztree_node_ptr child1;
-  unordered_set<pair<const ObjectIdentifier, bounding_box> const*> objects_here;
-
+  
+  typedef pair<const ObjectIdentifier, bounding_box> const* id;
+  unordered_set<id> objects_here;
+  
   ztree_node(zbox box):here(box),child0(nullptr),child1(nullptr){}
   ztree_node(ztree_node const& other) :
     here(other.here),
