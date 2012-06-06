@@ -191,8 +191,12 @@ public:
   //tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
   bool operator==(tile_location const& other)const { return v_ == other.v_; }
   bool operator!=(tile_location const& other)const { return v_ != other.v_; }
+  bool operator<(tile_location const& other)const { return v_ < other.v_; }
   inline tile const& stuff_at()const;
   vector3<tile_coordinate> const& coords()const { return v_; }
+  friend inline std::ostream& operator<<(std::ostream& os, tile_location const& l) {
+    return os << l.v_;
+  }
 private:
   // This constructor should only be used when you know exactly what worldblock it's in!!
   tile_location(vector3<tile_coordinate> v, the_decomposition_of_the_world_into_blocks_impl::worldblock *wb):v_(v),wb_(wb){}

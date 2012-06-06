@@ -194,6 +194,21 @@ struct object_or_tile_identifier {
   }
   bool operator!=(object_identifier const& other)const { return !(*this == other); }
   bool operator!=(tile_location const& other)const { return !(*this == other); }
+
+  bool operator<(object_or_tile_identifier const& other)const { return data_ < other.data_; }
+
+  friend inline std::ostream& operator<<(std::ostream& os, object_or_tile_identifier const& id) {
+    struct ostream_visitor : public boost::static_visitor<void>
+    {
+      ostream_visitor(std::ostream& os) : os(os) {}
+      std::ostream& os;
+      
+      void operator()(tile_location const& i) const { os << i; }
+      void operator()(object_identifier i) const { os << i; }
+    };
+    boost::apply_visitor( ostream_visitor(os), id.data_ );
+    return os;
+  }
 private:
   boost::variant<tile_location, object_identifier> data_;
 };
