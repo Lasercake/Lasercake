@@ -260,12 +260,12 @@ private:
   static ibb convert_bb_(bounding_box const& bb) {
     caller_correct_if(bb.is_anywhere, "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
     ibb b;
-    b.min[0] = get_un_bounds_checked_int(bb.min.x);
-    b.min[1] = get_un_bounds_checked_int(bb.min.y);
-    b.min[2] = get_un_bounds_checked_int(bb.min.z);
-    b.size[0] = get_un_bounds_checked_int(bb.max.x + 1 - bb.min.x);
-    b.size[1] = get_un_bounds_checked_int(bb.max.y + 1 - bb.min.y);
-    b.size[2] = get_un_bounds_checked_int(bb.max.z + 1 - bb.min.z);
+    b.min[0] = get_primitive_int(bb.min.x);
+    b.min[1] = get_primitive_int(bb.min.y);
+    b.min[2] = get_primitive_int(bb.min.z);
+    b.size[0] = get_primitive_int(bb.max.x + 1 - bb.min.x);
+    b.size[1] = get_primitive_int(bb.max.y + 1 - bb.min.y);
+    b.size[2] = get_primitive_int(bb.max.z + 1 - bb.min.z);
     return b;
   }
   static bounding_box convert_bb_(ibb const& b) {
@@ -355,9 +355,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   
     // Prefer to use tile_location::stuff_at().
     inline tile& get_tile(vector3<tile_coordinate> global_coords) {
-      return tiles_[get_un_bounds_checked_int(global_coords.x - global_position_.x)]
-                   [get_un_bounds_checked_int(global_coords.y - global_position_.y)]
-                   [get_un_bounds_checked_int(global_coords.z - global_position_.z)];
+      return tiles_[get_primitive_int(global_coords.x - global_position_.x)]
+                   [get_primitive_int(global_coords.y - global_position_.y)]
+                   [get_primitive_int(global_coords.z - global_position_.z)];
     }
   
     // Only to be used in tile_location::get_neighbor:

@@ -366,7 +366,7 @@ public:
   }
 
   typedef lasercake_int<int64_t>::type int64_type_to_use_with_dot;
-  ScalarType magnitude_within_32_bits()const { return ScalarType(get_un_bounds_checked_int(i64sqrt(dot<int64_type_to_use_with_dot>(*this)))); }
+  ScalarType magnitude_within_32_bits()const { return ScalarType(get_primitive_int(i64sqrt(dot<int64_type_to_use_with_dot>(*this)))); }
   
   // Choose these the way you'd choose dot's output type (see the comment above)
   // we had trouble making these templates, so now they just always use int64_t

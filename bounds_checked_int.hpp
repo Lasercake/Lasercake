@@ -90,12 +90,12 @@ template<
 class bounds_checked_int;
 //overloaded: a.get() or a
 template<typename Int, Int Min, Int Max>
-inline Int get_un_bounds_checked_int(bounds_checked_int<Int,Min,Max> a) { return a.get(); }
+inline Int get_primitive_int(bounds_checked_int<Int,Min,Max> a) { return a.get(); }
 template<typename Int>
-inline Int get_un_bounds_checked_int(Int a) { return a; }
+inline Int get_primitive_int(Int a) { return a; }
 
 template<typename AnyInt>
-inline double get_un_bounds_checked_double(AnyInt a) { return get_un_bounds_checked_int(a); }
+inline double get_primitive_double(AnyInt a) { return get_primitive_int(a); }
 
 template<
   typename Int,
@@ -121,7 +121,7 @@ public:
 
   //implicit conversion from builtin int types and other bounds_checked_ints
   template<typename Int2>
-  bounds_checked_int(Int2 val) : val_(check_valid_(get_un_bounds_checked_int(val))) {}
+  bounds_checked_int(Int2 val) : val_(check_valid_(get_primitive_int(val))) {}
 
   //no implicit truncating conversion from floats to ints! aah! (But what if you want to request that?)
   explicit bounds_checked_int(float val) : val_(check_valid_(val)) {}
@@ -191,7 +191,7 @@ namespace boost {
 
 // Checks that the value fits into the target type.
 template<typename Target, typename AnyInt>
-inline Target get_un_bounds_checked(AnyInt a) {
+inline Target get_primitive(AnyInt a) {
   return bounds_checked_int<Target>(a).get();
 }
 
@@ -282,14 +282,14 @@ inline bounds_checked_int<Int,Min,Max>
 operator<<(bounds_checked_int<Int,Min,Max> a, IntAny shift) {
   typedef bounds_checked_int<Int,Min,Max> result_type;
   bounds_checked_int_impl::check_shift_amount_valid<Int>(shift);
-  return result_type(typename bounds_checked_int_impl::checking<Int>::type(a.get()) << get_un_bounds_checked_int(shift));
+  return result_type(typename bounds_checked_int_impl::checking<Int>::type(a.get()) << get_primitive_int(shift));
 }
 template<typename Int, Int Min, Int Max, typename IntAny>
 inline bounds_checked_int<Int,Min,Max>
 operator>>(bounds_checked_int<Int,Min,Max> a, IntAny shift) {
   typedef bounds_checked_int<Int,Min,Max> result_type;
   bounds_checked_int_impl::check_shift_amount_valid<Int>(shift);
-  return result_type(a.get() >> get_un_bounds_checked_int(shift));
+  return result_type(a.get() >> get_primitive_int(shift));
 }
 template<typename Int, Int Min, Int Max, typename IntAny>
 inline bounds_checked_int<Int,Min,Max>&
