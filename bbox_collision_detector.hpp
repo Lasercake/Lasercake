@@ -78,7 +78,7 @@ public:
   friend inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
     os << '[';
     for (size_t i = 0; i < bb.min.size(); ++i) {
-      if(i != 0) os << ',';
+      if(i != 0) os << ", ";
       os << bb.min[i] << '+' << bb.size[i];
     }
     os << ']';

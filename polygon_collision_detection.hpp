@@ -67,7 +67,7 @@ inline bool operator!=(bounding_box const& b1, bounding_box const& b2) {
   return !(b1 == b2);
 }
 inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
-  return os << '[' << bb.min << ',' << bb.max << ']';
+  return os << '[' << bb.min << ", " << bb.max << ']';
 }
 
 // TODO: rays and lines

@@ -385,7 +385,7 @@ template<typename Int, Int Min, Int Max>
 std::ostream& operator<<(std::ostream& os, bounds_checked_int<Int,Min,Max> i);
 
 template<typename T> inline std::ostream& operator<<(std::ostream& os, vector3<T>const& v) {
-  return os << '(' << v.x << ',' << v.y << ',' << v.z << ')';
+  return os << '(' << v.x << ", " << v.y << ", " << v.z << ')';
 }
 
 namespace std {
