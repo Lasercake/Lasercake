@@ -194,12 +194,18 @@ public:
   inline tile const& stuff_at()const;
   vector3<tile_coordinate> const& coords()const { return v_; }
 private:
-  friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
-  friend tile_location trivial_invalid_location();
-  friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
-
   // This constructor should only be used when you know exactly what worldblock it's in!!
   tile_location(vector3<tile_coordinate> v, the_decomposition_of_the_world_into_blocks_impl::worldblock *wb):v_(v),wb_(wb){}
+
+  // tile_physics.cpp is the only code permitted to modify tile contents
+  friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
+
+  // null locations are occasionally permissible
+  friend tile_location trivial_invalid_location();
+
+  // worldblock creates tile_locations explicitly, and obviously knows
+  // what worldblock they're in.
+  friend class the_decomposition_of_the_world_into_blocks_impl::worldblock;
 
   vector3<tile_coordinate> v_;
   the_decomposition_of_the_world_into_blocks_impl::worldblock *wb_; // invariant: nonnull
