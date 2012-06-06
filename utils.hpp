@@ -33,6 +33,7 @@
 #include <boost/random/taus88.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/random/random_number_generator.hpp>
+#include <boost/integer/static_log2.hpp>
 #include <stdexcept>
 
 // Some asserts take too much runtime to turn on by default.
@@ -131,6 +132,7 @@ template<typename Int> struct lasercake_int { typedef bounds_checked_int<Int> ty
 template<typename Int> struct lasercake_int { typedef Int type; };
 #endif
 
+
 template<typename ScalarType1, typename ScalarType2>
 auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
   -> decltype(dividend/divisor) /*C++11 syntax for return type that lets it refer to argument names*/
@@ -157,6 +159,19 @@ inline int32_t i64log2(uint64_t argument) {
   return shift;
 #endif
 }
+inline int32_t num_bits_in_integer_that_are_not_leading_zeroes(uint64_t i) {
+  if(i == 0) return 0;
+  else return i64log2(i) + 1;
+}
+template<uint64_t Bits>
+struct static_num_bits_in_integer_that_are_not_leading_zeroes {
+  static const uint64_t value = boost::static_log2<Bits>::value + 1;
+};
+template<>
+struct static_num_bits_in_integer_that_are_not_leading_zeroes<0> {
+  static const uint64_t value = 0;
+};
+
 inline int32_t count_trailing_zeroes_64(uint64_t argument) {
   caller_error_if(argument == 0, "the number of trailing zeroes of zero is undefined");
 #if defined(__GNUC__)

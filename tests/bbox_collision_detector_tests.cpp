@@ -21,6 +21,11 @@
 
 #include "../bbox_collision_detector.hpp"
 
+// hack to let us instantiate more bbox_collision_detector variations for the
+// tests, as well as test the internals in various ways.
+#define BBOX_COLLISION_DETECTOR_IMPL_TREAT_AS_HEADER 1
+#include "../bbox_collision_detector.cpp"
+
 //#define BOOST_TEST_DYN_LINK
 //#define BOOST_TEST_MODULE bbox_collision_detector test
 #include <boost/test/unit_test.hpp>
@@ -74,56 +79,62 @@ class bbox_collision_detector_tester {
   // (friend of bbox_collision_detector, so we can test e.g. zbox on its own)
 public:
   static void test_zbox() {
-    const std::array<detector_2d::coordinate_type, 2> boxcoords1 = {{ 0, 0 }};
-    const std::array<detector_2d::coordinate_type, 2> boxcoords2 = {{ 0x80000000u, 0x80000000u }};
-    const std::array<detector_2d::coordinate_type, 2> boxcoords3 = {{ 0x80000000u, 0xc0000013u }};
-    const std::array<detector_2d::coordinate_type, 2> boxcoords4 = {{ 0xc0000000u, 0xc0000013u }};
-    const std::array<detector_2d::coordinate_type, 2> boxcoords5 = {{ 0xc0000000u, 0x80000000u }};
-    const detector_2d::zbox everywhere = detector_2d::zbox::box_from_coords(boxcoords1, 32*2); //32bits * 2dimensions
-    const detector_2d::zbox one_by_one_1 = detector_2d::zbox::box_from_coords(boxcoords1, 0);
-    const detector_2d::zbox quartant = detector_2d::zbox::box_from_coords(boxcoords2, 31*2);
-    const detector_2d::zbox rect_in_quartant = detector_2d::zbox::box_from_coords(boxcoords2, 30*2+1);
-    //const detector_2d::zbox one_by_one_2 = detector_2d::zbox::box_from_coords(boxcoords2, 0);
-    const detector_2d::zbox one_by_one_3 = detector_2d::zbox::box_from_coords(boxcoords3, 0);
-    const detector_2d::zbox one_by_one_4 = detector_2d::zbox::box_from_coords(boxcoords4, 0);
-    const detector_2d::zbox one_by_one_5 = detector_2d::zbox::box_from_coords(boxcoords5, 0);
+  }
+};
+
+BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
+  typedef collision_detector::impl::zbox<32, 2> zbox;
+  typedef std::array<detector_2d::coordinate_type, 2> coords;
+    const coords boxcoords1 = {{ 0, 0 }};
+    const coords boxcoords2 = {{ 0x80000000u, 0x80000000u }};
+    const coords boxcoords3 = {{ 0x80000000u, 0xc0000013u }};
+    const coords boxcoords4 = {{ 0xc0000000u, 0xc0000013u }};
+    const coords boxcoords5 = {{ 0xc0000000u, 0x80000000u }};
+    const zbox everywhere = zbox::box_from_coords(boxcoords1, 32*2); //32bits * 2dimensions
+    const zbox one_by_one_1 = zbox::box_from_coords(boxcoords1, 0);
+    const zbox quartant = zbox::box_from_coords(boxcoords2, 31*2);
+    const zbox rect_in_quartant = zbox::box_from_coords(boxcoords2, 30*2+1);
+    //const zbox one_by_one_2 = zbox::box_from_coords(boxcoords2, 0);
+    const zbox one_by_one_3 = zbox::box_from_coords(boxcoords3, 0);
+    const zbox one_by_one_4 = zbox::box_from_coords(boxcoords4, 0);
+    const zbox one_by_one_5 = zbox::box_from_coords(boxcoords5, 0);
 
     // bits are ordered ZYXZYXZYX... (or in 2D, YXYXYX...)
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(63), true);
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(62), true);
-    
+
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(61), true);
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(60), false);
-    
+
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(59), false);
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(58), false);
-    
+
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(57), false);
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(56), false);
-    
+
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(1), true);
     BOOST_CHECK_EQUAL(one_by_one_3.get_bit(0), false);
 
     BOOST_CHECK_EQUAL(quartant.num_low_bits(), 62);
     BOOST_CHECK_EQUAL(quartant.num_low_bits_by_dimension(X), 31);
     BOOST_CHECK_EQUAL(quartant.num_low_bits_by_dimension(Y), 31);
-    
+
     BOOST_CHECK_EQUAL(rect_in_quartant.num_low_bits(), 61);
     BOOST_CHECK_EQUAL(rect_in_quartant.num_low_bits_by_dimension(X), 31);
     BOOST_CHECK_EQUAL(rect_in_quartant.num_low_bits_by_dimension(Y), 30);
-    
+
     // Both the size *and* location have to be the same for equality.
     BOOST_CHECK_EQUAL(one_by_one_1, one_by_one_1);
     BOOST_CHECK_NE(one_by_one_1, one_by_one_3);
     BOOST_CHECK_NE(one_by_one_1, everywhere);
-    
+
     // subsumes is reflexive
     BOOST_CHECK(everywhere.subsumes(everywhere));
     BOOST_CHECK(one_by_one_1.subsumes(one_by_one_1));
     BOOST_CHECK(quartant.subsumes(quartant));
     BOOST_CHECK(rect_in_quartant.subsumes(rect_in_quartant));
     BOOST_CHECK(one_by_one_3.subsumes(one_by_one_3));
-    
+
     // 'everywhere' subsumes everywhere
     BOOST_CHECK(everywhere.subsumes(everywhere));
     BOOST_CHECK(everywhere.subsumes(one_by_one_1));
@@ -136,7 +147,7 @@ public:
     BOOST_CHECK(!quartant.subsumes(everywhere));
     BOOST_CHECK(!rect_in_quartant.subsumes(everywhere));
     BOOST_CHECK(!one_by_one_3.subsumes(everywhere));
-    
+
     // because they're zboxes, either one subsumes the other or they don't overlap.
     BOOST_CHECK(everywhere.overlaps(everywhere));
     BOOST_CHECK(one_by_one_1.overlaps(one_by_one_1));
@@ -184,7 +195,7 @@ public:
     BOOST_CHECK(!one_by_one_3.get_bbox().overlaps(one_by_one_1.get_bbox()));
 
     // smallest_joint_parent can create non-square rectangles correctly:
-    const detector_2d::zbox should_be_a_rect = detector_2d::zbox::smallest_joint_parent(one_by_one_3, one_by_one_4);
+    const zbox should_be_a_rect = zbox::smallest_joint_parent(one_by_one_3, one_by_one_4);
     BOOST_CHECK(should_be_a_rect.subsumes(one_by_one_3));
     BOOST_CHECK(should_be_a_rect.subsumes(one_by_one_4));
     BOOST_CHECK_EQUAL(should_be_a_rect.num_low_bits(), 61);
@@ -196,23 +207,18 @@ public:
     BOOST_CHECK_EQUAL(should_be_a_rect.get_bit(58), false);
 
     // but rectangles shaped in the other direction are impossible:
-    const detector_2d::zbox should_not_be_a_rect = detector_2d::zbox::smallest_joint_parent(one_by_one_4, one_by_one_5);
+    const zbox should_not_be_a_rect = zbox::smallest_joint_parent(one_by_one_4, one_by_one_5);
     BOOST_CHECK_EQUAL(should_not_be_a_rect, quartant);
-    
+
     BOOST_CHECK(!rect_in_quartant.subsumes(one_by_one_3));
     BOOST_CHECK(!one_by_one_3.subsumes(rect_in_quartant));
-    const detector_2d::zbox joint_parent = detector_2d::zbox::smallest_joint_parent(rect_in_quartant, one_by_one_3);
+    const zbox joint_parent = zbox::smallest_joint_parent(rect_in_quartant, one_by_one_3);
     BOOST_CHECK_EQUAL(joint_parent, quartant);
     BOOST_CHECK_NE(joint_parent, rect_in_quartant);
     BOOST_CHECK_NE(joint_parent, one_by_one_3);
     BOOST_CHECK(joint_parent.subsumes(rect_in_quartant));
     BOOST_CHECK(joint_parent.subsumes(one_by_one_3));
-    const detector_2d::zbox joint_parent_2 = detector_2d::zbox::smallest_joint_parent(rect_in_quartant, quartant);
+    const zbox joint_parent_2 = zbox::smallest_joint_parent(rect_in_quartant, quartant);
     BOOST_CHECK_EQUAL(joint_parent_2, quartant);
     BOOST_CHECK(!rect_in_quartant.subsumes(quartant));
-  }
-};
-
-BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
-  bbox_collision_detector_tester::test_zbox();
 }
