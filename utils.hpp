@@ -55,15 +55,60 @@
   const bool assert_everything = false;
 #endif
 
-#ifndef ATTRIBUTE_NORETURN
-// from http://www.boost.org/doc/libs/1_48_0/boost/exception/detail/attribute_noreturn.hpp
-#if defined(_MSC_VER)
-#define ATTRIBUTE_NORETURN __declspec(noreturn)
-#elif defined(__GNUC__)
-#define ATTRIBUTE_NORETURN __attribute__((noreturn))
-#else
-#define ATTRIBUTE_NORETURN
-#endif
+#ifndef LASERCAKE_BUILD_SYSTEM_DID_FEATURE_DETECTION
+
+  #ifndef ATTRIBUTE_NORETURN
+    // from http://www.boost.org/doc/libs/1_48_0/boost/exception/detail/attribute_noreturn.hpp
+    #if defined(_MSC_VER)
+      #define ATTRIBUTE_NORETURN __declspec(noreturn)
+    #elif defined(__GNUC__)
+      #define ATTRIBUTE_NORETURN __attribute__((noreturn))
+    #else
+      #define ATTRIBUTE_NORETURN
+    #endif
+  #endif
+
+  #if defined(__GNUC__)
+    inline int DETECTED_builtin_clz64(uint64_t arg) {
+      static_assert(sizeof(unsigned int) == 8 || sizeof(unsigned long) == 8 || sizeof(unsigned long long) == 8, "no 64-bit builtin uint type?!");
+      return
+        (sizeof(unsigned int) == 8) ? __builtin_clz(arg) :
+        (sizeof(unsigned long) == 8) ? __builtin_clzl(arg) :
+        __builtin_clzll(arg);
+    }
+    inline int DETECTED_builtin_clz32(uint32_t arg) {
+      static_assert(sizeof(unsigned int) == 4 || sizeof(unsigned long) == 4 || sizeof(unsigned long long) == 4, "no 32-bit builtin uint type?!");
+      return
+        (sizeof(unsigned int) == 4) ? __builtin_clz(arg) :
+        (sizeof(unsigned long) == 4) ? __builtin_clzl(arg) :
+        __builtin_clzll(arg);
+    }
+    inline int DETECTED_builtin_ctz64(uint64_t arg) {
+      static_assert(sizeof(unsigned int) == 8 || sizeof(unsigned long) == 8 || sizeof(unsigned long long) == 8, "no 64-bit builtin uint type?!");
+      return
+        (sizeof(unsigned int) == 8) ? __builtin_ctz(arg) :
+        (sizeof(unsigned long) == 8) ? __builtin_ctzl(arg) :
+        __builtin_ctzll(arg);
+    }
+    inline int DETECTED_builtin_ctz32(uint32_t arg) {
+      static_assert(sizeof(unsigned int) == 4 || sizeof(unsigned long) == 4 || sizeof(unsigned long long) == 4, "no 32-bit builtin uint type?!");
+      return
+        (sizeof(unsigned int) == 4) ? __builtin_ctz(arg) :
+        (sizeof(unsigned long) == 4) ? __builtin_ctzl(arg) :
+        __builtin_ctzll(arg);
+    }
+    #define DETECTED_builtin_clz64 DETECTED_builtin_clz64
+    #define DETECTED_builtin_clz32 DETECTED_builtin_clz32
+    #define DETECTED_builtin_ctz64 DETECTED_builtin_ctz64
+    #define DETECTED_builtin_ctz32 DETECTED_builtin_ctz32
+  #endif
+
+  // This is a conservative poor way of guessing, that probably works for
+  // most current machines/systems (but not for all compilers!)
+  #if defined(__GNUC__) && (__LP64__ || __x86_64__)
+    #define DETECTED_int128_t __int128_t
+    #define DETECTED_uint128_t __uint128_t
+  #endif
 #endif
 
 #if !LASERCAKE_NO_THREADS
@@ -146,8 +191,8 @@ auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
 
 inline int32_t i64log2(uint64_t argument) {
   caller_error_if(argument == 0, "the logarithm of zero is undefined");
-#if defined(__GNUC__)
-  return (sizeof(long long)*8) - 1 - __builtin_clzll(argument);
+#if defined(DETECTED_builtin_clz64)
+  return 63 - DETECTED_builtin_clz64(argument);
 #else
   int32_t shift
          = argument &  (((1ULL << 32) - 1) << 32)           ? 32 : 0;
@@ -174,8 +219,8 @@ struct static_num_bits_in_integer_that_are_not_leading_zeroes<0> {
 
 inline int32_t count_trailing_zeroes_64(uint64_t argument) {
   caller_error_if(argument == 0, "the number of trailing zeroes of zero is undefined");
-#if defined(__GNUC__)
-  return __builtin_ctzll(argument);
+#if defined(DETECTED_builtin_ctz64)
+  return DETECTED_builtin_ctz64(argument);
 #else
   if(argument == 0) return 64;
   int32_t shift

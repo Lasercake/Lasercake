@@ -33,11 +33,6 @@
 
 #include <ostream>
 
-#ifndef HAVE_INT128_T
-// TODO make this better detected/configured somehow
-#define HAVE_INT128_T 1
-#endif
-
 namespace bounds_checked_int_impl {
   template<int bits, bool is_signed> struct int_types;
   template<> struct int_types< 8, true > { typedef  int8_t type; typedef int8_t signed_type; typedef uint8_t unsigned_type; };
@@ -48,9 +43,9 @@ namespace bounds_checked_int_impl {
   template<> struct int_types<32, false> { typedef uint32_t type; typedef int32_t signed_type; typedef uint32_t unsigned_type; };
   template<> struct int_types<64, true > { typedef  int64_t type; typedef int64_t signed_type; typedef uint64_t unsigned_type; };
   template<> struct int_types<64, false> { typedef uint64_t type; typedef int64_t signed_type; typedef uint64_t unsigned_type; };
-#if HAVE_INT128_T
-  template<> struct int_types<128, true > { typedef  __int128_t type; typedef __int128_t signed_type; typedef __uint128_t unsigned_type; };
-  template<> struct int_types<128, false> { typedef __uint128_t type; typedef __int128_t signed_type; typedef __uint128_t unsigned_type; };
+#if defined(DETECTED_int128_t) && defined(DETECTED_uint128_t)
+  template<> struct int_types<128, true > { typedef  DETECTED_int128_t type; typedef DETECTED_int128_t signed_type; typedef DETECTED_uint128_t unsigned_type; };
+  template<> struct int_types<128, false> { typedef DETECTED_uint128_t type; typedef DETECTED_int128_t signed_type; typedef DETECTED_uint128_t unsigned_type; };
 #endif
   struct cannot_compare_types_of_different_signs_correctly {};
   // for checking int1 OP int2 (or unary ops on int1 if you take the default value)
@@ -63,14 +58,6 @@ namespace bounds_checked_int_impl {
                                          int_types<boost::static_signed_max<sizeof(Int1)*8, sizeof(Int2)*8>::value, std::numeric_limits<Int1>::is_signed>,
                                          cannot_compare_types_of_different_signs_correctly>::type comparison;
   };
-
-  //intentionally bigger than any bounds checkable type - so it will be able
-  //to hold all the min and max values at compile-time for both signed and unsigned
-#if HAVE_INT128_T
-  typedef __int128_t large_t;
-#else
-  typedef int64_t large_t;
-#endif
   
   template<typename Int1, typename Int2>
   struct superior_to {
