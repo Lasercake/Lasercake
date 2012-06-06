@@ -114,10 +114,12 @@ private:
   // (Specifically, the "low bits" are zero.)
   std::array<Coordinate, NumDimensions> coords_;
 
-  //small_num_bits_type can represent at least [0,CoordinateBits] inclusive.
-  typedef typename boost::uint_t<static_num_bits_in_integer_that_are_not_leading_zeroes<CoordinateBits>::value>::least small_num_bits_type;
+  //small_num_bits_type can represent at least [0, CoordinateBits*NumDimensions] inclusive.
+  //smaller_num_bits_type can represent at least [0, CoordinateBits] inclusive.
+  typedef typename boost::uint_t<static_num_bits_in_integer_that_are_not_leading_zeroes<CoordinateBits*NumDimensions>::value>::least small_num_bits_type;
+  typedef typename boost::uint_t<static_num_bits_in_integer_that_are_not_leading_zeroes<CoordinateBits>::value>::least smaller_num_bits_type;
   small_num_bits_type num_low_bits_;
-  std::array<small_num_bits_type, NumDimensions> dim_num_low_bits_;
+  std::array<smaller_num_bits_type, NumDimensions> dim_num_low_bits_;
 
 public:
   typedef std::ostream hack_to_make_bbox_collision_detector_zbox_ostreamable;
