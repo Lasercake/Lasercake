@@ -2,7 +2,7 @@
 
 import os, sys, subprocess, re, shutil
 
-MAKE_PARALLEL_JOBS = 7
+MAKE_PARALLEL_JOBS = 3
 
 make_flags = ['-j'+str(MAKE_PARALLEL_JOBS)]
 
