@@ -173,6 +173,22 @@ private:
   int_type val_;
 };
 
+// How to implement numeric_limits most correctly with non-default bounds?
+// Especially as something that is supposed to only check code, never change
+// its behaviour.
+// Leaving unimplemented for now.
+#if 0
+namespace std {
+  // is_modulo: always false?
+  // min(), max(), digits, digits10
+  template<typename Int> struct numeric_limits< bounds_checked_int<Int> > : numeric_limits<Int> {};
+}
+namespace boost {
+  template<typename Int> struct   make_signed< bounds_checked_int<Int> > { typedef bounds_checked_int<typename   make_signed<Int>::type> type; };
+  template<typename Int> struct make_unsigned< bounds_checked_int<Int> > { typedef bounds_checked_int<typename make_unsigned<Int>::type> type; };
+}
+#endif
+
 // Checks that the value fits into the target type.
 template<typename Target, typename AnyInt>
 inline Target get_un_bounds_checked(AnyInt a) {
