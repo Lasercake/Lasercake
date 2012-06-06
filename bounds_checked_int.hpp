@@ -104,7 +104,7 @@ template<
 >
 class bounds_checked_int {
 private:
-  struct unspecified_bool_{int member;};
+  struct unspecified_bool_{int member; private:unspecified_bool_();};
   typedef int unspecified_bool_::* unspecified_bool_type;
 public:
   static_assert(Min <= Max, "bounds_checked_int min less than max (sanity check)");
