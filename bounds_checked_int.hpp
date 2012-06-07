@@ -146,6 +146,10 @@ public:
   operator unspecified_bool_type() const { return val_ ? &unspecified_bool_::member : nullptr; }
 
   int_type get() const { return val_; }
+
+  friend inline std::ostream& operator<<(std::ostream& os, bounds_checked_int i) {
+    return os << i.get();
+  }
 private:
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wtype-limits"
@@ -325,9 +329,5 @@ abs(bounds_checked_int<Int,Min,Max> i) {
 }
 }
 
-template<typename Int, Int Min, Int Max>
-inline std::ostream& operator<<(std::ostream& os, bounds_checked_int<Int,Min,Max> i) {
-  return os << i.get();
-}
 
 #endif

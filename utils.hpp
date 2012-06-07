@@ -377,16 +377,11 @@ public:
     return dot<int64_type_to_use_with_dot>(*this) > (int64_type_to_use_with_dot)amount * (int64_type_to_use_with_dot)amount;
   }
   bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
+
+  friend inline std::ostream& operator<<(std::ostream& os, vector3 const& v) {
+    return os << '(' << v.x << ", " << v.y << ", " << v.z << ')';
+  }
 };
-
-// Make sure this is declared so that overload resolution on vector3 ostream <<
-// will choose this for the component types (rather than choosing bool(!)).
-template<typename Int, Int Min, Int Max>
-std::ostream& operator<<(std::ostream& os, bounds_checked_int<Int,Min,Max> i);
-
-template<typename T> inline std::ostream& operator<<(std::ostream& os, vector3<T>const& v) {
-  return os << '(' << v.x << ", " << v.y << ", " << v.z << ')';
-}
 
 namespace std {
   template<typename ScalarType> struct hash<vector3<ScalarType> > {
