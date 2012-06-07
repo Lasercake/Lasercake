@@ -150,6 +150,9 @@ public:
   friend inline std::ostream& operator<<(std::ostream& os, bounds_checked_int i) {
     return os << i.get();
   }
+  friend inline size_t hash_value(bounds_checked_int i) {
+    return std::hash<Int>()(i.get());
+  }
 private:
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wtype-limits"
@@ -176,6 +179,15 @@ private:
   #pragma GCC diagnostic pop
   int_type val_;
 };
+
+namespace std {
+  template<typename Int, Int Min, Int Max>
+  struct hash< bounds_checked_int<Int,Min,Max> > {
+    inline size_t operator()(bounds_checked_int<Int,Min,Max> const& i) const {
+      return hash_value(i);
+    }
+  };
+}
 
 // How to implement numeric_limits most correctly with non-default bounds?
 // Especially as something that is supposed to only check code, never change
@@ -208,15 +220,6 @@ struct get_primitive_int_type< bounds_checked_int<Int,Min,Max> > {
   typedef Int type;
 };
 
-
-namespace std {
-  template<typename Int, Int Min, Int Max>
-  struct hash< bounds_checked_int<Int,Min,Max> > {
-    inline size_t operator()(bounds_checked_int<Int,Min,Max> const& i) const {
-      return hash<Int>()(i.get());
-    }
-  };
-}
 
 template<typename Int1, Int1 Min1, Int1 Max1, typename Int2, Int2 Min2, Int2 Max2>
 struct common_bounds_checked_int :

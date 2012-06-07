@@ -381,16 +381,19 @@ public:
   friend inline std::ostream& operator<<(std::ostream& os, vector3 const& v) {
     return os << '(' << v.x << ", " << v.y << ", " << v.z << ')';
   }
-};
-
-namespace std {
-  template<typename ScalarType> struct hash<vector3<ScalarType> > {
-    inline size_t operator()(vector3<ScalarType> const& v) const {
+  friend inline size_t hash_value(vector3 const& v) {
       size_t seed = 0;
       boost::hash_combine(seed, v.x);
       boost::hash_combine(seed, v.y);
       boost::hash_combine(seed, v.z);
       return seed;
+  }
+};
+
+namespace std {
+  template<typename ScalarType> struct hash<vector3<ScalarType> > {
+    inline size_t operator()(vector3<ScalarType> const& v) const {
+      return hash_value(v);
     }
   };
 }

@@ -170,7 +170,7 @@ struct object_or_tile_identifier {
   object_or_tile_identifier(object_identifier id):data_(id){}
   tile_location const* get_tile_location()const { return boost::get<tile_location>(&data_); }
   object_identifier const* get_object_identifier()const { return boost::get<object_identifier>(&data_); }
-  size_t hash()const {
+  friend inline size_t hash_value(object_or_tile_identifier const& id) {
     struct hash_visitor : public boost::static_visitor<size_t>
     {
       size_t operator()(tile_location const& i) const {
@@ -181,7 +181,7 @@ struct object_or_tile_identifier {
         return std::hash<object_identifier>()(i);
       }
     };
-    return boost::apply_visitor( hash_visitor(), data_ );
+    return boost::apply_visitor( hash_visitor(), id.data_ );
   }
   bool operator==(object_or_tile_identifier const& other)const { return data_ == other.data_; }
   bool operator==(object_identifier const& other)const {
@@ -216,7 +216,7 @@ private:
 namespace std {
   template<> struct hash<object_or_tile_identifier> {
     inline size_t operator()(object_or_tile_identifier const& id) const {
-      return id.hash();
+      return hash_value(id);
     }
   };
 }

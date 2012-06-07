@@ -197,6 +197,7 @@ public:
   friend inline std::ostream& operator<<(std::ostream& os, tile_location const& l) {
     return os << l.v_;
   }
+  friend inline size_t hash_value(tile_location const& l) { return std::hash<vector3<tile_coordinate>>()(l.coords()); }
 private:
   // This constructor should only be used when you know exactly what worldblock it's in!!
   tile_location(vector3<tile_coordinate> v, the_decomposition_of_the_world_into_blocks_impl::worldblock *wb):v_(v),wb_(wb){}
@@ -220,7 +221,7 @@ inline tile_location trivial_invalid_location() { return tile_location(vector3<t
 namespace std {
   template<> struct hash<tile_location> {
     inline size_t operator()(tile_location const& l) const {
-      return hash<vector3<tile_coordinate> >()(l.coords());
+      return hash_value(l);
     }
   };
 }
