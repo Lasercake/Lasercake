@@ -206,7 +206,7 @@ void laser_emitter::update(world& w, object_identifier my_id) {
   const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
   
   location_ = middle;
-  const boost::random::uniform_int_distribution<fine_scalar> random_delta(-1023, 1023);
+  const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type> random_delta(-1023, 1023);
   for (int i = 0; i < 100; ++i) {
     do {
       facing_.x = random_delta(w.get_rng());

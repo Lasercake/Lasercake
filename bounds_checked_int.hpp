@@ -195,6 +195,15 @@ inline Target get_primitive(AnyInt a) {
   return bounds_checked_int<Target>(a).get();
 }
 
+template<typename Int>
+struct get_primitive_int_type {
+  typedef Int type;
+};
+template<typename Int, Int Min, Int Max>
+struct get_primitive_int_type< bounds_checked_int<Int,Min,Max> > {
+  typedef Int type;
+};
+
 
 namespace std {
   template<typename Int, Int Min, Int Max>
