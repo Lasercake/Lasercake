@@ -123,6 +123,10 @@ BOOST_AUTO_TEST_CASE( boundses ) {
     BOOST_CHECK_THROW(p/tenz(-1) - tenz(2), std::logic_error);
 
     BOOST_CHECK_EQUAL(i32(3.5), 3);
+
+    std::stringstream ss;
+    ss << i32(7) << '@' << i32(-11);
+    BOOST_CHECK_EQUAL(ss.str(), "7@-11");
   }
   
   //test not convertable signed/unsigned or wrong way somehow? boost is_convertible?

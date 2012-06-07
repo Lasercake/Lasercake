@@ -126,4 +126,19 @@ BOOST_AUTO_TEST_CASE( signs_test ) {
   BOOST_CHECK_EQUAL(is_negative(std::numeric_limits<int32_t>::min()), true);
 }
 
+BOOST_AUTO_TEST_CASE( vector3_tests ) {
+  // more would be better
+
+  {
+    std::stringstream ss;
+    ss << vector3<int>(-99,0,100);
+    BOOST_CHECK_EQUAL(ss.str(), "(-99, 0, 100)");
+  }
+  {
+    std::stringstream ss;
+    ss << vector3<bounds_checked_int<int>>(-99,0,100);
+    BOOST_CHECK_EQUAL(ss.str(), "(-99, 0, 100)");
+  }
+}
+
 }  /* end anonymous namespace */
