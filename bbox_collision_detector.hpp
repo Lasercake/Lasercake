@@ -191,7 +191,9 @@ using collision_detector::bbox_collision_detector;
 //could waste time compiling in every file.
 #if 0
 struct object_or_tile_identifier;
+namespace collision_detector {
 extern template class bbox_collision_detector<object_or_tile_identifier, 64, 3>;
+}
 #endif
 
 #endif

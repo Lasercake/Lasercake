@@ -630,5 +630,7 @@ bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
 
 #ifndef BBOX_COLLISION_DETECTOR_IMPL_TREAT_AS_HEADER
 #include "world.hpp"
+namespace collision_detector {
 template class bbox_collision_detector<object_or_tile_identifier, 64, 3>;
+}
 #endif
