@@ -63,8 +63,57 @@ static_assert(sizeof(color) == 4*sizeof(GLubyte), "OpenGL needs this data layout
 
 
 struct gl_call_data {
-  std::vector<vertex> vertices;
-  std::vector<color> colors;
+  typedef uint32_t size_type;
+  size_type count;
+  size_type alloced;
+  vertex* vertices;
+  color* colors;
+  //vertex* vertices_end;
+  //color* colors_end;
+  static const size_type default_size = 5;
+  static const size_type expand_multiplier = 4;
+  gl_call_data()
+    : count(0),
+      alloced(default_size),
+      vertices((vertex*)malloc(default_size*sizeof(vertex))),
+      colors((color*)malloc(default_size*sizeof(color))) {
+    assert(vertices);
+    assert(colors);
+  }
+  gl_call_data(gl_call_data const& other)
+    : count(other.count),
+      alloced(other.alloced),
+      vertices((vertex*)malloc(other.alloced*sizeof(vertex))),
+      colors((color*)malloc(other.alloced*sizeof(color))) {
+    assert(vertices);
+    assert(colors);
+    memcpy(vertices, other.vertices, count*sizeof(vertex));
+    memcpy(colors, other.colors, count*sizeof(color));
+  }
+  gl_call_data& operator=(gl_call_data const& other) = delete;
+  ~gl_call_data() { free(vertices); free(colors); }
+  void push_vertex(vertex const& v, color const& c) {
+    if(count == alloced) do_realloc();
+    vertices[count] = v;
+    colors[count] = c;
+    ++count;
+  }
+  size_type size() const { return count; }
+  void do_realloc() {
+    const size_type new_size = alloced * expand_multiplier;
+    assert(new_size > alloced);
+    vertex* new_vertices = (vertex*)malloc(new_size * sizeof(vertex));
+    color* new_colors = (color*)malloc(new_size * sizeof(color));
+    assert(new_vertices);
+    assert(new_colors);
+    memcpy(new_vertices, vertices, count*sizeof(vertex));
+    memcpy(new_colors, colors, count*sizeof(color));
+    free(vertices);
+    free(colors);
+    vertices = new_vertices;
+    colors = new_colors;
+    alloced = new_size;
+  }
 };
 
 struct gl_collection {

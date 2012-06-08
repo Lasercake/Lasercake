@@ -43,8 +43,7 @@ vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vec
 
 
 void push_vertex(gl_call_data& data, vertex const& v, color const& c) {
-  data.vertices.push_back(v);
-  data.colors.push_back(c);
+  data.push_vertex(v, c);
 }
 
 // There are versions of these with one color passed for all vertices to share (for convenience),
