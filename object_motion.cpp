@@ -287,7 +287,7 @@ void update_moving_objects_impl(
         sweep_box_cd.insert(id, sweep_bounds);
         sweep_box_cd.get_objects_overlapping(new_sweep_overlaps, sweep_bounds);
       
-        for (object_or_tile_identifier const& foo : this_overlaps) {
+        for (object_or_tile_identifier const& foo : new_sweep_overlaps) {
           if (object_identifier const* bar = foo.get_object_identifier()) {
             if (*bar != id) {
               if (objects_with_some_overlap.find(*bar) == objects_with_some_overlap.end()) {
