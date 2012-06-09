@@ -86,6 +86,9 @@ BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
   typedef collision_detector::impl::zbox<32, 2> zbox;
   typedef std::array<detector_2d::coordinate_type, 2> coords;
 
+  static_assert(sizeof(collision_detector::impl::zbox<64,3>) <= 32, "are we still saving zbox space well");
+  //static_assert(sizeof(collision_detector::impl::ztree_node<void*, 64, 3>) <= 64, "are we still saving ztree_node space well");
+
   const coords boxcoords1 = {{ 0, 0 }};
   const coords boxcoords2 = {{ 0x80000000u, 0x80000000u }};
   const coords boxcoords3 = {{ 0x80000000u, 0xc0000013u }};
