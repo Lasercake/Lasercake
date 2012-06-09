@@ -22,6 +22,7 @@ def main():
 	cmake_args = []
 	make_args = []
 	making_lasercake = True
+	running_tests = True
 	for arg in sys.argv[1:]:
 		m_cxx = re.search(r'^(?:CC|CXX)=(.*)$', arg)
 		m_cxxflags = re.search(r'^(?:C|CXX)FLAGS=(.*)$', arg)
@@ -34,6 +35,9 @@ def main():
 		elif arg == 'test':
 			make_args.append('test-lasercake')
 			making_lasercake = False
+		elif arg == 'no-test':
+			make_args.append('lasercake')
+			running_tests = False
 		elif m_cxx:
 			cmake_args.append('-DCMAKE_CXX_COMPILER='+m_cxx.group(1))
 		elif m_cxxflags:
@@ -58,12 +62,20 @@ def main():
 	if making_lasercake:
 		sys.stdout.write(ansi_green+'and you got:\n./'+build_dir+'/lasercake\n(etc.)'+ansi_end+'\n')
 		sys.stdout.flush()
-	sys.stdout.write(ansi_cyan+'Testing...'+ansi_end+'\n')
-	sys.stdout.flush()
-	test_status = subprocess.call(['./test-lasercake'])
-	if test_status == 0 and making_lasercake:
-		sys.stdout.write(ansi_green+'success; copying '+build_dir+'/lasercake to ./lasercake'+ansi_end+'\n')
+	if running_tests:
+		sys.stdout.write(ansi_cyan+'Testing...'+ansi_end+'\n')
 		sys.stdout.flush()
+		test_status = subprocess.call(['./test-lasercake'])
+		if test_status != 0:
+			exit(test_status)
+		sys.stdout.write(ansi_green+'success')
+	else:
+		sys.stdout.write(ansi_yellow+'NOT RUNNING TESTS')
+	if making_lasercake:
+		sys.stdout.write('; copying '+build_dir+'/lasercake to ./lasercake')
+	sys.stdout.write(ansi_end+'\n')
+	sys.stdout.flush()
+	if making_lasercake:
 		#TODO does this work if Windows .exe extension?
 		#(or any of the rest of this script for that matter.)
 		shutil.copy2('lasercake', '../../lasercake')

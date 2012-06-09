@@ -4,7 +4,15 @@ project (Lasercake)
 set (Lasercake_VERSION_MAJOR 0)
 set (Lasercake_VERSION_MINOR 1)
 
-find_package(Boost COMPONENTS thread)
+set (OPTIONS_DEFINES "")
+option (THREADS "On: Use Boost multithreading for parallelism; off: don't link/use threads." ON)
+
+if (THREADS)
+	find_package(Boost COMPONENTS thread)
+else()
+	set (OPTIONS_DEFINES "${OPTIONS_DEFINES} -DLASERCAKE_NO_THREADS=1")
+	find_package(Boost)
+endif()
 find_package(SDL)
 find_package(OpenGL)
 
@@ -13,7 +21,7 @@ include_directories(${SDL_INCLUDE_DIR} ${BOOST_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR
 set(OPT_FLAGS "-O3")
 set(WARNING_FLAGS "-Wall -Wextra -Wno-unknown-pragmas -fmax-errors=15")
 set(SECURITY_FLAGS "-fwrapv -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2")
-set(CMAKE_CXX_FLAGS "${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} -std=c++0x ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} -std=c++0x ${CMAKE_CXX_FLAGS}")
 
 file (GLOB LASERCAKE_SOURCES *.cpp *.hpp)
 add_executable (lasercake ${LASERCAKE_SOURCES})
