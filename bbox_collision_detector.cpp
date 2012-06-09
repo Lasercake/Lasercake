@@ -590,8 +590,7 @@ INLINE_IF_HEADER
 void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
 get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box const& bbox)const {
   typedef pair<const ObjectIdentifier, bounding_box> const* id_and_bbox_type;
-  //static so there's less reallocation; not threadsafe yet:
-  static typename lasercake_set<id_and_bbox_type>::type uniquified_results;
+  typename lasercake_set<id_and_bbox_type>::type uniquified_results;
   impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::zget_objects_overlapping(objects_tree_.get(), uniquified_results, bbox);
   results.reserve(results.size() + uniquified_results.size());
   for(pair<const ObjectIdentifier, bounding_box> const* id_and_bbox : uniquified_results) {
