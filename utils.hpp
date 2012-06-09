@@ -24,7 +24,9 @@
 
 #include <array>
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
+#include <memory>
 #include <cmath>
 #include <inttypes.h>
 #include <boost/functional/hash.hpp>
@@ -35,6 +37,9 @@
 #include <boost/random/random_number_generator.hpp>
 #include <boost/integer/static_log2.hpp>
 #include <stdexcept>
+#if defined(LASERCAKE_USE_GLIB)
+#include <glib.h>
+#endif
 
 // Some asserts take too much runtime to turn on by default.
 // So write them "assert_if_ASSERT_EVERYTHING(x);"
@@ -549,6 +554,70 @@ template<typename IntType> struct non_normalized_rational {
 template<typename IntType> inline std::ostream& operator<<(std::ostream& os, non_normalized_rational<IntType>const& r) {
   return os << r.numerator << '/' << r.denominator;
 }
+
+
+#if defined(LASERCAKE_USE_GLIB)
+template<typename T>
+class g_slice_allocator {
+public:
+  typedef T value_type;
+  typedef value_type* pointer;
+  typedef const value_type* const_pointer;
+  typedef value_type& reference;
+  typedef const value_type& const_reference;
+  typedef std::size_t size_type;
+  typedef std::ptrdiff_t difference_type;
+
+  template<typename U>
+  struct rebind {
+    typedef g_slice_allocator<U> other;
+  };
+
+  g_slice_allocator() {}
+  //~g_slice_allocator() {}
+  //explicit g_slice_allocator(g_slice_allocator const&) {}
+  template<typename U>
+  explicit g_slice_allocator(g_slice_allocator<U> const&) {}
+
+  pointer address(reference ref) { return std::addressof(ref); }
+  const_pointer address(const_reference ref) { return std::addressof(ref); }
+
+  pointer allocate(size_type count, void* = 0) {
+    return static_cast<pointer>(g_slice_alloc(count * sizeof(T)));
+  }
+  void deallocate(pointer ptr, size_type count) {
+    g_slice_free1(count * sizeof(T), ptr);
+  }
+
+  size_type max_size() const {
+    return std::numeric_limits<size_type>::max() / sizeof(T);
+  }
+
+  void construct(pointer p, const T& t) { new(p) T(t); }
+  void destroy(pointer p) { p->~T(); }
+
+  bool operator==(g_slice_allocator const&) { return true; }
+  bool operator!=(g_slice_allocator const&) { return false; }
+};
+#else
+template<typename T>
+class g_slice_allocator : public std::allocator<T> {};
+#endif
+
+template<typename T>
+struct lasercake_set {
+  typedef std::unordered_set<T, std::hash<T>, std::equal_to<T>, g_slice_allocator<T> > type;
+};
+template<typename K, typename V>
+struct lasercake_map {
+  typedef std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, g_slice_allocator< std::pair<const K, V> > > type;
+};
+template<typename T>
+struct lasercake_vector {
+  typedef std::vector<T, g_slice_allocator<T> > type;
+};
+
+
 
 template<typename Stuff> struct literally_random_access_removable_stuff {
 public:
