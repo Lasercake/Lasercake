@@ -484,18 +484,17 @@ struct ztree_ops {
       }
     }
   }
-
+  typedef pair<const ObjectIdentifier, bounding_box> const* id_and_bbox_type;
   static void zget_objects_overlapping(
         ztree_node const* tree,
-        unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object,
-        unordered_set<ObjectIdentifier>& results,
+        typename lasercake_set<id_and_bbox_type>::type& results,
         bounding_box const& bbox) {
     if (tree && tree->here.overlaps(bbox)) {
-      for (auto id_and_bbox : tree->objects_here) {
-        if (id_and_bbox->second.overlaps(bbox)) results.insert(id_and_bbox->first);
+      for(pair<const ObjectIdentifier, bounding_box> const* id_and_bbox : tree->objects_here) {
+        if (id_and_bbox->second.overlaps(bbox)) results.insert(id_and_bbox);
       }
-      zget_objects_overlapping(tree->child0.get(), bboxes_by_object, results, bbox);
-      zget_objects_overlapping(tree->child1.get(), bboxes_by_object, results, bbox);
+      zget_objects_overlapping(tree->child0.get(), results, bbox);
+      zget_objects_overlapping(tree->child1.get(), results, bbox);
     }
   }
 };
@@ -589,8 +588,16 @@ erase(ObjectIdentifier const& id) {
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
 INLINE_IF_HEADER
 void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
-get_objects_overlapping(unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const {
-  impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::zget_objects_overlapping(objects_tree_.get(), bboxes_by_object_, results, bbox);
+get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box const& bbox)const {
+  typedef pair<const ObjectIdentifier, bounding_box> const* id_and_bbox_type;
+  //static so there's less reallocation; not threadsafe yet:
+  static typename lasercake_set<id_and_bbox_type>::type uniquified_results;
+  impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::zget_objects_overlapping(objects_tree_.get(), uniquified_results, bbox);
+  results.reserve(results.size() + uniquified_results.size());
+  for(pair<const ObjectIdentifier, bounding_box> const* id_and_bbox : uniquified_results) {
+    results.push_back(id_and_bbox->first);
+  }
+  uniquified_results.clear();
 }
 
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>

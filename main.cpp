@@ -184,7 +184,7 @@ object_identifier init_test_world_and_return_our_robot(world& w) {
     std::cerr << "\nInit: ";
     const microseconds_t microseconds_before_init = get_this_process_microseconds();
 
-    unordered_set<object_or_tile_identifier> tiles_near_start;
+    vector<object_or_tile_identifier> tiles_near_start;
     // I choose these distances big enough that, as of the time of writing this comment,
     // the GLOBAL view won't have to realize any new tiles in order to make a complete cycle
     // around world-center.  This is an interim way to get rid of that annoying lag, at the cost

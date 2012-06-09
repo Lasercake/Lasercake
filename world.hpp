@@ -282,7 +282,7 @@ private:
 public:
   world_collision_detector(){}
   
-  void get_objects_overlapping(unordered_set<object_or_tile_identifier>& results, bounding_box const& bb)const {
+  void get_objects_overlapping(vector<object_or_tile_identifier>& results, bounding_box const& bb)const {
     detector.get_objects_overlapping(results, convert_bb_(bb));
   }
   
@@ -462,11 +462,11 @@ public:
   
   tile_location make_tile_location(vector3<tile_coordinate> const& coords, level_of_tile_realization_needed realineeded);
   
-  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier>& results, bounding_box const& bounds) {
+  void collect_things_exposed_to_collision_intersecting(vector<object_or_tile_identifier>& results, bounding_box const& bounds) {
     ensure_realization_of_space_(convert_to_smallest_superset_at_tile_resolution(bounds), FULL_REALIZATION);
     things_exposed_to_collision_.get_objects_overlapping(results, bounds);
   }
-  void collect_things_exposed_to_collision_intersecting(unordered_set<object_or_tile_identifier>& results, tile_bounding_box const& bounds) {
+  void collect_things_exposed_to_collision_intersecting(vector<object_or_tile_identifier>& results, tile_bounding_box const& bounds) {
     ensure_realization_of_space_(bounds, FULL_REALIZATION);
     things_exposed_to_collision_.get_objects_overlapping(results, convert_to_fine_units(bounds));
   }

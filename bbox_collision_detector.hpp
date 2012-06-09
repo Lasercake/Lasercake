@@ -121,7 +121,7 @@ public:
   bounding_box const* find_bounding_box(ObjectIdentifier const& id)const {
     return find_as_pointer(bboxes_by_object_, id);
   }
-  void get_objects_overlapping(std::unordered_set<ObjectIdentifier>& results, bounding_box const& bbox)const;
+  void get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box const& bbox)const;
 
   // Derive from
   //   class collision_detector::visitor<>

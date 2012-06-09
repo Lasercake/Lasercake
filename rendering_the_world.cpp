@@ -231,7 +231,7 @@ void view_on_the_world::render(
       );
     }
 
-    unordered_set<object_or_tile_identifier> tiles_to_draw;
+    vector<object_or_tile_identifier> tiles_to_draw;
     /*w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(
       vector3<tile_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50),
       vector3<tile_coordinate>(101,101,101)

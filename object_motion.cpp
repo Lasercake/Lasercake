@@ -29,7 +29,7 @@ void collect_collisions_if_object_personal_space_is_at(
     object_identifier id,
     shape const& new_shape
 ) {
-  unordered_set<object_or_tile_identifier> potential_collisions;
+  vector<object_or_tile_identifier> potential_collisions;
   w.collect_things_exposed_to_collision_intersecting(potential_collisions, new_shape.bounds());
   for (auto const& pc : potential_collisions){
     if (const auto tlocp = pc.get_tile_location()) {
@@ -139,7 +139,7 @@ void update_moving_objects_impl(
       
       sweep_box_cd.insert(p.first, sweep_bounds);
       
-      unordered_set<object_or_tile_identifier> this_overlaps;
+      vector<object_or_tile_identifier> this_overlaps;
       sweep_box_cd.get_objects_overlapping(this_overlaps, sweep_bounds);
       w.collect_things_exposed_to_collision_intersecting(this_overlaps, sweep_bounds);
       
@@ -225,7 +225,7 @@ void update_moving_objects_impl(
       
     new_shape.translate(wanted_displacement_this_step);
       
-    unordered_set<object_or_tile_identifier> this_overlaps;
+    vector<object_or_tile_identifier> this_overlaps;
     w.collect_things_exposed_to_collision_intersecting(this_overlaps, new_shape.bounds());
     
     // This collision code is kludgy because of the way it handles one collision at a time.
@@ -277,7 +277,7 @@ void update_moving_objects_impl(
       
     if (false) { // if our velocity changed...
         info.remaining_displacement = (objp->velocity * (whole_frame_duration - times.current_time)) / (whole_frame_duration * velocity_scale_factor);
-        unordered_set<object_or_tile_identifier> new_sweep_overlaps;
+        vector<object_or_tile_identifier> new_sweep_overlaps;
         
         shape dst_personal_space_shape(personal_space_shapes[id]);
         dst_personal_space_shape.translate(info.remaining_displacement);
