@@ -117,7 +117,11 @@
 #endif
 
 #if !LASERCAKE_NO_THREADS
-const bool LASERCAKE_NO_THREADS = false;
+  // current compilers (e.g. GCC 4.7) don't seem to support the 'thread_local' C++11 name
+  #define thread_local __thread
+  const bool LASERCAKE_NO_THREADS = false;
+#else
+  #define thread_local
 #endif
 
 // (not enabled unless you enable it) #define USE_BOUNDS_CHECKED_INTS 1

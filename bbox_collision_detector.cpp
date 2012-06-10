@@ -58,6 +58,22 @@ struct access_visitor_found_objects {
 namespace /*anonymous*/ {
 
 typedef boost::dynamic_bitset<> dynamic_bitset_type;
+thread_local dynamic_bitset_type* array_of_zeroes = nullptr;
+dynamic_bitset_type& get_this_thread_array_of_zeroes() {
+  if(array_of_zeroes == nullptr) {
+    array_of_zeroes = new impl::dynamic_bitset_type;
+    // Right now we never free it and this works out okay;
+    // if we use more dynamic threads later it might need thought.
+  }
+  return *array_of_zeroes;
+}
+dynamic_bitset_type& get_this_thread_array_of_zeroes(size_t num_zero_bits_needed) {
+  dynamic_bitset_type& arr = get_this_thread_array_of_zeroes();
+  if(arr.size() < num_zero_bits_needed) {
+    arr.resize(num_zero_bits_needed);
+  }
+  return arr;
+}
 
 template<num_bits_type CoordinateBits>
 struct coordinate_bit_math {
@@ -494,14 +510,21 @@ struct ztree_ops {
   }
   static void zget_objects_overlapping(
         ztree_node const* tree,
-        typename lasercake_set<id_and_bbox_ptr>::type& results,
+        std::vector<ObjectIdentifier>& results,
+        std::vector<id_and_bbox_ptr>& verbose_results,
+        dynamic_bitset_type& bitmap_indicating_found_results,
         bounding_box const& bbox) {
     if (tree && tree->here.overlaps(bbox)) {
       for(id_and_bbox_ptr id_and_bbox : tree->objects_here) {
-        if (id_and_bbox->second.bbox.overlaps(bbox)) results.insert(id_and_bbox);
+        if (!bitmap_indicating_found_results.test(id_and_bbox->second.numeric_id)
+              && id_and_bbox->second.bbox.overlaps(bbox)) {
+          bitmap_indicating_found_results.set(id_and_bbox->second.numeric_id);
+          results.push_back(id_and_bbox->first);
+          verbose_results.push_back(id_and_bbox);
+        }
       }
-      zget_objects_overlapping(tree->child0.get(), results, bbox);
-      zget_objects_overlapping(tree->child1.get(), results, bbox);
+      zget_objects_overlapping(tree->child0.get(), results, verbose_results, bitmap_indicating_found_results, bbox);
+      zget_objects_overlapping(tree->child1.get(), results, verbose_results, bitmap_indicating_found_results, bbox);
     }
   }
 };
@@ -606,11 +629,20 @@ template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinate
 INLINE_IF_HEADER
 void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
 get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box const& bbox)const {
-  typename lasercake_set<id_and_bbox_ptr>::type uniquified_results;
-  impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::zget_objects_overlapping(objects_tree_.get(), uniquified_results, bbox);
-  results.reserve(results.size() + uniquified_results.size());
-  for(auto id_and_bbox : uniquified_results) {
-    results.push_back(id_and_bbox->first);
+  // If it were not O(this->size()) we would get our this->size() zeroes like this:
+  // impl::dynamic_bitset_type bitmap_indicating_found_results(objects_sequence_.size());
+
+  impl::dynamic_bitset_type& bitmap_indicating_found_results =
+      impl::get_this_thread_array_of_zeroes(objects_sequence_.size());
+
+  std::vector<id_and_bbox_ptr> verbose_results;
+
+  impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::zget_objects_overlapping(
+        objects_tree_.get(), results, verbose_results, bitmap_indicating_found_results, bbox);
+
+  // restore the borrowed bits to all be zero again
+  for(auto id_and_bbox : verbose_results) {
+    bitmap_indicating_found_results.reset(id_and_bbox->second.numeric_id);
   }
 }
 
