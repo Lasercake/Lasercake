@@ -38,6 +38,7 @@ BOOST_AUTO_TEST_CASE( test_m_var_single_threadedly )
   BOOST_CHECK_EQUAL(v.try_take(), boost::optional<int>(5));
 }
 
+#if !defined(LASERCAKE_NO_THREADS)
 BOOST_AUTO_TEST_CASE( test_m_var_concurrent )
 {
   m_var<int> v;
@@ -51,6 +52,7 @@ BOOST_AUTO_TEST_CASE( test_m_var_concurrent )
   BOOST_CHECK_EQUAL(v.take(), 2);
   BOOST_CHECK_EQUAL(v.take(), 3);
 }
+#endif
 
 struct something {
 };
