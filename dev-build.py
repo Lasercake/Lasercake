@@ -17,6 +17,21 @@ ansi_white = '\033[37m'
 ansi_end = '\033[0m'
 
 def main():
+	try: subprocess.call(['cmake', '--version'])
+	except OSError:
+		sys.stdout.write(ansi_red+"Error: 'cmake' not found; please install it."+ansi_end+'\n')
+		sys.stdout.flush()
+		exit(1)
+	try: subprocess.call(['make', '--version'])
+	except OSError:
+		sys.stdout.write(ansi_red+"Error: 'make' not found; please install it."+ansi_end+'\n')
+		sys.stdout.flush()
+		exit(1)
+	try: subprocess.call(['time', '-f', '', 'true'])
+	except OSError:
+		sys.stdout.write(ansi_red+"Error: GNU-compatible 'time' not found; please install it."+ansi_end+'\n')
+		sys.stdout.flush()
+		exit(1)
 	name_for_this_config = ','.join([re.sub(r'[^-+.a-zA-Z0-9]', r'_', arg) for arg in sys.argv[1:]]) or 'default'
 	build_dir = 'build/'+name_for_this_config
 	cmake_args = []
