@@ -30,6 +30,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <boost/scoped_ptr.hpp>
+#include <boost/dynamic_bitset.hpp>
 
 #include "bbox_collision_detector.hpp"
 
@@ -56,6 +57,7 @@ struct access_visitor_found_objects {
 };
 namespace /*anonymous*/ {
 
+typedef boost::dynamic_bitset<> dynamic_bitset_type;
 
 template<num_bits_type CoordinateBits>
 struct coordinate_bit_math {
@@ -277,13 +279,15 @@ struct ztree_node {
   typedef collision_detector::bounding_box<CoordinateBits, NumDimensions> bounding_box;
   typedef impl::zbox<CoordinateBits, NumDimensions> zbox;
   typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
+  typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
+  typedef pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
+  typedef id_and_bbox_type* id_and_bbox_ptr;
   
   const zbox here;
   ztree_node_ptr child0;
   ztree_node_ptr child1;
   
-  typedef pair<const ObjectIdentifier, bounding_box> const* id;
-  unordered_set<id> objects_here;
+  unordered_set<id_and_bbox_ptr> objects_here;
   
   ztree_node(zbox box):here(box),child0(nullptr),child1(nullptr){}
   ztree_node(ztree_node const& other) :
@@ -334,6 +338,10 @@ struct ztree_ops {
   typedef impl::zbox<CoordinateBits, NumDimensions> zbox;
   typedef impl::ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_node;
   typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
+  typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
+  typedef pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
+  typedef id_and_bbox_type* id_and_bbox_ptr;
+  
   
   // A call to insert_zboxes_from_bbox() might be more clearly written
   //   for(zbox zb : zboxes_from_bbox(bbox)) {
@@ -341,8 +349,8 @@ struct ztree_ops {
   //   }
   // The only reason we combine insert_zbox and zboxes_from_bbox is so
   // we don't have to construct the intermediate container structure.
-  static void insert_zboxes_from_bbox(ztree_node_ptr& objects_tree, pair<const ObjectIdentifier, bounding_box> const* id_and_bbox) {
-    bounding_box const& bbox = id_and_bbox->second;
+  static void insert_zboxes_from_bbox(ztree_node_ptr& objects_tree, id_and_bbox_ptr id_and_bbox) {
+    bounding_box const& bbox = id_and_bbox->second.bbox;
     const Coordinate max_width = max_in_array_of_unsigned(bbox.size);
     // max_width - 1: power-of-two-sized objects easily squeeze into the next smaller category.
     // i.e., exp = log2_rounding_up(max_width)
@@ -429,7 +437,7 @@ struct ztree_ops {
       }
     }
   }
-  static void insert_zbox(ztree_node_ptr& tree, pair<const ObjectIdentifier, bounding_box> const* id_and_bbox, zbox box) {
+  static void insert_zbox(ztree_node_ptr& tree, id_and_bbox_ptr id_and_bbox, zbox box) {
     if (!tree) {
       tree.reset(new ztree_node(box));
       tree->objects_here.insert(id_and_bbox);
@@ -461,9 +469,9 @@ struct ztree_ops {
     }
   }
 
-  static void delete_object(ztree_node_ptr& tree, pair<const ObjectIdentifier, bounding_box> const* id_and_bbox) {
+  static void delete_object(ztree_node_ptr& tree, id_and_bbox_ptr id_and_bbox) {
     if (!tree) return;
-    if (tree->here.overlaps(id_and_bbox->second)) {
+    if (tree->here.overlaps(id_and_bbox->second.bbox)) {
       tree->objects_here.erase(id_and_bbox);
       delete_object(tree->child0, id_and_bbox);
       delete_object(tree->child1, id_and_bbox);
@@ -484,14 +492,13 @@ struct ztree_ops {
       }
     }
   }
-  typedef pair<const ObjectIdentifier, bounding_box> const* id_and_bbox_type;
   static void zget_objects_overlapping(
         ztree_node const* tree,
-        typename lasercake_set<id_and_bbox_type>::type& results,
+        typename lasercake_set<id_and_bbox_ptr>::type& results,
         bounding_box const& bbox) {
     if (tree && tree->here.overlaps(bbox)) {
-      for(pair<const ObjectIdentifier, bounding_box> const* id_and_bbox : tree->objects_here) {
-        if (id_and_bbox->second.overlaps(bbox)) results.insert(id_and_bbox);
+      for(id_and_bbox_ptr id_and_bbox : tree->objects_here) {
+        if (id_and_bbox->second.bbox.overlaps(bbox)) results.insert(id_and_bbox);
       }
       zget_objects_overlapping(tree->child0.get(), results, bbox);
       zget_objects_overlapping(tree->child1.get(), results, bbox);
@@ -509,10 +516,12 @@ struct ztree_custom_walker {
   typedef impl::ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_node;
   typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
   typedef collision_detector::visitor<ObjectIdentifier, CoordinateBits, NumDimensions> visitor;
+  typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
+  typedef pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
+  typedef id_and_bbox_type* id_and_bbox_ptr;
   
   visitor* handler;
-  unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object_;
-  ztree_custom_walker(visitor* handler, unordered_map<ObjectIdentifier, bounding_box> const& bboxes_by_object):handler(handler),bboxes_by_object_(bboxes_by_object){}
+  ztree_custom_walker(visitor* handler):handler(handler){}
 
   // The search's frontier (nodes for which we have explored their parent
   // but not them yet).
@@ -534,8 +543,8 @@ struct ztree_custom_walker {
     frontier.pop();
 
     if (handler->should_be_considered__dynamic(next->here.get_bbox())) {
-      for (auto id_and_bbox : next->objects_here) {
-        if (handler->should_be_considered__static(id_and_bbox->second) && handler->should_be_considered__dynamic(id_and_bbox->second)) {
+      for(id_and_bbox_ptr id_and_bbox : next->objects_here) {
+        if (handler->should_be_considered__static(id_and_bbox->second.bbox) && handler->should_be_considered__dynamic(id_and_bbox->second.bbox)) {
           if (access_visitor_found_objects::get(*handler).insert(id_and_bbox->first).second) {
             handler->handle_new_find(id_and_bbox->first);
             if (handler->should_exit_early()) return false;
@@ -563,14 +572,15 @@ template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinate
 INLINE_IF_HEADER
 void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
 insert(ObjectIdentifier const& id, bounding_box const& bbox) {
-  auto iter_and_new = bboxes_by_object_.insert(make_pair(id, bbox));
+  auto numeric_id = objects_sequence_.size();
+  auto iter_and_new = bboxes_by_object_.insert(id_and_bbox_type(id, object_metadata(bbox, numeric_id)));
   caller_correct_if(
     iter_and_new.second,
     "bbox_collision_detector::insert() requires for your safety that the id "
     "is not already in this container.  Use .erase() or .exists() if you need "
     "any particular behaviour in this case."
   );
-
+  objects_sequence_.push_back(&*iter_and_new.first);
   impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::insert_zboxes_from_bbox(objects_tree_, &*iter_and_new.first);
 }
 
@@ -581,6 +591,13 @@ erase(ObjectIdentifier const& id) {
   const auto bbox_iter = bboxes_by_object_.find(id);
   if (bbox_iter == bboxes_by_object_.end()) return false;
   impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::delete_object(objects_tree_, &*bbox_iter);
+  impl::numeric_id_type numeric_id_to_delete = bbox_iter->second.numeric_id;
+  //move the last ID into this slot, so the IDs stay packed.
+  //(a no-op when this was the last ID, but why waste a branch misprediction by using 'if')
+  id_and_bbox_ptr replace_it_with = objects_sequence_.back();
+  replace_it_with->second.numeric_id = numeric_id_to_delete;
+  objects_sequence_[numeric_id_to_delete] = replace_it_with;
+  objects_sequence_.pop_back();
   bboxes_by_object_.erase(bbox_iter);
   return true;
 }
@@ -589,21 +606,19 @@ template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinate
 INLINE_IF_HEADER
 void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
 get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box const& bbox)const {
-  typedef pair<const ObjectIdentifier, bounding_box> const* id_and_bbox_type;
-  typename lasercake_set<id_and_bbox_type>::type uniquified_results;
+  typename lasercake_set<id_and_bbox_ptr>::type uniquified_results;
   impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::zget_objects_overlapping(objects_tree_.get(), uniquified_results, bbox);
   results.reserve(results.size() + uniquified_results.size());
-  for(pair<const ObjectIdentifier, bounding_box> const* id_and_bbox : uniquified_results) {
+  for(auto id_and_bbox : uniquified_results) {
     results.push_back(id_and_bbox->first);
   }
-  uniquified_results.clear();
 }
 
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
 INLINE_IF_HEADER
 void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
 search(visitor* handler)const {
-  impl::ztree_custom_walker<ObjectIdentifier, CoordinateBits, NumDimensions> data(handler, bboxes_by_object_);
+  impl::ztree_custom_walker<ObjectIdentifier, CoordinateBits, NumDimensions> data(handler);
 
   data.try_add(objects_tree_.get());
   while(data.process_next()){}
@@ -614,6 +629,7 @@ INLINE_IF_HEADER
 bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>&
 bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::operator=(bbox_collision_detector const& other) {
   bboxes_by_object_ = other.bboxes_by_object_;
+  objects_sequence_ = other.objects_sequence_;
   objects_tree_.reset(other.objects_tree_ ? new ztree_node(*other.objects_tree_) : nullptr);
   return *this;
 }

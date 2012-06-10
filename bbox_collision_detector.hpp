@@ -33,15 +33,6 @@ namespace collision_detector {
 typedef ptrdiff_t num_bits_type;
 typedef ptrdiff_t num_coordinates_type;
 
-namespace impl {
-  typedef ptrdiff_t num_zboxes_type;
-
-  template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
-  struct ztree_node;
-
-  struct access_visitor_found_objects;
-}
-
 template<num_bits_type CoordinateBits>
 struct coordinate_type_from_bits {
   typedef typename boost::uint_t<CoordinateBits>::fast type;
@@ -86,6 +77,26 @@ public:
   }
 };
 
+namespace impl {
+  typedef ptrdiff_t num_zboxes_type;
+
+  //to make get_objects_overlapping faster (faster uniquification than hash-set)
+  //If the number of objects is n, each has a unique numeric ID in [0,n).
+  typedef uint32_t numeric_id_type;
+  template<num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
+  struct object_metadata {
+    bounding_box<CoordinateBits, NumDimensions> bbox;
+    numeric_id_type numeric_id;
+
+    object_metadata(bounding_box<CoordinateBits, NumDimensions> const& bbox, numeric_id_type numeric_id) : bbox(bbox), numeric_id(numeric_id) {}
+  };
+
+  template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
+  struct ztree_node;
+
+  struct access_visitor_found_objects;
+}
+
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
 class visitor;
 
@@ -119,7 +130,9 @@ public:
   }
   bool erase(ObjectIdentifier const& id);
   bounding_box const* find_bounding_box(ObjectIdentifier const& id)const {
-    return find_as_pointer(bboxes_by_object_, id);
+    auto i = bboxes_by_object_.find(id);
+    if(i == bboxes_by_object_.end()) return nullptr;
+    else return &(i->second.bbox);
   }
   void get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box const& bbox)const;
 
@@ -132,9 +145,14 @@ public:
 private:
   typedef impl::ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_node;
   typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
-  
-  std::unordered_map<ObjectIdentifier, bounding_box> bboxes_by_object_;
+
+  typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
+  typedef std::pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
+  typedef id_and_bbox_type* id_and_bbox_ptr;
+  std::unordered_map<ObjectIdentifier, object_metadata> bboxes_by_object_;
   ztree_node_ptr objects_tree_;
+  //(implicitly) indexed by numeric_id
+  std::vector<id_and_bbox_ptr> objects_sequence_;
 
   friend class zbox_tester;
   friend class bbox_collision_detector_tester;
