@@ -95,11 +95,12 @@ private:
 
 class shape {
 public:
-  shape(                                       ): bounds_cache_is_valid_(false)                 {}
-  shape(               line_segment const& init): bounds_cache_is_valid_(false)                 { segments_.push_back(init); }
-  shape(             convex_polygon const& init): bounds_cache_is_valid_(false)                 { polygons_.push_back(init); }
-  shape(               bounding_box const& init): bounds_cache_is_valid_(false)                 { boxes_   .push_back(init); }
-  shape(std::vector<convex_polygon> const& init): bounds_cache_is_valid_(false), polygons_(init){}
+  shape(                          ) : bounds_cache_is_valid_(false) {}
+  shape(  line_segment const& init) : bounds_cache_is_valid_(false) { segments_.push_back(init); }
+  shape(convex_polygon const& init) : bounds_cache_is_valid_(false) { polygons_.push_back(init); }
+  shape(  bounding_box const& init) : bounds_cache_is_valid_(false) { boxes_   .push_back(init); }
+  shape(lasercake_vector<convex_polygon>::type const& init)
+                                    : bounds_cache_is_valid_(false), polygons_(init) {}
   
   shape(shape const& o):bounds_cache_(o.bounds_cache_),bounds_cache_is_valid_(o.bounds_cache_is_valid_),segments_(o.segments_),polygons_(o.polygons_),boxes_(o.boxes_) {}
   
@@ -111,16 +112,16 @@ public:
   bounding_box bounds()const;
   vector3<polygon_int_type> arbitrary_interior_point()const;
   
-  std::vector<  line_segment> const& get_segments()const { return segments_; }
-  std::vector<convex_polygon> const& get_polygons()const { return polygons_; }
-  std::vector<  bounding_box> const& get_boxes   ()const { return boxes_   ; }
+  lasercake_vector<  line_segment>::type const& get_segments()const { return segments_; }
+  lasercake_vector<convex_polygon>::type const& get_polygons()const { return polygons_; }
+  lasercake_vector<  bounding_box>::type const& get_boxes   ()const { return boxes_   ; }
 private:
   mutable bounding_box bounds_cache_;
   mutable bool bounds_cache_is_valid_;
   
-  std::vector<  line_segment> segments_;
-  std::vector<convex_polygon> polygons_;
-  std::vector<  bounding_box> boxes_   ;
+  lasercake_vector<  line_segment>::type segments_;
+  lasercake_vector<convex_polygon>::type polygons_;
+  lasercake_vector<  bounding_box>::type boxes_   ;
 };
 
 /*bool intersects(line_segment l, convex_polygon const& p);

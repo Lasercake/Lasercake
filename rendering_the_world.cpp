@@ -403,7 +403,7 @@ void view_on_the_world::render(
       if (object_identifier const* mid = id.get_object_identifier()) {
         shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(*mid)));
         const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(*mid);
-        std::vector<convex_polygon> const& obj_polygons = obj_shape->second.get_polygons();
+        lasercake_vector<convex_polygon>::type const& obj_polygons = obj_shape->second.get_polygons();
         for (convex_polygon const& polygon : obj_polygons) {
           push_convex_polygon(view_loc, coll, polygon.get_vertices(), color(0x77777777));
 
