@@ -339,9 +339,10 @@ void view_on_the_world::render(
     ));*/
     // this is a bloody stupid hack, TODO do something different
     if (this->drawing_regular_stuff) {
+    const fine_scalar view_dist = tile_width*50;
     w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box(
-      view_loc - vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50),
-      view_loc + vector3<fine_scalar>(tile_width*50,tile_width*50,tile_width*50)
+      view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
+      view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
     ));
     }
 
