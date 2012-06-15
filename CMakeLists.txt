@@ -35,7 +35,7 @@ add_executable (lasercake ${LASERCAKE_SOURCES})
 target_link_libraries(lasercake ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${Boost_LIBRARIES} ${GLIB_LIBRARIES} rt)
 
 find_package(Boost COMPONENTS unit_test_framework)
-file (GLOB_RECURSE TEST_SOURCES *.hpp tests/*.cpp)
+file (GLOB TEST_SOURCES *.hpp tests/*.cpp)
 add_executable (test-lasercake ${TEST_SOURCES})
 target_link_libraries(test-lasercake ${Boost_LIBRARIES} rt)
 
