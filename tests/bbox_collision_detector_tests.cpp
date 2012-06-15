@@ -75,13 +75,6 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   BOOST_CHECK(bb6.overlaps(bb4));
 }
 
-class bbox_collision_detector_tester {
-  // (friend of bbox_collision_detector, so we can test e.g. zbox on its own)
-public:
-  static void test_zbox() {
-  }
-};
-
 BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
   typedef collision_detector::impl::zbox<32, 2> zbox;
   typedef std::array<detector_2d::coordinate_type, 2> coords;
