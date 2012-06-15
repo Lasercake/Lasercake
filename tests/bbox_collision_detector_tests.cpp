@@ -94,7 +94,9 @@ BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
   const coords boxcoords3 = {{ 0x80000000u, 0xc0000013u }};
   const coords boxcoords4 = {{ 0xc0000000u, 0xc0000013u }};
   const coords boxcoords5 = {{ 0xc0000000u, 0x80000000u }};
+  const coords boxcoords6 = {{ 0xc0000000u, 0x11000000u }};
   const zbox everywhere = zbox::box_from_coords(boxcoords1, 32*2); //32bits * 2dimensions
+  const zbox half_of_everywhere = zbox::box_from_coords(boxcoords1, 32*2-1);
   const zbox one_by_one_1 = zbox::box_from_coords(boxcoords1, 0);
   const zbox quartant = zbox::box_from_coords(boxcoords2, 31*2);
   const zbox rect_in_quartant = zbox::box_from_coords(boxcoords2, 30*2+1);
@@ -102,6 +104,7 @@ BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
   const zbox one_by_one_3 = zbox::box_from_coords(boxcoords3, 0);
   const zbox one_by_one_4 = zbox::box_from_coords(boxcoords4, 0);
   const zbox one_by_one_5 = zbox::box_from_coords(boxcoords5, 0);
+  const zbox one_by_one_6 = zbox::box_from_coords(boxcoords6, 0);
 
   // bits are ordered ZYXZYXZYX... (or in 2D, YXYXYX...)
   BOOST_CHECK_EQUAL(one_by_one_3.get_bit(63), true);
@@ -134,6 +137,7 @@ BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
 
   // subsumes is reflexive
   BOOST_CHECK(everywhere.subsumes(everywhere));
+  BOOST_CHECK(half_of_everywhere.subsumes(half_of_everywhere));
   BOOST_CHECK(one_by_one_1.subsumes(one_by_one_1));
   BOOST_CHECK(quartant.subsumes(quartant));
   BOOST_CHECK(rect_in_quartant.subsumes(rect_in_quartant));
@@ -141,16 +145,20 @@ BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
 
   // 'everywhere' subsumes everywhere
   BOOST_CHECK(everywhere.subsumes(everywhere));
+  BOOST_CHECK(everywhere.subsumes(half_of_everywhere));
   BOOST_CHECK(everywhere.subsumes(one_by_one_1));
   BOOST_CHECK(everywhere.subsumes(quartant));
   BOOST_CHECK(everywhere.subsumes(rect_in_quartant));
   BOOST_CHECK(everywhere.subsumes(one_by_one_3));
+  BOOST_CHECK(everywhere.subsumes(one_by_one_6));
 
   // subsumes is antisymmetric (two things can only subsume each other if they are equal).
+  BOOST_CHECK(!half_of_everywhere.subsumes(everywhere));
   BOOST_CHECK(!one_by_one_1.subsumes(everywhere));
   BOOST_CHECK(!quartant.subsumes(everywhere));
   BOOST_CHECK(!rect_in_quartant.subsumes(everywhere));
   BOOST_CHECK(!one_by_one_3.subsumes(everywhere));
+  BOOST_CHECK(!one_by_one_6.subsumes(everywhere));
 
   // because they're zboxes, either one subsumes the other or they don't overlap.
   BOOST_CHECK(everywhere.overlaps(everywhere));
@@ -168,6 +176,8 @@ BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
   BOOST_CHECK(everywhere.overlaps(quartant));
   BOOST_CHECK(everywhere.overlaps(rect_in_quartant));
   BOOST_CHECK(everywhere.overlaps(one_by_one_3));
+  BOOST_CHECK(half_of_everywhere.overlaps(one_by_one_6));
+  BOOST_CHECK(half_of_everywhere.subsumes(one_by_one_6));
   BOOST_CHECK(!rect_in_quartant.overlaps(one_by_one_3));
   BOOST_CHECK(!rect_in_quartant.overlaps(one_by_one_1));
   BOOST_CHECK(!one_by_one_3.overlaps(rect_in_quartant));
@@ -191,6 +201,9 @@ BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
   BOOST_CHECK(everywhere.get_bbox().overlaps(quartant.get_bbox()));
   BOOST_CHECK(everywhere.get_bbox().overlaps(rect_in_quartant.get_bbox()));
   BOOST_CHECK(everywhere.get_bbox().overlaps(one_by_one_3.get_bbox()));
+  BOOST_CHECK(half_of_everywhere.get_bbox().overlaps(half_of_everywhere.get_bbox()));
+  BOOST_CHECK(half_of_everywhere.get_bbox().overlaps(one_by_one_6.get_bbox()));
+  BOOST_CHECK(!half_of_everywhere.get_bbox().overlaps(one_by_one_3.get_bbox()));
   BOOST_CHECK(!rect_in_quartant.get_bbox().overlaps(one_by_one_3.get_bbox()));
   BOOST_CHECK(!rect_in_quartant.get_bbox().overlaps(one_by_one_1.get_bbox()));
   BOOST_CHECK(!one_by_one_3.get_bbox().overlaps(rect_in_quartant.get_bbox()));
