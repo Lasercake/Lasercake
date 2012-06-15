@@ -25,9 +25,6 @@
 #include "specific_object_types.hpp"
 #include "tile_physics.hpp" // to access internals for debugging-displaying...
 
-#include "GL/gl.h" //TODO remove from here?
-#include "GL/glu.h" //TODO remove from here?
-
 using namespace world_rendering;
 
 namespace /* anonymous */ {

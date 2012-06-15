@@ -28,8 +28,14 @@
 #include <math.h>
 
 #include "SDL.h"
+
+#if defined(__APPLE__) || defined(__MACOSX__)
+#include "OpenGL/gl.h"
+#include "OpenGL/glu.h"
+#else
 #include "GL/gl.h"
 #include "GL/glu.h"
+#endif
 
 #include <iostream>
 #include <iomanip>
