@@ -124,16 +124,26 @@ public:
   bbox_collision_detector& operator=(bbox_collision_detector const& other);
   ~bbox_collision_detector();
 
+  // insert throws std::logic_error iff the id already existed in this detector.
+  // To avoid an exception, use detector.erase(id) or if(detector.exists(id))
+  // depending on your needs.
   void insert(ObjectIdentifier const& id, bounding_box const& bbox);
+
+  // exists returns true iff there is an object of this id in this detector
   bool exists(ObjectIdentifier const& id)const {
     return (bboxes_by_object_.find(id) != bboxes_by_object_.end());
   }
+
+  // erase returns true iff there was an object of this id (now deleted of course).
   bool erase(ObjectIdentifier const& id);
+
+  // find_bounding_box returns non-null iff there is an object of this id.
   bounding_box const* find_bounding_box(ObjectIdentifier const& id)const {
     auto i = bboxes_by_object_.find(id);
     if(i == bboxes_by_object_.end()) return nullptr;
     else return &(i->second.bbox);
   }
+
   void get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box const& bbox)const;
 
   // Derive from
