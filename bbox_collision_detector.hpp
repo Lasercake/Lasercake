@@ -66,6 +66,13 @@ public:
     return true;
   }
 
+  bool operator==(bounding_box const& other)const {
+    return min == other.min && size == other.size;
+  }
+  bool operator!=(bounding_box const& other)const {
+    return !(*this == other);
+  }
+
   friend inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
     os << '[';
     for (size_t i = 0; i < bb.min.size(); ++i) {
