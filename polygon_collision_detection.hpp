@@ -67,21 +67,23 @@ struct bounding_box {
   operator collision_detector::bounding_box<64, 3>()const {
     caller_correct_if(is_anywhere, "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
     collision_detector::bounding_box<64, 3> b;
-    b.min[X] = get_primitive_int(min.x);
-    b.min[Y] = get_primitive_int(min.y);
-    b.min[Z] = get_primitive_int(min.z);
-    b.size[X] = get_primitive_int(max.x + 1 - min.x);
-    b.size[Y] = get_primitive_int(max.y + 1 - min.y);
-    b.size[Z] = get_primitive_int(max.z + 1 - min.z);
+    typedef uint64_t uint_t; // a modulo type and modulo conversion
+    b.min[X] = uint_t(get_primitive_int(min.x));
+    b.min[Y] = uint_t(get_primitive_int(min.y));
+    b.min[Z] = uint_t(get_primitive_int(min.z));
+    b.size[X] = uint_t(get_primitive_int(max.x)) - uint_t(get_primitive_int(min.x)) + 1;
+    b.size[Y] = uint_t(get_primitive_int(max.y)) - uint_t(get_primitive_int(min.y)) + 1;
+    b.size[Z] = uint_t(get_primitive_int(max.z)) - uint_t(get_primitive_int(min.z)) + 1;
     return b;
   }
   bounding_box(collision_detector::bounding_box<64, 3> const& b) {
-    min.x = b.min[X];
-    min.y = b.min[Y];
-    min.z = b.min[Z];
-    max.x = b.size[X] - 1 + b.min[X];
-    max.y = b.size[Y] - 1 + b.min[Y];
-    max.z = b.size[Z] - 1 + b.min[Z];
+    typedef int64_t int_t; // a modulo conversion
+    min.x = int_t(b.min[X]);
+    min.y = int_t(b.min[Y]);
+    min.z = int_t(b.min[Z]);
+    max.x = int_t(b.min[X] + (b.size[X] - 1));
+    max.y = int_t(b.min[Y] + (b.size[Y] - 1));
+    max.z = int_t(b.min[Z] + (b.size[Z] - 1));
     is_anywhere = true;
   }
 };
