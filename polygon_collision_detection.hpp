@@ -71,9 +71,9 @@ struct bounding_box {
     b.min[X] = uint_t(get_primitive_int(min.x));
     b.min[Y] = uint_t(get_primitive_int(min.y));
     b.min[Z] = uint_t(get_primitive_int(min.z));
-    b.size[X] = uint_t(get_primitive_int(max.x)) - uint_t(get_primitive_int(min.x)) + 1;
-    b.size[Y] = uint_t(get_primitive_int(max.y)) - uint_t(get_primitive_int(min.y)) + 1;
-    b.size[Z] = uint_t(get_primitive_int(max.z)) - uint_t(get_primitive_int(min.z)) + 1;
+    b.size_minus_one[X] = uint_t(get_primitive_int(max.x)) - uint_t(get_primitive_int(min.x));
+    b.size_minus_one[Y] = uint_t(get_primitive_int(max.y)) - uint_t(get_primitive_int(min.y));
+    b.size_minus_one[Z] = uint_t(get_primitive_int(max.z)) - uint_t(get_primitive_int(min.z));
     return b;
   }
   bounding_box(collision_detector::bounding_box<64, 3> const& b) {
@@ -81,9 +81,9 @@ struct bounding_box {
     min.x = int_t(b.min[X]);
     min.y = int_t(b.min[Y]);
     min.z = int_t(b.min[Z]);
-    max.x = int_t(b.min[X] + (b.size[X] - 1));
-    max.y = int_t(b.min[Y] + (b.size[Y] - 1));
-    max.z = int_t(b.min[Z] + (b.size[Z] - 1));
+    max.x = int_t(b.min[X] + b.size_minus_one[X]);
+    max.y = int_t(b.min[Y] + b.size_minus_one[Y]);
+    max.z = int_t(b.min[Z] + b.size_minus_one[Z]);
     is_anywhere = true;
   }
 };

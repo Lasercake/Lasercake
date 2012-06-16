@@ -210,9 +210,9 @@ public:
   }
   bool overlaps(bounding_box const& bbox)const {
     for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
-      const Coordinate this_size_i = math_::safe_left_shift_one(num_low_bits_by_dimension(i));
-      if ((bbox.size[i] - 1) <  coords_[i] - bbox.min[i]
-       && (this_size_i  - 1) < bbox.min[i] -  coords_[i]) return false;
+      const Coordinate this_size_minus_one_i = math_::this_many_low_bits(num_low_bits_by_dimension(i));
+      if (bbox.size_minus_one[i] <  coords_[i] - bbox.min[i]
+       && this_size_minus_one_i  < bbox.min[i] -  coords_[i]) return false;
     }
     return true;
   }
@@ -222,12 +222,11 @@ public:
   num_bits_type num_low_bits_by_dimension(num_coordinates_type dim)const {
     return dim_num_low_bits_[dim];
   }
-  // note: gives "size=0" for max-sized things
   bounding_box get_bbox()const {
     bounding_box bbox;
     bbox.min = coords_;
     for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-      bbox.size[i] = math_::safe_left_shift_one(num_low_bits_by_dimension(i));
+      bbox.size_minus_one[i] = math_::this_many_low_bits(num_low_bits_by_dimension(i));
     }
     return bbox;
   }
@@ -369,10 +368,7 @@ struct ztree_ops {
   static void insert_zboxes_from_bbox(ztree_node_ptr& objects_tree, id_and_bbox_ptr id_and_bbox) {
     bounding_box const& bbox = id_and_bbox->second.bbox;
 
-    std::array<Coordinate, NumDimensions> bbox_size_minus_ones = bbox.size;
-    for(Coordinate& size : bbox_size_minus_ones) { --size; }
-
-    const Coordinate max_width_minus_one = max_in_array_of_unsigned(bbox_size_minus_ones);
+    const Coordinate max_width_minus_one = max_in_array_of_unsigned(bbox.size_minus_one);
     // max_width - 1: power-of-two-sized objects easily squeeze into the next smaller category.
     // i.e., exp = log2_rounding_up(max_width)
     const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_width_minus_one);
@@ -426,7 +422,7 @@ struct ztree_ops {
     }
     else {
       for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-        if ((bbox.size[i] - 1) <= (base_box_size - 1) - (bbox.min[i] & (base_box_size - 1))) {
+        if (bbox.size_minus_one[i] <= (base_box_size - 1) - (bbox.min[i] & (base_box_size - 1))) {
           ++num_dims_using_one_zbox_of_exactly_base_box_size;
         }
         else {

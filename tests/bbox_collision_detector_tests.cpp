@@ -38,15 +38,15 @@ typedef bbox_collision_detector<obj_t, 64, 3> detector_3d;
 BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   detector_1d::bounding_box bb1;
   bb1.min[X] = 2;
-  bb1.size[X] = 3;
+  bb1.size_minus_one[X] = 3 - 1;
   detector_1d::bounding_box bb2;
   bb2.min[X] = 5;
-  bb2.size[X] = 1;
+  bb2.size_minus_one[X] = 1 - 1;
   BOOST_CHECK(!bb1.overlaps(bb2));
   BOOST_CHECK(!bb2.overlaps(bb1));
   detector_1d::bounding_box bb3;
   bb3.min[X] = 4;
-  bb3.size[X] = 1;
+  bb3.size_minus_one[X] = 1 - 1;
   BOOST_CHECK(bb1.overlaps(bb3));
   BOOST_CHECK(bb3.overlaps(bb1));
   BOOST_CHECK(!bb3.overlaps(bb2));
@@ -55,18 +55,18 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   detector_2d::bounding_box bb4;
   bb4.min[X] = 2;
   bb4.min[Y] = 4;
-  bb4.size[X] = 3;
-  bb4.size[Y] = 7;
+  bb4.size_minus_one[X] = 3 - 1;
+  bb4.size_minus_one[Y] = 7 - 1;
   detector_2d::bounding_box bb5;
   bb5.min[X] = 7;
   bb5.min[Y] = 4;
-  bb5.size[X] = 3;
-  bb5.size[Y] = 7;
+  bb5.size_minus_one[X] = 3 - 1;
+  bb5.size_minus_one[Y] = 7 - 1;
   detector_2d::bounding_box bb6;
   bb6.min[X] = 3;
   bb6.min[Y] = 5;
-  bb6.size[X] = 1;
-  bb6.size[Y] = 1;
+  bb6.size_minus_one[X] = 1 - 1;
+  bb6.size_minus_one[Y] = 1 - 1;
   BOOST_CHECK(!bb4.overlaps(bb5));
   BOOST_CHECK(!bb5.overlaps(bb4));
   BOOST_CHECK(!bb6.overlaps(bb5));
@@ -77,23 +77,23 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   detector_2d::bounding_box bb7;
   bb7.min[X] = 4;
   bb7.min[Y] = 0;
-  bb7.size[X] = 1;
-  bb7.size[Y] = 0;//meaning maximum
+  bb7.size_minus_one[X] = 1 - 1;
+  bb7.size_minus_one[Y] = 0u - 1u;//maximum (int & detector being 32bit)
   detector_2d::bounding_box bb8;
   bb8.min[X] = 0;
   bb8.min[Y] = 2;
-  bb8.size[X] = 0;//meaning maximum
-  bb8.size[Y] = 1;
+  bb8.size_minus_one[X] = 0u - 1u;//maximum
+  bb8.size_minus_one[Y] = 1 - 1;
   detector_2d::bounding_box bb9;
   bb9.min[X] = 0;
   bb9.min[Y] = 0;
-  bb9.size[X] = 0;//meaning maximum
-  bb9.size[Y] = 0;//meaning maximum
+  bb9.size_minus_one[X] = 0u - 1u;//maximum
+  bb9.size_minus_one[Y] = 0u - 1u;//maximum
   detector_2d::bounding_box bb10;
   bb10.min[X] = 13;
   bb10.min[Y] = 13;
-  bb10.size[X] = 0;//meaning maximum
-  bb10.size[Y] = 0;//meaning maximum
+  bb10.size_minus_one[X] = 0u - 1u;//maximum
+  bb10.size_minus_one[Y] = 0u - 1u;//maximum
   BOOST_CHECK(!bb8.overlaps(bb4));
   BOOST_CHECK(!bb8.overlaps(bb5));
   BOOST_CHECK(!bb8.overlaps(bb6));

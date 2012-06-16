@@ -51,28 +51,34 @@ public:
   typedef Coordinate coordinate_type;
   static const num_bits_type num_coordinate_bits = CoordinateBits;
   static const num_coordinates_type num_dimensions = NumDimensions;
-  // Example with NumDimensions=1: bbox A={min=2,size=3}, B={min=5,size=1}
+  // Example with NumDimensions=1: bbox
+  //   A = {min=2,size=3} = {min=2, size_minus_one=2}
+  //   B = {min=5,size=1} = {min=5, size_minus_one=0}
   // are adjacent but not intersecting.
-  // "size=0" actually denotes "size = 2**CoordinateBits" (which probably
-  // doesn't quite fit in a coordinate.)  This lets us handle objects
-  // that can take up most or all the width in the world.
-  // This makes width-0 objects impossible, thought it's dubious that they
-  // would intersect something anyway.
-  // TODO: we're also doing size - 1 everywhere; should we change size
-  // to *be* one less than it is now? (interface change)
+  //
+  // All of these bounding-boxes contain some space; they are at least 1x1x...
+  //
+  // Their maximum size is the width of the entire coordinate space.  This
+  // doesn't quite fit in the unsigned integer.  Thus it is only correct
+  // to use size_minus_one for most arithmetic, rather than the size itself.
+  //
+  // These 1..space-size sizes are a design decision.  Degenerate zero-size
+  // bounding-boxes are not much use to bbox_collision_detector.  Max-size
+  // bounding-boxes are.  We can't have both because of unsigned integer
+  // ranges.
   std::array<Coordinate, NumDimensions> min;
-  std::array<Coordinate, NumDimensions> size;
+  std::array<Coordinate, NumDimensions> size_minus_one;
 
   bool overlaps(bounding_box const& other)const {
     for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-      if ( (other.size[i] - 1) <       min[i] - other.min[i]
-        && (      size[i] - 1) < other.min[i] -       min[i]) return false;
+      if ( other.size_minus_one[i] <       min[i] - other.min[i]
+        &&       size_minus_one[i] < other.min[i] -       min[i]) return false;
     }
     return true;
   }
 
   bool operator==(bounding_box const& other)const {
-    return min == other.min && size == other.size;
+    return min == other.min && size_minus_one == other.size_minus_one;
   }
   bool operator!=(bounding_box const& other)const {
     return !(*this == other);
@@ -82,7 +88,7 @@ public:
     os << '[';
     for (size_t i = 0; i < bb.min.size(); ++i) {
       if(i != 0) os << ", ";
-      os << bb.min[i] << '+' << bb.size[i];
+      os << bb.min[i] << '+' << bb.size_minus_one[i];
     }
     os << ']';
     return os;
