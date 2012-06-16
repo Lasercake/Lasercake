@@ -29,6 +29,9 @@
 
 #include "utils.hpp"
 
+// So that we can make implicit conversions between their and our bbox:
+#include "bbox_collision_detector.hpp"
+
 // 64 bits though these ints are, you can't really do collision detection with them except for things
 //  with a max distance of about 14 bits between any of the parts of them.
 
@@ -58,6 +61,29 @@ struct bounding_box {
   void combine_with(bounding_box const& o);
   void restrict_to(bounding_box const& o);
   void translate(vector3<polygon_int_type> t);
+
+  // Implicit conversions to/from bbox_collision_detector bounding_box
+  // for convenience interacting with it.
+  operator collision_detector::bounding_box<64, 3>()const {
+    caller_correct_if(is_anywhere, "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
+    collision_detector::bounding_box<64, 3> b;
+    b.min[X] = get_primitive_int(min.x);
+    b.min[Y] = get_primitive_int(min.y);
+    b.min[Z] = get_primitive_int(min.z);
+    b.size[X] = get_primitive_int(max.x + 1 - min.x);
+    b.size[Y] = get_primitive_int(max.y + 1 - min.y);
+    b.size[Z] = get_primitive_int(max.z + 1 - min.z);
+    return b;
+  }
+  bounding_box(collision_detector::bounding_box<64, 3> const& b) {
+    min.x = b.min[X];
+    min.y = b.min[Y];
+    min.z = b.min[Z];
+    max.x = b.size[X] - 1 + b.min[X];
+    max.y = b.size[Y] - 1 + b.min[Y];
+    max.z = b.size[Z] - 1 + b.min[Z];
+    is_anywhere = true;
+  }
 };
 inline bool operator==(bounding_box const& b1, bounding_box const& b2) {
   return (b1.is_anywhere == false && b2.is_anywhere == false) ||

@@ -42,9 +42,9 @@ bounding_box world::get_bounding_box_of_object_or_tile(object_or_tile_identifier
   }
   if (object_identifier const* oidp = id.get_object_identifier()) {
     //TODO is this impl a hack? and what about non-mobile objects?
-    bounding_box result = things_exposed_to_collision_.find_bounding_box(*oidp);
-    assert(result.is_anywhere);
-    return result;
+    auto const* result = things_exposed_to_collision_.find_bounding_box(*oidp);
+    assert(result != nullptr);
+    return *result;
   }
   assert(false);
 }
