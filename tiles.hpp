@@ -43,7 +43,8 @@ typedef lasercake_int<int32_t>::type tile_coordinate;
 typedef lasercake_int<int32_t>::type tile_coordinate_signed_type;
 
 struct tile_bounding_box {
-  vector3<tile_coordinate> min, size;
+  vector3<tile_coordinate> min;
+  vector3<tile_coordinate> size;
   tile_bounding_box(){}
   tile_bounding_box(vector3<tile_coordinate> coords):min(coords),size(1,1,1){}
   tile_bounding_box(vector3<tile_coordinate> min, vector3<tile_coordinate> size):min(min),size(size){}

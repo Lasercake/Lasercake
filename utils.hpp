@@ -294,6 +294,7 @@ RandomAccessRange::iterator random_element_of_sequence(RandomAccessRange& c, RNG
 enum {
   X = 0, Y = 1, Z = 2
 };
+typedef int which_dimension_type;
 
 template<typename ScalarType> class vector3 {
 public:
@@ -303,7 +304,7 @@ public:
   template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
     x(other.x),y(other.y),z(other.z){}
   
-  ScalarType& operator[](int index) {
+  ScalarType& operator[](which_dimension_type index) {
     switch(index) {
       case 0: return x;
       case 1: return y;
@@ -311,7 +312,7 @@ public:
       default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
     }
   }
-  ScalarType operator[](int index)const {
+  ScalarType operator[](which_dimension_type index)const {
     switch(index) {
       case 0: return x;
       case 1: return y;

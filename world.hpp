@@ -107,13 +107,13 @@ inline vector3<tile_coordinate> get_containing_tile_coordinates(vector3<fine_sca
     tile_coordinate(v.z / tile_height)
   );
 }
-inline fine_scalar lower_bound_in_fine_units(tile_coordinate c, int which_coordinate) {
-  if (which_coordinate == 2) return c * tile_height;
-  else                       return c * tile_width;
+inline fine_scalar lower_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
+  if (which_coordinate == Z) return fine_scalar(c) * tile_height;
+  else                       return fine_scalar(c) * tile_width;
 }
-inline fine_scalar upper_bound_in_fine_units(tile_coordinate c, int which_coordinate) {
-  if (which_coordinate == 2) return c * tile_height + (tile_height-1);
-  else                       return c * tile_width + (tile_width-1);
+inline fine_scalar upper_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
+  if (which_coordinate == Z) return fine_scalar(c) * tile_height + (tile_height-1);
+  else                       return fine_scalar(c) * tile_width + (tile_width-1);
 }
 inline vector3<fine_scalar> lower_bound_in_fine_units(vector3<tile_coordinate> v) {
   return vector3<fine_scalar>(
