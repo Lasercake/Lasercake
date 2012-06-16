@@ -43,6 +43,11 @@ struct bounding_box {
 private:
   typedef typename coordinate_type_from_bits<CoordinateBits>::type Coordinate;
 public:
+  // This bounding_box's coordinates are deliberately modulo.
+  // This lets us naturally represent either signed or unsigned
+  // spaces, that themselves wrap or don't (if they don't wrap,
+  // then the callers just won't make any bounding_boxes that cross
+  // their self-imposed boundary over which it doesn't wrap).
   typedef Coordinate coordinate_type;
   static const num_bits_type num_coordinate_bits = CoordinateBits;
   static const num_coordinates_type num_dimensions = NumDimensions;
@@ -60,8 +65,8 @@ public:
 
   bool overlaps(bounding_box const& other)const {
     for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-      if (other.min[i] + (other.size[i] - 1) <       min[i]) return false;
-      if (      min[i] + (      size[i] - 1) < other.min[i]) return false;
+      if ( (other.size[i] - 1) <       min[i] - other.min[i]
+        && (      size[i] - 1) < other.min[i] -       min[i]) return false;
     }
     return true;
   }

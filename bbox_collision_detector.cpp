@@ -180,6 +180,7 @@ public:
   }
 
   static zbox box_from_coords(std::array<Coordinate, NumDimensions> const& coords, num_bits_type num_low_bits) {
+    assert(num_low_bits >= 0 && num_low_bits <= CoordinateBits*NumDimensions);
     zbox result;
     result.num_low_bits_ = num_low_bits;
     const num_bits_type base_num_low_bits = num_low_bits / NumDimensions;
@@ -210,8 +211,8 @@ public:
   bool overlaps(bounding_box const& bbox)const {
     for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
       const Coordinate this_size_i = math_::safe_left_shift_one(num_low_bits_by_dimension(i));
-      if (bbox.min[i] + (bbox.size[i] - 1) <  coords_[i]) return false;
-      if ( coords_[i] + (this_size_i  - 1) < bbox.min[i]) return false;
+      if ((bbox.size[i] - 1) <  coords_[i] - bbox.min[i]
+       && (this_size_i  - 1) < bbox.min[i] -  coords_[i]) return false;
     }
     return true;
   }
@@ -420,20 +421,25 @@ struct ztree_ops {
     // each of width base_box_size, for a total width of
     // twice base_box_size.  This is the worst case,
     // "num_dimensions_that_need_two_zboxes_each_of_base_box_size".
-    for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-      if ((bbox.size[i] - 1) <= (base_box_size - 1) - (bbox.min[i] & (base_box_size - 1))) {
-        ++num_dims_using_one_zbox_of_exactly_base_box_size;
-      }
-      else {
-        break;
-      }
+    if(base_box_size == 0) {
+      num_dims_using_one_zbox_of_exactly_base_box_size = NumDimensions;
     }
-    for (num_coordinates_type i = 0; i < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++i) {
-      if (!(bbox.min[i] & base_box_size)) {
-        ++num_dims_using_one_zbox_of_twice_base_box_size;
+    else {
+      for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
+        if ((bbox.size[i] - 1) <= (base_box_size - 1) - (bbox.min[i] & (base_box_size - 1))) {
+          ++num_dims_using_one_zbox_of_exactly_base_box_size;
+        }
+        else {
+          break;
+        }
       }
-      else {
-        break;
+      for (num_coordinates_type i = 0; i < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++i) {
+        if (!(bbox.min[i] & base_box_size)) {
+          ++num_dims_using_one_zbox_of_twice_base_box_size;
+        }
+        else {
+          break;
+        }
       }
     }
     num_dims_using_two_zboxes_each_of_base_box_size = NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size - num_dims_using_one_zbox_of_twice_base_box_size;

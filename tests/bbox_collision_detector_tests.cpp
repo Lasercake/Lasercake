@@ -89,6 +89,11 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   bb9.min[Y] = 0;
   bb9.size[X] = 0;//meaning maximum
   bb9.size[Y] = 0;//meaning maximum
+  detector_2d::bounding_box bb10;
+  bb10.min[X] = 13;
+  bb10.min[Y] = 13;
+  bb10.size[X] = 0;//meaning maximum
+  bb10.size[Y] = 0;//meaning maximum
   BOOST_CHECK(!bb8.overlaps(bb4));
   BOOST_CHECK(!bb8.overlaps(bb5));
   BOOST_CHECK(!bb8.overlaps(bb6));
@@ -107,6 +112,14 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   BOOST_CHECK(bb9.overlaps(bb7));
   BOOST_CHECK(bb9.overlaps(bb8));
   BOOST_CHECK(bb9.overlaps(bb9));
+
+  BOOST_CHECK(bb10.overlaps(bb4));
+  BOOST_CHECK(bb10.overlaps(bb5));
+  BOOST_CHECK(bb10.overlaps(bb6));
+  BOOST_CHECK(bb10.overlaps(bb7));
+  BOOST_CHECK(bb10.overlaps(bb8));
+  BOOST_CHECK(bb10.overlaps(bb9));
+  BOOST_CHECK(bb10.overlaps(bb10));
 
   detector_2d dect;
 
@@ -189,6 +202,14 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
     std::vector<obj_t> results7;
     dect.get_objects_overlapping(results7, bb7);
     BOOST_CHECK_EQUAL(results7.size(), 4);
+  }
+
+  dect.insert(190, bb10);
+
+  {
+    std::vector<obj_t> results8;
+    dect.get_objects_overlapping(results8, bb10);
+    BOOST_CHECK_EQUAL(results8.size(), 7);
   }
 }
 
