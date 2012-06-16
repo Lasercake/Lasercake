@@ -38,47 +38,92 @@ struct coordinate_type_from_bits {
   typedef typename boost::uint_t<CoordinateBits>::fast type;
 };
 
+
+// This bounding_box's coordinates are deliberately modulo.
+// This lets us naturally represent either signed or unsigned
+// spaces, that themselves wrap or don't (if they don't wrap,
+// then the callers just won't make any bounding_boxes that cross
+// their self-imposed boundary over which it doesn't wrap).
+//
+// Example with NumDimensions=1: bbox
+//   A = {min=2,size=3} = {min=2, size_minus_one=2}
+//   B = {min=5,size=1} = {min=5, size_minus_one=0}
+// are adjacent but not intersecting.
+//
+// All of these bounding-boxes contain some space; they are at least 1x1x...
+//
+// Their maximum size is the width of the entire coordinate space.  This
+// doesn't quite fit in the unsigned integer.  Thus it is only correct
+// to use size_minus_one for most arithmetic, rather than the size itself.
+//
+// These 1..space-size sizes are a design decision.  Degenerate zero-size
+// bounding-boxes are not much use to bbox_collision_detector.  Max-size
+// bounding-boxes are.  We can't have both because of unsigned integer
+// ranges.
 template<num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
-struct bounding_box {
+class bounding_box {
 private:
   typedef typename coordinate_type_from_bits<CoordinateBits>::type Coordinate;
 public:
-  // This bounding_box's coordinates are deliberately modulo.
-  // This lets us naturally represent either signed or unsigned
-  // spaces, that themselves wrap or don't (if they don't wrap,
-  // then the callers just won't make any bounding_boxes that cross
-  // their self-imposed boundary over which it doesn't wrap).
   typedef Coordinate coordinate_type;
   static const num_bits_type num_coordinate_bits = CoordinateBits;
   static const num_coordinates_type num_dimensions = NumDimensions;
-  // Example with NumDimensions=1: bbox
-  //   A = {min=2,size=3} = {min=2, size_minus_one=2}
-  //   B = {min=5,size=1} = {min=5, size_minus_one=0}
-  // are adjacent but not intersecting.
-  //
-  // All of these bounding-boxes contain some space; they are at least 1x1x...
-  //
-  // Their maximum size is the width of the entire coordinate space.  This
-  // doesn't quite fit in the unsigned integer.  Thus it is only correct
-  // to use size_minus_one for most arithmetic, rather than the size itself.
-  //
-  // These 1..space-size sizes are a design decision.  Degenerate zero-size
-  // bounding-boxes are not much use to bbox_collision_detector.  Max-size
-  // bounding-boxes are.  We can't have both because of unsigned integer
-  // ranges.
-  std::array<Coordinate, NumDimensions> min;
-  std::array<Coordinate, NumDimensions> size_minus_one;
+  typedef std::array<Coordinate, NumDimensions> coordinate_array;
 
+  // The default-constructor can reasonably be private or public; it creates
+  // a bounding_box with undefined values.  We choose public (the default)
+  // in case default-constructibility is useful to anyone for their
+  // containers or similar.
+
+  // Named "constructors".
+  static bounding_box min_and_size_minus_one(coordinate_array min, coordinate_array size_minus_one) {
+    bounding_box result;
+    result.min_ = min;
+    result.size_minus_one_ = size_minus_one;
+    return result;
+  }
+  static bounding_box min_and_max(coordinate_array min, coordinate_array max) {
+    bounding_box result;
+    result.min_ = min;
+    for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
+      result.size_minus_one_[i] = max[i] - min[i];
+    }
+    return result;
+  }
+  static bounding_box size_minus_one_and_max(coordinate_array size_minus_one, coordinate_array max) {
+    bounding_box result;
+    for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
+      result.min_[i] = max[i] - size_minus_one[i];
+    }
+    result.size_minus_one_ = size_minus_one;
+    return result;
+  }
+
+  // Accessors (with array and indexing variants).
+  coordinate_array min()const { return min_; }
+  coordinate_array size_minus_one()const { return size_minus_one_; }
+  coordinate_array max()const {
+    coordinate_array result;
+    for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
+      result[i] = min_[i] + size_minus_one_[i];
+    }
+    return result;
+  }
+  coordinate_type min(num_coordinates_type dim)const { return min_[dim]; }
+  coordinate_type size_minus_one(num_coordinates_type dim)const { return size_minus_one_[dim]; }
+  coordinate_type max(num_coordinates_type dim)const { return min_[dim] + size_minus_one_[dim]; }
+
+  // Utility functions.
   bool overlaps(bounding_box const& other)const {
     for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-      if ( other.size_minus_one[i] <       min[i] - other.min[i]
-        &&       size_minus_one[i] < other.min[i] -       min[i]) return false;
+      if ( other.size_minus_one(i) <       min(i) - other.min(i)
+        &&       size_minus_one(i) < other.min(i) -       min(i)) return false;
     }
     return true;
   }
 
   bool operator==(bounding_box const& other)const {
-    return min == other.min && size_minus_one == other.size_minus_one;
+    return min_ == other.min_ && size_minus_one_ == other.size_minus_one_;
   }
   bool operator!=(bounding_box const& other)const {
     return !(*this == other);
@@ -86,13 +131,17 @@ public:
 
   friend inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
     os << '[';
-    for (size_t i = 0; i < bb.min.size(); ++i) {
+    for (num_coordinates_type i = 0; i < bounding_box::num_dimensions; ++i) {
       if(i != 0) os << ", ";
-      os << bb.min[i] << '+' << bb.size_minus_one[i];
+      os << bb.min(i) << '+' << bb.size_minus_one(i);
     }
     os << ']';
     return os;
   }
+
+private:
+  coordinate_array min_;
+  coordinate_array size_minus_one_;
 };
 
 namespace impl {

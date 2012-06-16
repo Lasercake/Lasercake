@@ -36,37 +36,23 @@ typedef bbox_collision_detector<obj_t, 32, 2> detector_2d;
 typedef bbox_collision_detector<obj_t, 64, 3> detector_3d;
 
 BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
-  detector_1d::bounding_box bb1;
-  bb1.min[X] = 2;
-  bb1.size_minus_one[X] = 3 - 1;
-  detector_1d::bounding_box bb2;
-  bb2.min[X] = 5;
-  bb2.size_minus_one[X] = 1 - 1;
+  typedef detector_1d::bounding_box bounding_box_1d;
+  typedef bounding_box_1d::coordinate_array array_1d;
+  const bounding_box_1d bb1 = bounding_box_1d::min_and_size_minus_one(array_1d({{2}}), array_1d({{3 - 1}}));
+  const bounding_box_1d bb2 = bounding_box_1d::min_and_size_minus_one(array_1d({{5}}), array_1d({{1 - 1}}));
   BOOST_CHECK(!bb1.overlaps(bb2));
   BOOST_CHECK(!bb2.overlaps(bb1));
-  detector_1d::bounding_box bb3;
-  bb3.min[X] = 4;
-  bb3.size_minus_one[X] = 1 - 1;
+  const bounding_box_1d bb3 = bounding_box_1d::min_and_size_minus_one(array_1d({{4}}), array_1d({{1 - 1}}));
   BOOST_CHECK(bb1.overlaps(bb3));
   BOOST_CHECK(bb3.overlaps(bb1));
   BOOST_CHECK(!bb3.overlaps(bb2));
   BOOST_CHECK(!bb2.overlaps(bb3));
 
-  detector_2d::bounding_box bb4;
-  bb4.min[X] = 2;
-  bb4.min[Y] = 4;
-  bb4.size_minus_one[X] = 3 - 1;
-  bb4.size_minus_one[Y] = 7 - 1;
-  detector_2d::bounding_box bb5;
-  bb5.min[X] = 7;
-  bb5.min[Y] = 4;
-  bb5.size_minus_one[X] = 3 - 1;
-  bb5.size_minus_one[Y] = 7 - 1;
-  detector_2d::bounding_box bb6;
-  bb6.min[X] = 3;
-  bb6.min[Y] = 5;
-  bb6.size_minus_one[X] = 1 - 1;
-  bb6.size_minus_one[Y] = 1 - 1;
+  typedef detector_2d::bounding_box bounding_box_2d;
+  typedef bounding_box_2d::coordinate_array array_2d;
+  const bounding_box_2d bb4 = bounding_box_2d::min_and_size_minus_one(array_2d({{2, 4}}), array_2d({{3 - 1, 7 - 1}}));
+  const bounding_box_2d bb5 = bounding_box_2d::min_and_size_minus_one(array_2d({{7, 4}}), array_2d({{3 - 1, 7 - 1}}));
+  const bounding_box_2d bb6 = bounding_box_2d::min_and_size_minus_one(array_2d({{3, 5}}), array_2d({{1 - 1, 1 - 1}}));
   BOOST_CHECK(!bb4.overlaps(bb5));
   BOOST_CHECK(!bb5.overlaps(bb4));
   BOOST_CHECK(!bb6.overlaps(bb5));
@@ -74,26 +60,12 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   BOOST_CHECK(bb4.overlaps(bb6));
   BOOST_CHECK(bb6.overlaps(bb4));
 
-  detector_2d::bounding_box bb7;
-  bb7.min[X] = 4;
-  bb7.min[Y] = 0;
-  bb7.size_minus_one[X] = 1 - 1;
-  bb7.size_minus_one[Y] = 0u - 1u;//maximum (int & detector being 32bit)
-  detector_2d::bounding_box bb8;
-  bb8.min[X] = 0;
-  bb8.min[Y] = 2;
-  bb8.size_minus_one[X] = 0u - 1u;//maximum
-  bb8.size_minus_one[Y] = 1 - 1;
-  detector_2d::bounding_box bb9;
-  bb9.min[X] = 0;
-  bb9.min[Y] = 0;
-  bb9.size_minus_one[X] = 0u - 1u;//maximum
-  bb9.size_minus_one[Y] = 0u - 1u;//maximum
-  detector_2d::bounding_box bb10;
-  bb10.min[X] = 13;
-  bb10.min[Y] = 13;
-  bb10.size_minus_one[X] = 0u - 1u;//maximum
-  bb10.size_minus_one[Y] = 0u - 1u;//maximum
+  const bounding_box_2d::coordinate_type max_coord = std::numeric_limits<bounding_box_2d::coordinate_type>::max();
+  const bounding_box_2d bb7  = bounding_box_2d::min_and_size_minus_one( array_2d({{4, 0}}),  array_2d({{1 - 1, max_coord}}));
+  const bounding_box_2d bb8  = bounding_box_2d::min_and_size_minus_one( array_2d({{0, 2}}),  array_2d({{max_coord, 1 - 1}}));
+  const bounding_box_2d bb9  = bounding_box_2d::min_and_size_minus_one( array_2d({{0, 0}}),  array_2d({{max_coord, max_coord}}));
+  const bounding_box_2d bb10 = bounding_box_2d::min_and_size_minus_one(array_2d({{13, 13}}), array_2d({{max_coord, max_coord}}));
+
   BOOST_CHECK(!bb8.overlaps(bb4));
   BOOST_CHECK(!bb8.overlaps(bb5));
   BOOST_CHECK(!bb8.overlaps(bb6));

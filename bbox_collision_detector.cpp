@@ -128,9 +128,10 @@ private:
   typedef typename coordinate_type_from_bits<CoordinateBits>::type Coordinate;
   typedef collision_detector::bounding_box<CoordinateBits, NumDimensions> bounding_box;
   typedef coordinate_bit_math<CoordinateBits> math_;
+  typedef std::array<Coordinate, NumDimensions> coordinate_array;
   // We ensure that every bit except the ones specifically supposed to be on is off.
   // (Specifically, the "low bits" are zero.)
-  std::array<Coordinate, NumDimensions> coords_;
+  coordinate_array coords_;
 
   //small_num_bits_type can represent at least [0, CoordinateBits*NumDimensions] inclusive.
   //smaller_num_bits_type can represent at least [0, CoordinateBits] inclusive.
@@ -179,7 +180,7 @@ public:
     return new_box;
   }
 
-  static zbox box_from_coords(std::array<Coordinate, NumDimensions> const& coords, num_bits_type num_low_bits) {
+  static zbox box_from_coords(coordinate_array const& coords, num_bits_type num_low_bits) {
     assert(num_low_bits >= 0 && num_low_bits <= CoordinateBits*NumDimensions);
     zbox result;
     result.num_low_bits_ = num_low_bits;
@@ -211,8 +212,8 @@ public:
   bool overlaps(bounding_box const& bbox)const {
     for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
       const Coordinate this_size_minus_one_i = math_::this_many_low_bits(num_low_bits_by_dimension(i));
-      if (bbox.size_minus_one[i] <  coords_[i] - bbox.min[i]
-       && this_size_minus_one_i  < bbox.min[i] -  coords_[i]) return false;
+      if (bbox.size_minus_one(i) <  coords_[i] - bbox.min(i)
+       && this_size_minus_one_i  < bbox.min(i) -  coords_[i]) return false;
     }
     return true;
   }
@@ -223,12 +224,11 @@ public:
     return dim_num_low_bits_[dim];
   }
   bounding_box get_bbox()const {
-    bounding_box bbox;
-    bbox.min = coords_;
+    coordinate_array size_minus_one;
     for (num_coordinates_type i = 0; i < NumDimensions; ++i) {
-      bbox.size_minus_one[i] = math_::this_many_low_bits(num_low_bits_by_dimension(i));
+      size_minus_one[i] = math_::this_many_low_bits(num_low_bits_by_dimension(i));
     }
-    return bbox;
+    return bounding_box::min_and_size_minus_one(coords_, size_minus_one);
   }
   num_bits_type num_low_bits()const {
     return num_low_bits_;
@@ -368,7 +368,7 @@ struct ztree_ops {
   static void insert_zboxes_from_bbox(ztree_node_ptr& objects_tree, id_and_bbox_ptr id_and_bbox) {
     bounding_box const& bbox = id_and_bbox->second.bbox;
 
-    const Coordinate max_width_minus_one = max_in_array_of_unsigned(bbox.size_minus_one);
+    const Coordinate max_width_minus_one = max_in_array_of_unsigned(bbox.size_minus_one());
     // max_width - 1: power-of-two-sized objects easily squeeze into the next smaller category.
     // i.e., exp = log2_rounding_up(max_width)
     const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_width_minus_one);
@@ -422,7 +422,7 @@ struct ztree_ops {
     }
     else {
       for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-        if (bbox.size_minus_one[i] <= (base_box_size - 1) - (bbox.min[i] & (base_box_size - 1))) {
+        if (bbox.size_minus_one(i) <= (base_box_size - 1) - (bbox.min(i) & (base_box_size - 1))) {
           ++num_dims_using_one_zbox_of_exactly_base_box_size;
         }
         else {
@@ -430,7 +430,7 @@ struct ztree_ops {
         }
       }
       for (num_coordinates_type i = 0; i < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++i) {
-        if (!(bbox.min[i] & base_box_size)) {
+        if (!(bbox.min(i) & base_box_size)) {
           ++num_dims_using_one_zbox_of_twice_base_box_size;
         }
         else {
@@ -443,7 +443,7 @@ struct ztree_ops {
     const num_zboxes_type number_of_zboxes_to_use_if_necessary = num_zboxes_type(1) << num_dims_using_two_zboxes_each_of_base_box_size;
 
     for (num_zboxes_type i = 0; i < number_of_zboxes_to_use_if_necessary; ++i) {
-      std::array<Coordinate, NumDimensions> coords = bbox.min;
+      std::array<Coordinate, NumDimensions> coords = bbox.min();
       for (num_coordinates_type j = num_dims_using_one_zbox_of_twice_base_box_size; j < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++j) {
         // By checking this bit of "i" arbitrarily, by the last time
         // we get through the "number_of_zboxes_to_use_if_necessary" loop,

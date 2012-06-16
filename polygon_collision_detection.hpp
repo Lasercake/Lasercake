@@ -64,26 +64,33 @@ struct bounding_box {
 
   // Implicit conversions to/from bbox_collision_detector bounding_box
   // for convenience interacting with it.
-  operator collision_detector::bounding_box<64, 3>()const {
+  typedef collision_detector::bounding_box<64, 3> equivalent_collision_detector_bounding_box;
+  operator equivalent_collision_detector_bounding_box()const {
     caller_correct_if(is_anywhere, "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
-    collision_detector::bounding_box<64, 3> b;
+    
     typedef uint64_t uint_t; // a modulo type and modulo conversion
-    b.min[X] = uint_t(get_primitive_int(min.x));
-    b.min[Y] = uint_t(get_primitive_int(min.y));
-    b.min[Z] = uint_t(get_primitive_int(min.z));
-    b.size_minus_one[X] = uint_t(get_primitive_int(max.x)) - uint_t(get_primitive_int(min.x));
-    b.size_minus_one[Y] = uint_t(get_primitive_int(max.y)) - uint_t(get_primitive_int(min.y));
-    b.size_minus_one[Z] = uint_t(get_primitive_int(max.z)) - uint_t(get_primitive_int(min.z));
-    return b;
+    typedef equivalent_collision_detector_bounding_box::coordinate_array uint_array;
+    
+    uint_array uint_min = {{
+      uint_t(get_primitive_int(min.x)),
+      uint_t(get_primitive_int(min.y)),
+      uint_t(get_primitive_int(min.z))
+    }};
+    uint_array uint_max = {{
+      uint_t(get_primitive_int(max.x)),
+      uint_t(get_primitive_int(max.y)),
+      uint_t(get_primitive_int(max.z))
+    }};
+    return equivalent_collision_detector_bounding_box::min_and_max(uint_min, uint_max);
   }
-  bounding_box(collision_detector::bounding_box<64, 3> const& b) {
+  bounding_box(equivalent_collision_detector_bounding_box const& b) {
     typedef int64_t int_t; // a modulo conversion
-    min.x = int_t(b.min[X]);
-    min.y = int_t(b.min[Y]);
-    min.z = int_t(b.min[Z]);
-    max.x = int_t(b.min[X] + b.size_minus_one[X]);
-    max.y = int_t(b.min[Y] + b.size_minus_one[Y]);
-    max.z = int_t(b.min[Z] + b.size_minus_one[Z]);
+    min.x = int_t(b.min(X));
+    min.y = int_t(b.min(Y));
+    min.z = int_t(b.min(Z));
+    max.x = int_t(b.max(X));
+    max.y = int_t(b.max(Y));
+    max.z = int_t(b.max(Z));
     is_anywhere = true;
   }
 };
