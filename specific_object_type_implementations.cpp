@@ -49,7 +49,8 @@ struct beam_first_contact_finder : world_collision_detector::visitor {
   }
   virtual bool should_be_considered__dynamic(bounding_box const& bb)const {
     // hack - avoid overflow
-    if (bb.size[X] >= (1LL << 32) || bb.size[Y] >= (1LL << 32) || bb.size[Z] >= (1LL << 32)) {
+    const uint64_t too_large = (1ULL << 32) - 1;
+    if (bb.size[X] - 1 >= too_large || bb.size[Y] - 1 >= too_large || bb.size[Z] - 1 >= too_large) {
       // if there might be overflow, only do a bounds check
       return beam.bounds().overlaps(bb);
     }
