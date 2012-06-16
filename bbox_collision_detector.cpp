@@ -367,10 +367,14 @@ struct ztree_ops {
   // we don't have to construct the intermediate container structure.
   static void insert_zboxes_from_bbox(ztree_node_ptr& objects_tree, id_and_bbox_ptr id_and_bbox) {
     bounding_box const& bbox = id_and_bbox->second.bbox;
-    const Coordinate max_width = max_in_array_of_unsigned(bbox.size);
+
+    std::array<Coordinate, NumDimensions> bbox_size_minus_ones = bbox.size;
+    for(Coordinate& size : bbox_size_minus_ones) { --size; }
+
+    const Coordinate max_width_minus_one = max_in_array_of_unsigned(bbox_size_minus_ones);
     // max_width - 1: power-of-two-sized objects easily squeeze into the next smaller category.
     // i.e., exp = log2_rounding_up(max_width)
-    const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_width - 1);
+    const num_bits_type exp = num_bits_in_integer_that_are_not_leading_zeroes(max_width_minus_one);
     const Coordinate base_box_size = math_::safe_left_shift_one(exp);
 
     // The total number of zboxes we use to cover this bounding_box
@@ -417,7 +421,7 @@ struct ztree_ops {
     // twice base_box_size.  This is the worst case,
     // "num_dimensions_that_need_two_zboxes_each_of_base_box_size".
     for (num_coordinates_type i = NumDimensions - 1; i >= 0; --i) {
-      if ((bbox.size[i] - 1) < base_box_size - (bbox.min[i] & (base_box_size - 1))) {
+      if ((bbox.size[i] - 1) <= (base_box_size - 1) - (bbox.min[i] & (base_box_size - 1))) {
         ++num_dims_using_one_zbox_of_exactly_base_box_size;
       }
       else {
