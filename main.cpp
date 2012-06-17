@@ -254,7 +254,8 @@ void sim_thread_step(
           concurrent::m_var<input_news_t>* take_input, //nullptr to not take input
           bool simulate,
           bool draw,
-          concurrent::m_var<frame_output_t>* put_output //nullptr to not put output
+          concurrent::m_var<frame_output_t>* put_output, //nullptr to not put output
+          fine_scalar view_radius
                     ) {
   input_news_t input_news;
   if(take_input) {input_news = take_input->take();}
@@ -267,7 +268,7 @@ void sim_thread_step(
   const microseconds_t microseconds_before_drawing = get_this_thread_microseconds();
   if(take_input) {view.input(input_news);}
   gl_data_ptr_t gl_data_ptr(new gl_data_t());
-  if(draw) {view.render(w, world_rendering_config(), *gl_data_ptr);}
+  if(draw) {view.render(w, world_rendering_config(view_radius), *gl_data_ptr);}
   const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
   const microseconds_t microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
 
@@ -280,29 +281,39 @@ void sim_thread_step(
   if(put_output) {put_output->put(output);}
 }
 
-void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code, bool crazy_lasers)
+struct config_struct {
+  std::string scenario;
+  bool crazy_lasers;
+  fine_scalar view_radius;
+  bool have_gui;
+  bool run_drawing_code;
+  bool initially_drawing_debug_stuff;
+};
+
+void mainLoop (config_struct config)
 {
   using namespace input_representation;
   
   concurrent::m_var<input_news_t> input_news_pipe;
   concurrent::m_var<frame_output_t> frame_output_pipe;
   
-  const worldgen_function_t worldgen = make_world_building_func(scenario);
+  const worldgen_function_t worldgen = make_world_building_func(config.scenario);
   if(!worldgen) {
-    std::cerr << "Scenario name given that doesn't exist!: \'" << scenario << "\'\n";
+    std::cerr << "Scenario name given that doesn't exist!: \'" << config.scenario << "\'\n";
     exit(4);
   }
 
 #if !LASERCAKE_NO_THREADS
-  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen, run_drawing_code, crazy_lasers]() {
+  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen, config]() {
 #endif
     world w(worldgen);
-    const object_identifier robot_id = init_test_world_and_return_our_robot(w, crazy_lasers);
+    const object_identifier robot_id = init_test_world_and_return_our_robot(w, config.crazy_lasers);
     view_on_the_world view(robot_id, world_center_fine_coords);
-    sim_thread_step(w, view, nullptr, false, run_drawing_code, &frame_output_pipe);
+    view.drawing_debug_stuff = config.initially_drawing_debug_stuff;
+    sim_thread_step(w, view, nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
 #if !LASERCAKE_NO_THREADS
     while(true) {
-      sim_thread_step(w, view, &input_news_pipe, true, run_drawing_code, &frame_output_pipe);
+      sim_thread_step(w, view, &input_news_pipe, true, config.run_drawing_code, &frame_output_pipe, config.view_radius);
     }
   });
 #endif
@@ -332,7 +343,7 @@ void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code, bool 
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
 
 #if LASERCAKE_NO_THREADS
-    if(frame != 0) {sim_thread_step(w, view, &input_news_pipe, true, true, &frame_output_pipe);}
+    if(frame != 0) {sim_thread_step(w, view, &input_news_pipe, true, true, &frame_output_pipe, config.view_radius);}
 #endif
     
     // TODO use SDL's TextInput API (and/or switch toolkits)
@@ -344,7 +355,7 @@ void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code, bool 
     /* Check for events */
     key_activity_t key_activity_since_last_frame;
     keys_currently_pressed_t keys_currently_pressed;
-    if(have_gui) {
+    if(config.have_gui) {
       SDL_Event event;
       while ( SDL_PollEvent (&event) ) {
         switch (event.type) {
@@ -409,7 +420,7 @@ void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code, bool 
     const microseconds_t microseconds_before_GL = get_this_process_microseconds();
     const microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
 
-    if(have_gui) {
+    if(config.have_gui) {
       output_gl_data_to_OpenGL(*last_frame_output.gl_data_ptr);
       glFinish();
       SDL_GL_SwapBuffers();
@@ -554,10 +565,7 @@ int main(int argc, char *argv[])
     std::cerr << "Can't find your default locale; not setting locale" << std::endl;
   }
 
-  bool have_gui = true;
-  bool run_drawing_code = true;
-  bool crazy_lasers = false;
-  std::string scenario;
+  config_struct config;
 
   {
     namespace po = boost::program_options;
@@ -568,9 +576,12 @@ int main(int argc, char *argv[])
     po::options_description desc("Allowed options");
     desc.add_options()
       ("help,h", "produce help message")
-      ("crazy-lasers,l", po::bool_switch(&crazy_lasers), "start with some lasers firing in lots of random directions")
-      ("no-gui,n", "debug: don't run the GUI")
-      ("scenario", po::value<std::string>(), "which scenario to run")
+      ("view-radius,v", po::value<uint32_t>()->default_value(50), "view radius, in tile_widths") //TODO - in meters?
+      ("crazy-lasers,l", po::bool_switch(&config.crazy_lasers), "start with some lasers firing in lots of random directions")
+      ("initially-drawing-debug-stuff,d", po::bool_switch(&config.initially_drawing_debug_stuff), "initially drawing debug stuff")
+      ("no-gui,n", po::bool_switch(&config.have_gui), "debug: don't run the GUI")
+      ("sim-only,s", po::bool_switch(&config.run_drawing_code), "debug: don't draw/render at all")
+      ("scenario", po::value<std::string>(&config.scenario), "which scenario to run")
     ;
 
     po::variables_map vm;
@@ -578,23 +589,24 @@ int main(int argc, char *argv[])
               options(desc).positional(p).run(), vm);
     po::notify(vm);
 
+    config.have_gui = !config.have_gui;
+    config.run_drawing_code = !config.run_drawing_code;
+    config.view_radius = fine_scalar(vm["view-radius"].as<uint32_t>()) * tile_width;
+    if(!config.run_drawing_code) {
+      config.have_gui = false;
+    }
+
     if(vm.count("help")) {
       std::cout << desc << std::endl;
       exit(0);
     }
-    if(vm.count("no-gui")) {
-      have_gui = false;
-    }
-    if(vm.count("scenario")) {
-      scenario = vm["scenario"].as<std::string>();
-    }
-    else {
+    if(!vm.count("scenario")) {
       std::cerr << "You didn't give an argument saying which scenario to use! Using default value...\n";
-      scenario = "default";
+      config.scenario = "default";
     }
   }
 
-  if(have_gui) {
+  if(config.have_gui) {
     if(SDL_Init (SDL_INIT_VIDEO) < 0) {
       fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
       exit(1);
@@ -603,9 +615,9 @@ int main(int argc, char *argv[])
     print_SDL_GL_attributes();
   }
 
-  mainLoop(scenario, have_gui, run_drawing_code, crazy_lasers);
+  mainLoop(config);
 
-  if(have_gui) {
+  if(config.have_gui) {
     SDL_Quit();
   }
 

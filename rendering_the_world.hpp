@@ -150,8 +150,8 @@ struct gl_all_data {
 
 
 struct world_rendering_config {
-  world_rendering_config() {}
-  //no config presently
+  world_rendering_config(fine_scalar view_radius) : view_radius(view_radius) {}
+  fine_scalar view_radius;
 };
 
 class view_on_the_world {
