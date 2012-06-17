@@ -604,22 +604,28 @@ public:
   bool operator==(g_slice_allocator const&) { return true; }
   bool operator!=(g_slice_allocator const&) { return false; }
 };
+template<typename T>
+struct lasercake_nice_allocator {
+  typedef g_slice_allocator<T> type;
+};
 #else
 template<typename T>
-class g_slice_allocator : public std::allocator<T> {};
+struct lasercake_nice_allocator {
+  typedef std::allocator<T> type;
+};
 #endif
 
 template<typename T>
 struct lasercake_set {
-  typedef std::unordered_set<T, std::hash<T>, std::equal_to<T>, g_slice_allocator<T> > type;
+  typedef std::unordered_set<T, std::hash<T>, std::equal_to<T>, typename lasercake_nice_allocator<T>::type > type;
 };
 template<typename K, typename V>
 struct lasercake_map {
-  typedef std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, g_slice_allocator< std::pair<const K, V> > > type;
+  typedef std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, typename lasercake_nice_allocator< std::pair<const K, V> >::type > type;
 };
 template<typename T>
 struct lasercake_vector {
-  typedef std::vector<T, g_slice_allocator<T> > type;
+  typedef std::vector<T, typename lasercake_nice_allocator<T>::type > type;
 };
 
 
