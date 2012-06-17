@@ -71,7 +71,11 @@ int64_t get_this_process_mem_usage_megabytes() {
 #if !LASERCAKE_NO_TIMING
   struct rusage ru;
   getrusage(RUSAGE_SELF, &ru);
-  return ru.ru_maxrss / 1024;
+  #if defined(__APPLE__) || defined(__MACOSX__)
+    return ru.ru_maxrss;
+  #else
+    return ru.ru_maxrss / 1024;
+  #endif
 #else
   return 0;
 #endif
