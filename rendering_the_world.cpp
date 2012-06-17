@@ -426,7 +426,7 @@ void view_on_the_world::render(
 
         vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
 
-        if (is_fluid(t.contents()) && this->drawing_debug_stuff) {
+        if (this->drawing_debug_stuff && is_fluid(t.contents())) {
           if (tile_physics_impl::active_fluid_tile_info const* fluid =
                 find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
             push_line(coll,
