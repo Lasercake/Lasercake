@@ -27,7 +27,9 @@ def main():
 		sys.stdout.write(ansi_red+"Error: 'make' not found; please install it."+ansi_end+'\n')
 		sys.stdout.flush()
 		exit(1)
-	try: subprocess.call(['time', '-f', '', 'true'])
+	try:
+		status = subprocess.call(['time', '-f', '', 'true'])
+		time_has_f = (status == 0)
 	except OSError:
 		sys.stdout.write(ansi_red+"Error: GNU-compatible 'time' not found; please install it."+ansi_end+'\n')
 		sys.stdout.flush()
@@ -65,7 +67,14 @@ def main():
 	except OSError: pass
 	os.chdir(build_dir)
 	subprocess.check_call(['cmake', '../../'] + cmake_args)
-	make_status = subprocess.call(['time', '-f', (ansi_magenta+'`make` took %E'+ansi_end), 'make'] + make_flags + make_args)
+	if time_has_f:
+		time_args = ['time', '-f', (ansi_magenta+'`make` took %E'+ansi_end), 'make']
+	else:
+		time_args = ['time']
+	make_status = subprocess.call(time_args + make_flags + make_args)
+	if not time_has_f:
+		sys.stdout.write(ansi_magenta+'  (time to run `make`).'+ansi_end)
+		sys.stdout.flush()
 	# How to print the compiler & flags here? Can we get it from cmake
 	# somehow? Add to the cmakelists to write those?
 	# but with the -l's and all... hmm.
