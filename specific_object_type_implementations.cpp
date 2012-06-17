@@ -47,7 +47,7 @@ struct beam_first_contact_finder : world_collision_detector::visitor {
       }
     }
   }
-  virtual bool should_be_considered__dynamic(bounding_box const& bb)const {
+  bool should_be_considered__dynamic(bounding_box const& bb)const {
     // hack - avoid overflow
     const uint64_t too_large = (1ULL << 32) - 1;
     if (bb.size_minus_one(X) >= too_large || bb.size_minus_one(Y) >= too_large || bb.size_minus_one(Z) >= too_large) {
@@ -57,7 +57,7 @@ struct beam_first_contact_finder : world_collision_detector::visitor {
     bool_and_rational result = shape(bb).first_intersection(beam);
     return result.first && (!best_intercept_point.first || result.second < best_intercept_point.second);
   }
-  virtual bool bbox_ordering(bounding_box const& bb1, bounding_box const& bb2)const {
+  bool bbox_less_than(bounding_box const& bb1, bounding_box const& bb2)const {
     for (int dim = 0; dim < 3; ++dim) {
       if (beam.ends[0][dim] < beam.ends[1][dim]) {
         if (bb1.min(dim) < bb2.min(dim)) return true;
