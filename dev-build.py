@@ -68,12 +68,12 @@ def main():
 	os.chdir(build_dir)
 	subprocess.check_call(['cmake', '../../'] + cmake_args)
 	if time_has_f:
-		time_args = ['time', '-f', (ansi_magenta+'`make` took %E'+ansi_end), 'make']
+		time_args = ['time', '-f', (ansi_magenta+'`make` took %E'+ansi_end)]
 	else:
 		time_args = ['time']
-	make_status = subprocess.call(time_args + make_flags + make_args)
+	make_status = subprocess.call(time_args + ['make'] + make_flags + make_args)
 	if not time_has_f:
-		sys.stdout.write(ansi_magenta+'  (time to run `make`).'+ansi_end)
+		sys.stdout.write(ansi_magenta+'  (time to run `make`).'+ansi_end+'\n')
 		sys.stdout.flush()
 	# How to print the compiler & flags here? Can we get it from cmake
 	# somehow? Add to the cmakelists to write those?
