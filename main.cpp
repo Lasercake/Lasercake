@@ -296,6 +296,7 @@ struct config_struct {
   bool have_gui;
   bool run_drawing_code;
   bool initially_drawing_debug_stuff;
+  int64_t exit_after_frames;
 };
 
 void mainLoop (config_struct config)
@@ -349,6 +350,10 @@ void mainLoop (config_struct config)
 
   while ( !done ) {
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
+
+    if(config.exit_after_frames == frame) {
+      break;
+    }
 
 #if LASERCAKE_NO_THREADS
     if(frame != 0) {sim_thread_step(w, view, &input_news_pipe, true, true, &frame_output_pipe, config.view_radius);}
@@ -589,6 +594,7 @@ int main(int argc, char *argv[])
       ("view-radius,v", po::value<uint32_t>()->default_value(50), "view radius, in tile_widths") //TODO - in meters?
       ("crazy-lasers,l", po::bool_switch(&config.crazy_lasers), "start with some lasers firing in lots of random directions")
       ("initially-drawing-debug-stuff,d", po::bool_switch(&config.initially_drawing_debug_stuff), "initially drawing debug stuff")
+      ("exit-after-frames,e", po::value<int64_t>(&config.exit_after_frames)->default_value(-1), "debug: exit after n frames (negative: never)")
       ("no-gui,n", po::bool_switch(&config.have_gui), "debug: don't run the GUI")
       ("sim-only,s", po::bool_switch(&config.run_drawing_code), "debug: don't draw/render at all")
       ("scenario", po::value<std::string>(&config.scenario), "which scenario to run")
