@@ -154,6 +154,8 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   BOOST_CHECK_EQUAL(dect.exists(42), true);
   BOOST_CHECK_EQUAL(*dect.find_bounding_box(42), bb5);
 
+  BOOST_CHECK_EQUAL(dect.size(), 3);
+
   {
     std::vector<obj_t> results5;
     dect.get_objects_overlapping(results5, bb8);

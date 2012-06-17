@@ -167,8 +167,31 @@ namespace impl {
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
 class visitor;
 
-// ObjectIdentifier needs hash and == and to be freely copiable. So, ints will do, pointers will do...
-// CoordinateBits should usually be 32 or 64. I don't know if it works for other values.
+// bbox_collision_detector is a collection of pairs of
+//   ObjectIdentifier and bounding_box<CoordinateBits, NumDimensions>
+// which has O(1) ObjectIdentifier -> bounding_box
+// and roughly O(log(n)) bounding_box -> overlapping ObjectIdentifiers.
+//
+// bounding_boxes are in NumDimensions-dimensional Euclidean space
+// that is modulo 2**CoordinateBits.
+//
+// ObjectIdentifier needs hash and == and a copy-constructor.
+// CoordinateBits should usually be 32 or 64. We haven't tested other values.
+//
+// The per-item memory overhead is large.
+// It's somewhere on the order of a hectobyte (100 bytes),
+// depending on CoordinateBits*NumDimensions, on sizeof(pointer),
+// and on implementation details.
+//
+// In O() complexities, let "depth" be
+//   typical case  min(log(n), CoordinateBits*NumDimensions)
+//   worst case    min(n, CoordinateBits*NumDimensions)
+//
+// "depth" doesn't suffer from unnecessarily large CoordinateBits; if
+// all your objects fit in a bounding box of size (max size among all
+// dimensions) 2**b, then substitute (b+1) for CoordinateBits in the
+// definition of depth.  (This falls naturally out of the ztree
+// implementation.)
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
 class bbox_collision_detector {
   static_assert(NumDimensions >= 0, "You can't make a space with negative dimensions!");
@@ -194,29 +217,49 @@ public:
   // insert throws std::logic_error iff the id already existed in this detector.
   // To avoid an exception, use detector.erase(id) or if(detector.exists(id))
   // depending on your needs.
+  //
+  // O(depth)
   void insert(ObjectIdentifier const& id, bounding_box const& bbox);
 
   // exists returns true iff there is an object of this id in this detector
+  //
+  // O(1)
   bool exists(ObjectIdentifier const& id)const {
     return (bboxes_by_object_.find(id) != bboxes_by_object_.end());
   }
 
   // erase returns true iff there was an object of this id (now deleted of course).
+  //
+  // O(depth)
   bool erase(ObjectIdentifier const& id);
 
+  // size returns the number of objects in the bbox_collision_detector.
+  //
+  // O(1)
+  size_t size()const {
+    return bboxes_by_object_.size();
+  }
+
   // find_bounding_box returns non-null iff there is an object of this id.
+  //
+  // O(1)
   bounding_box const* find_bounding_box(ObjectIdentifier const& id)const {
     auto i = bboxes_by_object_.find(id);
     if(i == bboxes_by_object_.end()) return nullptr;
     else return &(i->second.bbox);
   }
 
+  // O(max(m, depth)) where m is the number of things collected plus other
+  // nearby objects.  Things that are as far away from the bbox in a dimension
+  // as its maximum width among all dimensions never count as nearby.
   void get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box const& bbox)const;
 
   // Derive from
   //   class collision_detector::visitor<>
   // and override its virtual functions
   // to make search() do something interesting for you.
+  //
+  // Search's complexity depends on your handler.
   void search(visitor* handler)const;
   
 private:
