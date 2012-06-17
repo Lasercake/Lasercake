@@ -111,7 +111,7 @@ std::ostream& operator<<(std::ostream& os, ostream_bundle& b) { return os << b.s
 
 // show_decimal(1234567, 1000, 10) --> "1234.5"
 template<typename Integral, typename Integral2>
-std::string show_decimal(Integral us, Integral2 divisor, int places, std::locale const& locale = std::locale("")) {
+std::string show_decimal(Integral us, Integral2 divisor, int places, std::locale const& locale = std::locale()) {
   Integral divisordivisor = 1;
   for(int i = 0; i < places; ++i) { divisordivisor *= 10; }
   
@@ -539,7 +539,12 @@ SDL_Surface* create_SDL_GL_surface(bool fullscreen)
 
 int main(int argc, char *argv[])
 {
-  std::cerr.imbue(std::locale(""));
+  try {
+    std::locale::global(std::locale(""));
+  }
+  catch(std::runtime_error&) {
+    std::cerr << "Can't find your default locale; not setting locale" << std::endl;
+  }
 
   bool have_gui = true;
   bool run_drawing_code = true;
