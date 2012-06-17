@@ -47,6 +47,8 @@
 #include <boost/chrono/thread_clock.hpp>
 #endif
 
+#include <boost/program_options.hpp>
+
 #include "world.hpp"
 #include "specific_worlds.hpp"
 #include "specific_object_types.hpp"
@@ -553,19 +555,39 @@ int main(int argc, char *argv[])
   bool have_gui = true;
   bool run_drawing_code = true;
   std::string scenario;
-  // TODO someday use real getopt code
-  int scen_idx = 1;
-  if(argc >= 2 && std::string(argv[1]) == "-n") {
-    // for profiling purposes, still run drawing code
-    have_gui = false;
-    ++scen_idx;
-  }
-  if(argc < scen_idx+1) {
-    std::cerr << "You didn't give an argument saying which scenario to use! Using default value...";
-    scenario = "default";
-  }
-  else {
-    scenario = argv[scen_idx];
+
+  {
+    namespace po = boost::program_options;
+
+    po::positional_options_description p;
+    p.add("scenario", 1);
+
+    po::options_description desc("Allowed options");
+    desc.add_options()
+      ("help", "produce help message")
+      ("no-gui,n", "debug: don't run the GUI")
+      ("scenario", po::value<std::string>(), "which scenario to run")
+    ;
+
+    po::variables_map vm;
+    po::store(po::command_line_parser(argc, argv).
+              options(desc).positional(p).run(), vm);
+    po::notify(vm);
+
+    if(vm.count("help")) {
+      std::cout << desc << std::endl;
+      exit(0);
+    }
+    if(vm.count("no-gui")) {
+      have_gui = false;
+    }
+    if(vm.count("scenario")) {
+      scenario = vm["scenario"].as<std::string>();
+    }
+    else {
+      std::cerr << "You didn't give an argument saying which scenario to use! Using default value...\n";
+      scenario = "default";
+    }
   }
 
   if(have_gui) {

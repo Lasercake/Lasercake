@@ -18,7 +18,7 @@ endif()
 
 find_package(SDL)
 find_package(OpenGL)
-find_package(Boost)
+find_package(Boost COMPONENTS program_options)
 if (THREADS)
 	find_package(Boost COMPONENTS thread)
 else()
