@@ -186,14 +186,16 @@ void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
   }
 }
 
-object_identifier init_test_world_and_return_our_robot(world& w) {
-  const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(10ULL << 10, 10ULL << 10, 10ULL << 10);
+object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lasers) {
+  const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(12LL << 10, 12LL << 10, 10LL << 10);
   const shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
-  const shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
-  const shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,4,-1)));
-  w.try_create_object(foo);
-  w.try_create_object(bar);
+  if(crazy_lasers) {
+    const shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
+    const shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,4,-1)));
+    w.try_create_object(foo);
+    w.try_create_object(bar);
+  }
 
   // HACK - TODO remove at least the second effect
   // This hack has two effects:
@@ -278,7 +280,7 @@ void sim_thread_step(
   if(put_output) {put_output->put(output);}
 }
 
-void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code)
+void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code, bool crazy_lasers)
 {
   using namespace input_representation;
   
@@ -292,10 +294,10 @@ void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code)
   }
 
 #if !LASERCAKE_NO_THREADS
-  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen, run_drawing_code]() {
+  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen, run_drawing_code, crazy_lasers]() {
 #endif
     world w(worldgen);
-    const object_identifier robot_id = init_test_world_and_return_our_robot(w);
+    const object_identifier robot_id = init_test_world_and_return_our_robot(w, crazy_lasers);
     view_on_the_world view(robot_id, world_center_fine_coords);
     sim_thread_step(w, view, nullptr, false, run_drawing_code, &frame_output_pipe);
 #if !LASERCAKE_NO_THREADS
@@ -554,6 +556,7 @@ int main(int argc, char *argv[])
 
   bool have_gui = true;
   bool run_drawing_code = true;
+  bool crazy_lasers = false;
   std::string scenario;
 
   {
@@ -564,7 +567,8 @@ int main(int argc, char *argv[])
 
     po::options_description desc("Allowed options");
     desc.add_options()
-      ("help", "produce help message")
+      ("help,h", "produce help message")
+      ("crazy-lasers,l", po::bool_switch(&crazy_lasers), "start with some lasers firing in lots of random directions")
       ("no-gui,n", "debug: don't run the GUI")
       ("scenario", po::value<std::string>(), "which scenario to run")
     ;
@@ -599,7 +603,7 @@ int main(int argc, char *argv[])
     print_SDL_GL_attributes();
   }
 
-  mainLoop(scenario, have_gui, run_drawing_code);
+  mainLoop(scenario, have_gui, run_drawing_code, crazy_lasers);
 
   if(have_gui) {
     SDL_Quit();
