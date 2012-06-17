@@ -19,9 +19,6 @@
 
 */
 
-#include <sys/resource.h>
-#include <time.h>
-   
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +39,14 @@
 #include <sstream>
 #include <locale>
 
+#if !LASERCAKE_NO_TIMING
+#include <sys/resource.h>
+
+#include <boost/chrono.hpp>
+#include <boost/chrono/process_cpu_clocks.hpp>
+#include <boost/chrono/thread_clock.hpp>
+#endif
+
 #include "world.hpp"
 #include "specific_worlds.hpp"
 #include "specific_object_types.hpp"
@@ -56,47 +61,53 @@
 
 namespace /* anonymous */ {
 
+#if !LASERCAKE_NO_TIMING
+namespace chrono = boost::chrono;
+#endif
 
 typedef int64_t microseconds_t;
-/* didn't have enough precision, at least on this Linux (3.3333 millisecond resolution)
- * microseconds_t rusage_to_microseconds(struct rusage const& r) {
-  return (microseconds_t)r.ru_utime.tv_sec * 1000000 + (microseconds_t)r.ru_utime.tv_usec
-       + (microseconds_t)r.ru_stime.tv_sec * 1000000 + (microseconds_t)r.ru_stime.tv_usec;
-}*/
-// TODO these functions are probably not portable but are useful to help
-// avoid introducing performance regressions.
-struct rusage get_this_process_rusage() {
-  struct rusage ret;
-  getrusage(RUSAGE_SELF, &ret);
-  return ret;
+
+int64_t get_this_process_mem_usage_megabytes() {
+#if !LASERCAKE_NO_TIMING
+  struct rusage ru;
+  getrusage(RUSAGE_SELF, &ru);
+  return ru.ru_maxrss / 1024;
+#else
+  return 0;
+#endif
 }
 microseconds_t get_this_thread_microseconds() {
-  struct timespec ts;
-  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
-  return (microseconds_t)ts.tv_sec * 1000000 + (microseconds_t)ts.tv_nsec / 1000;
+#if !LASERCAKE_NO_TIMING
+  return chrono::duration_cast<chrono::microseconds>(chrono::thread_clock::now().time_since_epoch()).count();
+#else
+  return 0;
+#endif
 }
 microseconds_t get_this_process_microseconds() {
-  struct timespec ts;
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
-  return (microseconds_t)ts.tv_sec * 1000000 + (microseconds_t)ts.tv_nsec / 1000;
+#if !LASERCAKE_NO_TIMING
+  return chrono::duration_cast<chrono::microseconds>(chrono::process_real_cpu_clock::now().time_since_epoch()).count();
+#else
+  return 0;
+#endif
 }
 microseconds_t get_monotonic_microseconds() {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (microseconds_t)ts.tv_sec * 1000000 + (microseconds_t)ts.tv_nsec / 1000;
+#if !LASERCAKE_NO_TIMING
+  return chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now().time_since_epoch()).count();
+#else
+  return 0;
+#endif
 }
 
 // Usage example:
 // std::cerr << std::setw(6) << (ostream_bundle() << "foo" << 564) << std::endl;
-struct ostream_bundle {
+struct ostream_bundle : std::ostream {
   template<typename T> ostream_bundle& operator<<(T const& t) { ss_ << t; return *this; }
   std::string str() { return ss_.str(); }
 private:
   std::stringstream ss_;
 };
-std::ostream& operator<<(std::ostream& os, ostream_bundle& b) {
-  return os << b.str();
-}
+std::ostream& operator<<(ostream_bundle& os, ostream_bundle& b) { return os << b.str(); }
+std::ostream& operator<<(std::ostream& os, ostream_bundle& b) { return os << b.str(); }
 
 // show_decimal(1234567, 1000, 10) --> "1234.5"
 template<typename Integral, typename Integral2>
@@ -409,13 +420,20 @@ void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code)
     const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
 
     monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
+
+#if !LASERCAKE_NO_TIMING
+    std::ostream& timing_output_ostream = std::cerr;
+#else
+    //ignore its contents, but avoid unused-variable warnings thus:
+    ostream_bundle timing_output_ostream;
+#endif
     
-    std::cerr
+    timing_output_ostream
     << "Frame " << std::left << std::setw(4) << frame << std::right << ":"
     //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
     // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
     //<< std::ios::fixed << std::setprecision(4) << fps << " fps; "
-    << std::setw(4) << get_this_process_rusage().ru_maxrss / 1024 << "MiB; "
+    << std::setw(4) << get_this_process_mem_usage_megabytes() << "MiB; "
     << std::setw(6) << show_microseconds_per_frame_as_fps(monotonic_microseconds_for_frame) << "fps"
     << std::setw(6) << show_microseconds(monotonic_microseconds_for_frame) << "ms"
     << ":"
@@ -432,13 +450,19 @@ void mainLoop (std::string scenario, bool have_gui, bool run_drawing_code)
       const microseconds_t beginning = monotonic_microseconds_at_beginning_of_ten_frame_block;
       monotonic_microseconds_at_beginning_of_ten_frame_block = end_frame_monotonic_microseconds;
       const microseconds_t ending = monotonic_microseconds_at_beginning_of_ten_frame_block;
-      std::cerr << show_microseconds_per_frame_as_fps((ending - beginning) / 10) << " fps over the last ten frames " << (frame-10) << "–" << frame << ".\n";
+      
+      timing_output_ostream
+      << show_microseconds_per_frame_as_fps((ending - beginning) / 10)
+      << " fps over the last ten frames " << (frame-10) << "–" << frame << ".\n";
     }
     if(frame % 100 == 0) {
       const microseconds_t beginning = monotonic_microseconds_at_beginning_of_hundred_frame_block;
       monotonic_microseconds_at_beginning_of_hundred_frame_block = end_frame_monotonic_microseconds;
       const microseconds_t ending = monotonic_microseconds_at_beginning_of_hundred_frame_block;
-      std::cerr << show_microseconds_per_frame_as_fps((ending - beginning) / 100) << " fps over the last hundred frames " << (frame-100) << "–" << frame << ".\n";
+      
+      timing_output_ostream
+      << show_microseconds_per_frame_as_fps((ending - beginning) / 100)
+      << " fps over the last hundred frames " << (frame-100) << "–" << frame << ".\n";
     }
   }
 
