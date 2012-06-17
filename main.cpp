@@ -187,7 +187,7 @@ void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
 }
 
 object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lasers) {
-  const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(12LL << 10, 12LL << 10, 10LL << 10);
+  const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(10LL << 10, 10LL << 10, 10LL << 10);
   const shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
   if(crazy_lasers) {
