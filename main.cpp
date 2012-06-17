@@ -147,7 +147,7 @@ void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
   //glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
   glLoadIdentity();
-  gluPerspective(80, 1, 0.1, 100);
+  gluPerspective(80, 1, 0.1, 300);
   gluLookAt(0, 0, 0,
             gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
             gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);
