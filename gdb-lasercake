@@ -1,5 +1,4 @@
 #!/bin/sh
 set -eu
-echo "set args $*" > output/gdbarg
-echo "run" >> output/gdbarg
-gdb ./lasercake -x output/gdbarg
+printf 'set args %s\nrun\n' "$*" > build/gdbarg
+gdb ./lasercake -x build/gdbarg
