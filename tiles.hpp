@@ -29,6 +29,7 @@
 #include <unordered_set>
 
 #include "utils.hpp"
+#include "world_constants.hpp"
 
 using std::pair;
 using std::make_pair;
@@ -290,6 +291,58 @@ public:
 private:
   map_t data_;
 };
+
+
+// conversions between tile_coordinate and fine_scalar:
+
+inline vector3<tile_coordinate> get_containing_tile_coordinates(vector3<fine_scalar> v) {
+  return vector3<tile_coordinate>(
+    tile_coordinate(v.x / tile_width),
+    tile_coordinate(v.y / tile_width),
+    tile_coordinate(v.z / tile_height)
+  );
+}
+inline fine_scalar lower_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
+  if (which_coordinate == Z) return fine_scalar(c) * tile_height;
+  else                       return fine_scalar(c) * tile_width;
+}
+inline fine_scalar upper_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
+  if (which_coordinate == Z) return fine_scalar(c) * tile_height + (tile_height-1);
+  else                       return fine_scalar(c) * tile_width + (tile_width-1);
+}
+inline vector3<fine_scalar> lower_bound_in_fine_units(vector3<tile_coordinate> v) {
+  return vector3<fine_scalar>(
+    lower_bound_in_fine_units(v[0], 0),
+    lower_bound_in_fine_units(v[1], 1),
+    lower_bound_in_fine_units(v[2], 2)
+  );
+}
+inline vector3<fine_scalar> upper_bound_in_fine_units(vector3<tile_coordinate> v) {
+  return vector3<fine_scalar>(
+    upper_bound_in_fine_units(v[0], 0),
+    upper_bound_in_fine_units(v[1], 1),
+    upper_bound_in_fine_units(v[2], 2)
+  );
+}
+
+inline bounding_box fine_bounding_box_of_tile(vector3<tile_coordinate> v) {
+  return bounding_box(lower_bound_in_fine_units(v), upper_bound_in_fine_units(v));
+}
+
+inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
+  return bounding_box(
+    lower_bound_in_fine_units(bb.min),
+    lower_bound_in_fine_units(bb.min + bb.size) - vector3<fine_scalar>(1,1,1)
+  );
+}
+
+inline tile_bounding_box convert_to_smallest_superset_at_tile_resolution(bounding_box const& bb) {
+  tile_bounding_box result;
+  result.min = get_containing_tile_coordinates(bb.min);
+  result.size = get_containing_tile_coordinates(bb.max) + vector3<tile_coordinate>(1,1,1) - result.min;
+  return result;
+}
+
 
 
 //in header file because they're templates:
