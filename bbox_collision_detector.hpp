@@ -261,6 +261,13 @@ public:
   //
   // Search's complexity depends on your handler.
   void search(visitor* handler)const;
+
+  // This can be useful for debugging the efficiency of your
+  // bbox_collision_detector usage (though the output is not particularly
+  // self-explanatory, alas).
+  //
+  // O(n)
+  void print_debug_summary_information(std::ostream& os)const;
   
 private:
   typedef impl::ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_node;

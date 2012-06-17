@@ -533,6 +533,21 @@ struct ztree_ops {
       zget_objects_overlapping(tree->child1.get(), results, verbose_results, bitmap_indicating_found_results, bbox);
     }
   }
+
+  static void look_at_counts_impl(ztree_node const* tree, std::map<long, long>& counts) {
+    if(tree) {
+      ++counts.insert(pair<long, long>(tree->objects_here.size(), 0)).first->second;
+      look_at_counts_impl(tree->child0.get(), counts);
+      look_at_counts_impl(tree->child1.get(), counts);
+    }
+  }
+  static void look_at_counts(ztree_node const* tree, std::ostream& os) {
+    std::map<long, long> counts;
+    look_at_counts_impl(tree, counts);
+    for(auto const& c : counts) {
+      os << c.first << ": " << c.second << "\n";
+    }
+  }
 };
 
 // With a bit of work, this could be an iterator ("custom_iterator"?).
@@ -660,6 +675,15 @@ search(visitor* handler)const {
 
   data.try_add(objects_tree_.get());
   while(data.process_next()){}
+}
+
+template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
+INLINE_IF_HEADER
+void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
+print_debug_summary_information(std::ostream& os)const {
+  os << this->size() << " objects, in piles of [[[\n";
+  impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::look_at_counts(objects_tree_.get(), os);
+  os << "]]]\n";
 }
 
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>

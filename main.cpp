@@ -244,6 +244,7 @@ struct frame_output_t {
   gl_data_ptr_t gl_data_ptr;
   microseconds_t microseconds_for_drawing;
   microseconds_t microseconds_for_simulation;
+  std::string extra_debug_info;
 };
 
 using input_representation::input_news_t;
@@ -272,10 +273,17 @@ void sim_thread_step(
   const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
   const microseconds_t microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
 
+  std::stringstream world_ztree_debug_info;
+  // hack to print this debug info occasionally
+  if(w.game_time_elapsed() % (time_units_per_second * 5) < (time_units_per_second / 15)) {
+    w.get_things_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
+  }
+
   const frame_output_t output = {
     gl_data_ptr,
     microseconds_for_drawing,
-    microseconds_for_simulation
+    microseconds_for_simulation,
+    world_ztree_debug_info.str()
   };
 
   if(put_output) {put_output->put(output);}
@@ -439,6 +447,8 @@ void mainLoop (config_struct config)
     const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
 
     monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
+
+    std::cerr << last_frame_output.extra_debug_info;
 
 #if !LASERCAKE_NO_TIMING
     std::ostream& timing_output_ostream = std::cerr;
