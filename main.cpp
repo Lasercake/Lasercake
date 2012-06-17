@@ -77,14 +77,14 @@ int64_t get_this_process_mem_usage_megabytes() {
 #endif
 }
 microseconds_t get_this_thread_microseconds() {
-#if !LASERCAKE_NO_TIMING
+#if !LASERCAKE_NO_TIMING && defined(BOOST_CHRONO_HAS_THREAD_CLOCK)
   return chrono::duration_cast<chrono::microseconds>(chrono::thread_clock::now().time_since_epoch()).count();
 #else
   return 0;
 #endif
 }
 microseconds_t get_this_process_microseconds() {
-#if !LASERCAKE_NO_TIMING
+#if !LASERCAKE_NO_TIMING && defined(BOOST_CHRONO_HAS_PROCESS_CLOCKS)
   return chrono::duration_cast<chrono::microseconds>(chrono::process_real_cpu_clock::now().time_since_epoch()).count();
 #else
   return 0;
