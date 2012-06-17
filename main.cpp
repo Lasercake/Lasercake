@@ -72,7 +72,7 @@ int64_t get_this_process_mem_usage_megabytes() {
   struct rusage ru;
   getrusage(RUSAGE_SELF, &ru);
   #if defined(__APPLE__) || defined(__MACOSX__)
-    return ru.ru_maxrss;
+    return ru.ru_maxrss / (1024*1024);
   #else
     return ru.ru_maxrss / 1024;
   #endif
