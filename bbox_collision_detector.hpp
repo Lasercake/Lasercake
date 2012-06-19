@@ -162,6 +162,7 @@ namespace impl {
   struct ztree_node;
 
   struct access_visitor_found_objects;
+  struct zbox_debug_visualizer;
 }
 
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
@@ -281,8 +282,7 @@ private:
   //(implicitly) indexed by numeric_id
   std::vector<id_and_bbox_ptr> objects_sequence_;
 
-  friend class zbox_tester;
-  friend class bbox_collision_detector_tester;
+  friend struct impl::zbox_debug_visualizer;
 };
 
 // This describes how to traverse the elements of a bbox_collision_detector

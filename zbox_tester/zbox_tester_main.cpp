@@ -34,6 +34,8 @@
 
 #define ZTREE_TESTING
 #include "../bbox_collision_detector.hpp"
+#define BBOX_COLLISION_DETECTOR_IMPL_TREAT_AS_HEADER 1
+#include "../bbox_collision_detector.cpp"
 
 static SDL_Surface *gScreen;
 
@@ -102,21 +104,27 @@ static void createSurface (int fullscreen)
 }
 
 
-
-struct zbox_tester {
-  zbox_tester():frame(0){}
+namespace collision_detector {
+namespace impl {
+struct zbox_debug_visualizer {
+  zbox_debug_visualizer():frame(0){}
   typedef bbox_collision_detector<int, 64, 3> collision_detector_t;
   collision_detector_t collision_detector;
+  typedef collision_detector_t::bounding_box bounding_box;
+  typedef bounding_box::coordinate_array coordinate_array;
   collision_detector_t::bounding_box floating_bbox;
   int frame;
   void update() {
     frame++;
-    floating_bbox.min[0] = (1ULL<<63) + (10LL<<32)*std::sin(double(frame) / 600);
-    floating_bbox.min[1] = (1ULL<<63) + (10LL<<32)*std::sin(double(frame) / 670);
-    floating_bbox.min[2] = (1ULL<<63) + (10LL<<32)*std::sin(double(frame) / 720);
-    floating_bbox.size[0] = (1ULL<<32) + (1LL<<31)*std::sin(double(frame) / 750);
-    floating_bbox.size[1] = (1ULL<<32) + (1LL<<31)*std::sin(double(frame) / 780);
-    floating_bbox.size[2] = (1ULL<<32) + (1LL<<31)*std::sin(double(frame) / 830);
+    floating_bbox = bounding_box::min_and_size_minus_one(
+      coordinate_array({{
+        static_cast<uint64_t>((1ULL<<63) + (10LL<<32)*std::sin(double(frame) / 600)),
+        static_cast<uint64_t>((1ULL<<63) + (10LL<<32)*std::sin(double(frame) / 670)),
+        static_cast<uint64_t>((1ULL<<63) + (10LL<<32)*std::sin(double(frame) / 720)) }}),
+      coordinate_array({{
+        static_cast<uint64_t>((1ULL<<32) + (1LL<<31)*std::sin(double(frame) / 750)),
+        static_cast<uint64_t>((1ULL<<32) + (1LL<<31)*std::sin(double(frame) / 780)),
+        static_cast<uint64_t>((1ULL<<32) + (1LL<<31)*std::sin(double(frame) / 830)) }}));
     if (frame > 1)
       collision_detector.erase(0);
     collision_detector.insert(0, floating_bbox);
@@ -150,12 +158,12 @@ struct zbox_tester {
     glEnd();
   }
   void stupid_draw(collision_detector_t::bounding_box drawn_bbox)const {
-    double xmin = int64_t(drawn_bbox.min[0] - (1ULL << 63)) / double(1ULL << 32);
-    double ymin = int64_t(drawn_bbox.min[1] - (1ULL << 63)) / double(1ULL << 32);
-    double zmin = int64_t(drawn_bbox.min[2] - (1ULL << 63)) / double(1ULL << 32);
-    double xsiz = drawn_bbox.size[0] / double(1ULL << 32);
-    double ysiz = drawn_bbox.size[1] / double(1ULL << 32);
-    double zsiz = drawn_bbox.size[2] / double(1ULL << 32);
+    double xmin = int64_t(drawn_bbox.min(0) - (1ULL << 63)) / double(1ULL << 32);
+    double ymin = int64_t(drawn_bbox.min(1) - (1ULL << 63)) / double(1ULL << 32);
+    double zmin = int64_t(drawn_bbox.min(2) - (1ULL << 63)) / double(1ULL << 32);
+    double xsiz = (double(drawn_bbox.size_minus_one(0)) + 1) / double(1ULL << 32);
+    double ysiz = (double(drawn_bbox.size_minus_one(1)) + 1) / double(1ULL << 32);
+    double zsiz = (double(drawn_bbox.size_minus_one(2)) + 1) / double(1ULL << 32);
     stupid_draw(xmin,ymin,zmin,xsiz,ysiz,zsiz);
   }
   void draw_node(collision_detector_t::ztree_node_ptr const& tree)const {
@@ -172,11 +180,13 @@ struct zbox_tester {
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
     gluLookAt(30*std::cos(double(frame) / 200),30*std::sin(double(frame) / 200),15,0,0,0,0,0,1);
-    draw_node(collision_detector.objects_tree);
+    draw_node(collision_detector.objects_tree_);
     glColor3f(0.0,0.0,1.0);
     stupid_draw(floating_bbox);
   }
 };
+}
+}
 
 
 static void mainLoop (std::string /*scenario*/)
@@ -186,7 +196,7 @@ static void mainLoop (std::string /*scenario*/)
   int p_mode = 0;
 srand(time(NULL));
 
-  zbox_tester w;
+  collision_detector::impl::zbox_debug_visualizer w;
   
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
     
