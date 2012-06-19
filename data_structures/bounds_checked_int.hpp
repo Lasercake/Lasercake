@@ -332,5 +332,10 @@ abs(bounds_checked_int<Int,Min,Max> i) {
 }
 }
 
+#if USE_BOUNDS_CHECKED_INTS
+template<typename Int> struct maybe_bounds_checked_int { typedef bounds_checked_int<Int> type; };
+#else
+template<typename Int> struct maybe_bounds_checked_int { typedef Int type; };
+#endif
 
 #endif

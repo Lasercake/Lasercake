@@ -42,11 +42,9 @@
 #include "config.hpp"
 #include "data_structures/bounds_checked_int.hpp"
 
-#if USE_BOUNDS_CHECKED_INTS
-template<typename Int> struct lasercake_int { typedef bounds_checked_int<Int> type; };
-#else
-template<typename Int> struct lasercake_int { typedef Int type; };
-#endif
+template<typename Int> struct lasercake_int {
+  typedef typename maybe_bounds_checked_int<Int>::type type;
+};
 
 // returns the signum (-1, 0, or 1)
 template <typename Number>
