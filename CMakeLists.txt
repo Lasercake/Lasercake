@@ -55,7 +55,7 @@ semicolons_to_spaces(INCLUDE_DIRS_spaces ${INCLUDE_DIRS})
 message(STATUS "include dirs: ${INCLUDE_DIRS_spaces}")
 include_directories(${INCLUDE_DIRS})
 
-file (GLOB LASERCAKE_SOURCES *.cpp *.hpp)
+file (GLOB LASERCAKE_SOURCES *.cpp *.hpp data_structures/*.[ch]pp)
 set(LASERCAKE_LINK_FLAGS ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${Boost_LIBRARIES} ${GLIB_LIBRARIES})
 semicolons_to_spaces(LASERCAKE_LINK_FLAGS_spaces ${LASERCAKE_LINK_FLAGS})
 show_paths(LASERCAKE_SOURCES_pretty ${LASERCAKE_SOURCES})

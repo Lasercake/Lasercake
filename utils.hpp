@@ -178,7 +178,7 @@ typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key
   else return &(i->second);
 }
 
-#include "bounds_checked_int.hpp"
+#include "data_structures/bounds_checked_int.hpp"
 
 #if USE_BOUNDS_CHECKED_INTS
 template<typename Int> struct lasercake_int { typedef bounds_checked_int<Int> type; };

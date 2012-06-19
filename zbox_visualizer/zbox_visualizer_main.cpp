@@ -33,9 +33,9 @@
 #include <cmath>
 
 #define ZTREE_TESTING
-#include "../bbox_collision_detector.hpp"
+#include "../data_structures/bbox_collision_detector.hpp"
 #define BBOX_COLLISION_DETECTOR_IMPL_TREAT_AS_HEADER 1
-#include "../bbox_collision_detector.cpp"
+#include "../data_structures/bbox_collision_detector.cpp"
 
 static SDL_Surface *gScreen;
 

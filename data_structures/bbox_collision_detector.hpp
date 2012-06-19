@@ -27,7 +27,7 @@
 #include <unordered_set>
 #include <array>
 #include <boost/scoped_ptr.hpp>
-#include "utils.hpp"
+#include "../utils.hpp"
 
 namespace collision_detector {
 typedef ptrdiff_t num_bits_type;

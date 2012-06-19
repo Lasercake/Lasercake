@@ -19,7 +19,7 @@
 
 */
 
-#include "../bounds_checked_int.hpp"
+#include "../data_structures/bounds_checked_int.hpp"
 
 //#define BOOST_TEST_DYN_LINK
 //#define BOOST_TEST_MODULE bounds_checked_int test

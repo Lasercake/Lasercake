@@ -19,12 +19,12 @@
 
 */
 
-#include "../bbox_collision_detector.hpp"
+#include "../data_structures/bbox_collision_detector.hpp"
 
 // hack to let us instantiate more bbox_collision_detector variations for the
 // tests, as well as test the internals in various ways.
 #define BBOX_COLLISION_DETECTOR_IMPL_TREAT_AS_HEADER 1
-#include "../bbox_collision_detector.cpp"
+#include "../data_structures/bbox_collision_detector.cpp"
 
 //#define BOOST_TEST_DYN_LINK
 //#define BOOST_TEST_MODULE bbox_collision_detector test

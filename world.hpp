@@ -45,11 +45,10 @@
 #include <boost/shared_ptr.hpp>
 
 #include "utils.hpp"
-#include "polygon_collision_detection.hpp"
-#include "bbox_collision_detector.hpp"
+#include "data_structures/polygon_collision_detection.hpp"
+#include "data_structures/bbox_collision_detector.hpp"
 #include "tiles.hpp"
 #include "input_representation.hpp"
-#include "bounds_checked_int.hpp"
 #include "world_constants.hpp"
 
 using std::pair;

@@ -33,7 +33,7 @@
 #include <cmath>
 
 #define ZTREE_TESTING
-#include "../polygon_collision_detection.hpp"
+#include "../data_structures/polygon_collision_detection.hpp"
 
 static SDL_Surface *gScreen;
 

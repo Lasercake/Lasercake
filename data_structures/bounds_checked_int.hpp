@@ -19,7 +19,7 @@
 
 */
 
-#include "utils.hpp"
+#include "../utils.hpp"
 
 #ifndef LASERCAKE_BOUNDS_CHECKED_INT_HPP__
 #define LASERCAKE_BOUNDS_CHECKED_INT_HPP__

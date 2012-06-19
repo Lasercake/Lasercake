@@ -27,7 +27,7 @@
 #include <vector>
 #include <array>
 
-#include "utils.hpp"
+#include "../utils.hpp"
 
 // So that we can make implicit conversions between their and our bbox:
 #include "bbox_collision_detector.hpp"
