@@ -19,8 +19,6 @@
 
 */
 
-#include "../utils.hpp"
-
 #ifndef LASERCAKE_BOUNDS_CHECKED_INT_HPP__
 #define LASERCAKE_BOUNDS_CHECKED_INT_HPP__
 
@@ -32,6 +30,8 @@
 #include <boost/mpl/if.hpp>
 
 #include <ostream>
+
+#include "../config.hpp"
 
 namespace bounds_checked_int_impl {
   template<int bits, bool is_signed> struct int_types;
