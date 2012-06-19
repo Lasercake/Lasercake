@@ -22,24 +22,27 @@
 #ifndef LASERCAKE_UTILS_HPP__
 #define LASERCAKE_UTILS_HPP__
 
+#include <inttypes.h>
+
+#include <stdexcept>
+#include <boost/throw_exception.hpp>
+
 #include <array>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
 #include <memory>
 #include <cmath>
-#include <inttypes.h>
 #include <boost/functional/hash.hpp>
-#include <boost/throw_exception.hpp>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/taus88.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 #include <boost/random/random_number_generator.hpp>
 #include <boost/integer/static_log2.hpp>
-#include <stdexcept>
 #if defined(LASERCAKE_USE_GLIB)
 #include <glib.h>
 #endif
+
 
 // Some asserts take too much runtime to turn on by default.
 // So write them "assert_if_ASSERT_EVERYTHING(x);"
@@ -148,6 +151,13 @@ inline void caller_correct_if(bool cond, const char* error) {
   }
 }
 
+#include "data_structures/bounds_checked_int.hpp"
+
+#if USE_BOUNDS_CHECKED_INTS
+template<typename Int> struct lasercake_int { typedef bounds_checked_int<Int> type; };
+#else
+template<typename Int> struct lasercake_int { typedef Int type; };
+#endif
 
 // returns the signum (-1, 0, or 1)
 template <typename Number>
@@ -177,15 +187,6 @@ typename Map::mapped_type const* find_as_pointer(Map const& m, typename Map::key
   if(i == m.end()) return nullptr;
   else return &(i->second);
 }
-
-#include "data_structures/bounds_checked_int.hpp"
-
-#if USE_BOUNDS_CHECKED_INTS
-template<typename Int> struct lasercake_int { typedef bounds_checked_int<Int> type; };
-#else
-template<typename Int> struct lasercake_int { typedef Int type; };
-#endif
-
 
 template<typename ScalarType1, typename ScalarType2>
 auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
