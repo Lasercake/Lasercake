@@ -617,6 +617,8 @@ INLINE_IF_HEADER
 void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
 insert(ObjectIdentifier const& id, bounding_box const& bbox) {
   auto numeric_id = objects_sequence_.size();
+  caller_correct_if(numeric_id == impl::numeric_id_type(numeric_id),
+                    "insert(): bbox_collision_detector can't exceed its max_size().");
   auto iter_and_new = bboxes_by_object_.insert(id_and_bbox_type(id, object_metadata(bbox, numeric_id)));
   caller_correct_if(
     iter_and_new.second,

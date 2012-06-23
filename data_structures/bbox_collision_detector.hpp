@@ -237,8 +237,11 @@ public:
   // size returns the number of objects in the bbox_collision_detector.
   //
   // O(1)
-  size_t size()const {
-    return bboxes_by_object_.size();
+  impl::numeric_id_type size()const {
+    return impl::numeric_id_type(bboxes_by_object_.size());
+  }
+  impl::numeric_id_type max_size()const {
+    return std::numeric_limits<impl::numeric_id_type>::max();
   }
 
   // find_bounding_box returns non-null iff there is an object of this id.
