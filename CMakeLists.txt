@@ -65,7 +65,7 @@ add_executable (lasercake ${LASERCAKE_SOURCES})
 target_link_libraries(lasercake ${LASERCAKE_LINK_FLAGS})
 
 find_package(Boost COMPONENTS unit_test_framework)
-file (GLOB TEST_SOURCES *.hpp tests/*.cpp)
+file (GLOB TEST_SOURCES data_structures/borrowed_bitset.cpp tests/*.cpp)
 set(TEST_LINK_FLAGS ${Boost_LIBRARIES})
 semicolons_to_spaces(TEST_LINK_FLAGS_spaces ${TEST_LINK_FLAGS})
 show_paths(TEST_SOURCES_pretty ${TEST_SOURCES})
