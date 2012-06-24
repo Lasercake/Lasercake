@@ -28,6 +28,7 @@
 #include <array>
 
 #include "../utils.hpp"
+#include "misc_structures.hpp"
 
 // So that we can make implicit conversions between their and our bbox:
 #include "bbox_collision_detector.hpp"
@@ -36,6 +37,8 @@
 //  with a max distance of about 14 bits between any of the parts of them.
 
 typedef lasercake_int<int64_t>::type polygon_int_type;
+
+typedef faux_optional<non_normalized_rational<polygon_int_type> > optional_rational;
 
 struct polygon_collision_info_cache {
   polygon_collision_info_cache():is_valid(false){}
@@ -143,7 +146,7 @@ public:
   
   bool intersects(shape const& other)const;
   // returns (was there an intersection?, what fraction of the length of the line segment was the first)
-  std::pair<bool, non_normalized_rational<polygon_int_type>> first_intersection(line_segment const& other)const;
+  optional_rational first_intersection(line_segment const& other)const;
   bounding_box bounds()const;
   vector3<polygon_int_type> arbitrary_interior_point()const;
   

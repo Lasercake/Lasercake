@@ -26,8 +26,6 @@
 namespace /* anonymous */ {
 
 typedef non_normalized_rational<polygon_int_type> rational;
-typedef std::pair<bool, rational> bool_and_rational;
-
 
 struct beam_first_contact_finder {
   beam_first_contact_finder(world const& w, line_segment beam, object_or_tile_identifier ignore):w_(w),beam_(beam) {ignores_.insert(ignore);}
@@ -39,15 +37,13 @@ struct beam_first_contact_finder {
   result_type min_cost(world_collision_detector::bounding_box const& bbox) const {
     // hack - avoid overflow - don't try to filter out too-large regions
     if(bbox_is_too_large(bbox)) return rational(0);
-    const bool_and_rational result = shape(bbox).first_intersection(beam_);
-    return result.first ? result_type(result.second) : result_type();
+    return shape(bbox).first_intersection(beam_);
   }
   result_type cost(object_or_tile_identifier id, world_collision_detector::bounding_box const& bbox) const {
     // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
     if(bbox_is_too_large(bbox)) return result_type();
     if(ignores_.find(id) != ignores_.end()) return result_type();
-    const bool_and_rational result = w_.get_detail_shape_of_object_or_tile(id).first_intersection(beam_);
-    return result.first ? result_type(result.second) : result_type();
+    return w_.get_detail_shape_of_object_or_tile(id).first_intersection(beam_);
   }
 private:
   world const& w_;
