@@ -308,6 +308,13 @@ public:
   // find_least() is a simpler interface when you just want the first (least)
   // match; it returns a boost::optional<value_type>.
   //
+  // filter() is a hybrid between these and get_objects_overlapping().
+  // Its GetCost functions must return bool or boolean-convertible
+  // (true meaning keep) and needn't typedef cost_type (but if they do
+  // typedef cost_type, then functions returning cost_type are treated
+  // as true so that filter() is fairly compatible with regular GetCost
+  // functors).
+  //
   // Iterators returned by iterate() are invalidated by any change in the
   // bbox_collision_detector.  They are input iterators: an iterator from any
   // given call to iterate() can only be traversed once.  Furthermore, they
@@ -355,6 +362,10 @@ public:
   template<typename GetCost>
   typename impl::iteration_types<ObjectIdentifier, CoordinateBits, NumDimensions, GetCost>::optional_value_type
   find_least(GetCost const&) const;
+
+  template<typename GetCostBool>
+  void
+  filter(std::vector<ObjectIdentifier>& results, GetCostBool)const;
 
   // This can be useful for debugging the efficiency of your
   // bbox_collision_detector usage (though the output is not particularly

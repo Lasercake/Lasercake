@@ -51,6 +51,17 @@ struct boring_dist_struct {
   }
 };
 
+struct intersects_a_box {
+  intersects_a_box(bounding_box_2d a_box) : a_box(a_box) {}
+  bounding_box_2d a_box;
+  bool min_cost(bounding_box_2d bbox) {
+    return a_box.overlaps(bbox);
+  }
+  bool cost(obj_t, bounding_box_2d bbox) {
+    return a_box.overlaps(bbox);
+  }
+};
+
 BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
   const bounding_box_1d bb1 = bounding_box_1d::min_and_size_minus_one(array_1d({{2}}), array_1d({{3 - 1}}));
   const bounding_box_1d bb2 = bounding_box_1d::min_and_size_minus_one(array_1d({{5}}), array_1d({{1 - 1}}));
@@ -198,7 +209,21 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
     BOOST_CHECK_EQUAL(results8.size(), 7);
   }
 
+  BOOST_CHECK_EQUAL(dect.size(), 7);
+
   BOOST_CHECK_EQUAL(dect.iterate(boring_dist_struct()).begin()->bbox.min(Y), 0);
+
+  {
+    std::vector<obj_t> results9;
+    BOOST_CHECK_NO_THROW(dect.filter(results9, boring_dist_struct()));
+    BOOST_CHECK_EQUAL(results9.size(), 7);
+  }
+
+  {
+    std::vector<obj_t> results10;
+    BOOST_CHECK_NO_THROW(dect.filter(results10, intersects_a_box(bb6)));
+    BOOST_CHECK_EQUAL(results10.size(), 4);
+  }
 }
 
 BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {

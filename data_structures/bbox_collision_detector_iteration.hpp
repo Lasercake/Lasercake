@@ -458,6 +458,36 @@ public:
   bool operator!=(iterator const& other) const { return !(*this == other); }
 };
 
+template<typename GetCost>
+inline bool bool_with_error_if_implicit_conversions_to_bool_and_cost_type_are_ambiguous(bool arg) { return arg; }
+template<typename GetCost>
+inline bool bool_with_error_if_implicit_conversions_to_bool_and_cost_type_are_ambiguous(typename GetCost::cost_type const&) { return true; }
+
+template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions, typename GetCostBool>
+inline void filter_impl(
+      ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions>* tree,
+      std::vector<ObjectIdentifier>& results,
+      borrowed_bitset& bitmap_indicating_found_results,
+      GetCostBool& getcost) {
+  typedef impl::ztree_get<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_get;
+  if (tree) {
+    if(bool_with_error_if_implicit_conversions_to_bool_and_cost_type_are_ambiguous<GetCostBool>(
+          getcost.min_cost(ztree_get::get_node_bbox(tree)))) {
+      for(auto id_and_bbox : ztree_get::get_node_objects_here(tree)) {
+        if (!bitmap_indicating_found_results.test(id_and_bbox->second.numeric_id)) {
+          bitmap_indicating_found_results.set(id_and_bbox->second.numeric_id);
+          if(bool_with_error_if_implicit_conversions_to_bool_and_cost_type_are_ambiguous<GetCostBool>(
+                getcost.cost(id_and_bbox->first, id_and_bbox->second.bbox))) {
+            results.push_back(id_and_bbox->first);
+          }
+        }
+      }
+      filter_impl(ztree_get::get_node_child0(tree), results, bitmap_indicating_found_results, getcost);
+      filter_impl(ztree_get::get_node_child1(tree), results, bitmap_indicating_found_results, getcost);
+    }
+  }
+}
+
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions, typename GetCost>
 struct iteration_types {
   typedef impl::iterator<ObjectIdentifier, CoordinateBits, NumDimensions, GetCost> iterator;
@@ -488,7 +518,13 @@ bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::find_l
   return i ? result_type(*i) : result_type();
 }
 
-
+template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
+template<typename GetCostBool>
+inline void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
+filter(std::vector<ObjectIdentifier>& results, GetCostBool getcost)const {
+  borrowed_bitset bitmap_indicating_found_results(objects_sequence_.size());
+  impl::filter_impl(objects_tree_.get(), results, bitmap_indicating_found_results, getcost);
+}
 
 #if 0
 //make & provide rough uint128_t, and width_doubling_mul - overloads for 32x32->64, 64x64->128 (, 128x128->256?)
