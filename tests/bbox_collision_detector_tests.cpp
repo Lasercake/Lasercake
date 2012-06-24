@@ -20,9 +20,10 @@
 */
 
 #include "../data_structures/bbox_collision_detector.hpp"
+#include "../data_structures/bbox_collision_detector_iteration.hpp"
 
-// hack to let us instantiate more bbox_collision_detector variations for the
-// tests, as well as test the internals in various ways.
+// hack to let us instantiate more bbox_collision_detector variations for
+// the tests (without bothering the main executable with them).
 #define BBOX_COLLISION_DETECTOR_IMPL_TREAT_AS_HEADER 1
 #include "../data_structures/bbox_collision_detector.cpp"
 
@@ -34,10 +35,22 @@ typedef int32_t obj_t;
 typedef bbox_collision_detector<obj_t, 32, 1> detector_1d;
 typedef bbox_collision_detector<obj_t, 32, 2> detector_2d;
 typedef bbox_collision_detector<obj_t, 64, 3> detector_3d;
+typedef detector_1d::bounding_box bounding_box_1d;
+typedef bounding_box_1d::coordinate_array array_1d;
+typedef detector_2d::bounding_box bounding_box_2d;
+typedef bounding_box_2d::coordinate_array array_2d;
 
-BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
-  typedef detector_1d::bounding_box bounding_box_1d;
-  typedef bounding_box_1d::coordinate_array array_1d;
+struct boring_dist_struct {
+  uint64_t min_cost(bounding_box_2d bbox) {
+    //bug for wrapping bboxes, if any
+    return uint64_t(bbox.min(X)) + bbox.min(Y) + bbox.min(Z);
+  }
+  uint64_t cost(obj_t, bounding_box_2d bbox) {
+    return uint64_t(bbox.min(X)) + bbox.min(Y) + bbox.min(Z);
+  }
+};
+
+BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
   const bounding_box_1d bb1 = bounding_box_1d::min_and_size_minus_one(array_1d({{2}}), array_1d({{3 - 1}}));
   const bounding_box_1d bb2 = bounding_box_1d::min_and_size_minus_one(array_1d({{5}}), array_1d({{1 - 1}}));
   BOOST_CHECK(!bb1.overlaps(bb2));
@@ -48,8 +61,6 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
   BOOST_CHECK(!bb3.overlaps(bb2));
   BOOST_CHECK(!bb2.overlaps(bb3));
 
-  typedef detector_2d::bounding_box bounding_box_2d;
-  typedef bounding_box_2d::coordinate_array array_2d;
   const bounding_box_2d bb4 = bounding_box_2d::min_and_size_minus_one(array_2d({{2, 4}}), array_2d({{3 - 1, 7 - 1}}));
   const bounding_box_2d bb5 = bounding_box_2d::min_and_size_minus_one(array_2d({{7, 4}}), array_2d({{3 - 1, 7 - 1}}));
   const bounding_box_2d bb6 = bounding_box_2d::min_and_size_minus_one(array_2d({{3, 5}}), array_2d({{1 - 1, 1 - 1}}));
@@ -185,6 +196,8 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box ) {
     dect.get_objects_overlapping(results8, bb10);
     BOOST_CHECK_EQUAL(results8.size(), 7);
   }
+
+  BOOST_CHECK_EQUAL(dect.iterate(boring_dist_struct()).begin()->bbox.min(Y), 0);
 }
 
 BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {

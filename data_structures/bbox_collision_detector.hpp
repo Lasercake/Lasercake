@@ -163,6 +163,9 @@ namespace impl {
 
   struct access_visitor_found_objects;
   struct zbox_debug_visualizer;
+
+  template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions, typename GetCost>
+  struct iteration_types;
 }
 
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
@@ -219,6 +222,8 @@ public:
   // To avoid an exception, use detector.erase(id) or if(detector.exists(id))
   // depending on your needs.
   //
+  // Invalidates all iterators into this container.
+  //
   // O(depth)
   void insert(ObjectIdentifier const& id, bounding_box const& bbox);
 
@@ -230,6 +235,8 @@ public:
   }
 
   // erase returns true iff there was an object of this id (now deleted of course).
+  //
+  // Invalidates all iterators into this container.
   //
   // O(depth)
   bool erase(ObjectIdentifier const& id);
@@ -265,6 +272,76 @@ public:
   //
   // Search's complexity depends on your handler.
   void search(visitor* handler)const;
+
+  // GetCost is a class you provide that has two methods:
+  //     min_cost(bounding_box)
+  //     cost(ObjectIdentifier, bounding_box)
+  // They must return a less-than-comparable type, or a boost::optional of
+  // that type. The methods must obey the mathematical rules described below.
+  // iterate() will iterate the container, in the order implied by those
+  // return values (least to greatest), with empty return-values meaning to
+  //     filter out that object (cost()), or
+  //     affecting only optimization, skip that region (min_cost()).
+  // For exposition, we call your LessThanComparable type CostType.
+  //
+  // The iterators' value_type is a struct containing
+  //     ObjectIdentifier const& object;
+  //     bounding_box const& bbox;
+  //     CostType cost;
+  //
+  // find_least() is a simpler interface when you just want the first (least)
+  // match; it returns a boost::optional<value_type>.
+  //
+  // Iterators returned by iterate() are invalidated by any change in the
+  // bbox_collision_detector.  They are input iterators: an iterator from any
+  // given call to iterate() can only be traversed once.  Furthermore, they
+  // take up space related to the size of the bbox_collision_detector; it's
+  // better not to have a ton of outstanding iterators at once.
+  //
+  // You must include bbox_collision_detector_iteration.hpp to use these
+  // members (since they're not always needed and it's a fair amount of code).
+  //
+  // The worst-case complexity to iterate through a bbox_collision_detector is
+  //     O(n) calls to min_cost() + O(n) calls to cost() + O(n log n) calls to
+  //         operator<.
+  // In practice, especially if you specify a good min_cost() and don't
+  // want to examine every object in the bbox_collision_detector, it can be
+  // significantly faster than that.  For example, the best nontrivial case
+  // for find_least() is probably
+  //     O(log n) * (calls to min_cost() + calls to cost() + constant).
+  //
+  // Your GetCost must follow these rules:
+  //
+  // 1. "LessThanComparable":
+  // CostType's operator< must, as usual, be transitive and antisymmetric.
+  //
+  // In the following rules, consider a "none" return value from cost() or
+  // min_cost() as an infinity, greater than all CostType values and equal
+  // to itself.
+  //
+  // 2. "Superset areas are costed at least as low as their children areas."
+  // forall bbox1, bbox2 : bounding_box. zb1.contains(zb2) =>
+  //      !(min_cost(bbox2) < min_cost(bbox1))
+  //
+  // 3. "In every possible bounding_box tesselation of the space,
+  //     every object intersects at least one bounding_box
+  //     that has min_cost() <= its cost() that is one of that tesselation's boxes."
+  // forall tesselation_base : bounding_box, object : (ObjectIdentifier, bounding_box).
+  //   exists region : bounding_box.
+  //     (region is in the tesselation of tesselation_base) &&
+  //     !(cost(object) < min_cost(region))
+  // where "in the tesselation" means there exists a separate integer N for each dimension
+  //   where
+  //     region.min(dim) = tesselation_base.min(dim) + N*tesselation_base.size(dim)
+  //     region.size(dim) = tesselation_base.size(dim)
+  //
+  template<typename GetCost>
+  typename impl::iteration_types<ObjectIdentifier, CoordinateBits, NumDimensions, GetCost>::iterator_range
+  iterate(GetCost const&) const;
+
+  template<typename GetCost>
+  typename impl::iteration_types<ObjectIdentifier, CoordinateBits, NumDimensions, GetCost>::optional_value_type
+  find_least(GetCost const&) const;
 
   // This can be useful for debugging the efficiency of your
   // bbox_collision_detector usage (though the output is not particularly
