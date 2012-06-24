@@ -264,10 +264,11 @@ struct ztree_ops {
         bounding_box const& bbox) {
     if (tree && tree->here.overlaps(bbox)) {
       for(id_and_bbox_ptr id_and_bbox : tree->objects_here) {
-        if (!bitmap_indicating_found_results.test(id_and_bbox->second.numeric_id)
-              && id_and_bbox->second.bbox.overlaps(bbox)) {
+        if (!bitmap_indicating_found_results.test(id_and_bbox->second.numeric_id)) {
           bitmap_indicating_found_results.set(id_and_bbox->second.numeric_id);
-          results.push_back(id_and_bbox->first);
+          if(id_and_bbox->second.bbox.overlaps(bbox)) {
+            results.push_back(id_and_bbox->first);
+          }
         }
       }
       zget_objects_overlapping(tree->child0.get(), results, bitmap_indicating_found_results, bbox);
