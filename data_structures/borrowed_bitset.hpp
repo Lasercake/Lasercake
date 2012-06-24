@@ -171,6 +171,20 @@ inline void return_bitset(zeroable_bitset_node* node) noexcept {
   array_of_bitset_lists[which_bitset_size_index].push(node);
 }
 
+
+
+
+// borrowed_bitset(n) borrows an array of zero bits of size n (rounded
+// up to something), and when destructed it restores the zeroes and returns
+// that array.  (There's a dynamically allocated pool of arrays of zeroes
+// waiting to be borrowed; if none are available, borrowed_bitset allocates
+// a new one, which it will return to the pool when destructed.)
+//
+// If there aren't too many borrowed_bitsets at once and program runs for
+// a while, borrowed_bitset() effectively has O(1) construction, and
+// destruction time <= the number of operations performed on it (so no worse
+// than a constant factor). This is pretty good for something this much
+// faster at uniquing than an unordered_set<uint>.
 class borrowed_bitset : boost::noncopyable {
 public:
   explicit borrowed_bitset(bit_index_type num_bits_desired) : bs_(borrow_bitset(num_bits_desired)) {}
