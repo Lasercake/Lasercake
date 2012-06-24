@@ -273,21 +273,37 @@ public:
   // Search's complexity depends on your handler.
   void search(visitor* handler)const;
 
-  // GetCost is a class you provide that has two methods:
+  // *** Custom ordered and/or filtered search and iteration ***
+  //
+  // You must include bbox_collision_detector_iteration.hpp to use these
+  // members (since they're not always needed and it's a fair amount of code).
+  //
+  // GetCost must be a class you provide that has two methods:
   //     min_cost(bounding_box)
   //     cost(ObjectIdentifier, bounding_box)
-  // They must return a less-than-comparable type, or a boost::optional of
-  // that type. The methods must obey the mathematical rules described below.
+  // and type (perhaps typedef) member
+  //     cost_type
+  // .
+  //
+  // cost_type must be LessThanComparable.  cost() and min_cost() must return
+  // either (1) a type convertible to cost_type, or
+  //        (2) a type with bool(t) and *t
+  //              with *t valid if bool(t), and *t convertible to cost_type
+  //            (such as boost::optional<cost_type> or cost_type*).
+  // The methods must also obey the mathematical rules described below.
+  //
   // iterate() will iterate the container, in the order implied by those
   // return values (least to greatest), with empty return-values meaning to
   //     filter out that object (cost()), or
-  //     affecting only optimization, skip that region (min_cost()).
-  // For exposition, we call your LessThanComparable type CostType.
+  //     partially skip that region (min_cost())
+  //         (this latter must not have any effect other than optimization.
+  //          see mathematical rules below for the precise way to ensure
+  //          this.)
   //
   // The iterators' value_type is a struct containing
   //     ObjectIdentifier const& object;
   //     bounding_box const& bbox;
-  //     CostType cost;
+  //     cost_type cost;
   //
   // find_least() is a simpler interface when you just want the first (least)
   // match; it returns a boost::optional<value_type>.
@@ -297,9 +313,6 @@ public:
   // given call to iterate() can only be traversed once.  Furthermore, they
   // take up space related to the size of the bbox_collision_detector; it's
   // better not to have a ton of outstanding iterators at once.
-  //
-  // You must include bbox_collision_detector_iteration.hpp to use these
-  // members (since they're not always needed and it's a fair amount of code).
   //
   // The worst-case complexity to iterate through a bbox_collision_detector is
   //     O(n) calls to min_cost() + O(n) calls to cost() + O(n log n) calls to
@@ -313,10 +326,10 @@ public:
   // Your GetCost must follow these rules:
   //
   // 1. "LessThanComparable":
-  // CostType's operator< must, as usual, be transitive and antisymmetric.
+  // cost_type's operator< must, as usual, be transitive and antisymmetric.
   //
   // In the following rules, consider a "none" return value from cost() or
-  // min_cost() as an infinity, greater than all CostType values and equal
+  // min_cost() as an infinity, greater than all cost_type values and equal
   // to itself.
   //
   // 2. "Superset areas are costed at least as low as their children areas."

@@ -29,7 +29,8 @@ typedef non_normalized_rational<polygon_int_type> rational;
 
 struct beam_first_contact_finder {
   beam_first_contact_finder(world const& w, line_segment beam, object_or_tile_identifier ignore):w_(w),beam_(beam) {ignores_.insert(ignore);}
-  typedef boost::optional<rational> result_type;
+  typedef rational cost_type;
+  typedef optional_rational result_type;
   static const uint64_t too_large = (1ULL << 32) - 1;
   bool bbox_is_too_large(world_collision_detector::bounding_box const& bbox) const {
     return (bbox.size_minus_one(X) >= too_large || bbox.size_minus_one(Y) >= too_large || bbox.size_minus_one(Z) >= too_large);

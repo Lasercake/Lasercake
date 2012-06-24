@@ -41,6 +41,7 @@ typedef detector_2d::bounding_box bounding_box_2d;
 typedef bounding_box_2d::coordinate_array array_2d;
 
 struct boring_dist_struct {
+  typedef uint64_t cost_type;
   uint64_t min_cost(bounding_box_2d bbox) {
     //bug for wrapping bboxes, if any
     return uint64_t(bbox.min(X)) + bbox.min(Y) + bbox.min(Z);

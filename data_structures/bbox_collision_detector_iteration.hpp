@@ -307,21 +307,14 @@ struct reverse_first_ordering : private OrderingFunctor {
   }
 };
 
-template<typename T> T un_optional_type(T);
-template<typename T> T un_optional_type(boost::optional<T>);
-template<typename T> T invent();
-template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions, typename GetCost>
-struct infer_cost_type {
-  typedef decltype(un_optional_type(invent<GetCost&>().min_cost(invent< bounding_box<CoordinateBits, NumDimensions> >()))) type;
-};
-
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions,
           typename GetCost,
-          typename CostOrdering = std::less<typename infer_cost_type<ObjectIdentifier, CoordinateBits, NumDimensions, GetCost>::type> >
+          typename CostOrdering = std::less<typename GetCost::cost_type> >
 class iterator {
 private:
+  typedef typename GetCost::cost_type CostType;
+
   typedef collision_detector::bounding_box<CoordinateBits, NumDimensions> bounding_box;
-  typedef typename infer_cost_type<ObjectIdentifier, CoordinateBits, NumDimensions, GetCost>::type CostType;
   typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
   typedef std::pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
   typedef id_and_bbox_type* id_and_bbox_ptr;
@@ -365,19 +358,27 @@ private:
 
     GetCost& get_get_cost() { return *this; }
 
+    template<typename VariantMember>
+    inline void push_cost(CostType const& cost, VariantMember v) {
+      queue_.push(queue_value_type_(cost, v));
+    }
+    template<typename IndirectCostType, typename VariantMember>
+    inline typename boost::disable_if<boost::is_convertible<IndirectCostType, CostType> >::type
+    push_cost(IndirectCostType const& maybe_cost, VariantMember v) {
+      if(maybe_cost) {
+        queue_.push(queue_value_type_(*maybe_cost, v));
+      }
+    }
+
     void add_child(ztree_node* child) {
       if(child) {
-        if(boost::optional<CostType> cost = get_get_cost().min_cost(ztree_get::get_node_bbox(child))) {
-          queue_.push(queue_value_type_(*cost, child));
-        }
+        push_cost(get_get_cost().min_cost(ztree_get::get_node_bbox(child)), child);
       }
     }
     void add_child(id_and_bbox_ptr obj) {
       if(!seen_.test(obj->second.numeric_id)) {
         seen_.set(obj->second.numeric_id);
-        if(boost::optional<CostType> cost = get_get_cost().cost(obj->first, obj->second.bbox)) {
-          queue_.push(queue_value_type_(*cost, obj));
-        }
+        push_cost(get_get_cost().cost(obj->first, obj->second.bbox), obj);
       }
     }
 
