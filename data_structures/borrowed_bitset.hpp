@@ -155,7 +155,7 @@ zeroable_bitset_node* borrow_bitset(bit_index_type num_bits_desired) {
   }
 }
 
-inline void return_bitset(zeroable_bitset_node* node) noexcept {
+inline void return_bitset(zeroable_bitset_node* node) BOOST_NOEXCEPT {
   zeroable_bitset_array array_of_bitset_lists;
   try {
     array_of_bitset_lists = get_this_thread_array_of_bitset_lists();

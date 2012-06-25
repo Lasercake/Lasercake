@@ -248,7 +248,7 @@ tile_physics_state_t& tile_physics_state_t::operator=(tile_physics_state_t const
   state_.reset(new state_t(*other.state_));
   return *this;
 }
-tile_physics_state_t::~tile_physics_state_t() noexcept {}
+tile_physics_state_t::~tile_physics_state_t() BOOST_NOEXCEPT {}
 
 void replace_substance(
    state_t& state,

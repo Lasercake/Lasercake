@@ -236,7 +236,7 @@ public:
   tile_physics_state_t(world& w);
   tile_physics_state_t(tile_physics_state_t const& other);
   tile_physics_state_t& operator=(tile_physics_state_t const& other);
-  ~tile_physics_state_t() noexcept;
+  ~tile_physics_state_t() BOOST_NOEXCEPT;
 private:
   boost::scoped_ptr<state_t> state_;
   friend state_t& get_state(tile_physics_state_t& s);
