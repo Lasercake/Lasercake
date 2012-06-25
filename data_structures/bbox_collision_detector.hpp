@@ -275,6 +275,71 @@ public:
 
   // *** Custom ordered and/or filtered search and iteration ***
   //
+  // This documentation begins with an example:
+  //
+  // Iterate objects by how close their centres are to a given point:
+  //
+  //   for(obj_id x : detector.iterate(my_distance_measurer(point))) {
+  //     [...]
+  //   }
+  //
+  // where
+  //
+  //   typedef [...] obj_id;
+  //   typedef [...] point_type;
+  //   typedef num_coordinates_type which_dimension_type;
+  //   typedef bbox_collision_detector<obj_id, 32, 2> detector_type;
+  //   detector_type detector;
+  //
+  //   // utility function:
+  //   uint32_t dimension_distance(which_dimension_type dim, point_type point, detector_type::bounding_box bbox) {
+  //     // (assuming your world is not modulo)
+  //     return point_(dim) < bbox.min(dim) ? bbox.min(dim) - point_(dim)
+  //          : point_(dim) > bbox.max(dim) ? point_(dim) - bbox.max(dim)
+  //          : 0;
+  //   }
+  //   struct my_distance_measurer {
+  //     point_type point_;
+  //     my_distance_measurer(point_type point) : point_(point) {}
+  //
+  //     // Represent cost as Euclidean distance squared
+  //     // (Squared because why spend the time and loss-of-precision
+  //     // by taking the square root... square root of nonnegative reals
+  //     // is order-preserving [strictly monotonic], and square root with
+  //     // rounding error is also [non-strictly] monotonic.)
+  //     typedef uint64_t cost_type;
+  //     cost_type min_cost(detector::bounding_box bbox) {
+  //       const uint64_t xdist = dimension_distance(0, point_, bbox);
+  //       const uint64_t ydist = dimension_distance(1, point_, bbox);
+  //       // This could overflow; use larger ints, or make sure it doesn't
+  //       // (even given large bounding-boxes you did not directly create).
+  //       // For example, you could lose precision by dividing each by 2 or
+  //       // so, or use doubles and lose all perfection but prevent overflow,
+  //       // or filter out all faraway things[*].
+  //       return xdist*xdist + ydist*ydist;
+  //     }
+  //     cost_type cost(obj_id obj, detector_type::bounding_box bbox) {
+  //       // pretend get_center_of_object() exists
+  //       const point obj_location = obj.get_center_of_object();
+  //       // Be careful of overflow here too. You must use the same
+  //       // distance/cost scale as min_cost does.
+  //       const uint64_t xdist = std::abs(point_(0) - obj_location(0));
+  //       const uint64_t ydist = std::abs(point_(1) - obj_location(1));
+  //       return xdist*xdist + ydist*ydist;
+  //     }
+  //   };
+  //
+  // [*]filter out faraway things in my_distance_measurer perhaps like:
+  //     typedef uint64_t cost_type;
+  //     // for each of the two cost functions,
+  //     boost::optional<cost_type> fn([...]) {
+  //       [...]
+  //       const uint32_t too_far = 3000;
+  //       if(xdist > too_far || ydist > too_far) return boost::none;
+  //       else return xdist*xdist + ydist*ydist;
+  //     }
+  //
+  //
   // You must include bbox_collision_detector_iteration.hpp to use these
   // members (since they're not always needed and it's a fair amount of code).
   //
@@ -296,9 +361,9 @@ public:
   // return values (least to greatest), with empty return-values meaning to
   //     filter out that object (cost()), or
   //     partially skip that region (min_cost())
-  //         (this latter must not have any effect other than optimization.
-  //          see mathematical rules below for the precise way to ensure
-  //          this.)
+  //         (if you write min_cost() correctly, the only effect is
+  //          optimization, and if you write it wrong, it's undefined
+  //          behavior[**])
   //
   // The iterators' value_type is a struct containing
   //     ObjectIdentifier const& object;
@@ -330,7 +395,7 @@ public:
   // for find_least() is probably
   //     O(log n) * (calls to min_cost() + calls to cost() + constant).
   //
-  // Your GetCost must follow these rules:
+  // Your GetCost must[**] follow these rules:
   //
   // 1. "LessThanComparable":
   // cost_type's operator< must, as usual, be transitive and antisymmetric.
@@ -343,18 +408,27 @@ public:
   // forall bbox1, bbox2 : bounding_box. zb1.contains(zb2) =>
   //      !(min_cost(bbox2) < min_cost(bbox1))
   //
-  // 3. "In every possible bounding_box tesselation of the space,
-  //     every object intersects at least one bounding_box
-  //     that has min_cost() <= its cost() that is one of that tesselation's boxes."
-  // forall tesselation_base : bounding_box, object : (ObjectIdentifier, bounding_box).
+  // 3. "In every possible regular grid of congruent bounding_boxes filling
+  //     the space, every object intersects at least one bounding_box
+  //     that has min_cost() <= its cost() that is one of that grid's boxes."
+  // forall grid_base : bounding_box, object : (ObjectIdentifier, bounding_box).
   //   exists region : bounding_box.
-  //     (region is in the tesselation of tesselation_base) &&
+  //     (region is in the grid of grid_base) &&
   //     !(cost(object) < min_cost(region))
-  // where "in the tesselation" means there exists a separate integer N for each dimension
+  // where "in the grid" means there exists a separate integer N for each dimension
   //   where
-  //     region.min(dim) = tesselation_base.min(dim) + N*tesselation_base.size(dim)
-  //     region.size(dim) = tesselation_base.size(dim)
+  //     region.min(dim) = grid_base.min(dim) + N*grid_base.size(dim)
+  //     region.size(dim) = grid_base.size(dim)
   //
+  // [**] If you violate the rules, bbox_collision_detector gives no
+  // guarantees that the objects will be returned in the correct order at all,
+  // or (if you violate the guarantees with respect to returning none) return
+  // objects that should be returned at all.
+  //
+  // If you're going to iterate the whole container and don't mind your
+  // iteration being O(n log(n)) rather than nearer O(n), you could just
+  // return std::numeric_limits<cost_type>::lowest() from min_cost(), which
+  // guarantees that your GetCost is valid (assuming a numeric cost_type).
   template<typename GetCost>
   typename impl::iteration_types<ObjectIdentifier, CoordinateBits, NumDimensions, GetCost>::iterator_range
   iterate(GetCost const&) const;

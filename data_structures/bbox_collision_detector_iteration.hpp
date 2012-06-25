@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_BBOX_COLLISION_DETECTOR_ITERATION_HPP__
 #define LASERCAKE_BBOX_COLLISION_DETECTOR_ITERATION_HPP__
 
+// The documentation for these interfaces is in bbox_collision_detector.hpp.
+
 #include <vector>
 #include <queue>
 #include <boost/variant.hpp>
