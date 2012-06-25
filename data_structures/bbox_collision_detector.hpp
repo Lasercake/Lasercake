@@ -448,6 +448,12 @@ private:
   ztree_node_ptr objects_tree_;
   //(implicitly) indexed by numeric_id
   std::vector<id_and_bbox_ptr> objects_sequence_;
+#ifdef BBOX_COLLISION_DETECTOR_DEBUG
+  // If you're not sure if you're invalidating iterators by container
+  // mutation (insert/erase), this can check, but it uses space
+  // in multiple places so it's #ifdefed.
+  public: size_t revision_count_;
+#endif
 
   friend struct impl::zbox_debug_visualizer;
 };

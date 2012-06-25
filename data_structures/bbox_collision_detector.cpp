@@ -305,6 +305,9 @@ insert(ObjectIdentifier const& id, bounding_box const& bbox) {
   );
   objects_sequence_.push_back(&*iter_and_new.first);
   impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::insert_zboxes_from_bbox(objects_tree_, &*iter_and_new.first);
+#ifdef BBOX_COLLISION_DETECTOR_DEBUG
+  ++revision_count_;
+#endif
 }
 
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
@@ -322,6 +325,9 @@ erase(ObjectIdentifier const& id) {
   objects_sequence_[numeric_id_to_delete] = replace_it_with;
   objects_sequence_.pop_back();
   bboxes_by_object_.erase(bbox_iter);
+#ifdef BBOX_COLLISION_DETECTOR_DEBUG
+  ++revision_count_;
+#endif
   return true;
 }
 
@@ -354,6 +360,9 @@ bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::operat
   bboxes_by_object_ = other.bboxes_by_object_;
   objects_sequence_ = other.objects_sequence_;
   objects_tree_.reset(other.objects_tree_ ? new ztree_node(*other.objects_tree_) : nullptr);
+#ifdef BBOX_COLLISION_DETECTOR_DEBUG
+  revision_count_ = other.revision_count_;
+#endif
   return *this;
 }
 
@@ -361,7 +370,11 @@ template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinate
 INLINE_IF_HEADER
 bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
 bbox_collision_detector()
-: objects_tree_(nullptr) {}
+: objects_tree_(nullptr)
+#ifdef BBOX_COLLISION_DETECTOR_DEBUG
+  , revision_count_(0)
+#endif
+{}
 
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
 INLINE_IF_HEADER

@@ -353,10 +353,20 @@ private:
 
   struct contents_ : private GetCost {
     contents_(bbox_collision_detector const& detector, GetCost const& getcost, CostOrdering const& costordering)
-    : GetCost(getcost), queue_(costordering), seen_(detector.size()) {}
+    : GetCost(getcost), queue_(costordering), seen_(detector.size())
+#ifdef BBOX_COLLISION_DETECTOR_DEBUG
+    , detector_(&detector)
+    , revision_count_(detector.revision_count_)
+#endif
+    {}
 
+    contents_(contents_&&) = default;
     queue_type_ queue_;
     borrowed_bitset seen_;
+#ifdef BBOX_COLLISION_DETECTOR_DEBUG
+    bbox_collision_detector const* detector_;
+    size_t revision_count_;
+#endif
 
     GetCost& get_get_cost() { return *this; }
 
@@ -398,6 +408,11 @@ private:
 
   void advance_to_a_returnable_() {
     if(c_) {
+#ifdef BBOX_COLLISION_DETECTOR_DEBUG
+      caller_correct_if(c_->revision_count_ == c_->detector_->revision_count_,
+                        "Error: using a bbox_collision_detector iterator "
+                        "after the container has changed!");
+#endif
       while(true) {
         if(c_->queue_.empty()) {
           c_.reset();
