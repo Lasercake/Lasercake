@@ -162,6 +162,9 @@ private:
   lasercake_vector<  bounding_box>::type boxes_   ;
 };
 
+optional_rational get_first_intersection(line_segment const& l, bounding_box const& bb);
+optional_rational get_first_intersection(line_segment l, convex_polygon const& p);
+
 /*bool intersects(line_segment l, convex_polygon const& p);
 bool intersects(convex_polygon const& p1, convex_polygon const& p2);
 bool intersects(line_segment const& l, std::vector<convex_polygon> const& ps);

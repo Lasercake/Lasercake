@@ -267,7 +267,6 @@ vector3<polygon_int_type> shape::arbitrary_interior_point()const {
 }
 
 namespace /*anonymous*/ {
-
 namespace get_intersection_line_segment_bounding_box_helper {
 enum should_keep_going { RETURN_NONE_IMMEDIATELY, KEEP_GOING };
 template<bool less>
@@ -292,6 +291,7 @@ should_keep_going check(which_dimension_type dim, rational& intersecting_min, ra
   return KEEP_GOING;
 }
 }
+} /* end anonymous namespace */
 
 optional_rational get_first_intersection(line_segment const& l, bounding_box const& bb) {
   if (!bb.is_anywhere) return none;
@@ -320,6 +320,7 @@ optional_rational get_first_intersection(line_segment const& l, bounding_box con
   return intersecting_min;
 }
 
+namespace /*anonymous*/ {
 namespace get_intersection_line_segment_convex_polygon_helper {
 optional_rational planar_get_first_intersection(
               polygon_int_type sl1x, polygon_int_type sl1y,
@@ -346,6 +347,7 @@ optional_rational planar_get_first_intersection(
   else                                               return rational(Dy1, Dy1 - Dy2);
 }
 }
+} /* end anonymous namespace */
 
 optional_rational get_first_intersection(line_segment l, convex_polygon const& p) {
   using namespace get_intersection_line_segment_convex_polygon_helper;
@@ -410,6 +412,7 @@ optional_rational get_first_intersection(line_segment l, convex_polygon const& p
   return rational(l.ends[0].z, l.ends[0].z - l.ends[1].z);
 }
 
+namespace /*anonymous*/ {
 bool nonshape_intersects_onesided(convex_polygon const& p1, convex_polygon const& p2) {
   std::vector<vector3<polygon_int_type>> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {

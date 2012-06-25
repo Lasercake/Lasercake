@@ -38,7 +38,7 @@ struct beam_first_contact_finder {
   result_type min_cost(world_collision_detector::bounding_box const& bbox) const {
     // hack - avoid overflow - don't try to filter out too-large regions
     if(bbox_is_too_large(bbox)) return rational(0);
-    return shape(bbox).first_intersection(beam_);
+    return get_first_intersection(beam_, bbox);
   }
   result_type cost(object_or_tile_identifier id, world_collision_detector::bounding_box const& bbox) const {
     // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
