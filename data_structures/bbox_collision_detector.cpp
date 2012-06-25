@@ -50,13 +50,6 @@ using std::unordered_set;
 
 namespace collision_detector {
 namespace impl {
-struct access_visitor_found_objects {
-  template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
-  static std::unordered_set<ObjectIdentifier>&
-  get(visitor<ObjectIdentifier, CoordinateBits, NumDimensions>& v) {
-    return v.found_objects_;
-  }
-};
 
 namespace /* anonymous */ {
 /*
@@ -292,64 +285,6 @@ struct ztree_ops {
   }
 };
 
-// With a bit of work, this could be an iterator ("custom_iterator"?).
-// process_next() is increment.
-// iterator == end is (frontier.empty() || handler->should_exit_early()).
-template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
-struct ztree_custom_walker {
-  typedef collision_detector::bounding_box<CoordinateBits, NumDimensions> bounding_box;
-  typedef impl::zbox<CoordinateBits, NumDimensions> zbox;
-  typedef impl::ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_node;
-  typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
-  typedef collision_detector::visitor<ObjectIdentifier, CoordinateBits, NumDimensions> visitor;
-  typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
-  typedef pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
-  typedef id_and_bbox_type* id_and_bbox_ptr;
-  
-  visitor* handler;
-  ztree_custom_walker(visitor* handler):handler(handler){}
-
-  // The search's frontier (nodes for which we have explored their parent
-  // but not them yet).
-  //
-  // This only contains nonnull pointers (since it would be a
-  // waste of time to insert null pointers into the frontier).
-  std::stack<ztree_node const*> frontier;
-
-  void try_add(ztree_node const* z) {
-    if (z && handler->should_be_considered__static(z->here.get_bbox()) && handler->should_be_considered__dynamic(z->here.get_bbox())) {
-      frontier.push(z);
-    }
-  }
-
-  bool process_next() {
-    if (frontier.empty()) return false;
-
-    ztree_node const* const next = frontier.top();
-    frontier.pop();
-
-    if (handler->should_be_considered__dynamic(next->here.get_bbox())) {
-      for(id_and_bbox_ptr id_and_bbox : next->objects_here) {
-        if (handler->should_be_considered__static(id_and_bbox->second.bbox) && handler->should_be_considered__dynamic(id_and_bbox->second.bbox)) {
-          if (access_visitor_found_objects::get(*handler).insert(id_and_bbox->first).second) {
-            handler->handle_new_find(id_and_bbox->first);
-            if (handler->should_exit_early()) return false;
-          }
-        }
-      }
-
-      ztree_node const* children[2] = { next->child0.get(), next->child1.get() };
-      // If either child is nullptr, the order doesn't matter (and can't be checked).
-      const bool child0_next = children[0] && children[1] &&
-          handler->bbox_less_than(children[0]->here.get_bbox(), children[1]->here.get_bbox());
-      try_add(child0_next ? children[0] : children[1]);
-      try_add(child0_next ? children[1] : children[0]);
-    }
-
-    return true;
-  }
-};
-
 } /* end anonymous namespace */
 } /* end namespace impl */
 
@@ -401,16 +336,6 @@ get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box con
 
   impl::ztree_ops<ObjectIdentifier, CoordinateBits, NumDimensions>::zget_objects_overlapping(
         objects_tree_.get(), results, bitmap_indicating_found_results, bbox);
-}
-
-template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
-INLINE_IF_HEADER
-void bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
-search(visitor* handler)const {
-  impl::ztree_custom_walker<ObjectIdentifier, CoordinateBits, NumDimensions> data(handler);
-
-  data.try_add(objects_tree_.get());
-  while(data.process_next()){}
 }
 
 template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>

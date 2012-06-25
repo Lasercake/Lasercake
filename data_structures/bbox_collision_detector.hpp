@@ -168,9 +168,6 @@ namespace impl {
   struct iteration_types;
 }
 
-template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
-class visitor;
-
 // bbox_collision_detector is a collection of pairs of
 //   ObjectIdentifier and bounding_box<CoordinateBits, NumDimensions>
 // which has O(1) ObjectIdentifier -> bounding_box
@@ -211,7 +208,6 @@ public:
   static const num_coordinates_type num_dimensions = NumDimensions;
 
   typedef collision_detector::bounding_box<CoordinateBits, NumDimensions> bounding_box;
-  typedef collision_detector::visitor<ObjectIdentifier, CoordinateBits, NumDimensions> visitor;
   
   bbox_collision_detector();
   bbox_collision_detector(bbox_collision_detector const& other) { *this = other; }
@@ -265,13 +261,6 @@ public:
   // as its maximum width among all dimensions never count as nearby.
   void get_objects_overlapping(std::vector<ObjectIdentifier>& results, bounding_box const& bbox)const;
 
-  // Derive from
-  //   class collision_detector::visitor<>
-  // and override its virtual functions
-  // to make search() do something interesting for you.
-  //
-  // Search's complexity depends on your handler.
-  void search(visitor* handler)const;
 
   // *** Custom ordered and/or filtered search and iteration ***
   //
@@ -461,46 +450,6 @@ private:
   std::vector<id_and_bbox_ptr> objects_sequence_;
 
   friend struct impl::zbox_debug_visualizer;
-};
-
-// This describes how to traverse the elements of a bbox_collision_detector
-//   optionally excluding areas you're uninterested in
-//   and optionally in an order partly of your choosing.
-//
-// a la http://www.boost.org/doc/libs/1_48_0/libs/graph/doc/visitor_concepts.html
-template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
-class visitor {
-public:
-  typedef collision_detector::bounding_box<CoordinateBits, NumDimensions> bounding_box;
-  
-  virtual void handle_new_find(ObjectIdentifier) {}
-
-  // Any bbox for which this one of these functions returns false is ignored.
-  // The static one is checked only once for each box; the dynamic one is checked
-  // both before the box is added to the frontier and when it comes up.
-  virtual bool should_be_considered__static(bounding_box const&)const { return true; }
-  virtual bool should_be_considered__dynamic(bounding_box const&)const { return true; }
-
-  // returns "true" if the first one should be considered first, "false" otherwise.
-  // This is primarily intended to allow the caller to run through objects in a specific
-  // in-space order to get the first collision in some direction. One can combine it with
-  // a dynamic should_be_considered function to stop looking in boxes that are entirely
-  // after the first known collision.
-  //
-  // This function is only a heuristic; we don't guarantee that the boxes will be handled
-  // exactly in the given order.
-  virtual bool bbox_less_than(bounding_box const&, bounding_box const&)const { return false; } // arbitrary order
-
-  // This is called often (specifically, every time we call a non-const function of handler);
-  // if it returns true, we stop right away.
-  // Some handlers might know they're done looking before the should_be_considered boxes
-  // run out; this just makes that more efficient.
-  virtual bool should_exit_early()const { return false; }
-
-  std::unordered_set<ObjectIdentifier> const& get_found_objects()const { return found_objects_; }
-private:
-  std::unordered_set<ObjectIdentifier> found_objects_;
-  friend struct impl::access_visitor_found_objects;
 };
 
 }
