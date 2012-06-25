@@ -44,7 +44,14 @@ struct beam_first_contact_finder {
     // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
     if(bbox_is_too_large(bbox)) return result_type();
     if(ignores_.find(id) != ignores_.end()) return result_type();
-    return w_.get_detail_shape_of_object_or_tile(id).first_intersection(beam_);
+    // as an optimization, use tile bounding-boxes directly
+    // (i.e. without converting to shape first)
+    if (tile_location const* tlocp = id.get_tile_location()) {
+      return get_first_intersection(beam_, fine_bounding_box_of_tile(tlocp->coords()));
+    }
+    else {
+      return w_.get_detail_shape_of_object_or_tile(id).first_intersection(beam_);
+    }
   }
 private:
   world const& w_;
