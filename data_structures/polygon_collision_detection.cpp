@@ -268,27 +268,6 @@ vector3<polygon_int_type> shape::arbitrary_interior_point()const {
 
 namespace /*anonymous*/ {
 
-optional_rational get_intersection(polygon_int_type sl1x, polygon_int_type sl1y, polygon_int_type sl2x, polygon_int_type sl2y, polygon_int_type ol1x, polygon_int_type ol1y, polygon_int_type ol2x, polygon_int_type ol2y) {
-  // assume ol1 is (0, 0)
-  ol2x -= ol1x;
-  sl1x -= ol1x;
-  sl2x -= ol1x;
-  ol2y -= ol1y;
-  sl1y -= ol1y;
-  sl2y -= ol1y;
-  if (ol2x == 0) {
-    return get_intersection(sl1y, sl1x, sl2y, sl2x, 0, 0, ol2y, ol2x);
-  }
-  const polygon_int_type D = ol2x;
-  const polygon_int_type A = -ol2y;
-  const polygon_int_type Dy1 = D*sl1y + A*sl1x;
-  const polygon_int_type Dy2 = D*sl2y + A*sl2x;
-  const polygon_int_type Dy2mDy1 = Dy2 - Dy1;
-  const polygon_int_type ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
-  if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return none;
-  else                                               return rational(Dy1, Dy1 - Dy2);
-}
-
 namespace get_intersection_line_segment_bounding_box_helper {
 enum should_keep_going { RETURN_NONE_IMMEDIATELY, KEEP_GOING };
 template<bool less>
@@ -314,7 +293,7 @@ should_keep_going check(which_dimension_type dim, rational& intersecting_min, ra
 }
 }
 
-optional_rational get_intersection(line_segment const& l, bounding_box const& bb) {
+optional_rational get_first_intersection(line_segment const& l, bounding_box const& bb) {
   if (!bb.is_anywhere) return none;
   
   // Check for common, simple cases to save time.
@@ -341,7 +320,36 @@ optional_rational get_intersection(line_segment const& l, bounding_box const& bb
   return intersecting_min;
 }
 
-optional_rational get_intersection(line_segment l, convex_polygon const& p) {
+namespace get_intersection_line_segment_convex_polygon_helper {
+optional_rational planar_get_first_intersection(
+              polygon_int_type sl1x, polygon_int_type sl1y,
+              polygon_int_type sl2x, polygon_int_type sl2y,
+              polygon_int_type ol1x, polygon_int_type ol1y,
+              polygon_int_type ol2x, polygon_int_type ol2y) {
+  // assume ol1 is (0, 0)
+  ol2x -= ol1x;
+  sl1x -= ol1x;
+  sl2x -= ol1x;
+  ol2y -= ol1y;
+  sl1y -= ol1y;
+  sl2y -= ol1y;
+  if (ol2x == 0) {
+    return planar_get_first_intersection(sl1y, sl1x, sl2y, sl2x, 0, 0, ol2y, ol2x);
+  }
+  const polygon_int_type D = ol2x;
+  const polygon_int_type A = -ol2y;
+  const polygon_int_type Dy1 = D*sl1y + A*sl1x;
+  const polygon_int_type Dy2 = D*sl2y + A*sl2x;
+  const polygon_int_type Dy2mDy1 = Dy2 - Dy1;
+  const polygon_int_type ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
+  if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return none;
+  else                                               return rational(Dy1, Dy1 - Dy2);
+}
+}
+
+optional_rational get_first_intersection(line_segment l, convex_polygon const& p) {
+  using namespace get_intersection_line_segment_convex_polygon_helper;
+  
   p.setup_cache_if_needed();
   polygon_collision_info_cache const& c = p.get_cache();
   
@@ -363,7 +371,7 @@ optional_rational get_intersection(line_segment l, convex_polygon const& p) {
       optional_rational result;
       for (size_t i = 0; i < c.adjusted_vertices.size(); ++i) {
         const int next_i = (i + 1) % c.adjusted_vertices.size();
-        optional_rational here = get_intersection(l.ends[0].x, l.ends[0].y, l.ends[1].x, l.ends[1].y, c.adjusted_vertices[i].x, c.adjusted_vertices[i].y, c.adjusted_vertices[next_i].x, c.adjusted_vertices[next_i].y);
+        optional_rational here = planar_get_first_intersection(l.ends[0].x, l.ends[0].y, l.ends[1].x, l.ends[1].y, c.adjusted_vertices[i].x, c.adjusted_vertices[i].y, c.adjusted_vertices[next_i].x, c.adjusted_vertices[next_i].y);
         if (here && (!result || *here < *result)) {
           result = *here;
         }
@@ -406,7 +414,7 @@ bool nonshape_intersects_onesided(convex_polygon const& p1, convex_polygon const
   std::vector<vector3<polygon_int_type>> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
-    if (get_intersection(line_segment(vs[i], vs[next_i]), p2)) return true;
+    if (get_first_intersection(line_segment(vs[i], vs[next_i]), p2)) return true;
   }
   return false;
 }
@@ -422,22 +430,22 @@ bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
   if (bb.contains(vs[0])) return true;
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
-    if (get_intersection(line_segment(vs[i], vs[next_i]), bb)) return true;
+    if (get_first_intersection(line_segment(vs[i], vs[next_i]), bb)) return true;
   }
   // TODO: come up with a nicer, generalizable way to do something for every edge of a bounding box
   for (int x = 0; x < 2; ++x) { for (int y = 0; y < 2; ++y) { for (int z = 0; z < 2; ++z) {
     vector3<polygon_int_type> base(x ? bb.min.x : bb.max.x, y ? bb.min.y : bb.max.y, z ? bb.min.z : bb.max.z);
     if (x == 0) {
       vector3<polygon_int_type> other = base; other.x = bb.max.x;
-      if (get_intersection(line_segment(base, other), p)) return true;
+      if (get_first_intersection(line_segment(base, other), p)) return true;
     }
     if (y == 0) {
       vector3<polygon_int_type> other = base; other.y = bb.max.y;
-      if (get_intersection(line_segment(base, other), p)) return true;
+      if (get_first_intersection(line_segment(base, other), p)) return true;
     }
     if (z == 0) {
       vector3<polygon_int_type> other = base; other.z = bb.max.z;
-      if (get_intersection(line_segment(base, other), p)) return true;
+      if (get_first_intersection(line_segment(base, other), p)) return true;
     }
   }}}
   return false;
@@ -450,16 +458,16 @@ bool shape::intersects(shape const& other)const {
   
   for (line_segment const& l : segments_) {
     for (convex_polygon const& p2 : other.polygons_) {
-      if (get_intersection(l, p2)) return true;
+      if (get_first_intersection(l, p2)) return true;
     }
     for (bounding_box const& b2 : other.boxes_) {
-      if (get_intersection(l, b2)) return true;
+      if (get_first_intersection(l, b2)) return true;
     }
   }
 
   for (convex_polygon const& p1 : polygons_) {
     for (line_segment const& l : other.segments_) {
-      if (get_intersection(l, p1)) return true;
+      if (get_first_intersection(l, p1)) return true;
     }
     for (convex_polygon const& p2 : other.polygons_) {
       if (nonshape_intersects(p1, p2)) return true;
@@ -471,7 +479,7 @@ bool shape::intersects(shape const& other)const {
 
   for (bounding_box const& b1 : boxes_) {
     for (line_segment const& l : other.segments_) {
-      if (get_intersection(l, b1)) return true;
+      if (get_first_intersection(l, b1)) return true;
     }
     for (convex_polygon const& p2 : other.polygons_) {
       if (nonshape_intersects(p2, b1)) return true;
@@ -486,13 +494,13 @@ bool shape::intersects(shape const& other)const {
 optional_rational shape::first_intersection( const line_segment& other )const {
   optional_rational result;
   for (convex_polygon const& p : polygons_) {
-    optional_rational here = get_intersection(other, p);
+    optional_rational here = get_first_intersection(other, p);
     if (here && (!result || *here < *result)) {
       result = *here;
     }
   }
   for (bounding_box const& bb : boxes_) {
-    optional_rational here = get_intersection(other, bb);
+    optional_rational here = get_first_intersection(other, bb);
     if (here && (!result || *here < *result)) {
       result = *here;
     }
