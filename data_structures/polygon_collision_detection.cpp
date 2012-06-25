@@ -108,6 +108,8 @@ lt*(Dy2 - Dy1) = sl1x * ol2x*y2 - sl2x * ol2x*y1
 
 */
 
+#include <boost/type_traits.hpp>
+
 #include "polygon_collision_detection.hpp"
 
 using boost::none;
@@ -287,6 +289,31 @@ optional_rational get_intersection(polygon_int_type sl1x, polygon_int_type sl1y,
   else                                               return rational(Dy1, Dy1 - Dy2);
 }
 
+namespace get_intersection_line_segment_bounding_box_helper {
+enum should_keep_going { RETURN_NONE_IMMEDIATELY, KEEP_GOING };
+template<bool less>
+should_keep_going check(which_dimension_type dim, rational& intersecting_min, rational& intersecting_max, line_segment const& l, bounding_box const& bb) {
+  typename boost::conditional<less, std::less<rational>, std::greater<rational> >::type compare;
+  vector3<polygon_int_type> const& bb_min_or_max = less ? bb.min : bb.max;
+  vector3<polygon_int_type> const& bb_max_or_min = less ? bb.max : bb.min;
+  rational& intersecting_min_or_max = less ? intersecting_min : intersecting_max;
+  if (l.ends[0][dim] == l.ends[1][dim]) {
+    if (compare(l.ends[0][dim], bb_min_or_max[dim])) return RETURN_NONE_IMMEDIATELY;
+  }
+  else {
+    const rational checkval(
+      (l.ends[1][dim] > l.ends[0][dim] ? bb_min_or_max[dim] : bb_max_or_min[dim]) - l.ends[0][dim],
+      l.ends[1][dim] - l.ends[0][dim]
+    );
+    if (compare(intersecting_min_or_max, checkval)) {
+      intersecting_min_or_max = checkval;
+      if (intersecting_min > intersecting_max) return RETURN_NONE_IMMEDIATELY;
+    }
+  }
+  return KEEP_GOING;
+}
+}
+
 optional_rational get_intersection(line_segment const& l, bounding_box const& bb) {
   if (!bb.is_anywhere) return none;
   
@@ -302,38 +329,14 @@ optional_rational get_intersection(line_segment const& l, bounding_box const& bb
   rational intersecting_min(0);
   rational intersecting_max(1);
 
-// This macro is specific to this function.  It only uses its arguments
-// at the beginning of the macro definition, except for LESS_THAN_OR_GREATER_THAN.
-// (Can you find a way to do this that's nicer without being lots messier?)
-#define CHECK(MIN_OR_MAX, MAX_OR_MIN, LESS_THAN_OR_GREATER_THAN, DIMENSION) \
-  { \
-    vector3<polygon_int_type> const& bb_min_or_max = bb.MIN_OR_MAX; \
-    vector3<polygon_int_type> const& bb_max_or_min = bb.MAX_OR_MIN; \
-    rational& intersecting_min_or_max = intersecting_##MIN_OR_MAX; \
-    const int dim = (DIMENSION); \
-    \
-    if (l.ends[0][dim] == l.ends[1][dim]) { \
-      if (l.ends[0][dim] LESS_THAN_OR_GREATER_THAN bb_min_or_max[dim]) return none; \
-    } \
-    else { \
-      const rational checkval( \
-        (l.ends[1][dim] > l.ends[0][dim] ? bb_min_or_max[dim] : bb_max_or_min[dim]) - l.ends[0][dim], \
-        l.ends[1][dim] - l.ends[0][dim] \
-      ); \
-      if (intersecting_min_or_max LESS_THAN_OR_GREATER_THAN checkval) { \
-        intersecting_min_or_max = checkval; \
-        if (intersecting_min > intersecting_max) return none; \
-      } \
-    } \
-  }
-  
-  CHECK(min, max, <, X)
-  CHECK(min, max, <, Y)
-  CHECK(min, max, <, Z)
-  CHECK(max, min, >, X)
-  CHECK(max, min, >, Y)
-  CHECK(max, min, >, Z)
-#undef CHECK
+  using namespace get_intersection_line_segment_bounding_box_helper;
+
+  if(check<true>(X, intersecting_min, intersecting_max, l, bb) == RETURN_NONE_IMMEDIATELY) return none;
+  if(check<true>(Y, intersecting_min, intersecting_max, l, bb) == RETURN_NONE_IMMEDIATELY) return none;
+  if(check<true>(Z, intersecting_min, intersecting_max, l, bb) == RETURN_NONE_IMMEDIATELY) return none;
+  if(check<false>(X, intersecting_min, intersecting_max, l, bb) == RETURN_NONE_IMMEDIATELY) return none;
+  if(check<false>(Y, intersecting_min, intersecting_max, l, bb) == RETURN_NONE_IMMEDIATELY) return none;
+  if(check<false>(Z, intersecting_min, intersecting_max, l, bb) == RETURN_NONE_IMMEDIATELY) return none;
   
   return intersecting_min;
 }
