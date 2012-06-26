@@ -279,7 +279,7 @@ inline std::array<tile_location, 12> get_all_2diagonals(std::array<tile_location
 
 class literally_random_access_removable_tiles_by_height {
 public:
-  typedef map<tile_coordinate, literally_random_access_removable_stuff<tile_location>> map_t;
+  typedef map<tile_coordinate, literally_random_access_set<tile_location>> map_t;
 
   template<typename RNG> tile_location get_and_erase_random_from_the_top(RNG& rng);
   template<typename RNG> tile_location get_and_erase_random_from_the_bottom(RNG& rng);
@@ -467,7 +467,7 @@ inline tile_bounding_box get_tile_bbox_containing_all_tiles_intersecting_fine_bb
 template<typename RNG> inline
 tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_top(RNG& rng) {
   const map_t::iterator iter_at_top = boost::prior(data_.end());
-  literally_random_access_removable_stuff<tile_location>& tiles_at_top = iter_at_top->second;
+  literally_random_access_set<tile_location>& tiles_at_top = iter_at_top->second;
   const tile_location result = tiles_at_top.get_random(rng);
   tiles_at_top.erase(result);
   if (tiles_at_top.empty()) data_.erase(iter_at_top);
@@ -476,7 +476,7 @@ tile_location literally_random_access_removable_tiles_by_height::get_and_erase_r
 template<typename RNG> inline
 tile_location literally_random_access_removable_tiles_by_height::get_and_erase_random_from_the_bottom(RNG& rng) {
   const map_t::iterator iter_at_bottom = data_.begin();
-  literally_random_access_removable_stuff<tile_location>& tiles_at_bottom = iter_at_bottom->second;
+  literally_random_access_set<tile_location>& tiles_at_bottom = iter_at_bottom->second;
   const tile_location result = tiles_at_bottom.get_random(rng);
   tiles_at_bottom.erase(result);
   if (tiles_at_bottom.empty()) data_.erase(iter_at_bottom);
