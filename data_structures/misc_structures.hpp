@@ -110,12 +110,12 @@ public:
     contents_iterator_ i = members_to_indices_.find(t);
     if (i != members_to_indices_.end()) {
       const size_type idx = i->second;
-      members_to_indices_.erase(i);
       assert(idx < pointers_vector_.size());
       contents_value_type_*const moved_ptr = pointers_vector_.back();
       moved_ptr->second = idx;
       pointers_vector_[idx] = moved_ptr;
       pointers_vector_.pop_back();
+      members_to_indices_.erase(i);
       return true;
     }
     return false;
