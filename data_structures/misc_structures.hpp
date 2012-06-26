@@ -102,6 +102,7 @@ public:
       }
       catch(...) {
         members_to_indices_.erase(iter_and_did_anything_change.first);
+        throw;
       }
     }
     return iter_and_did_anything_change.second;
