@@ -104,8 +104,10 @@
 #endif
 
 #if !LASERCAKE_NO_THREADS
-  // current compilers (e.g. GCC 4.7) don't seem to support the 'thread_local' C++11 name
-  #define thread_local __thread
+  #if defined(__GNUC__)
+    // current compilers (e.g. GCC 4.7, Clang 3.1) don't seem to support the 'thread_local' C++11 name
+    #define thread_local __thread
+  #endif
   const bool LASERCAKE_NO_THREADS = false;
 #else
   #define thread_local
