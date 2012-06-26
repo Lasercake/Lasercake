@@ -294,14 +294,14 @@ void dump_group_info(persistent_water_group_info const& g) {
   std::cerr << "Suckable tiles by height:\n";
   for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
     std::cerr << "  At height " << foo.first << ":\n";
-    for(auto const& bar : foo.second.as_unordered_set()) {
+    for(auto const& bar : foo.second) {
       std::cerr << "    " << bar.coords() << "\n";
     }
   }
   std::cerr << "Pushable tiles by height:\n";
   for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
     std::cerr << "  At height " << foo.first << ":\n";
-    for(auto const& bar : foo.second.as_unordered_set()) {
+    for(auto const& bar : foo.second) {
       std::cerr << "    " << bar.coords() << "\n";
     }
   }
@@ -333,7 +333,7 @@ void dump_all_groups(state_t& state) {
   for (auto const& p : state.persistent_water_groups) {
     auto const& g = p.second;
     for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
-      for(auto const& bar : foo.second.as_unordered_set()) {
+      for(auto const& bar : foo.second) {
         bool sane = false;
         for(cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
           if(g.surface_tiles.find(bar + dir) != g.surface_tiles.end()) {
@@ -779,12 +779,12 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
   water_group_identifier  destroyed_group_id = (group_1_is_smaller ?    id_1 :    id_2);
   
   for (auto const& s : smaller_group.suckable_tiles_by_height.as_map()) {
-    for (auto const& t : s.second.as_unordered_set()) {
+    for (auto const& t : s.second) {
       larger_group.suckable_tiles_by_height.insert(t);
     }
   }
   for (auto const& s : smaller_group.pushable_tiles_by_height.as_map()) {
-    for (auto const& t : s.second.as_unordered_set()) {
+    for (auto const& t : s.second) {
       assert_if_ASSERT_EVERYTHING(t.stuff_at().contents() == AIR);
       larger_group.pushable_tiles_by_height.insert(t);
     }
@@ -1261,7 +1261,7 @@ void replace_substance_impl(
           
           unordered_set<tile_location> original_pushable_tiles_removed;
           for (auto const& ph : water_group->pushable_tiles_by_height.as_map()) {
-            for(auto const& p : ph.second.as_unordered_set()) {
+            for(auto const& p : ph.second) {
               assert_if_ASSERT_EVERYTHING(p.stuff_at().contents() == AIR);
               bool is_pushable_for_original_group = false;
               std::array<tile_location, num_cardinal_directions> p_neighbors = get_all_neighbors(p);

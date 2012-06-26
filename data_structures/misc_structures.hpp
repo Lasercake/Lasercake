@@ -22,7 +22,12 @@
 #ifndef LASERCAKE_MISC_STRUCTURES_HPP__
 #define LASERCAKE_MISC_STRUCTURES_HPP__
 
+#include <utility>
+#include <functional>
+#include <vector>
+#include <unordered_map>
 #include <boost/utility.hpp>
+#include <boost/iterator/transform_iterator.hpp>
 #include <boost/optional.hpp>
 
 // These are too small to all get their own files.
@@ -68,45 +73,70 @@ private:
 
 
 template<typename T>
-struct literally_random_access_set {
+class literally_random_access_set {
 public:
-  void insert(T const& stuff) {
-    if ((stuffs_set.insert(stuff)).second) {
-      stuffs_superset_vector.push_back(stuff);
-    }
-  }
-  bool erase(T const& which) {
-    if (stuffs_set.erase(which)) {
-      if (stuffs_set.size() * 2 <= stuffs_superset_vector.size()) {
-        purge_nonexistent_stuffs();
+  typedef size_t size_type;
+private:
+  typedef std::unordered_map<T, size_type> contents_type_;
+  typedef typename contents_type_::value_type contents_value_type_;
+  typedef typename contents_type_::iterator contents_iterator_;
+  typedef typename contents_type_::const_iterator contents_const_iterator_;
+  // In contents_type_, the user is only permitted to change the keys
+  // (i.e. literally_random_access_set members),
+  // and keys can't be changed because they're being used as keys, so only
+  // provide a const iterator.
+  struct select1st_ {
+    typedef T const& result_type;
+    T const& operator()(contents_value_type_ const& v)const {return v.first;}
+  };
+public:
+  typedef boost::transform_iterator<select1st_, contents_const_iterator_> iterator;
+  typedef iterator const_iterator;
+
+  bool insert(T const& t) {
+    std::pair<contents_iterator_, bool> iter_and_did_anything_change =
+        members_to_indices_.insert(contents_value_type_(t, size()));
+    if (iter_and_did_anything_change.second) {
+      try {
+        pointers_vector_.push_back(&*iter_and_did_anything_change.first);
       }
+      catch(...) {
+        members_to_indices_.erase(iter_and_did_anything_change.first);
+      }
+    }
+    return iter_and_did_anything_change.second;
+  }
+  bool erase(T const& t) {
+    contents_iterator_ i = members_to_indices_.find(t);
+    if (i != members_to_indices_.end()) {
+      const size_type idx = i->second;
+      members_to_indices_.erase(i);
+      assert(idx < pointers_vector_.size());
+      contents_value_type_*const moved_ptr = pointers_vector_.back();
+      moved_ptr->second = idx;
+      pointers_vector_[idx] = moved_ptr;
+      pointers_vector_.pop_back();
       return true;
     }
     return false;
   }
   template<typename RNG>
   T const& get_random(RNG& rng)const {
-    caller_error_if(stuffs_set.empty(), "Trying to get a random element of an empty literally_random_access_set");
-    size_t idx;
-    const boost::random::uniform_int_distribution<size_t> random_item_idx(0, stuffs_superset_vector.size()-1);
-    do {
-      idx = random_item_idx(rng);
-    } while (stuffs_set.find(stuffs_superset_vector[idx]) == stuffs_set.end());
-    return stuffs_superset_vector[idx];
+    caller_error_if(members_to_indices_.empty(), "Trying to get a random element of an empty literally_random_access_set");
+    const boost::random::uniform_int_distribution<size_type> random_item_idx(0, pointers_vector_.size()-1);
+    const size_type idx = random_item_idx(rng);
+    assert(idx < pointers_vector_.size());
+    return pointers_vector_[idx]->first;
   }
-  bool empty()const { return stuffs_set.empty(); }
-  std::unordered_set<T> const& as_unordered_set()const { return stuffs_set; }
+  bool empty()const { return members_to_indices_.empty(); }
+  size_type size()const { return members_to_indices_.size(); }
+
+  const_iterator begin()const { return const_iterator(members_to_indices_.begin(), select1st_()); }
+  const_iterator end()const { return const_iterator(members_to_indices_.end(), select1st_()); }
+
 private:
-  std::vector<T> stuffs_superset_vector;
-  std::unordered_set<T> stuffs_set;
-  void purge_nonexistent_stuffs() {
-    size_t next_insert_idx = 0;
-    for (T const& st : stuffs_set) {
-      stuffs_superset_vector[next_insert_idx] = st;
-      ++next_insert_idx;
-    }
-    stuffs_superset_vector.erase(stuffs_superset_vector.begin() + next_insert_idx, stuffs_superset_vector.end());
-  }
+  std::vector<contents_value_type_*> pointers_vector_;
+  contents_type_ members_to_indices_;
 };
 
 #endif
