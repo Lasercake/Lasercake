@@ -22,17 +22,19 @@
 #ifndef LASERCAKE_WORLD_HPP__
 #define LASERCAKE_WORLD_HPP__
 
+#include <array>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
-#include <cstdlib>
+#include <memory>
 #include <cmath>
+#include <boost/functional/hash.hpp>
+
+#include <cstdlib>
 #include <cassert>
 #include <map>
 #include <set>
-#include <array>
 #include <algorithm>
-#include <unordered_map>
-#include <unordered_set>
-#include <boost/functional/hash.hpp>
 #include <boost/utility.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <iostream>
@@ -41,7 +43,6 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/variant.hpp>
 #include <boost/variant/get.hpp>
-#include <memory>
 #include <boost/shared_ptr.hpp>
 
 #include "utils.hpp"
