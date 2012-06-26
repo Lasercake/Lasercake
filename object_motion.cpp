@@ -118,7 +118,7 @@ void update_moving_objects_impl(
     
     // Check any tile it happens to be in for whether there's water there.
     // If the object is *partially* in water, it'll crash into a surface water on its first step, which will make this same adjustment.
-    if (is_water(w.make_tile_location(get_containing_tile_coordinates(personal_space_shapes[p.first].arbitrary_interior_point()), CONTENTS_ONLY).stuff_at().contents())) {
+    if (is_water(w.make_tile_location(get_arbitrary_containing_tile_coordinates(personal_space_shapes[p.first].arbitrary_interior_point()), CONTENTS_ONLY).stuff_at().contents())) {
       const fine_scalar current_speed = p.second->velocity.magnitude_within_32_bits();
       if (current_speed > max_object_speed_through_water) {
         p.second->velocity = p.second->velocity * max_object_speed_through_water / current_speed;

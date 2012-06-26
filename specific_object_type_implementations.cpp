@@ -96,14 +96,22 @@ shape robot::get_initial_detail_shape()const {
 
 void robot::update(world& w, object_identifier my_id) {
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-  const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
+  const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2; //hmm, rounding.
   location_ = middle;
   const vector3<fine_scalar> bottom_middle(middle.x, middle.y, shape_bounds.min.z);
-  const tile_location l = w.make_tile_location(get_containing_tile_coordinates(bottom_middle), CONTENTS_ONLY);
-  const tile_location lminus = l.get_neighbor<zminus>(CONTENTS_ONLY);
-  if (lminus.stuff_at().contents() != AIR) {
+  const auto tiles_containing_bottom_middle = get_all_containing_tile_coordinates(bottom_middle);
+  bool ground_below = false;
+  for(vector3<tile_coordinate> tile_containing_bottom_middle : tiles_containing_bottom_middle) {
+    if(w.make_tile_location(tile_containing_bottom_middle, COMPLETELY_IMAGINARY)
+        .get_neighbor<zminus>(CONTENTS_ONLY)
+        .stuff_at().contents()
+      != AIR) {
+      ground_below = true;
+    }
+  }
+  if (ground_below) {
     // goal: decay towards levitating...
-    fine_scalar target_height = (lower_bound_in_fine_units(l.coords().z, 2) + tile_height * 5 / 4);
+    fine_scalar target_height = (lower_bound_in_fine_units(get_max_containing_tile_coordinate(shape_bounds.min.z, Z), Z) + tile_height * 5 / 4);
     fine_scalar deficiency = target_height - shape_bounds.min.z;
     fine_scalar target_vel = gravity_acceleration_magnitude + deficiency * velocity_scale_factor / 8;
     if (velocity.z < target_vel) {
@@ -161,7 +169,7 @@ void robot::update(world& w, object_identifier my_id) {
       w.add_laser_sfx(location_, beam_delta);
       if (input_news.is_currently_pressed("v") && (carrying_ > 0)) {
         --carrying_;
-        const tile_location target_loc = w.make_tile_location(get_containing_tile_coordinates(location_ + beam_delta), FULL_REALIZATION);
+        const tile_location target_loc = w.make_tile_location(get_random_containing_tile_coordinates(location_ + beam_delta, w.get_rng()), FULL_REALIZATION);
         w.replace_substance(target_loc, AIR, RUBBLE);
       }
     }

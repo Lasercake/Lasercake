@@ -293,18 +293,68 @@ private:
 };
 
 
-inline tile_coordinate get_containing_tile_coordinate(fine_scalar c, which_dimension_type which_coordinate) {
+// Conversions between tile_coordinate and fine_scalar space:
+
+// [AFTER THE NEXT COMMIT, THESE NEW TILE SEMANTICS WILL BE TRUE]
+// A fine_scalar location intersects 1-8 tiles.  Most of the time, it intersects
+// just one tile.
+//
+// A tile at tile-space (x,y,z) occupies fine_scalar space
+//   ([x*tile_width , (x+1)*tile_width ],
+//    [y*tile_width , (y+1)*tile_width ],
+//    [z*tile_height, (z+1)*tile_height]
+//   ).
+// The ranges are inclusive on both low and high ends ("closed ranges").
+// This means neighboring tiles overlap by a zero-volume amount.
+// This makes things a bit more complicated, but the alternatives are worse.
+//
+// If we used [x*tile_width, (x+1)*tile_width - 1], etc, then there
+// would be empty space of one fine_scalar unit between tiles which
+// lasers or players' eyes at the right angle could poke through.
+//
+// If we made them open ranges, then a correctly aimed horizontal/vertical
+// laser could *still* poke between between two tiles.
+//
+// If we made them half-open ranges e.g. [x*tile_width , (x+1)*tile_width),
+// then the world would be fundamentally asymmetric.  Running into the east
+// side of a tile would have different physics from running into the west
+// side of a tile.  For example, you could point a laser exactly along the
+// edge of the east side of a tile but not the west side, or similar.
+// (Both the display, and the physics of things that compute exactly with angles,
+// are affected by whether something is "...x)" or "...x-1]".)
+//
+// All these choices are horrible somehow, so instead we accept a little
+// code complexity to allow for the fact that tiles touch.
+
+// [OLD TILE SEMANTICS]:
+inline tile_coordinate get_min_containing_tile_coordinate(fine_scalar c, which_dimension_type which_coordinate) {
   if (which_coordinate == Z) return tile_coordinate(c / tile_height);
   else                       return tile_coordinate(c / tile_width);
 }
-// conversions between tile_coordinate and fine_scalar:
-
-inline vector3<tile_coordinate> get_containing_tile_coordinates(vector3<fine_scalar> v) {
+inline tile_coordinate get_max_containing_tile_coordinate(fine_scalar c, which_dimension_type which_coordinate) {
+  return get_min_containing_tile_coordinate(c, which_coordinate);
+}
+inline vector3<tile_coordinate> get_min_containing_tile_coordinates(vector3<fine_scalar> v) {
   return vector3<tile_coordinate>(
-    get_containing_tile_coordinate(v[0], 0),
-    get_containing_tile_coordinate(v[1], 1),
-    get_containing_tile_coordinate(v[2], 2)
+    get_min_containing_tile_coordinate(v[0], 0),
+    get_min_containing_tile_coordinate(v[1], 1),
+    get_min_containing_tile_coordinate(v[2], 2)
   );
+}
+inline vector3<tile_coordinate> get_max_containing_tile_coordinates(vector3<fine_scalar> v) {
+  return get_min_containing_tile_coordinates(v);
+}
+inline vector3<tile_coordinate> get_arbitrary_containing_tile_coordinates(vector3<fine_scalar> v) {
+  return get_min_containing_tile_coordinates(v);
+}
+inline lasercake_vector<vector3<tile_coordinate>>::type get_all_containing_tile_coordinates(vector3<fine_scalar> v) {
+  lasercake_vector<vector3<tile_coordinate>>::type result;
+  result.push_back(get_min_containing_tile_coordinates(v));
+  return result;
+}
+template<typename RNG>
+inline vector3<tile_coordinate> get_random_containing_tile_coordinates(vector3<fine_scalar> v, RNG&) {
+  return get_min_containing_tile_coordinates(v);
 }
 inline fine_scalar lower_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
   if (which_coordinate == Z) return fine_scalar(c) * tile_height;
@@ -342,8 +392,8 @@ inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
 
 inline tile_bounding_box get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(bounding_box const& bb) {
   tile_bounding_box result;
-  result.min                         = get_containing_tile_coordinates(bb.min);
-  const vector3<tile_coordinate> max = get_containing_tile_coordinates(bb.max);
+  result.min                        = get_min_containing_tile_coordinates(bb.min);
+  const vector3<tile_coordinate> max = get_max_containing_tile_coordinates(bb.max);
   result.size = max - result.min + vector3<tile_coordinate>(1,1,1);
   return result;
 }
