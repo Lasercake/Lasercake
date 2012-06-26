@@ -336,7 +336,7 @@ inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
   );
 }
 
-inline tile_bounding_box convert_to_smallest_superset_at_tile_resolution(bounding_box const& bb) {
+inline tile_bounding_box get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(bounding_box const& bb) {
   tile_bounding_box result;
   result.min = get_containing_tile_coordinates(bb.min);
   result.size = get_containing_tile_coordinates(bb.max) + vector3<tile_coordinate>(1,1,1) - result.min;
