@@ -23,6 +23,7 @@
 #define LASERCAKE_CONFIG_HPP__
 
 #include <inttypes.h>
+#include <assert.h>
 
 #include <stdexcept>
 #include <boost/throw_exception.hpp>
