@@ -295,7 +295,6 @@ private:
 
 // Conversions between tile_coordinate and fine_scalar space:
 
-// [AFTER THE NEXT COMMIT, THESE NEW TILE SEMANTICS WILL BE TRUE]
 // A fine_scalar location intersects 1-8 tiles.  Most of the time, it intersects
 // just one tile.
 //
@@ -323,16 +322,30 @@ private:
 // (Both the display, and the physics of things that compute exactly with angles,
 // are affected by whether something is "...x)" or "...x-1]".)
 //
-// All these choices are horrible somehow, so instead we accept a little
-// code complexity to allow for the fact that tiles touch.
+// All these "if we..." alternatives are horrible somehow, so instead we
+// accept a little code complexity to allow for the fact that tiles touch.
 
-// [OLD TILE SEMANTICS]:
+
+// (here allowing old semantics of [x*tile_width, (x+1)*tile_width - 1], etc
+//  to be enabled with a compiler flag so we can continue to test the
+//  performance impacts - it affects bbox_collision_detector more than
+//  would be nice.)
+#if defined(LASERCAKE_OLD_SMALLER_TILES)
+const bool older_smaller_nonintersecting_tiles_with_gaps_between_them = true;
+#else
+const bool older_smaller_nonintersecting_tiles_with_gaps_between_them = false;
+#endif
+
 inline tile_coordinate get_min_containing_tile_coordinate(fine_scalar c, which_dimension_type which_coordinate) {
   if (which_coordinate == Z) return tile_coordinate(c / tile_height);
   else                       return tile_coordinate(c / tile_width);
 }
 inline tile_coordinate get_max_containing_tile_coordinate(fine_scalar c, which_dimension_type which_coordinate) {
-  return get_min_containing_tile_coordinate(c, which_coordinate);
+  if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
+    return get_min_containing_tile_coordinate(c, which_coordinate);
+  }
+  if (which_coordinate == Z) return tile_coordinate((c + 1) / tile_height);
+  else                       return tile_coordinate((c + 1) / tile_width);
 }
 inline vector3<tile_coordinate> get_min_containing_tile_coordinates(vector3<fine_scalar> v) {
   return vector3<tile_coordinate>(
@@ -342,27 +355,67 @@ inline vector3<tile_coordinate> get_min_containing_tile_coordinates(vector3<fine
   );
 }
 inline vector3<tile_coordinate> get_max_containing_tile_coordinates(vector3<fine_scalar> v) {
-  return get_min_containing_tile_coordinates(v);
+  if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
+    return get_min_containing_tile_coordinates(v);
+  }
+  return vector3<tile_coordinate>(
+    get_max_containing_tile_coordinate(v[0], 0),
+    get_max_containing_tile_coordinate(v[1], 1),
+    get_max_containing_tile_coordinate(v[2], 2)
+  );
 }
 inline vector3<tile_coordinate> get_arbitrary_containing_tile_coordinates(vector3<fine_scalar> v) {
   return get_min_containing_tile_coordinates(v);
 }
 inline lasercake_vector<vector3<tile_coordinate>>::type get_all_containing_tile_coordinates(vector3<fine_scalar> v) {
   lasercake_vector<vector3<tile_coordinate>>::type result;
-  result.push_back(get_min_containing_tile_coordinates(v));
+  if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
+    result.push_back(get_min_containing_tile_coordinates(v));
+  }
+  else {
+    const vector3<tile_coordinate> base = get_min_containing_tile_coordinates(v);
+    const bool on_x_boundary = (v.x % tile_width == 0);
+    const bool on_y_boundary = (v.y % tile_width == 0);
+    const bool on_z_boundary = (v.z % tile_height == 0);
+    for(tile_coordinate xplus = on_x_boundary; xplus >= 0; --xplus) {
+    for(tile_coordinate yplus = on_y_boundary; yplus >= 0; --yplus) {
+    for(tile_coordinate zplus = on_z_boundary; zplus >= 0; --zplus) {
+      result.push_back(base + vector3<tile_coordinate>(xplus, yplus, zplus));
+    }
+    }
+    }
+  }
   return result;
 }
 template<typename RNG>
-inline vector3<tile_coordinate> get_random_containing_tile_coordinates(vector3<fine_scalar> v, RNG&) {
-  return get_min_containing_tile_coordinates(v);
+inline vector3<tile_coordinate> get_random_containing_tile_coordinates(vector3<fine_scalar> v, RNG& rng) {
+  if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
+    return get_min_containing_tile_coordinates(v);
+  }
+  const boost::random::uniform_int_distribution<int32_t> random_bits(0, 7);
+  const int32_t three_random_bits = random_bits(rng);
+  const tile_coordinate xplus = !!(three_random_bits & 1);
+  const tile_coordinate yplus = !!(three_random_bits & 2);
+  const tile_coordinate zplus = !!(three_random_bits & 4);
+  return vector3<tile_coordinate>(
+    tile_coordinate((v.x + xplus) / tile_width),
+    tile_coordinate((v.y + yplus) / tile_width),
+    tile_coordinate((v.z + zplus) / tile_height)
+  );
 }
 inline fine_scalar lower_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
   if (which_coordinate == Z) return fine_scalar(c) * tile_height;
   else                       return fine_scalar(c) * tile_width;
 }
 inline fine_scalar upper_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
-  if (which_coordinate == Z) return fine_scalar(c) * tile_height + (tile_height-1);
-  else                       return fine_scalar(c) * tile_width + (tile_width-1);
+  if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
+    if (which_coordinate == Z) return fine_scalar(c) * tile_height + (tile_height-1);
+    else                       return fine_scalar(c) * tile_width + (tile_width-1);
+  }
+  else {
+    if (which_coordinate == Z) return fine_scalar(c) * tile_height + tile_height;
+    else                       return fine_scalar(c) * tile_width + tile_width;
+  }
 }
 inline vector3<fine_scalar> lower_bound_in_fine_units(vector3<tile_coordinate> v) {
   return vector3<fine_scalar>(
@@ -384,10 +437,18 @@ inline bounding_box fine_bounding_box_of_tile(vector3<tile_coordinate> v) {
 }
 
 inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
-  return bounding_box(
-    lower_bound_in_fine_units(bb.min),
-    lower_bound_in_fine_units(bb.min + bb.size) - vector3<fine_scalar>(1,1,1)
-  );
+  if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
+    return bounding_box(
+      lower_bound_in_fine_units(bb.min),
+      lower_bound_in_fine_units(bb.min + bb.size) - vector3<fine_scalar>(1,1,1)
+    );
+  }
+  else {
+    return bounding_box(
+      lower_bound_in_fine_units(bb.min),
+      lower_bound_in_fine_units(bb.min + bb.size)
+    );
+  }
 }
 
 inline tile_bounding_box get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(bounding_box const& bb) {
