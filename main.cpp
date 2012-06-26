@@ -278,6 +278,10 @@ void sim_thread_step(
   if(w.game_time_elapsed() % (time_units_per_second * 5) < (time_units_per_second / 15)) {
     w.get_things_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
   }
+  else {
+    // zobj = ztree objects
+    world_ztree_debug_info << w.get_things_exposed_to_collision().size() << " zobj; ";
+  }
 
   const frame_output_t output = {
     gl_data_ptr,
