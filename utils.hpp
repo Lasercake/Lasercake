@@ -133,25 +133,49 @@ inline int32_t count_trailing_zeroes_64(uint64_t argument) {
 
 inline uint32_t i64sqrt(uint64_t radicand)
 {
+  typedef uint64_t full_t;
+  typedef uint32_t half_t;
+
+  // log2(0) doesn't exist, but sqrt(0) does, so we have to check for it here.
   if(radicand == 0)return 0;
-  
+
+  //shift is the log base 2 of radicand, rounded down.
   int shift = i64log2(radicand);
+
+  //bounds are [lower_bound, upper_bound), a half-open range.
+  //lower_bound is guaranteed to be less than or equal to the answer.
+  //upper_bound is guaranteed to be greater than the answer.
+  half_t lower_bound = half_t(1) << (shift >> 1);
+
+  //upper_bound is twice the original lower_bound;
+  //upper_bound is    2**(floor(log2(radicand) / 2)+1)
+  //which is equal to 2**ceil((log2(radicand)+1) / 2)
+  full_t upper_bound = full_t(lower_bound) << 1;
+
+  // (to look for more digits, try python hex(0x16a09e667f3bcc908b**2);
+  // add more hexdigits at the end to get more precisions)
+  const full_t sqrt2_e_32_rounded_down = 0x16a09e667ULL;
   
-  //shift should now be the log base 2 of radicand, rounded down.
-  uint32_t lower_bound = 1 << (shift >> 1);
-  
-  //replace the lost accuracy:
-  if(radicand & ((((1ULL << 1) - 1) << 1) << shift))lower_bound = (uint32_t)((lower_bound * 6074000999ULL) >> 32); //approximate the square root of 2
-  
-  uint64_t upper_bound = (lower_bound < (uint32_t(1) << 31)) ? (lower_bound << 1) : (1ULL << 32);
-  //lower_bound is guaranteed to be less than or equal to the answer
-  //upper_bound is guaranteed to be greater than the answer
+  //replace the lost accuracy from rounding down by (shift >> 1) above:
+  if(radicand & ((((1ULL << 1) - 1) << 1) << shift)) {
+    lower_bound = half_t((lower_bound * sqrt2_e_32_rounded_down) >> 32);
+  }
+
+#ifdef DETECTED_uint128_t
+  typedef DETECTED_uint128_t twice_t;
+  assert_if_ASSERT_EVERYTHING(full_t(lower_bound)*lower_bound <= radicand);
+  assert_if_ASSERT_EVERYTHING(twice_t(upper_bound)*upper_bound > radicand);
+#endif
   
   while(lower_bound < upper_bound - 1)
   {
-    const uint32_t mid = uint32_t((upper_bound + lower_bound) >> 1);
-    if(uint64_t(mid) * mid > radicand)upper_bound = mid;
-    else lower_bound = mid;
+    const half_t mid = half_t((upper_bound + lower_bound) >> 1);
+    if(full_t(mid) * mid > radicand) {
+      upper_bound = mid;
+    }
+    else {
+      lower_bound = mid;
+    }
   }
   
   return lower_bound;
