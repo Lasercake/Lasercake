@@ -118,15 +118,6 @@ inline uint32_t i64sqrt(uint64_t radicand)
   //which is equal to 2**ceil((log2(radicand)+1) / 2)
   full_t upper_bound = full_t(lower_bound) << 1;
 
-  // (to look for more digits, try python hex(0x16a09e667f3bcc908b**2);
-  // add more hexdigits at the end to get more precisions)
-  const full_t sqrt2_e_32_rounded_down = 0x16a09e667ULL;
-
-  //replace the lost accuracy from rounding down by (shift >> 1) above:
-  if(radicand & ((((1ULL << 1) - 1) << 1) << shift)) {
-    lower_bound = half_t((lower_bound * sqrt2_e_32_rounded_down) >> 32);
-  }
-
 #ifdef DETECTED_uint128_t
   typedef DETECTED_uint128_t twice_t;
   assert_if_ASSERT_EVERYTHING(full_t(lower_bound)*lower_bound <= radicand);
