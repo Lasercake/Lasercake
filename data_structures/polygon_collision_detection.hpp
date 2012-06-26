@@ -51,61 +51,116 @@ struct polygon_collision_info_cache {
   std::vector<vector3<polygon_int_type>> adjusted_vertices;
 };
 
-struct bounding_box {
-  bounding_box():is_anywhere(false){}
-  bounding_box(vector3<polygon_int_type> loc):is_anywhere(true),min(loc),max(loc){}
-  bounding_box(vector3<polygon_int_type> min, vector3<polygon_int_type> max):is_anywhere(true),min(min),max(max){}
+class bounding_box {
+public:
+  typedef vector3<polygon_int_type> vect;
+  bounding_box():is_anywhere_(false){}
+  explicit bounding_box(vect loc):is_anywhere_(true),min_(loc),max_(loc){}
+private:
+  bounding_box(vect min, vect max):is_anywhere_(true),min_(min),max_(max){
+    caller_correct_if(min(X) <= max(X) && min(Y) <= max(Y) && min(Z) <= max(Z),
+        "Can't create zero-or-less-sized ::bounding_boxes (besides by default-construction)");
+  }
+  bool is_anywhere_;
+  vect min_;
+  vect max_;
+public:
+
+  // Named "constructors".
+  static bounding_box min_and_max(vect min, vect max) {
+    bounding_box result(min, max);
+    return result;
+  }
+  static bounding_box spanning_two_points(vect v1, vect v2) {
+    // when they're not already aligned nicely in min and max.
+    bounding_box result;
+    if(v1(X) < v2(X)) { result.min_.set(X, v1(X)); result.max_.set(X, v2(X)); }
+    else              { result.min_.set(X, v2(X)); result.max_.set(X, v1(X)); }
+    if(v1(Y) < v2(Y)) { result.min_.set(Y, v1(Y)); result.max_.set(Y, v2(Y)); }
+    else              { result.min_.set(Y, v2(Y)); result.max_.set(Y, v1(Y)); }
+    if(v1(Z) < v2(Z)) { result.min_.set(Z, v1(Z)); result.max_.set(Z, v2(Z)); }
+    else              { result.min_.set(Z, v2(Z)); result.max_.set(Z, v1(Z)); }
+    result.is_anywhere_ = true;
+    return result;
+  }
+  static bounding_box min_and_size_minus_one(vect min, vect size_minus_one) {
+    bounding_box result(min, min + size_minus_one);
+    return result;
+  }
+  static bounding_box size_minus_one_and_max(vect size_minus_one, vect max) {
+    bounding_box result(max - size_minus_one, max);
+    return result;
+  }
+  static bounding_box min_and_size(vect min, vect size) {
+    bounding_box result(min, min + (size - vect(1,1,1)));
+    return result;
+  }
+  static bounding_box size_and_max(vect size, vect max) {
+    bounding_box result(max - (size - vect(1,1,1)), max);
+    return result;
+  }
+
+  vect min()const { return min_; }
+  vect max()const { return max_; }
+  vect size_minus_one()const { return max_-min_; }
+  vect size()const { return size_minus_one() + vect(1,1,1); }
   
-  bool is_anywhere;
-  vector3<polygon_int_type> min, max;
-  
-  bool contains(vector3<polygon_int_type> const& v)const;
+  polygon_int_type min(which_dimension_type dim)const { return min_(dim); }
+  polygon_int_type max(which_dimension_type dim)const { return max_(dim); }
+  polygon_int_type size_minus_one(which_dimension_type dim)const { return max_(dim)-min_(dim); }
+  polygon_int_type size(which_dimension_type dim)const { return size_minus_one(dim) + 1; }
+
+  void set_min_holding_max_constant(vect min) { min_ = min; }
+  void set_max_holding_min_constant(vect max) { max_ = max; }
+  void set_min_holding_max_constant(which_dimension_type dim, polygon_int_type min) { min_.set(dim, min); }
+  void set_max_holding_min_constant(which_dimension_type dim, polygon_int_type max) { max_.set(dim, max); }
+  //easy to write the rest as they become necessary
+
+  bool is_anywhere()const { return is_anywhere_; }
+
+  bool contains(vect const& v)const;
   bool overlaps(bounding_box const& o)const;
   void combine_with(bounding_box const& o);
   void restrict_to(bounding_box const& o);
-  void translate(vector3<polygon_int_type> t);
+  void translate(vect t);
 
   // Implicit conversions to/from bbox_collision_detector bounding_box
   // for convenience interacting with it.
   typedef collision_detector::bounding_box<64, 3> equivalent_collision_detector_bounding_box;
   operator equivalent_collision_detector_bounding_box()const {
-    caller_correct_if(is_anywhere, "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
+    caller_correct_if(is_anywhere(), "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
     
     typedef uint64_t uint_t; // a modulo type and modulo conversion
     typedef equivalent_collision_detector_bounding_box::coordinate_array uint_array;
     
     uint_array uint_min = {{
-      uint_t(get_primitive_int(min.x)),
-      uint_t(get_primitive_int(min.y)),
-      uint_t(get_primitive_int(min.z))
+      uint_t(get_primitive_int(min(X))),
+      uint_t(get_primitive_int(min(Y))),
+      uint_t(get_primitive_int(min(Z)))
     }};
     uint_array uint_max = {{
-      uint_t(get_primitive_int(max.x)),
-      uint_t(get_primitive_int(max.y)),
-      uint_t(get_primitive_int(max.z))
+      uint_t(get_primitive_int(max(X))),
+      uint_t(get_primitive_int(max(Y))),
+      uint_t(get_primitive_int(max(Z)))
     }};
     return equivalent_collision_detector_bounding_box::min_and_max(uint_min, uint_max);
   }
   bounding_box(equivalent_collision_detector_bounding_box const& b) {
     typedef int64_t int_t; // a modulo conversion
-    min.x = int_t(b.min(X));
-    min.y = int_t(b.min(Y));
-    min.z = int_t(b.min(Z));
-    max.x = int_t(b.max(X));
-    max.y = int_t(b.max(Y));
-    max.z = int_t(b.max(Z));
-    is_anywhere = true;
+    min_ = vect(int_t(b.min(X)), int_t(b.min(Y)), int_t(b.min(Z)));
+    max_ = vect(int_t(b.max(X)), int_t(b.max(Y)), int_t(b.max(Z)));
+    is_anywhere_ = true;
   }
 };
 inline bool operator==(bounding_box const& b1, bounding_box const& b2) {
-  return (b1.is_anywhere == false && b2.is_anywhere == false) ||
-    (b1.is_anywhere == b2.is_anywhere && b1.min == b2.min && b1.max == b2.max);
+  return (b1.is_anywhere() == false && b2.is_anywhere() == false) ||
+    (b1.is_anywhere() == b2.is_anywhere() && b1.min() == b2.min() && b1.max() == b2.max());
 }
 inline bool operator!=(bounding_box const& b1, bounding_box const& b2) {
   return !(b1 == b2);
 }
 inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
-  return os << '[' << bb.min << ", " << bb.max << ']';
+  return os << '[' << bb.min() << ", " << bb.max() << ']';
 }
 
 // TODO: rays and lines

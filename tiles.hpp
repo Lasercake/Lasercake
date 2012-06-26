@@ -448,18 +448,18 @@ inline vector3<fine_scalar> upper_bound_in_fine_units(vector3<tile_coordinate> v
 }
 
 inline bounding_box fine_bounding_box_of_tile(vector3<tile_coordinate> v) {
-  return bounding_box(lower_bound_in_fine_units(v), upper_bound_in_fine_units(v));
+  return bounding_box::min_and_max(lower_bound_in_fine_units(v), upper_bound_in_fine_units(v));
 }
 
 inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
   if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
-    return bounding_box(
+    return bounding_box::min_and_max(
       lower_bound_in_fine_units(bb.min),
       lower_bound_in_fine_units(bb.min + bb.size) - vector3<fine_scalar>(1,1,1)
     );
   }
   else {
-    return bounding_box(
+    return bounding_box::min_and_max(
       lower_bound_in_fine_units(bb.min),
       lower_bound_in_fine_units(bb.min + bb.size)
     );
@@ -468,8 +468,8 @@ inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
 
 inline tile_bounding_box get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(bounding_box const& bb) {
   tile_bounding_box result;
-  result.min                        = get_min_containing_tile_coordinates(bb.min);
-  const vector3<tile_coordinate> max = get_max_containing_tile_coordinates(bb.max);
+  result.min                         = get_min_containing_tile_coordinates(bb.min());
+  const vector3<tile_coordinate> max = get_max_containing_tile_coordinates(bb.max());
   result.size = max - result.min + vector3<tile_coordinate>(1,1,1);
   return result;
 }

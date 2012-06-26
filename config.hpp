@@ -138,4 +138,6 @@ inline void caller_correct_if(bool cond, const char* error) {
   }
 }
 
+#define constexpr_require_and_return(cond, str, ret) ((cond) ? (ret) : throw std::logic_error((str)))
+
 #endif

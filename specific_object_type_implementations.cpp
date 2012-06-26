@@ -84,7 +84,7 @@ const int robot_max_carrying_capacity = 4;
 } /* end anonymous namespace */
 
 shape robot::get_initial_personal_space_shape()const {
-  return shape(bounding_box(
+  return shape(bounding_box::min_and_max(
     location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
     location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
   ));
@@ -96,9 +96,9 @@ shape robot::get_initial_detail_shape()const {
 
 void robot::update(world& w, object_identifier my_id) {
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-  const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2; //hmm, rounding.
+  const vector3<fine_scalar> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
   location_ = middle;
-  const vector3<fine_scalar> bottom_middle(middle.x, middle.y, shape_bounds.min.z);
+  const vector3<fine_scalar> bottom_middle(middle(X), middle(Y), shape_bounds.min(Z));
   const auto tiles_containing_bottom_middle = get_all_containing_tile_coordinates(bottom_middle);
   bool ground_below = false;
   for(vector3<tile_coordinate> tile_containing_bottom_middle : tiles_containing_bottom_middle) {
@@ -111,8 +111,8 @@ void robot::update(world& w, object_identifier my_id) {
   }
   if (ground_below) {
     // goal: decay towards levitating...
-    fine_scalar target_height = (lower_bound_in_fine_units(get_max_containing_tile_coordinate(shape_bounds.min.z, Z), Z) + tile_height * 5 / 4);
-    fine_scalar deficiency = target_height - shape_bounds.min.z;
+    fine_scalar target_height = (lower_bound_in_fine_units(get_max_containing_tile_coordinate(shape_bounds.min(Z), Z), Z) + tile_height * 5 / 4);
+    fine_scalar deficiency = target_height - shape_bounds.min(Z);
     fine_scalar target_vel = gravity_acceleration_magnitude + deficiency * velocity_scale_factor / 8;
     if (velocity.z < target_vel) {
       velocity.z = std::min(velocity.z + gravity_acceleration_magnitude * 5, target_vel);
@@ -183,7 +183,7 @@ void robot::update(world& w, object_identifier my_id) {
 
 
 shape laser_emitter::get_initial_personal_space_shape()const {
-  return shape(bounding_box(
+  return shape(bounding_box::min_and_max(
     location_ - vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10),
     location_ + vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10)
   ));
@@ -195,7 +195,7 @@ shape laser_emitter::get_initial_detail_shape()const {
 
 void laser_emitter::update(world& w, object_identifier my_id) {
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-  const vector3<fine_scalar> middle = (shape_bounds.min + shape_bounds.max) / 2;
+  const vector3<fine_scalar> middle = (shape_bounds.min() + shape_bounds.max()) / 2;
   
   location_ = middle;
   const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type> random_delta(-1023, 1023);

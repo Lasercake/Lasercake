@@ -214,7 +214,7 @@ object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lase
     // the GLOBAL view won't have to realize any new tiles in order to make a complete cycle
     // around world-center.  This is an interim way to get rid of that annoying lag, at the cost
     // of a bit more of annoying startup time.
-    w.collect_things_exposed_to_collision_intersecting(tiles_near_start, bounding_box(
+    w.collect_things_exposed_to_collision_intersecting(tiles_near_start, bounding_box::min_and_max(
       world_center_fine_coords - vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80),
       world_center_fine_coords + vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80)
     ));

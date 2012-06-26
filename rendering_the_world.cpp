@@ -126,9 +126,9 @@ void push_convex_polygon(vector3<fine_scalar> const& view_loc,
 
 
 tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_box b, vector3<fine_scalar> const& v) {
-  const fine_scalar xdist = (v.x < b.min.x) ? (b.min.x - v.x) : (v.x > b.max.x) ? (v.x - b.max.x) : 0;
-  const fine_scalar ydist = (v.y < b.min.y) ? (b.min.y - v.y) : (v.y > b.max.y) ? (v.y - b.max.y) : 0;
-  const fine_scalar zdist = (v.z < b.min.z) ? (b.min.z - v.z) : (v.z > b.max.z) ? (v.z - b.max.z) : 0;
+  const fine_scalar xdist = (v(X) < b.min(X)) ? (b.min(X) - v(X)) : (v(X) > b.max(X)) ? (v(X) - b.max(X)) : 0;
+  const fine_scalar ydist = (v(Y) < b.min(Y)) ? (b.min(Y) - v(Y)) : (v(Y) > b.max(Y)) ? (v(Y) - b.max(Y)) : 0;
+  const fine_scalar zdist = (v(Z) < b.min(Z)) ? (b.min(Z) - v(Z)) : (v(Z) > b.max(Z)) ? (v(Z) - b.max(Z)) : 0;
   // Like (xdist / tile_width + ydist / tile_width + zdist / tile_height) but more precise:
   return (xdist + ydist + (zdist * tile_width / tile_height)) / tile_width;
 }
@@ -315,7 +315,7 @@ void view_on_the_world::render(
     }
     else if (view_type == ROBOT) {
       bounding_box b = w.get_object_personal_space_shapes().find(robot_id)->second.bounds();
-      view_loc = ((b.min + b.max) / 2);
+      view_loc = ((b.min() + b.max()) / 2);
       vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(robot_id)->second)->get_facing();
       view_towards = view_loc + facing;
     }
@@ -337,7 +337,7 @@ void view_on_the_world::render(
     // this is a bloody stupid hack, TODO do something different
     if (this->drawing_regular_stuff) {
     const fine_scalar view_dist = rendering_config.view_radius;
-    w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box(
+    w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box::min_and_max(
       view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
       view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
     ));
@@ -380,7 +380,7 @@ void view_on_the_world::render(
       for (int i = 0; i <= length; ++i) {
         gl_collection& coll = gl_collections_by_distance[
           get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(
-            bounding_box(p.first + (p.second * i / length), p.first + (p.second * (i+1) / length)),
+            bounding_box::spanning_two_points(p.first + (p.second * i / length), p.first + (p.second * (i+1) / length)),
             view_loc))
         ];
         const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
@@ -406,8 +406,8 @@ void view_on_the_world::render(
 
         lasercake_vector<bounding_box>::type const& obj_bboxes = obj_shape->second.get_boxes();
         for (bounding_box const& bbox : obj_bboxes) {
-          const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min);
-          const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max);
+          const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
+          const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
           push_quad(coll,
                     vertex(bmin.x, bmin.y, bmin.z),
                     vertex(bmax.x, bmin.y, bmin.z),

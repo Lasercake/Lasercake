@@ -84,7 +84,7 @@ RandomAccessRange::iterator random_element_of_sequence(RandomAccessRange& c, RNG
 // If you need to pass around a dimension for use as an index to
 // a vector3, you can optionally use these names.
 enum {
-  X = 0, Y = 1, Z = 2
+  X = 0, Y = 1, Z = 2, num_dimensions = 3
 };
 typedef int which_dimension_type;
 
@@ -112,6 +112,9 @@ public:
       default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
     }
   }
+  ScalarType operator()(which_dimension_type index)const { return (*this)[index]; }
+  void set(which_dimension_type index, ScalarType value) { (*this)[index] = value; }
+
   // Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
   template<typename OtherType> vector3 operator+(vector3<OtherType> const& other)const {
     return vector3(x + other.x, y + other.y, z + other.z);
@@ -265,18 +268,23 @@ ThingWithCoordinates next_in_direction(ThingWithCoordinates const& t) {
 
 // These are macros (not inline functions) so they can be used in constant expressions:
 // 'constexpr' support in compilers isn't quite functional yet.
-#define which_dimension_is_cardinal_direction(dir) (dir % 3)
-#define opposite_cardinal_direction(dir) (cardinal_direction((dir + 3) % 6))
-#define is_a_positive_directional_cardinal_direction(dir) (dir >= 3)
+#define which_dimension_is_cardinal_direction(dir) ((dir) % 3)
+#define opposite_cardinal_direction(dir) (cardinal_direction(((dir) + 3) % 6))
+#define is_a_positive_directional_cardinal_direction(dir) ((dir) >= 3)
+
+inline bool cardinal_directions_are_perpendicular(cardinal_direction d1, cardinal_direction d2) {
+  return (which_dimension_is_cardinal_direction(d1) != which_dimension_is_cardinal_direction(d2));
+}
+
+inline cardinal_direction cardinal_direction_of_dimension_and_positiveness(which_dimension_type dim, bool positive) {
+  return constexpr_require_and_return(dim < 3, "can't pass a cardinal_direction as a dimension here",
+                                      dim + positive*3);
+}
 
 template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_direction(vector3<ScalarType> src, cardinal_direction dir) {
   vector3<ScalarType> result(0,0,0);
   result[which_dimension_is_cardinal_direction(dir)] = src[which_dimension_is_cardinal_direction(dir)];
   return result;
-}
-
-inline bool cardinal_directions_are_perpendicular(cardinal_direction d1, cardinal_direction d2) {
-  return (which_dimension_is_cardinal_direction(d1) != which_dimension_is_cardinal_direction(d2));
 }
 
 

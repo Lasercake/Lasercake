@@ -63,22 +63,16 @@ void actually_change_personal_space_shape(
 cardinal_direction approximate_direction_of_entry(vector3<fine_scalar> const& velocity, bounding_box const& my_bounds, bounding_box const& other_bounds) {
   bounding_box overlapping_bounds(my_bounds);
   overlapping_bounds.restrict_to(other_bounds);
-  caller_correct_if(overlapping_bounds.is_anywhere, "calling approximate_direction_of_entry with non-overlapping bounds");
+  caller_correct_if(overlapping_bounds.is_anywhere(), "calling approximate_direction_of_entry with non-overlapping bounds");
   caller_correct_if(velocity != vector3<fine_scalar>(0,0,0), "calling approximate_direction_of_entry an object that's not moving");
   cardinal_direction best_dir = xminus; // it shouldn't matter what I initialize it to
   fine_scalar best = -1;
   for (int dim = 0; dim < 3; ++dim) {
-    if ((velocity[dim] > 0 && my_bounds.max[dim] < other_bounds.max[dim]) || (velocity[dim] < 0 && my_bounds.min[dim] > other_bounds.min[dim])) {
-      const fine_scalar overlap_in_this_dimension = overlapping_bounds.max[dim] - overlapping_bounds.min[dim];
+    if ((velocity(dim) > 0 && my_bounds.max(dim) < other_bounds.max(dim)) || (velocity(dim) < 0 && my_bounds.min(dim) > other_bounds.min(dim))) {
+      const fine_scalar overlap_in_this_dimension = overlapping_bounds.max(dim) - overlapping_bounds.min(dim);
       if (best == -1 || overlap_in_this_dimension < best) {
         best = overlap_in_this_dimension;
-        // HACK - TODO put something in utils.hpp to do this for us, instead of the + 3
-        if (velocity[dim] > 0) {
-          best_dir = dim + 3;
-        }
-        else {
-          best_dir = dim;
-        }
+        best_dir = cardinal_direction_of_dimension_and_positiveness(dim, velocity[dim] > 0);
       }
     }
   }

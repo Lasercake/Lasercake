@@ -117,62 +117,62 @@ using boost::none;
 typedef non_normalized_rational<polygon_int_type> rational;
 
 bool bounding_box::contains(vector3<polygon_int_type> const& v)const {
-  if (!is_anywhere) return false;
-  return (v.x >= min.x && v.x <= max.x &&
-          v.y >= min.y && v.y <= max.y &&
-          v.z >= min.z && v.z <= max.z);
+  if (!is_anywhere_) return false;
+  return (v.x >= min_.x && v.x <= max_.x &&
+          v.y >= min_.y && v.y <= max_.y &&
+          v.z >= min_.z && v.z <= max_.z);
 }
 bool bounding_box::overlaps(bounding_box const& o)const {
-  return is_anywhere && o.is_anywhere
-     && min.x <= o.max.x && o.min.x <= max.x
-     && min.y <= o.max.y && o.min.y <= max.y
-     && min.z <= o.max.z && o.min.z <= max.z;
+  return is_anywhere_ && o.is_anywhere_
+     && min_.x <= o.max_.x && o.min_.x <= max_.x
+     && min_.y <= o.max_.y && o.min_.y <= max_.y
+     && min_.z <= o.max_.z && o.min_.z <= max_.z;
 }
 void bounding_box::combine_with(bounding_box const& o) {
-       if (!o.is_anywhere) {            return; }
-  else if (!  is_anywhere) { *this = o; return; }
+       if (!o.is_anywhere_) {            return; }
+  else if (!  is_anywhere_) { *this = o; return; }
   else {
-    if (o.min.x < min.x) min.x = o.min.x;
-    if (o.min.y < min.y) min.y = o.min.y;
-    if (o.min.z < min.z) min.z = o.min.z;
-    if (o.max.x > max.x) max.x = o.max.x;
-    if (o.max.y > max.y) max.y = o.max.y;
-    if (o.max.z > max.z) max.z = o.max.z;
+    if (o.min_.x < min_.x) min_.x = o.min_.x;
+    if (o.min_.y < min_.y) min_.y = o.min_.y;
+    if (o.min_.z < min_.z) min_.z = o.min_.z;
+    if (o.max_.x > max_.x) max_.x = o.max_.x;
+    if (o.max_.y > max_.y) max_.y = o.max_.y;
+    if (o.max_.z > max_.z) max_.z = o.max_.z;
   }
 }
 void bounding_box::restrict_to(bounding_box const& o) {
-       if (!  is_anywhere) {                      return; }
-  else if (!o.is_anywhere) { is_anywhere = false; return; }
+       if (!  is_anywhere_) {                      return; }
+  else if (!o.is_anywhere_) { is_anywhere_ = false; return; }
   else {
-    if (o.min.x > min.x) min.x = o.min.x;
-    if (o.min.y > min.y) min.y = o.min.y;
-    if (o.min.z > min.z) min.z = o.min.z;
-    if (o.max.x < max.x) max.x = o.max.x;
-    if (o.max.y < max.y) max.y = o.max.y;
-    if (o.max.z < max.z) max.z = o.max.z;
-    if (min.x > max.x || min.y > max.y || min.z > max.z) is_anywhere = false;
+    if (o.min_.x > min_.x) min_.x = o.min_.x;
+    if (o.min_.y > min_.y) min_.y = o.min_.y;
+    if (o.min_.z > min_.z) min_.z = o.min_.z;
+    if (o.max_.x < max_.x) max_.x = o.max_.x;
+    if (o.max_.y < max_.y) max_.y = o.max_.y;
+    if (o.max_.z < max_.z) max_.z = o.max_.z;
+    if (min_.x > max_.x || min_.y > max_.y || min_.z > max_.z) is_anywhere_ = false;
   }
 }
 
 /*
 shape::shape(bounding_box const& init): bounds_cache_is_valid(true) {
   bounds_cache = init;
-  if (!init.is_anywhere) return;
+  if (!init.is_anywhere()) return;
   
   for (int i = 0; i < 3; ++i) {
     std::vector<vector3<polygon_int_type>> vertices1, vertices2;
-    vector3<polygon_int_type> base2(init.min); base2[i] = init.max[i];
+    vector3<polygon_int_type> base2(init.min()); base2[i] = init.max(i);
     vector3<polygon_int_type> diff1(0,0,0), diff2(0,0,0);
-    diff1[(i+1)%3] = init.max[(i+1)%3] - init.min[(i+1)%3];
-    diff2[(i+2)%3] = init.max[(i+2)%3] - init.min[(i+2)%3];
-    vertices1.push_back(init.min                );
-    vertices1.push_back(init.min + diff1        );
-    vertices1.push_back(init.min + diff1 + diff2);
-    vertices1.push_back(init.min         + diff2);
-    vertices2.push_back(   base2                );
-    vertices2.push_back(   base2 + diff1        );
-    vertices2.push_back(   base2 + diff1 + diff2);
-    vertices2.push_back(   base2         + diff2);
+    diff1[(i+1)%3] = init.max((i+1)%3) - init.min((i+1)%3);
+    diff2[(i+2)%3] = init.max((i+2)%3) - init.min((i+2)%3);
+    vertices1.push_back(init.min()                );
+    vertices1.push_back(init.min() + diff1        );
+    vertices1.push_back(init.min() + diff1 + diff2);
+    vertices1.push_back(init.min()         + diff2);
+    vertices2.push_back(     base2                );
+    vertices2.push_back(     base2 + diff1        );
+    vertices2.push_back(     base2 + diff1 + diff2);
+    vertices2.push_back(     base2         + diff2);
     
     polygons.push_back(convex_polygon(vertices1));
     polygons.push_back(convex_polygon(vertices2));
@@ -214,7 +214,7 @@ void convex_polygon::setup_cache_if_needed()const {
 }
 
 void bounding_box::translate(vector3<polygon_int_type> t) {
-  min += t; max += t;
+  min_ += t; max_ += t;
 }
 
 void line_segment::translate(vector3<polygon_int_type> t) {
@@ -230,11 +230,7 @@ void shape::translate(vector3<polygon_int_type> t) {
   for (  line_segment& l : segments_) l.translate(t);
   for (convex_polygon& p : polygons_) p.translate(t);
   for (  bounding_box& b : boxes_   ) b.translate(t);
-  if (bounds_cache_is_valid_ && bounds_cache_.is_anywhere) {
-    bounds_cache_.min += t;
-    bounds_cache_.max += t;
-    // now still valid!
-  }
+  if (bounds_cache_is_valid_ && bounds_cache_.is_anywhere()) { bounds_cache_.translate(t); }
 }
 
 bounding_box line_segment::bounds()const {
@@ -262,7 +258,7 @@ bounding_box shape::bounds()const {
 vector3<polygon_int_type> shape::arbitrary_interior_point()const {
   if (!segments_.empty()) return segments_[0].ends[0];
   if (!polygons_.empty()) return polygons_[0].get_vertices()[0];
-  for (bounding_box const& bb : boxes_) { if (bb.is_anywhere) { return bb.min; }}
+  for (bounding_box const& bb : boxes_) { if (bb.is_anywhere()) { return bb.min(); }}
   caller_error("Trying to get an arbitrary interior point of a shape that contains no points");
 }
 
@@ -272,8 +268,8 @@ enum should_keep_going { RETURN_NONE_IMMEDIATELY, KEEP_GOING };
 template<bool less>
 should_keep_going check(which_dimension_type dim, rational& intersecting_min, rational& intersecting_max, line_segment const& l, bounding_box const& bb) {
   typename boost::conditional<less, std::less<rational>, std::greater<rational> >::type compare;
-  vector3<polygon_int_type> const& bb_min_or_max = less ? bb.min : bb.max;
-  vector3<polygon_int_type> const& bb_max_or_min = less ? bb.max : bb.min;
+  vector3<polygon_int_type> const& bb_min_or_max = less ? bb.min() : bb.max();
+  vector3<polygon_int_type> const& bb_max_or_min = less ? bb.max() : bb.min();
   rational& intersecting_min_or_max = less ? intersecting_min : intersecting_max;
   if (l.ends[0][dim] == l.ends[1][dim]) {
     if (compare(l.ends[0][dim], bb_min_or_max[dim])) return RETURN_NONE_IMMEDIATELY;
@@ -294,15 +290,15 @@ should_keep_going check(which_dimension_type dim, rational& intersecting_min, ra
 } /* end anonymous namespace */
 
 optional_rational get_first_intersection(line_segment const& l, bounding_box const& bb) {
-  if (!bb.is_anywhere) return none;
+  if (!bb.is_anywhere()) return none;
   
   // Check for common, simple cases to save time.
-  if (l.ends[0].x < bb.min.x && l.ends[1].x < bb.min.x) return none;
-  if (l.ends[0].y < bb.min.y && l.ends[1].y < bb.min.y) return none;
-  if (l.ends[0].z < bb.min.z && l.ends[1].z < bb.min.z) return none;
-  if (l.ends[0].x > bb.max.x && l.ends[1].x > bb.max.x) return none;
-  if (l.ends[0].y > bb.max.y && l.ends[1].y > bb.max.y) return none;
-  if (l.ends[0].z > bb.max.z && l.ends[1].z > bb.max.z) return none;
+  if (l.ends[0](X) < bb.min(X) && l.ends[1](X) < bb.min(X)) return none;
+  if (l.ends[0](Y) < bb.min(Y) && l.ends[1](Y) < bb.min(Y)) return none;
+  if (l.ends[0](Z) < bb.min(Z) && l.ends[1](Z) < bb.min(Z)) return none;
+  if (l.ends[0](X) > bb.max(X) && l.ends[1](X) > bb.max(X)) return none;
+  if (l.ends[0](Y) > bb.max(Y) && l.ends[1](Y) > bb.max(Y)) return none;
+  if (l.ends[0](Z) > bb.max(Z) && l.ends[1](Z) > bb.max(Z)) return none;
   if (bb.contains(l.ends[0])) return rational(0);
   
   rational intersecting_min(0);
@@ -413,6 +409,39 @@ optional_rational get_first_intersection(line_segment l, convex_polygon const& p
 }
 
 namespace /*anonymous*/ {
+std::array<line_segment, 12> edges_of_bounding_box_as_line_segments(bounding_box b) {
+  typedef vector3<polygon_int_type> vect;
+  std::array<line_segment, 12> result = {{
+    line_segment(vect(b.min(X), b.min(Y), b.min(Z)),
+                 vect(b.max(X), b.min(Y), b.min(Z))),
+    line_segment(vect(b.min(X), b.max(Y), b.min(Z)),
+                 vect(b.max(X), b.max(Y), b.min(Z))),
+    line_segment(vect(b.min(X), b.max(Y), b.max(Z)),
+                 vect(b.max(X), b.max(Y), b.max(Z))),
+    line_segment(vect(b.min(X), b.min(Y), b.max(Z)),
+                 vect(b.max(X), b.min(Y), b.max(Z))),
+
+    line_segment(vect(b.min(X), b.min(Y), b.min(Z)),
+                 vect(b.min(X), b.max(Y), b.min(Z))),
+    line_segment(vect(b.max(X), b.min(Y), b.min(Z)),
+                 vect(b.max(X), b.max(Y), b.min(Z))),
+    line_segment(vect(b.max(X), b.min(Y), b.max(Z)),
+                 vect(b.max(X), b.max(Y), b.max(Z))),
+    line_segment(vect(b.min(X), b.min(Y), b.max(Z)),
+                 vect(b.min(X), b.max(Y), b.max(Z))),
+
+    line_segment(vect(b.min(X), b.min(Y), b.min(Z)),
+                 vect(b.min(X), b.min(Y), b.max(Z))),
+    line_segment(vect(b.max(X), b.min(Y), b.min(Z)),
+                 vect(b.max(X), b.min(Y), b.max(Z))),
+    line_segment(vect(b.max(X), b.max(Y), b.min(Z)),
+                 vect(b.max(X), b.max(Y), b.max(Z))),
+    line_segment(vect(b.min(X), b.max(Y), b.min(Z)),
+                 vect(b.min(X), b.max(Y), b.max(Z))),
+  }};
+  return result;
+}
+  
 bool nonshape_intersects_onesided(convex_polygon const& p1, convex_polygon const& p2) {
   std::vector<vector3<polygon_int_type>> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {
@@ -427,7 +456,7 @@ bool nonshape_intersects(convex_polygon const& p1, convex_polygon const& p2) {
 }
 
 bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
-  if (!bb.is_anywhere) return false;
+  if (!bb.is_anywhere()) return false;
   
   std::vector<vector3<polygon_int_type>> const& vs = p.get_vertices();
   if (bb.contains(vs[0])) return true;
@@ -435,22 +464,9 @@ bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
     const int next_i = (i + 1) % vs.size();
     if (get_first_intersection(line_segment(vs[i], vs[next_i]), bb)) return true;
   }
-  // TODO: come up with a nicer, generalizable way to do something for every edge of a bounding box
-  for (int x = 0; x < 2; ++x) { for (int y = 0; y < 2; ++y) { for (int z = 0; z < 2; ++z) {
-    vector3<polygon_int_type> base(x ? bb.min.x : bb.max.x, y ? bb.min.y : bb.max.y, z ? bb.min.z : bb.max.z);
-    if (x == 0) {
-      vector3<polygon_int_type> other = base; other.x = bb.max.x;
-      if (get_first_intersection(line_segment(base, other), p)) return true;
-    }
-    if (y == 0) {
-      vector3<polygon_int_type> other = base; other.y = bb.max.y;
-      if (get_first_intersection(line_segment(base, other), p)) return true;
-    }
-    if (z == 0) {
-      vector3<polygon_int_type> other = base; other.z = bb.max.z;
-      if (get_first_intersection(line_segment(base, other), p)) return true;
-    }
-  }}}
+  for(line_segment edge : edges_of_bounding_box_as_line_segments(bb)) {
+    if (get_first_intersection(edge, p)) return true;
+  }
   return false;
 }
 
