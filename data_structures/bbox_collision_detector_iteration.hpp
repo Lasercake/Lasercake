@@ -473,6 +473,10 @@ public:
 
   bool operator==(iterator const& other) const { return c_ == other.c_; }
   bool operator!=(iterator const& other) const { return !(*this == other); }
+
+  iterator(iterator const&) = default;
+  iterator(iterator&&) = default;
+  iterator& operator=(iterator&&) = default;
 };
 
 template<typename GetCost>
