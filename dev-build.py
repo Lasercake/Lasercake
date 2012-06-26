@@ -20,6 +20,12 @@ def say(string):
 	sys.stdout.write(string)
 	sys.stdout.flush()
 
+def escaped_control_characters(string):
+	return re.sub(r"[\x01-\x1F\x7F]", r"\\", string)
+
+def say_we_are_calling(string):
+	say(ansi_cyan+'% '+escaped_control_characters(string)+ansi_end+'\n')
+
 def main():
 	try: subprocess.call(['cmake', '--version'])
 	except OSError:
@@ -65,26 +71,36 @@ def main():
 	except OSError: pass
 	try: os.makedirs(build_dir)
 	except OSError: pass
+	to_call_cmake = ['cmake', '../../'] + cmake_args
+	say_we_are_calling('cd '+build_dir+'; '+'   '.join(to_call_cmake))
+	say(ansi_cyan+'''  (^^ not escaped properly in these info messages - doin' it right in python)'''+ansi_end+'\n')
 	os.chdir(build_dir)
-	subprocess.check_call(['cmake', '../../'] + cmake_args)
+	subprocess.check_call(to_call_cmake)
 	if time_has_f:
 		time_args = ['time', '-f', (ansi_magenta+'`make` took %E'+ansi_end)]
 	else:
 		time_args = ['time']
-	make_status = subprocess.call(time_args + ['make'] + make_flags + make_args)
+	to_call_make = time_args + ['make'] + make_flags + make_args
+	say_we_are_calling('   '.join(to_call_make))
+	make_status = subprocess.call(to_call_make)
 	if not time_has_f:
 		say(ansi_magenta+'  (time to run `make`).'+ansi_end+'\n')
 	# How to print the compiler & flags here? Can we get it from cmake
 	# somehow? Add to the cmakelists to write those?
 	# but with the -l's and all... hmm.
 	if make_status != 0:
-		subprocess.call(['make'] + make_args) #to get just one file's error messages not mixed up with the others
+		# skip make_flags (-jN) to get just one file's error messages
+		# not mixed up with the others
+		to_call_make_again = ['make'] + make_args
+		say_we_are_calling('   '.join(to_call_make_again))
+		subprocess.call(to_call_make_again)
 		say(ansi_red+'build failed'+ansi_end+'\n')
 		exit(1)
 	if making_lasercake:
 		say(ansi_green+'and you got:\n./'+build_dir+'/lasercake\n(etc.)'+ansi_end+'\n')
 	if running_tests:
-		say(ansi_cyan+'Testing...'+ansi_end+'\n')
+		say(ansi_cyan+'Testing...\n')
+		say_we_are_calling('./'+build_dir+'/test-lasercake')
 		test_status = subprocess.call(['./test-lasercake'])
 		if test_status != 0:
 			exit(test_status)
