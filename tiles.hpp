@@ -30,6 +30,7 @@
 
 #include "utils.hpp"
 #include "world_constants.hpp"
+#include "data_structures/misc_structures.hpp"
 
 using std::pair;
 using std::make_pair;

@@ -67,4 +67,45 @@ private:
 };
 
 
+template<typename Stuff> struct literally_random_access_removable_stuff {
+public:
+  void insert(Stuff const& stuff) {
+    if ((stuffs_set.insert(stuff)).second) {
+      stuffs_superset_vector.push_back(stuff);
+    }
+  }
+  bool erase(Stuff const& which) {
+    if (stuffs_set.erase(which)) {
+      if (stuffs_set.size() * 2 <= stuffs_superset_vector.size()) {
+        purge_nonexistent_stuffs();
+      }
+      return true;
+    }
+    return false;
+  }
+  template<typename RNG>
+  Stuff const& get_random(RNG& rng)const {
+    caller_error_if(stuffs_set.empty(), "Trying to get a random element of an empty literally_random_access_removable_stuff");
+    size_t idx;
+    const boost::random::uniform_int_distribution<size_t> random_item_idx(0, stuffs_superset_vector.size()-1);
+    do {
+      idx = random_item_idx(rng);
+    } while (stuffs_set.find(stuffs_superset_vector[idx]) == stuffs_set.end());
+    return stuffs_superset_vector[idx];
+  }
+  bool empty()const { return stuffs_set.empty(); }
+  std::unordered_set<Stuff> const& as_unordered_set()const { return stuffs_set; }
+private:
+  std::vector<Stuff> stuffs_superset_vector;
+  std::unordered_set<Stuff> stuffs_set;
+  void purge_nonexistent_stuffs() {
+    size_t next_insert_idx = 0;
+    for (Stuff const& st : stuffs_set) {
+      stuffs_superset_vector[next_insert_idx] = st;
+      ++next_insert_idx;
+    }
+    stuffs_superset_vector.erase(stuffs_superset_vector.begin() + next_insert_idx, stuffs_superset_vector.end());
+  }
+};
+
 #endif
