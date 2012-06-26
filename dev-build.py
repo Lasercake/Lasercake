@@ -16,23 +16,24 @@ ansi_cyan = '\033[36m'
 ansi_white = '\033[37m'
 ansi_end = '\033[0m'
 
+def say(string):
+	sys.stdout.write(string)
+	sys.stdout.flush()
+
 def main():
 	try: subprocess.call(['cmake', '--version'])
 	except OSError:
-		sys.stdout.write(ansi_red+"Error: 'cmake' not found; please install it."+ansi_end+'\n')
-		sys.stdout.flush()
+		say(ansi_red+"Error: 'cmake' not found; please install it."+ansi_end+'\n')
 		exit(1)
 	try: subprocess.call(['make', '--version'])
 	except OSError:
-		sys.stdout.write(ansi_red+"Error: 'make' not found; please install it."+ansi_end+'\n')
-		sys.stdout.flush()
+		say(ansi_red+"Error: 'make' not found; please install it."+ansi_end+'\n')
 		exit(1)
 	try:
 		status = subprocess.call(['time', '-f', '', 'true'])
 		time_has_f = (status == 0)
 	except OSError:
-		sys.stdout.write(ansi_red+"Error: GNU-compatible 'time' not found; please install it."+ansi_end+'\n')
-		sys.stdout.flush()
+		say(ansi_red+"Error: GNU-compatible 'time' not found; please install it."+ansi_end+'\n')
 		exit(1)
 	name_for_this_config = ','.join([re.sub(r'[^-+.a-zA-Z0-9]', r'_', arg) for arg in sys.argv[1:]]) or 'default'
 	build_dir = 'build/'+name_for_this_config
@@ -44,10 +45,9 @@ def main():
 		m_cxx = re.search(r'^(?:CC|CXX)=(.*)$', arg)
 		m_cxxflags = re.search(r'^(?:C|CXX)FLAGS=(.*)$', arg)
 		if arg in ['-?', '-h', '--help', '-help']:
-			sys.stdout.write(
+			say(
 				"""Usage:\n./dev-build.py\n\t[CXX=g++-4.6|clang++|..]\n\t[CXXFLAGS='-Os -w']\n\t[args for cmake]\n\nCompiles in a build dir that depends on the flags you give,\nthen runs tests.\n"""
-				)
-			sys.stdout.flush()
+			   )
 			sys.exit()
 		elif arg == 'test':
 			make_args.append('test-lasercake')
@@ -73,32 +73,27 @@ def main():
 		time_args = ['time']
 	make_status = subprocess.call(time_args + ['make'] + make_flags + make_args)
 	if not time_has_f:
-		sys.stdout.write(ansi_magenta+'  (time to run `make`).'+ansi_end+'\n')
-		sys.stdout.flush()
+		say(ansi_magenta+'  (time to run `make`).'+ansi_end+'\n')
 	# How to print the compiler & flags here? Can we get it from cmake
 	# somehow? Add to the cmakelists to write those?
 	# but with the -l's and all... hmm.
 	if make_status != 0:
 		subprocess.call(['make'] + make_args) #to get just one file's error messages not mixed up with the others
-		sys.stdout.write(ansi_red+'build failed'+ansi_end+'\n')
-		sys.stdout.flush()
+		say(ansi_red+'build failed'+ansi_end+'\n')
 		exit(1)
 	if making_lasercake:
-		sys.stdout.write(ansi_green+'and you got:\n./'+build_dir+'/lasercake\n(etc.)'+ansi_end+'\n')
-		sys.stdout.flush()
+		say(ansi_green+'and you got:\n./'+build_dir+'/lasercake\n(etc.)'+ansi_end+'\n')
 	if running_tests:
-		sys.stdout.write(ansi_cyan+'Testing...'+ansi_end+'\n')
-		sys.stdout.flush()
+		say(ansi_cyan+'Testing...'+ansi_end+'\n')
 		test_status = subprocess.call(['./test-lasercake'])
 		if test_status != 0:
 			exit(test_status)
-		sys.stdout.write(ansi_green+'success')
+		say(ansi_green+'success')
 	else:
-		sys.stdout.write(ansi_yellow+'NOT RUNNING TESTS')
+		say(ansi_yellow+'NOT RUNNING TESTS')
 	if making_lasercake:
-		sys.stdout.write('; copying '+build_dir+'/lasercake to ./lasercake')
-	sys.stdout.write(ansi_end+'\n')
-	sys.stdout.flush()
+		say('; copying '+build_dir+'/lasercake to ./lasercake')
+	say(ansi_end+'\n')
 	if making_lasercake:
 		#TODO does this work if Windows .exe extension?
 		#(or any of the rest of this script for that matter.)
