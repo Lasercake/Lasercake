@@ -85,7 +85,6 @@ inline int32_t count_trailing_zeroes_64(uint64_t argument) {
 #if defined(DETECTED_builtin_ctz64)
   return DETECTED_builtin_ctz64(argument);
 #else
-  if(argument == 0) return 64;
   int32_t shift
          = argument &  ((1ULL << 32) - 1)           ? 0 : 32;
   shift += argument & (((1ULL << 16) - 1) << shift) ? 0 : 16;
