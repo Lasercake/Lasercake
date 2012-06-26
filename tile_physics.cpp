@@ -383,11 +383,9 @@ void check_group_surface_tiles_cache_and_layer_size_caches(state_t& state, persi
       inf.try_collect_loc(adj_loc);
       
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
-        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
-        for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
-          if (cardinal_directions_are_perpendicular(dir, d2)) {
-            inf.try_collect_loc(adj_neighbors[d2]);
-          }
+        const auto adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
+        for (tile_location adj_neighbor : adj_neighbors) {
+          inf.try_collect_loc(adj_neighbor);
         }
       }
     }
@@ -529,11 +527,9 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
       inf.try_collect_loc(adj_loc);
       
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
-        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
-        for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
-          if (cardinal_directions_are_perpendicular(dir, d2)) {
-            inf.try_collect_loc(adj_neighbors[d2]);
-          }
+        const auto adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, CONTENTS_AND_LOCAL_CACHES_ONLY);
+        for (tile_location adj_neighbor : adj_neighbors) {
+          inf.try_collect_loc(adj_neighbor);
         }
       }
     }
@@ -1304,12 +1300,9 @@ void replace_substance_impl(
             if (destroy_this_frontier) goto fake_continue;
             
             if (adj_loc.stuff_at().contents() == GROUPABLE_WATER && adj_loc.stuff_at().is_interior()) {
-              std::array<tile_location, num_cardinal_directions> adj_neighbors = get_perpendicular_neighbors(adj_loc, dir, FULL_REALIZATION);
-              for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
-                if (cardinal_directions_are_perpendicular(dir, d2)) {
-                  destroy_this_frontier = inf.try_collect_loc(which_neighbor, adj_neighbors[d2]);
-                  if (destroy_this_frontier) goto fake_continue;
-                }
+              for (tile_location adj_neighbor : get_perpendicular_neighbors(adj_loc, dir, FULL_REALIZATION)) {
+                destroy_this_frontier = inf.try_collect_loc(which_neighbor, adj_neighbor);
+                if (destroy_this_frontier) goto fake_continue;
               }
             }
           }
@@ -1455,10 +1448,12 @@ void update_fluids_impl(state_t& state) {
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       tile_location const& dst_loc = neighbors[dir];
       if (dst_loc.stuff_at().contents() == AIR) {
-        std::array<tile_location, num_cardinal_directions> neighbor_neighbors = get_perpendicular_neighbors(dst_loc, dir, CONTENTS_ONLY);
+        const std::array<tile_location, num_cardinal_directions> neighbor_neighbors =
+              get_perpendicular_neighbors_numbered_as_neighbors(dst_loc, dir, CONTENTS_ONLY);
         for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
-          if (cardinal_directions_are_perpendicular(dir, d2)) {
-            tile_location const& diag_loc = neighbor_neighbors[d2];
+          const tile_location neighbor_neighbor = neighbor_neighbors[d2];
+          if (neighbor_neighbor.is_location()) {
+            tile_location const& diag_loc = neighbor_neighbor;
             if (fluid.blockage_amount_this_frame[d2] > 0 && obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness(neighbors[d2].stuff_at().contents())) {
               new_progress[dir] += fluid.blockage_amount_this_frame[d2];
             }

@@ -197,6 +197,11 @@ public:
   bool operator<(tile_location const& other)const { return v_ < other.v_; }
   inline tile const& stuff_at()const;
   vector3<tile_coordinate> const& coords()const { return v_; }
+
+  // null locations are occasionally permissible
+  bool is_location()const { return wb_; }
+  friend tile_location trivial_invalid_location();
+
   friend inline std::ostream& operator<<(std::ostream& os, tile_location const& l) {
     return os << l.v_;
   }
@@ -207,9 +212,6 @@ private:
 
   // tile_physics.cpp is the only code permitted to modify tile contents
   friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
-
-  // null locations are occasionally permissible
-  friend tile_location trivial_invalid_location();
 
   // worldblock creates tile_locations explicitly, and obviously knows
   // what worldblock they're in.
@@ -244,7 +246,19 @@ inline std::array<tile_location, num_cardinal_directions> get_all_neighbors(tile
   }});
 }
 
-inline std::array<tile_location, num_cardinal_directions> get_perpendicular_neighbors(tile_location const& loc, cardinal_direction dir, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
+inline std::array<tile_location, num_cardinal_directions-2> get_perpendicular_neighbors(tile_location const& loc, cardinal_direction dir, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
+  std::array<tile_location, num_cardinal_directions-2> result = {{trivial_invalid_location(),trivial_invalid_location(),trivial_invalid_location(),trivial_invalid_location()}};
+  size_t i = 0;
+  if (cardinal_directions_are_perpendicular(dir, 0)) { result[i++] = loc.get_neighbor<0>(realineeded); }
+  if (cardinal_directions_are_perpendicular(dir, 1)) { result[i++] = loc.get_neighbor<1>(realineeded); }
+  if (cardinal_directions_are_perpendicular(dir, 2)) { result[i++] = loc.get_neighbor<2>(realineeded); }
+  if (cardinal_directions_are_perpendicular(dir, 3)) { result[i++] = loc.get_neighbor<3>(realineeded); }
+  if (cardinal_directions_are_perpendicular(dir, 4)) { result[i++] = loc.get_neighbor<4>(realineeded); }
+  if (cardinal_directions_are_perpendicular(dir, 5)) { result[i++] = loc.get_neighbor<5>(realineeded); }
+  assert(i == 4);
+  return result;
+}
+inline std::array<tile_location, num_cardinal_directions> get_perpendicular_neighbors_numbered_as_neighbors(tile_location const& loc, cardinal_direction dir, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
   return std::array<tile_location, num_cardinal_directions>({{
     cardinal_directions_are_perpendicular(dir, 0) ? loc.get_neighbor<0>(realineeded) : trivial_invalid_location(),
     cardinal_directions_are_perpendicular(dir, 1) ? loc.get_neighbor<1>(realineeded) : trivial_invalid_location(),
