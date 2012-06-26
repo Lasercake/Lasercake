@@ -293,13 +293,17 @@ private:
 };
 
 
+inline tile_coordinate get_containing_tile_coordinate(fine_scalar c, which_dimension_type which_coordinate) {
+  if (which_coordinate == Z) return tile_coordinate(c / tile_height);
+  else                       return tile_coordinate(c / tile_width);
+}
 // conversions between tile_coordinate and fine_scalar:
 
 inline vector3<tile_coordinate> get_containing_tile_coordinates(vector3<fine_scalar> v) {
   return vector3<tile_coordinate>(
-    tile_coordinate(v.x / tile_width),
-    tile_coordinate(v.y / tile_width),
-    tile_coordinate(v.z / tile_height)
+    get_containing_tile_coordinate(v[0], 0),
+    get_containing_tile_coordinate(v[1], 1),
+    get_containing_tile_coordinate(v[2], 2)
   );
 }
 inline fine_scalar lower_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
