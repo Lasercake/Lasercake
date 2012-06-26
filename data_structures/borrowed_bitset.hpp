@@ -188,7 +188,10 @@ inline void return_bitset(zeroable_bitset_node* node) BOOST_NOEXCEPT {
 class borrowed_bitset : boost::noncopyable {
 public:
   explicit borrowed_bitset(bit_index_type num_bits_desired) : bs_(borrow_bitset(num_bits_desired)) {}
-  bool test(bit_index_type which)const { return bs_->here.bits.test(which); }
+  bool test(bit_index_type which)const {
+    caller_correct_if(which < size(), "borrowed_bitset bounds overflow");
+    return bs_->here.bits.test(which);
+  }
   bool set(bit_index_type which) {
     bool was_already_set = test(which);
     if(!was_already_set && tracking_bits_individually_()) {
@@ -197,7 +200,12 @@ public:
     bs_->here.bits.set(which);
     return was_already_set;
   }
-  bit_index_type size()const { return bs_->here.num_bits; }
+  bit_index_type size()const {
+    // Implementation detail: this number might be greater than the number
+    // requested by the constructor.  We could store the requested number,
+    // but is it important to?
+    return bs_->here.num_bits;
+  }
   ~borrowed_bitset() {
     if(tracking_bits_individually_()) {
       for(bit_index_type which : bs_->here.bits_to_clear) {
