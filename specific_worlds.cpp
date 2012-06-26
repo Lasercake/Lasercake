@@ -163,6 +163,18 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         (l.z == wcc) ? ROCK : AIR;
     });
   }
+  if (scenario == "ceiling") {
+    return worldgen_from_tilespec([](coords l) {
+      return
+        (l.z > wcc + 100) ? ROCK : AIR;
+    });
+  }
+  if (scenario == "low_ceiling") {
+    return worldgen_from_tilespec([](coords l) {
+      return
+        (l.z > wcc) ? ROCK : AIR;
+    });
+  }
   if (scenario == "simple_hills") {
     return worldgen_from_tilespec(with_state<simple_hills>());
   }
