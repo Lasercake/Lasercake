@@ -37,6 +37,16 @@ vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vec
   return cast_vector3_to_float(input - view_center) / get_primitive_double(tile_width);
 }
 
+vector3<GLfloat> convert_tile_coordinates_to_GL(vector3<double> view_center_double, vector3<tile_coordinate> input) {
+  // (Floats don't have enough precision to represent tile_coordinates exactly,
+  // which before subtraction they must do. Doubles do.)
+  const vector3<double> input_as_tile_width_scale_double(
+    get_primitive_double(input.x),
+    get_primitive_double(input.y),
+    get_primitive_double(input.z) * (get_primitive_double(tile_height) / get_primitive_double(tile_width)));
+  vector3<GLfloat> result(input_as_tile_width_scale_double - view_center_double);
+  return result;
+}
 
 
 void push_vertex(gl_call_data& data, vertex const& v, color const& c) {
@@ -191,7 +201,7 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
   }
 }
 
-void render_tile(gl_collection& coll, tile_location const& loc, vector3<fine_scalar> const& view_loc) {
+void render_tile(gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
   vector3<tile_coordinate> const& coords = loc.coords();
   tile const& t = loc.stuff_at();
   
@@ -207,10 +217,7 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<fine_sca
   // and the other the farthest, then we can draw the faces in a correct order
   // efficiently.  (Previously this code just used the lower bound for one corner
   // and the upper bound for the other corner.)
-  const std::array<vector3<fine_scalar>, 2> fine = {{
-    lower_bound_in_fine_units(coords),
-    upper_bound_in_fine_units(coords)
-  }};
+  //
   // It doesn't matter what part of the tile we compare against -- if the
   // viewer is aligned with the tile in a dimension, then which close corner
   // is picked won't change the order of any faces that are actually going to
@@ -218,15 +225,15 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<fine_sca
   // Actually, TODO, if you're aligned in one or two of the dimensions,
   // how will this make the closest tile to you be drawn first and the farthest
   // drawn last?  This code can't do that currently. Hmm.
-  const int x_close_idx = (view_loc.x < fine[0].x) ? 0 : 1;
-  const int y_close_idx = (view_loc.y < fine[0].y) ? 0 : 1;
-  const int z_close_idx = (view_loc.z < fine[0].z) ? 0 : 1;
+  const int x_close_side = (view_tile_loc_rounded_down.x < coords.x) ? 0 : 1;
+  const int y_close_side = (view_tile_loc_rounded_down.y < coords.y) ? 0 : 1;
+  const int z_close_side = (view_tile_loc_rounded_down.z < coords.z) ? 0 : 1;
 
   const std::array<vector3<GLfloat>, 2> glb = {{
-    convert_coordinates_to_GL(view_loc, vector3<fine_scalar>(
-        fine[x_close_idx].x, fine[y_close_idx].y, fine[z_close_idx].z)),
-    convert_coordinates_to_GL(view_loc, vector3<fine_scalar>(
-        fine[!x_close_idx].x, fine[!y_close_idx].y, fine[!z_close_idx].z))
+    convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
+        coords.x+x_close_side, coords.y+y_close_side, coords.z+z_close_side)),
+    convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
+        coords.x+!x_close_side, coords.y+!y_close_side, coords.z+!z_close_side))
   }};
 
   // Draw the farther faces first so that the closer faces will be drawn
@@ -235,7 +242,7 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<fine_sca
   // 1,1,1 as a vertex.
 
   // Only output the faces that are not interior to a single kind of material.
-  if(((z_close_idx == 0) ? loc.get_neighbor<zplus>(CONTENTS_ONLY) : loc.get_neighbor<zminus>(CONTENTS_ONLY))
+  if(((z_close_side == 0) ? loc.get_neighbor<zplus>(CONTENTS_ONLY) : loc.get_neighbor<zminus>(CONTENTS_ONLY))
             .stuff_at().contents() != t.contents()){
     push_quad(coll,
               vertex(glb[0].x, glb[0].y, glb[1].z),
@@ -244,7 +251,7 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<fine_sca
               vertex(glb[0].x, glb[1].y, glb[1].z),
               tile_color);
   }
-  if(((x_close_idx == 0) ? loc.get_neighbor<xplus>(CONTENTS_ONLY) : loc.get_neighbor<xminus>(CONTENTS_ONLY))
+  if(((x_close_side == 0) ? loc.get_neighbor<xplus>(CONTENTS_ONLY) : loc.get_neighbor<xminus>(CONTENTS_ONLY))
             .stuff_at().contents() != t.contents()){
     push_quad(coll,
               vertex(glb[1].x, glb[0].y, glb[0].z),
@@ -253,7 +260,7 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<fine_sca
               vertex(glb[1].x, glb[0].y, glb[1].z),
               tile_color);
   }
-  if(((y_close_idx == 0) ? loc.get_neighbor<yplus>(CONTENTS_ONLY) : loc.get_neighbor<yminus>(CONTENTS_ONLY))
+  if(((y_close_side == 0) ? loc.get_neighbor<yplus>(CONTENTS_ONLY) : loc.get_neighbor<yminus>(CONTENTS_ONLY))
             .stuff_at().contents() != t.contents()){
     push_quad(coll,
               vertex(glb[0].x, glb[1].y, glb[0].z),
@@ -262,7 +269,7 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<fine_sca
               vertex(glb[1].x, glb[1].y, glb[0].z),
               tile_color);
   }
-  if(((z_close_idx == 0) ? loc.get_neighbor<zminus>(CONTENTS_ONLY) : loc.get_neighbor<zplus>(CONTENTS_ONLY))
+  if(((z_close_side == 0) ? loc.get_neighbor<zminus>(CONTENTS_ONLY) : loc.get_neighbor<zplus>(CONTENTS_ONLY))
             .stuff_at().contents() != t.contents()) {
     push_quad(coll,
               vertex(glb[0].x, glb[0].y, glb[0].z),
@@ -271,7 +278,7 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<fine_sca
               vertex(glb[0].x, glb[1].y, glb[0].z),
               tile_color);
   }
-  if(((x_close_idx == 0) ? loc.get_neighbor<xminus>(CONTENTS_ONLY) : loc.get_neighbor<xplus>(CONTENTS_ONLY))
+  if(((x_close_side == 0) ? loc.get_neighbor<xminus>(CONTENTS_ONLY) : loc.get_neighbor<xplus>(CONTENTS_ONLY))
             .stuff_at().contents() != t.contents()){
     push_quad(coll,
               vertex(glb[0].x, glb[0].y, glb[0].z),
@@ -280,7 +287,7 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<fine_sca
               vertex(glb[0].x, glb[0].y, glb[1].z),
               tile_color);
   }
-  if(((y_close_idx == 0) ? loc.get_neighbor<yminus>(CONTENTS_ONLY) : loc.get_neighbor<yplus>(CONTENTS_ONLY))
+  if(((y_close_side == 0) ? loc.get_neighbor<yminus>(CONTENTS_ONLY) : loc.get_neighbor<yplus>(CONTENTS_ONLY))
             .stuff_at().contents() != t.contents()){
     push_quad(coll,
               vertex(glb[0].x, glb[0].y, glb[0].z),
@@ -329,6 +336,9 @@ void view_on_the_world::render(
       );
     }
 
+    const vector3<double> view_loc_double(vector3<double>(view_loc) / tile_width);
+    const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
+
     vector<object_or_tile_identifier> tiles_to_draw;
     /*w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(
       vector3<tile_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50),
@@ -350,7 +360,7 @@ void view_on_the_world::render(
 
       for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
         for(tile_location const& bar : foo.second) {
-          vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
+          vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, bar.coords());
           gl_collection& coll = gl_collections_by_distance[
             get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
           ];
@@ -359,7 +369,7 @@ void view_on_the_world::render(
       }
       for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
         for(tile_location const& bar : foo.second) {
-          vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(bar.coords()));
+          vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, bar.coords());
           gl_collection& coll = gl_collections_by_distance[
             get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
           ];
@@ -467,9 +477,9 @@ void view_on_the_world::render(
         tile_location const& loc = *locp;
         tile const& t = loc.stuff_at();
 
-        render_tile(coll, loc, view_loc);
+        render_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
 
-        vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, lower_bound_in_fine_units(loc.coords()));
+        vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
 
         if (this->drawing_debug_stuff && is_fluid(t.contents())) {
           if (tile_physics_impl::active_fluid_tile_info const* fluid =
