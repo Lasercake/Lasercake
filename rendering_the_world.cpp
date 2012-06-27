@@ -466,9 +466,9 @@ void view_on_the_world::render(
             push_line(coll,
                       vertex(locv.x, locv.y, locv.z),
                       vertex(
-                        locv.x + (get_primitive_double(objp->velocity.x) / get_primitive_double(tile_width)),
-                        locv.y + (get_primitive_double(objp->velocity.y) / get_primitive_double(tile_width)),
-                        locv.z + (get_primitive_double(objp->velocity.z) / get_primitive_double(tile_width))),
+                        locv.x + (get_primitive_double(objp->velocity().x) / get_primitive_double(tile_width)),
+                        locv.y + (get_primitive_double(objp->velocity().y) / get_primitive_double(tile_width)),
+                        locv.z + (get_primitive_double(objp->velocity().z) / get_primitive_double(tile_width))),
                       objects_color);
           }
         }

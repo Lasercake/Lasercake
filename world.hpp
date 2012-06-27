@@ -148,9 +148,10 @@ class mobile_object : virtual public object {
 public:
   //virtual void move_due_to_velocity() = 0;
 
-  mobile_object():velocity(0,0,0){}
-  mobile_object(vector3<fine_scalar> velocity):velocity(velocity){}
-  vector3<fine_scalar> velocity;
+  mobile_object():velocity_(0,0,0){}
+  mobile_object(vector3<fine_scalar> velocity):velocity_(velocity){}
+  vector3<fine_scalar> velocity() const { return velocity_; }
+  vector3<fine_scalar> velocity_;
 };
 
 class tile_aligned_object : virtual public object {

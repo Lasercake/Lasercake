@@ -114,18 +114,18 @@ void robot::update(world& w, object_identifier my_id) {
     fine_scalar target_height = (lower_bound_in_fine_units(get_max_containing_tile_coordinate(shape_bounds.min(Z), Z), Z) + tile_height * 5 / 4);
     fine_scalar deficiency = target_height - shape_bounds.min(Z);
     fine_scalar target_vel = gravity_acceleration_magnitude + deficiency * velocity_scale_factor / 8;
-    if (velocity.z < target_vel) {
-      velocity.z = std::min(velocity.z + gravity_acceleration_magnitude * 5, target_vel);
+    if (velocity_.z < target_vel) {
+      velocity_.z = std::min(velocity_.z + gravity_acceleration_magnitude * 5, target_vel);
     }
   }
     
   input_representation::input_news_t const& input_news = w.input_news();
-  velocity.x -= velocity.x / 2;
-  velocity.y -= velocity.y / 2;
+  velocity_.x -= velocity_.x / 2;
+  velocity_.y -= velocity_.y / 2;
   const fine_scalar xymag = i64sqrt(facing_.x*facing_.x + facing_.y*facing_.y);
   if (input_news.is_currently_pressed("x")) {
-    velocity.x = facing_.x * tile_width * velocity_scale_factor / 8 / xymag;
-    velocity.y = facing_.y * tile_width * velocity_scale_factor / 8 / xymag;
+    velocity_.x = facing_.x * tile_width * velocity_scale_factor / 8 / xymag;
+    velocity_.y = facing_.y * tile_width * velocity_scale_factor / 8 / xymag;
   }
   if (input_news.is_currently_pressed("right")) {
     fine_scalar new_facing_x = facing_.x + facing_.y / 20;

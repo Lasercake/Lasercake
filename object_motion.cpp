@@ -108,16 +108,19 @@ void update_moving_objects_impl(
   
   // Accelerate everything due to gravity.
   for (pair<const object_identifier, shared_ptr<mobile_object>>& p : moving_objects) {
-    p.second->velocity += gravity_acceleration;
+    vector3<fine_scalar> obj_velocity_temp = p.second->velocity();
+    obj_velocity_temp += gravity_acceleration;
     
     // Check any tile it happens to be in for whether there's water there.
     // If the object is *partially* in water, it'll crash into a surface water on its first step, which will make this same adjustment.
     if (is_water(w.make_tile_location(get_arbitrary_containing_tile_coordinates(personal_space_shapes[p.first].arbitrary_interior_point()), CONTENTS_ONLY).stuff_at().contents())) {
-      const fine_scalar current_speed = p.second->velocity.magnitude_within_32_bits();
+      const fine_scalar current_speed = obj_velocity_temp.magnitude_within_32_bits();
       if (current_speed > max_object_speed_through_water) {
-        p.second->velocity = p.second->velocity * max_object_speed_through_water / current_speed;
+        obj_velocity_temp = obj_velocity_temp * max_object_speed_through_water / current_speed;
       }
     }
+    
+    p.second->velocity_ = obj_velocity_temp;
   }
   
   world_collision_detector sweep_box_cd;
@@ -126,7 +129,7 @@ void update_moving_objects_impl(
   for (auto const& p : moving_objects) {
     if (shape const* old_personal_space_shape = find_as_pointer(personal_space_shapes, p.first)) {
       shape dst_personal_space_shape(*old_personal_space_shape);
-      dst_personal_space_shape.translate(p.second->velocity / velocity_scale_factor);
+      dst_personal_space_shape.translate(p.second->velocity() / velocity_scale_factor);
       
       bounding_box sweep_bounds = dst_personal_space_shape.bounds();
       sweep_bounds.combine_with(old_personal_space_shape->bounds());
@@ -204,7 +207,7 @@ void update_moving_objects_impl(
   
   for (object_identifier id : objects_with_some_overlap) {
     shared_ptr<mobile_object> objp = moving_objects[id];
-    trajinfo[id] = object_trajectory_info(objp->velocity / velocity_scale_factor);
+    trajinfo[id] = object_trajectory_info(objp->velocity() / velocity_scale_factor);
     times.queue_next_step(id, trajinfo[id]);
   }
   
@@ -229,9 +232,9 @@ void update_moving_objects_impl(
       if (them != id) {
         tile_location const* locp = them.get_tile_location();
         if (locp && is_water(locp->stuff_at().contents())) {
-          const fine_scalar current_speed = objp->velocity.magnitude_within_32_bits();
+          const fine_scalar current_speed = objp->velocity_.magnitude_within_32_bits();
           if (current_speed > max_object_speed_through_water) {
-            objp->velocity = objp->velocity * max_object_speed_through_water / current_speed;
+            objp->velocity_ = objp->velocity_ * max_object_speed_through_water / current_speed;
             info.remaining_displacement = info.remaining_displacement * max_object_speed_through_water / current_speed;
             this_step_needs_adjusting = true;
             break;
@@ -241,9 +244,9 @@ void update_moving_objects_impl(
           shape their_shape = w.get_personal_space_shape_of_object_or_tile(them);
           if (new_shape.intersects(their_shape) && !personal_space_shapes[id].intersects(their_shape)) {
             this_step_needs_adjusting = true;
-            cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity, new_shape.bounds(), their_shape.bounds());
+            cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity_, new_shape.bounds(), their_shape.bounds());
             
-            objp->velocity -= project_onto_cardinal_direction(objp->velocity, approx_impact_dir);
+            objp->velocity_ -= project_onto_cardinal_direction(objp->velocity_, approx_impact_dir);
             info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, approx_impact_dir);
             break;
           }
@@ -270,7 +273,7 @@ void update_moving_objects_impl(
     times.queue_next_step(id, info);
       
     if (false) { // if our velocity changed...
-        info.remaining_displacement = (objp->velocity * (whole_frame_duration - times.current_time)) / (whole_frame_duration * velocity_scale_factor);
+        info.remaining_displacement = (objp->velocity() * (whole_frame_duration - times.current_time)) / (whole_frame_duration * velocity_scale_factor);
         vector<object_or_tile_identifier> new_sweep_overlaps;
         
         shape dst_personal_space_shape(personal_space_shapes[id]);
@@ -286,7 +289,7 @@ void update_moving_objects_impl(
             if (*bar != id) {
               if (objects_with_some_overlap.find(*bar) == objects_with_some_overlap.end()) {
                 objects_with_some_overlap.insert(*bar);
-                trajinfo[*bar] = object_trajectory_info(moving_objects[*bar]->velocity / velocity_scale_factor);
+                trajinfo[*bar] = object_trajectory_info(moving_objects[*bar]->velocity() / velocity_scale_factor);
                 times.queue_next_step(*bar, trajinfo[*bar]);
               }
             }
@@ -297,8 +300,8 @@ void update_moving_objects_impl(
   
   for (auto& p : moving_objects) {
     if (objects_with_some_overlap.find(p.first) == objects_with_some_overlap.end()) {
-      personal_space_shapes[p.first].translate(p.second->velocity / velocity_scale_factor);
-      detail_shapes[p.first].translate(p.second->velocity / velocity_scale_factor);
+      personal_space_shapes[p.first].translate(p.second->velocity() / velocity_scale_factor);
+      detail_shapes[p.first].translate(p.second->velocity() / velocity_scale_factor);
     }
     else {
       detail_shapes[p.first].translate(trajinfo[p.first].accumulated_displacement);
