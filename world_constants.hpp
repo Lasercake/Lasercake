@@ -38,8 +38,8 @@ const time_unit time_units_per_second = 2*2*2*2 * 3*3*3 * 5*5 * 7 * 11;
 const time_unit fixed_frames_per_second = 30;
 const time_unit time_units_per_fixed_frame = time_units_per_second / fixed_frames_per_second;
 
-const fine_scalar tile_width = (fine_scalar(1) << 10);
-const fine_scalar tile_height = (fine_scalar(1) << 10) / 5 + 1;
+const fine_scalar tile_width = 2000;
+const fine_scalar tile_height = 400;
 const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
 
 // Velocity is currently in units of (fine_unit / velocity_scale_factor) / frame.
