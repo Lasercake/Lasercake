@@ -81,6 +81,15 @@ void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar>
 
 const int robot_max_carrying_capacity = 4;
 
+// Our robot "location" gets out of date relative to the personal_space_shape
+// that the world defines us with (and changes due to velocity),
+// so update it.
+void update_location(vector3<fine_scalar>& location_, world& w, object_identifier id) {
+  const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(id)->second.bounds();
+  const vector3<fine_scalar> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
+  location_ = middle;
+}
+
 } /* end anonymous namespace */
 
 shape robot::get_initial_personal_space_shape()const {
@@ -95,9 +104,10 @@ shape robot::get_initial_detail_shape()const {
 }
 
 void robot::update(world& w, object_identifier my_id) {
+  update_location(location_, w, my_id);
+  
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-  const vector3<fine_scalar> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
-  location_ = middle;
+  const vector3<fine_scalar> middle = location_;
   const vector3<fine_scalar> bottom_middle(middle(X), middle(Y), shape_bounds.min(Z));
   const auto tiles_containing_bottom_middle = get_all_containing_tile_coordinates(bottom_middle);
   bool ground_below = false;
@@ -193,11 +203,10 @@ shape laser_emitter::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
+
 void laser_emitter::update(world& w, object_identifier my_id) {
-  const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-  const vector3<fine_scalar> middle = (shape_bounds.min() + shape_bounds.max()) / 2;
+  update_location(location_, w, my_id);
   
-  location_ = middle;
   const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type> random_delta(-1023, 1023);
   for (int i = 0; i < 100; ++i) {
     do {
