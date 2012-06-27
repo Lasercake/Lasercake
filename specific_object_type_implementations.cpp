@@ -90,24 +90,9 @@ void update_location(vector3<fine_scalar>& location_, world& w, object_identifie
   location_ = middle;
 }
 
-} /* end anonymous namespace */
-
-shape robot::get_initial_personal_space_shape()const {
-  return shape(bounding_box::min_and_max(
-    location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
-    location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
-  ));
-}
-
-shape robot::get_initial_detail_shape()const {
-  return get_initial_personal_space_shape();
-}
-
-void robot::update(world& w, object_identifier my_id) {
-  update_location(location_, w, my_id);
-  
-  const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-  const vector3<fine_scalar> middle = location_;
+void float_above_ground(vector3<fine_scalar>& velocity_, world& w, object_identifier id) {
+  const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(id)->second.bounds();
+  const vector3<fine_scalar> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
   const vector3<fine_scalar> bottom_middle(middle(X), middle(Y), shape_bounds.min(Z));
   const auto tiles_containing_bottom_middle = get_all_containing_tile_coordinates(bottom_middle);
   bool ground_below = false;
@@ -128,6 +113,24 @@ void robot::update(world& w, object_identifier my_id) {
       velocity_.z = std::min(velocity_.z + gravity_acceleration_magnitude * 5, target_vel);
     }
   }
+}
+
+} /* end anonymous namespace */
+
+shape robot::get_initial_personal_space_shape()const {
+  return shape(bounding_box::min_and_max(
+    location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
+    location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
+  ));
+}
+
+shape robot::get_initial_detail_shape()const {
+  return get_initial_personal_space_shape();
+}
+
+void robot::update(world& w, object_identifier my_id) {
+  update_location(location_, w, my_id);
+  float_above_ground(velocity_, w, my_id);
     
   input_representation::input_news_t const& input_news = w.input_news();
   velocity_.x -= velocity_.x / 2;
