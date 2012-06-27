@@ -114,7 +114,7 @@ lt*(Dy2 - Dy1) = sl1x * ol2x*y2 - sl2x * ol2x*y1
 
 using boost::none;
 
-typedef non_normalized_rational<polygon_int_type> rational;
+typedef polygon_rational_type rational;
 
 bool bounding_box::contains(vector3<polygon_int_type> const& v)const {
   if (!is_anywhere_) return false;

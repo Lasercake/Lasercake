@@ -25,7 +25,7 @@
 
 namespace /* anonymous */ {
 
-typedef non_normalized_rational<polygon_int_type> rational;
+typedef polygon_rational_type rational;
 
 struct beam_first_contact_finder {
   beam_first_contact_finder(world const& w, line_segment beam, object_or_tile_identifier ignore):w_(w),beam_(beam) {ignores_.insert(ignore);}
@@ -67,7 +67,7 @@ void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar>
     const object_or_tile_identifier hit_object = hit->object;
     const rational best_intercept_point = hit->cost;
     // TODO do I have to worry about overflow?
-    w.add_laser_sfx(location, facing * 50 * best_intercept_point.numerator / best_intercept_point.denominator);
+    w.add_laser_sfx(location, multiply_rational_into(facing * 50, best_intercept_point));
     if(tile_location const* locp = hit_object.get_tile_location()) {
       if (locp->stuff_at().contents() == ROCK) {
         w.replace_substance(*locp, ROCK, RUBBLE);
@@ -154,7 +154,7 @@ void robot::update(world& w, object_identifier my_id) {
     beam_first_contact_finder finder(w, line_segment(location_, location_ + beam_delta), my_id);
     if(auto hit = w.get_things_exposed_to_collision().find_least(finder)) {
       // TODO do I have to worry about overflow?
-      w.add_laser_sfx(location_, beam_delta * hit->cost.numerator / hit->cost.denominator);
+      w.add_laser_sfx(location_, multiply_rational_into(beam_delta, hit->cost));
       if(tile_location const* locp = hit->object.get_tile_location()) {
         if (input_news.is_currently_pressed("c") && (carrying_ < robot_max_carrying_capacity) && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
           ++carrying_;

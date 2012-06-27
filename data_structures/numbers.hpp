@@ -182,4 +182,10 @@ template<typename IntType> inline std::ostream& operator<<(std::ostream& os, non
   return os << r.numerator << '/' << r.denominator;
 }
 
+template<typename IntType, typename Num>
+inline auto multiply_rational_into(Num n, non_normalized_rational<IntType> rat)
+-> decltype(n * rat.numerator / rat.denominator) {
+  return n * rat.numerator / rat.denominator;
+}
+
 #endif

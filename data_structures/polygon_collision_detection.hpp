@@ -38,7 +38,8 @@
 
 typedef lasercake_int<int64_t>::type polygon_int_type;
 
-typedef faux_optional<non_normalized_rational<polygon_int_type> > optional_rational;
+typedef non_normalized_rational<polygon_int_type> polygon_rational_type;
+typedef faux_optional<polygon_rational_type> optional_rational;
 
 struct polygon_collision_info_cache {
   polygon_collision_info_cache():is_valid(false){}
