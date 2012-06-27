@@ -31,7 +31,7 @@ public:
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
   
-  virtual void update(world &w, object_identifier my_id);
+  virtual void update(world& w, object_identifier my_id);
   vector3<fine_scalar> get_facing()const { return facing_; }
 private:
   vector3<fine_scalar> location_;
@@ -46,7 +46,7 @@ public:
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
   
-  virtual void update(world &w, object_identifier id);
+  virtual void update(world& w, object_identifier id);
 private:
   vector3<fine_scalar> location_;
   vector3<fine_scalar> facing_;
