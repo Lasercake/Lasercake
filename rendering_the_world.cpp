@@ -29,12 +29,13 @@ using namespace world_rendering;
 
 namespace /* anonymous */ {
 
-vector3<GLfloat> cast_vector3_to_float(vector3<fine_scalar> v) {
-  return vector3<GLfloat>(get_primitive_double(v.x), get_primitive_double(v.y), get_primitive_double(v.z));
+template<typename Float, typename Int>
+vector3<Float> cast_vector3_to_floating(vector3<Int> v) {
+  return vector3<Float>(get_primitive_double(v.x), get_primitive_double(v.y), get_primitive_double(v.z));
 }
 
 vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
-  return cast_vector3_to_float(input - view_center) / get_primitive_double(tile_width);
+  return cast_vector3_to_floating<GLfloat>(input - view_center) / get_primitive_double(tile_width);
 }
 
 vector3<GLfloat> convert_tile_coordinates_to_GL(vector3<double> view_center_double, vector3<tile_coordinate> input) {
@@ -231,9 +232,9 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<double> 
 
   const std::array<vector3<GLfloat>, 2> glb = {{
     convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
-        coords.x+x_close_side, coords.y+y_close_side, coords.z+z_close_side)),
+        coords.x +      x_close_side , coords.y +      y_close_side , coords.z +      z_close_side)),
     convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
-        coords.x+!x_close_side, coords.y+!y_close_side, coords.z+!z_close_side))
+        coords.x + int(!x_close_side), coords.y + int(!y_close_side), coords.z + int(!z_close_side)))
   }};
 
   // Draw the farther faces first so that the closer faces will be drawn
@@ -336,7 +337,7 @@ void view_on_the_world::render(
       );
     }
 
-    const vector3<double> view_loc_double(vector3<double>(view_loc) / tile_width);
+    const vector3<double> view_loc_double(cast_vector3_to_floating<double>(view_loc) / get_primitive_double(tile_width));
     const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
 
     vector<object_or_tile_identifier> tiles_to_draw;
@@ -516,7 +517,7 @@ void view_on_the_world::render(
       }
     }
 
-    gl_data.facing = cast_vector3_to_float(view_towards - view_loc) / get_primitive_double(tile_width);
+    gl_data.facing = cast_vector3_to_floating<GLfloat>(view_towards - view_loc) / get_primitive_double(tile_width);
     gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
 
 }

@@ -153,6 +153,9 @@ public:
   friend inline size_t hash_value(bounds_checked_int i) {
     return std::hash<Int>()(i.get());
   }
+  friend inline bounds_checked_int abs(bounds_checked_int i) {
+    return (i < 0) ? -i : i;
+  }
 private:
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wtype-limits"
