@@ -338,11 +338,12 @@ public:
   //unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape(object_identifier id, shape const& new_shape);
   // Objects can't fail to change their detail shape, but it may cause effects (like blocking a laser beam)
   //void change_detail_shape(object_identifier id, shape const& new_shape);
-  
+
+  typedef std::vector<std::pair<vector3<fine_scalar>, vector3<fine_scalar>>> laser_sfxes_type;
   void add_laser_sfx(vector3<fine_scalar> laser_source, vector3<fine_scalar> laser_delta) {
-    laser_sfxes.push_back(make_pair(laser_source, laser_delta));
+    laser_sfxes_.push_back(make_pair(laser_source, laser_delta));
   }
-  std::vector<std::pair<vector3<fine_scalar>, vector3<fine_scalar>>> laser_sfxes;
+  laser_sfxes_type const& get_laser_sfxes()const { return laser_sfxes_; }
 
   // TODO: Either
   // 1) split this function into a personal_space version and a detail version, or
@@ -383,6 +384,8 @@ private:
   // This currently means all mobile objects,
   // and all non-interior, non-air tiles.
   world_collision_detector things_exposed_to_collision_;
+
+  laser_sfxes_type laser_sfxes_;
   
   // Worldgen functions TODO describe them
   worldgen_function_t worldgen_function_;

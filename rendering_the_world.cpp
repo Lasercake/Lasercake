@@ -341,46 +341,42 @@ void view_on_the_world::render(
     const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
 
     vector<object_or_tile_identifier> tiles_to_draw;
-    /*w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, tile_bounding_box(
-      vector3<tile_coordinate>(world_center_coord + view_x - 50, world_center_coord + view_y - 50, world_center_coord + view_z - 50),
-      vector3<tile_coordinate>(101,101,101)
-    ));*/
-    // this is a bloody stupid hack, TODO do something different
+
     if (this->drawing_regular_stuff) {
-    const fine_scalar view_dist = rendering_config.view_radius;
-    w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box::min_and_max(
-      view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
-      view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
-    ));
+      const fine_scalar view_dist = rendering_config.view_radius;
+      w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box::min_and_max(
+        view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
+        view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
+      ));
     }
 
-    // this is a bloody stupid hack, TODO do something different
     if (this->drawing_debug_stuff) {
-    for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
-      tile_physics_impl::persistent_water_group_info const& g = p.second;
+      // Issue: this doesn't limit to nearby tile state; it iterates everything.
+      for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
+        tile_physics_impl::persistent_water_group_info const& g = p.second;
 
-      for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
-        for(tile_location const& bar : foo.second) {
-          vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, bar.coords());
-          gl_collection& coll = gl_collections_by_distance[
-            get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
-          ];
-          push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
+        for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
+          for(tile_location const& bar : foo.second) {
+            vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, bar.coords());
+            gl_collection& coll = gl_collections_by_distance[
+              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
+            ];
+            push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
+          }
         }
-      }
-      for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
-        for(tile_location const& bar : foo.second) {
-          vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, bar.coords());
-          gl_collection& coll = gl_collections_by_distance[
-            get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
-          ];
-          push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
+        for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
+          for(tile_location const& bar : foo.second) {
+            vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, bar.coords());
+            gl_collection& coll = gl_collections_by_distance[
+              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
+            ];
+            push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
+          }
         }
       }
     }
-    }
 
-    for (auto p : w.laser_sfxes) {
+    for (auto p : w.get_laser_sfxes()) {
       const vector3<GLfloat> locvf1 = convert_coordinates_to_GL(view_loc, p.first);
       const vector3<GLfloat> locvf2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
       const vector3<GLfloat> dlocvf = locvf2 - locvf1;

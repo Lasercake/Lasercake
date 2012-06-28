@@ -29,7 +29,7 @@ world::world(worldgen_function_t f)
 
 void world::update(input_representation::input_news_t const& input_news) {
   input_news_ = input_news;
-  laser_sfxes.clear();
+  laser_sfxes_.clear();
   update_fluids();
   for (auto& obj : autonomously_active_objects_) obj.second->update(*this, obj.first);
   update_moving_objects();
