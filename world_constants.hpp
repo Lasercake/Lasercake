@@ -42,8 +42,8 @@ const fine_scalar tile_width = 2000;
 const fine_scalar tile_height = 400;
 const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
 
-// Velocity is currently in units of (fine_unit / velocity_scale_factor) / frame.
-const fine_scalar velocity_scale_factor = (fine_scalar(1) << 6);
+// Velocity is currently in units of (fine_unit / second).  We might change this.
+const fine_scalar velocity_scale_factor = fixed_frames_per_second;
 
 const sub_tile_distance min_convincing_speed           = velocity_scale_factor * tile_width / 50;
 const sub_tile_distance gravity_acceleration_magnitude = velocity_scale_factor * tile_width / 200;
