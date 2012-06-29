@@ -222,3 +222,54 @@ void laser_emitter::update(world& w, object_identifier my_id) {
   }
 }
 
+
+
+
+shape autorobot::get_initial_personal_space_shape()const {
+  return shape(bounding_box::min_and_max(
+    location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
+    location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
+  ));
+}
+
+shape autorobot::get_initial_detail_shape()const {
+  return get_initial_personal_space_shape();
+}
+
+//hack impl.
+bool once_a_second(world& w, int num = 1, int denom = 1) {
+  return ((w.game_time_elapsed() * num / denom) % time_units_per_second) == 0;
+}
+
+void autorobot::update(world& w, object_identifier my_id) {
+  auto& rng = w.get_rng();
+  update_location(location_, w, my_id);
+  float_above_ground(velocity_, w, my_id);
+  tile_location i_am_in = w.make_tile_location(get_random_containing_tile_coordinates(location_, rng), FULL_REALIZATION);
+  std::array<tile_location, num_cardinal_directions> my_neighbors = get_all_neighbors(i_am_in, FULL_REALIZATION);
+
+  int levitate = 0;
+  int horiz[] = { xplus, xminus, yplus, yminus };
+  for(auto dir : horiz) {
+    levitate += (my_neighbors[dir].stuff_at().contents() != AIR);
+  }
+  velocity_.z += levitate * 1000;
+  //if(my_neighbors[xplus].stuff_at().contents() != AIR) velocity_.x += velocity_scale_factor * 20;
+
+  //velocity_ = velocity_ - (velocity_ * (velocity_.magnitude_within_32_bits() / 1000) / 1000000) 
+
+  if(levitate == 0 && my_neighbors[zminus].stuff_at().contents() != AIR) {
+    if(once_a_second(w, 1, 2)) {
+      const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type> random_vel(-4000, 4000);
+      velocity_.x /= 2;
+      velocity_.y /= 2;
+      velocity_.x += random_vel(rng);
+      velocity_.y += random_vel(rng);
+    }
+  }
+}
+
+
+
+
+

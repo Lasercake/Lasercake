@@ -52,5 +52,20 @@ private:
   vector3<fine_scalar> facing_;
 };
 
+class autorobot : public mobile_object, public autonomous_object {
+public:
+  autorobot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location_(location),facing_(facing){}
+
+  virtual shape get_initial_personal_space_shape()const;
+  virtual shape get_initial_detail_shape()const;
+
+  virtual void update(world &w, object_identifier my_id);
+  vector3<fine_scalar> get_facing()const { return facing_; }
+private:
+  vector3<fine_scalar> location_;
+  vector3<fine_scalar> facing_;
+};
+
+
 #endif
 

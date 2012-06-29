@@ -190,6 +190,9 @@ object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lase
   const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(10LL*tile_width+2, 10LL*tile_width+2, 10LL*tile_width+2);
   const shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
+  const shared_ptr<autorobot> aur (new autorobot(laser_loc - vector3<fine_scalar>(tile_width*4,tile_width*4,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
+  w.try_create_object(aur); // we just assume that this works
+  
   if(crazy_lasers) {
     const shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
     const shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,4,-1)));
