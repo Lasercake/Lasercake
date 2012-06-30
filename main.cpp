@@ -378,14 +378,15 @@ void mainLoop (config_struct config)
 
 #if !LASERCAKE_NO_THREADS
   concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen, config]() {
-#endif
     play_state_shared state = new_play_state(worldgen, config);
     sim_thread_step(*state.world_ptr, *state.view_ptr, nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
-#if !LASERCAKE_NO_THREADS
     while(true) {
       sim_thread_step(*state.world_ptr, *state.view_ptr, &input_news_pipe, true, config.run_drawing_code, &frame_output_pipe, config.view_radius);
     }
   });
+#else
+  play_state_shared state = new_play_state(worldgen, config);
+  sim_thread_step(*state.world_ptr, *state.view_ptr, nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
 #endif
 
   const bool exploit_parallelism = true;
