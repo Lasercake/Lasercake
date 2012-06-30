@@ -306,6 +306,49 @@ struct config_struct {
   int64_t exit_after_frames;
 };
 
+
+void get_input(
+    bool& done,
+    input_representation::key_activity_t& key_activity_since_last_frame,
+    input_representation::keys_currently_pressed_t& keys_currently_pressed) {
+  using namespace input_representation;
+
+  SDL_Event event;
+  while ( SDL_PollEvent (&event) ) {
+    switch (event.type) {
+      case SDL_MOUSEMOTION:
+        break;
+
+      case SDL_MOUSEBUTTONDOWN:
+        break;
+
+      case SDL_KEYDOWN:
+        key_activity_since_last_frame.push_back(
+          key_change_t(SDL_GetKeyName(event.key.keysym.sym), PRESSED));
+        break;
+
+      case SDL_KEYUP:
+        key_activity_since_last_frame.push_back(
+          key_change_t(SDL_GetKeyName(event.key.keysym.sym), RELEASED));
+        break;
+
+      case SDL_QUIT:
+        done = true;
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  Uint8 const* const keystate = SDL_GetKeyState(NULL);
+  for(size_t i = SDLK_FIRST; i <= SDLK_LAST; ++i) {
+    if(keystate[i]) {
+      keys_currently_pressed.insert(SDL_GetKeyName((SDLKey)i));
+    }
+  }
+}
+
 void mainLoop (config_struct config)
 {
   using namespace input_representation;
@@ -376,45 +419,11 @@ void mainLoop (config_struct config)
     key_activity_t key_activity_since_last_frame;
     keys_currently_pressed_t keys_currently_pressed;
     if(config.have_gui) {
-      SDL_Event event;
-      while ( SDL_PollEvent (&event) ) {
-        switch (event.type) {
-          case SDL_MOUSEMOTION:
-            break;
-
-          case SDL_MOUSEBUTTONDOWN:
-            break;
-
-          case SDL_KEYDOWN:
-            key_activity_since_last_frame.push_back(
-              key_change_t(SDL_GetKeyName(event.key.keysym.sym), PRESSED));
-            break;
-
-          case SDL_KEYUP:
-            key_activity_since_last_frame.push_back(
-              key_change_t(SDL_GetKeyName(event.key.keysym.sym), RELEASED));
-            break;
-
-          case SDL_QUIT:
-            done = true;
-            break;
-
-          default:
-            break;
-        }
-      }
-
-      Uint8 const* const keystate = SDL_GetKeyState(NULL);
-      for(size_t i = SDLK_FIRST; i <= SDLK_LAST; ++i) {
-        if(keystate[i]) {
-          keys_currently_pressed.insert(SDL_GetKeyName((SDLKey)i));
-        }
-      }
+      get_input(done, key_activity_since_last_frame, keys_currently_pressed);
     }
-
     input_news_t input_news(keys_currently_pressed, key_activity_since_last_frame);
 
-    for(key_change_t const& c : key_activity_since_last_frame) {
+    for(key_change_t const& c : input_news.key_activity_since_last_frame()) {
       if(c.second == PRESSED) {
         key_type const& k = c.first;
         std::cerr << k << '\n';
