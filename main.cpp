@@ -349,6 +349,20 @@ void get_input(
   }
 }
 
+struct play_state_shared {
+  shared_ptr<world> world_ptr;
+  shared_ptr<view_on_the_world> view_ptr;
+};
+
+play_state_shared new_play_state(worldgen_function_t worldgen, config_struct config) {
+  play_state_shared result;
+  result.world_ptr.reset(new world(worldgen));
+  const object_identifier robot_id = init_test_world_and_return_our_robot(*result.world_ptr, config.crazy_lasers);
+  result.view_ptr.reset(new view_on_the_world(robot_id, world_center_fine_coords));
+  result.view_ptr->drawing_debug_stuff = config.initially_drawing_debug_stuff;
+  return result;
+}
+
 void mainLoop (config_struct config)
 {
   using namespace input_representation;
@@ -365,14 +379,11 @@ void mainLoop (config_struct config)
 #if !LASERCAKE_NO_THREADS
   concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen, config]() {
 #endif
-    world w(worldgen);
-    const object_identifier robot_id = init_test_world_and_return_our_robot(w, config.crazy_lasers);
-    view_on_the_world view(robot_id, world_center_fine_coords);
-    view.drawing_debug_stuff = config.initially_drawing_debug_stuff;
-    sim_thread_step(w, view, nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
+    play_state_shared state = new_play_state(worldgen, config);
+    sim_thread_step(*state.world_ptr, *state.view_ptr, nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
 #if !LASERCAKE_NO_THREADS
     while(true) {
-      sim_thread_step(w, view, &input_news_pipe, true, config.run_drawing_code, &frame_output_pipe, config.view_radius);
+      sim_thread_step(*state.world_ptr, *state.view_ptr, &input_news_pipe, true, config.run_drawing_code, &frame_output_pipe, config.view_radius);
     }
   });
 #endif
@@ -406,7 +417,7 @@ void mainLoop (config_struct config)
     }
 
 #if LASERCAKE_NO_THREADS
-    if(frame != 0) {sim_thread_step(w, view, &input_news_pipe, true, true, &frame_output_pipe, config.view_radius);}
+    if(frame != 0) {sim_thread_step(*state.world_ptr, *state.view_ptr, &input_news_pipe, true, true, &frame_output_pipe, config.view_radius);}
 #endif
     
     // TODO use SDL's TextInput API (and/or switch toolkits)
