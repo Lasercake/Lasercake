@@ -304,6 +304,7 @@ struct config_struct {
   bool run_drawing_code;
   bool initially_drawing_debug_stuff;
   int64_t exit_after_frames;
+  bool use_threads_if_available;
 };
 
 
@@ -376,18 +377,30 @@ void mainLoop (config_struct config)
     exit(4);
   }
 
-#if !LASERCAKE_NO_THREADS
-  concurrent::thread simulation_thread([&input_news_pipe, &frame_output_pipe, worldgen, config]() {
-    play_state_shared state = new_play_state(worldgen, config);
-    sim_thread_step(*state.world_ptr, *state.view_ptr, nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
-    while(true) {
-      sim_thread_step(*state.world_ptr, *state.view_ptr, &input_news_pipe, true, config.run_drawing_code, &frame_output_pipe, config.view_radius);
-    }
-  });
-#else
-  play_state_shared state = new_play_state(worldgen, config);
-  sim_thread_step(*state.world_ptr, *state.view_ptr, nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
-#endif
+  #if !LASERCAKE_NO_THREADS
+  concurrent::thread simulation_thread;
+  #endif
+
+  bool being_single_threaded = false;
+  play_state_shared play_state_if_single_threaded;
+  if(!LASERCAKE_NO_THREADS && config.use_threads_if_available) {
+    #if !LASERCAKE_NO_THREADS
+    simulation_thread = concurrent::thread([&input_news_pipe, &frame_output_pipe, worldgen, config]() {
+      play_state_shared state = new_play_state(worldgen, config);
+      sim_thread_step(*state.world_ptr, *state.view_ptr, nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
+      while(true) {
+        sim_thread_step(*state.world_ptr, *state.view_ptr, &input_news_pipe, true, config.run_drawing_code, &frame_output_pipe, config.view_radius);
+      }
+    }).move();
+    #endif
+  }
+  else {
+    being_single_threaded = true;
+    play_state_if_single_threaded = new_play_state(worldgen, config);
+    sim_thread_step(
+      *play_state_if_single_threaded.world_ptr, *play_state_if_single_threaded.view_ptr,
+      nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
+  }
 
   const bool exploit_parallelism = true;
   if(!exploit_parallelism) {
@@ -417,9 +430,13 @@ void mainLoop (config_struct config)
       break;
     }
 
-#if LASERCAKE_NO_THREADS
-    if(frame != 0) {sim_thread_step(*state.world_ptr, *state.view_ptr, &input_news_pipe, true, true, &frame_output_pipe, config.view_radius);}
-#endif
+    if(being_single_threaded) {
+      if(frame != 0) {
+        sim_thread_step(
+          *play_state_if_single_threaded.world_ptr, *play_state_if_single_threaded.view_ptr,
+          &input_news_pipe, true, true, &frame_output_pipe, config.view_radius);
+      }
+    }
     
     // TODO use SDL's TextInput API (and/or switch toolkits)
     // if that is appropriate for our interface somewhere and/or everywhere.
@@ -532,8 +549,10 @@ void mainLoop (config_struct config)
   }
 
 #if !LASERCAKE_NO_THREADS
-  simulation_thread.interrupt();
-  simulation_thread.join();
+  if(!being_single_threaded) {
+    simulation_thread.interrupt();
+    simulation_thread.join();
+  }
 #endif
 }
 
@@ -627,6 +646,7 @@ int main(int argc, char *argv[])
       ("initially-drawing-debug-stuff,d", po::bool_switch(&config.initially_drawing_debug_stuff), "initially drawing debug stuff")
       ("exit-after-frames,e", po::value<int64_t>(&config.exit_after_frames)->default_value(-1), "debug: exit after n frames (negative: never)")
       ("no-gui,n", po::bool_switch(&config.have_gui), "debug: don't run the GUI")
+      ("no-threads", po::bool_switch(&config.use_threads_if_available), "don't use threads even when supported")
       ("sim-only,s", po::bool_switch(&config.run_drawing_code), "debug: don't draw/render at all")
       ("scenario", po::value<std::string>(&config.scenario), "which scenario to run")
     ;
@@ -638,6 +658,7 @@ int main(int argc, char *argv[])
 
     config.have_gui = !config.have_gui;
     config.run_drawing_code = !config.run_drawing_code;
+    config.use_threads_if_available = !config.use_threads_if_available;
     config.view_radius = fine_scalar(vm["view-radius"].as<uint32_t>()) * tile_width;
     if(!config.run_drawing_code) {
       config.have_gui = false;
