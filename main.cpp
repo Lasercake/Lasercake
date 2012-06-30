@@ -341,7 +341,7 @@ void mainLoop (config_struct config)
 
   frame_output_t last_frame_output;
   last_frame_output.gl_data_ptr.reset(new gl_data_t); //init in case necessary
-  int done = 0;
+  bool done = false;
   int frame = 0;
   bool paused = false;
   int steps_queued_to_do_while_paused = 0;
@@ -396,7 +396,7 @@ void mainLoop (config_struct config)
             break;
 
           case SDL_QUIT:
-            done = 1;
+            done = true;
             break;
 
           default:
@@ -420,7 +420,7 @@ void mainLoop (config_struct config)
         std::cerr << k << '\n';
         if(k == "p") { paused = !paused; steps_queued_to_do_while_paused = 0;}
         if(k == "g") { if(paused) { ++steps_queued_to_do_while_paused; } }
-        if(k == "escape") done = 1;
+        if(k == "escape") done = true;
       }
     }
     
