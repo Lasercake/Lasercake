@@ -398,7 +398,7 @@ void mainLoop (config_struct config)
   microseconds_t monotonic_microseconds_at_beginning_of_ten_frame_block = get_monotonic_microseconds();
   microseconds_t monotonic_microseconds_at_beginning_of_hundred_frame_block = monotonic_microseconds_at_beginning_of_ten_frame_block;
 
-  while ( !done ) {
+  while (true) {
     const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
 
     if(config.exit_after_frames == frame) {
@@ -431,6 +431,9 @@ void mainLoop (config_struct config)
         if(k == "g") { if(paused) { ++steps_queued_to_do_while_paused; } }
         if(k == "escape") done = true;
       }
+    }
+    if(done) {
+      break;
     }
     
     const bool paused_this_time = paused && steps_queued_to_do_while_paused == 0;
