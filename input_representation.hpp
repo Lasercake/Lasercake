@@ -84,6 +84,18 @@ public:
     keys_currently_pressed_(keys_currently_pressed),
     key_activity_since_last_frame_(key_activity_since_last_frame) {}
 
+  static input_news_t merge_immediate_sequence(input_news_t const& directly_prior, input_news_t const& directly_hence) {
+    input_news_t result;
+    result.keys_currently_pressed_ = directly_hence.keys_currently_pressed_;
+    result.key_activity_since_last_frame_.insert(
+        result.key_activity_since_last_frame_.end(),
+        directly_prior.key_activity_since_last_frame_.begin(), directly_prior.key_activity_since_last_frame_.end());
+    result.key_activity_since_last_frame_.insert(
+        result.key_activity_since_last_frame_.end(),
+        directly_hence.key_activity_since_last_frame_.begin(), directly_hence.key_activity_since_last_frame_.end());
+    return result;
+  }
+
   // These are generally useful for continuous actions (e.g. if you're
   // moving forwards while you hold down a key).
   //
