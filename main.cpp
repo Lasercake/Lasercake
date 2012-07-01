@@ -238,6 +238,18 @@ object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lase
   return robot_id;
 }
 
+std::string get_world_ztree_debug_info(world const& w) {
+  std::stringstream world_ztree_debug_info;
+  // hack to print this debug info occasionally
+  if(w.game_time_elapsed() % (time_units_per_second * 5) < (time_units_per_second / 15)) {
+    w.get_things_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
+  }
+  else {
+    // zobj = ztree objects
+    world_ztree_debug_info << w.get_things_exposed_to_collision().size() << " zobj; ";
+  }
+  return world_ztree_debug_info.str();
+}
 typedef world_rendering::gl_all_data gl_data_t;
 
 //is a pointer to avoid copying around all that data
@@ -276,21 +288,11 @@ void sim_thread_step(
   const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
   const microseconds_t microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
 
-  std::stringstream world_ztree_debug_info;
-  // hack to print this debug info occasionally
-  if(w.game_time_elapsed() % (time_units_per_second * 5) < (time_units_per_second / 15)) {
-    w.get_things_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
-  }
-  else {
-    // zobj = ztree objects
-    world_ztree_debug_info << w.get_things_exposed_to_collision().size() << " zobj; ";
-  }
-
   const frame_output_t output = {
     gl_data_ptr,
     microseconds_for_drawing,
     microseconds_for_simulation,
-    world_ztree_debug_info.str()
+    get_world_ztree_debug_info(w)
   };
 
   if(put_output) {put_output->put(output);}
