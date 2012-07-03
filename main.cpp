@@ -147,6 +147,7 @@ void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
   //glEnable(GL_DEPTH_TEST);
   glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
   glLoadIdentity();
+  // TODO convert these to plain GL calls and find out how to make a non-stretched non-square viewport.
   gluPerspective(80, 1, 0.1, 300);
   gluLookAt(0, 0, 0,
             gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
@@ -306,7 +307,8 @@ struct config_struct {
   bool run_drawing_code;
   bool initially_drawing_debug_stuff;
   int64_t exit_after_frames;
-  bool use_threads_if_available;
+  bool use_opengl_thread;
+  bool use_simulation_thread;
 };
 
 
@@ -385,7 +387,7 @@ void mainLoop (config_struct config)
 
   bool being_single_threaded = false;
   play_state_shared play_state_if_single_threaded;
-  if(!LASERCAKE_NO_THREADS && config.use_threads_if_available) {
+  if(!LASERCAKE_NO_THREADS && config.use_simulation_thread) {
     #if !LASERCAKE_NO_THREADS
     simulation_thread = concurrent::thread([&input_news_pipe, &frame_output_pipe, worldgen, config]() {
       play_state_shared state = new_play_state(worldgen, config);
@@ -412,9 +414,9 @@ void mainLoop (config_struct config)
   frame_output_t last_frame_output;
   last_frame_output.gl_data_ptr.reset(new gl_data_t); //init in case necessary
   bool done = false;
-  int frame = 0;
+  int64_t frame = 0;
   bool paused = false;
-  int steps_queued_to_do_while_paused = 0;
+  int64_t steps_queued_to_do_while_paused = 0;
 
   microseconds_t microseconds_for_GL = 0;
   microseconds_t monotonic_microseconds_for_GL = 0;
@@ -618,6 +620,15 @@ SDL_Surface* create_SDL_GL_surface(bool fullscreen)
   return result;
 }
 
+// Boost doesn't appear to provide a reverse-sense bool switch, so:
+boost::program_options::typed_value<bool>* bool_switch_off(bool* v = nullptr) {
+  using boost::program_options::typed_value;
+  typed_value<bool>* result = new typed_value<bool>(v);
+  result->default_value(true);
+  result->implicit_value(false);
+  result->zero_tokens();
+  return result;
+}
 
 
 } /* end anonymous namespace */
@@ -646,11 +657,13 @@ int main(int argc, char *argv[])
       ("view-radius,v", po::value<uint32_t>()->default_value(50), "view radius, in tile_widths") //TODO - in meters?
       ("crazy-lasers,l", po::bool_switch(&config.crazy_lasers), "start with some lasers firing in lots of random directions")
       ("initially-drawing-debug-stuff,d", po::bool_switch(&config.initially_drawing_debug_stuff), "initially drawing debug stuff")
+      ("scenario", po::value<std::string>(&config.scenario), "which scenario to run (also accepted with --scenario omitted)")
       ("exit-after-frames,e", po::value<int64_t>(&config.exit_after_frames)->default_value(-1), "debug: exit after n frames (negative: never)")
-      ("no-gui,n", po::bool_switch(&config.have_gui), "debug: don't run the GUI")
-      ("no-threads", po::bool_switch(&config.use_threads_if_available), "don't use threads even when supported")
-      ("sim-only,s", po::bool_switch(&config.run_drawing_code), "debug: don't draw/render at all")
-      ("scenario", po::value<std::string>(&config.scenario), "which scenario to run")
+      ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
+      ("no-threads", "debug: don't use threads even when supported")
+      ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
+      ("use-opengl-thread", po::bool_switch(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls [CURRENTLY UNIMPLEMENTED]")
+      ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
     ;
 
     po::variables_map vm;
@@ -658,14 +671,15 @@ int main(int argc, char *argv[])
               options(desc).positional(p).run(), vm);
     po::notify(vm);
 
-    config.have_gui = !config.have_gui;
-    config.run_drawing_code = !config.run_drawing_code;
-    config.use_threads_if_available = !config.use_threads_if_available;
     config.view_radius = fine_scalar(vm["view-radius"].as<uint32_t>()) * tile_width;
     if(!config.run_drawing_code) {
       config.have_gui = false;
     }
 
+    if(vm.count("no-threads")) {
+      config.use_simulation_thread = false;
+      config.use_opengl_thread = false;
+    }
     if(vm.count("help")) {
       std::cout << desc << std::endl;
       exit(0);
