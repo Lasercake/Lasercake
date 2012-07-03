@@ -41,6 +41,8 @@ namespace input_representation {
 // often just a single Unicode character
 typedef std::string key_type;
 
+#if 0
+// these don't happen at present
 namespace special_keys {
 const key_type left_arrow = "←";
 const key_type up_arrow = "↑";
@@ -50,9 +52,15 @@ const key_type down_arrow = "↓";
 // Is this meant for display to the user? storage in persistent save-files?
 // which purposes?  (TODO figure these out if we need them)
 }
+#endif
 
 
 enum pressed_or_released { PRESSED, RELEASED };
+// Use set rather than unordered_set because
+// (1) the total size is usually small, so it generally doesn't matter
+// (2) users control their input very directly, and could intentionally trigger
+//       unordered_set's worse-case O(n) time.
+// (also, (3), if anything enumerates it, it's in a consistent order)
 typedef std::set<key_type> keys_currently_pressed_t;
 typedef std::pair<key_type, pressed_or_released> key_change_t;
 typedef std::vector<key_change_t> key_activity_t;
