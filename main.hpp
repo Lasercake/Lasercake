@@ -22,15 +22,11 @@
 #ifndef LASERCAKE_MAIN_HPP__
 #define LASERCAKE_MAIN_HPP__
 
-#define LASERCAKE_USE_SDL
-
-#ifndef LASERCAKE_USE_SDL
 #include <QtOpenGL/QGLWidget>
 #include <QtCore/QThread>
 #include <QtCore/QMutex>
 #include <QtCore/QWaitCondition>
 #include <QtGui/QKeyEvent>
-#endif
 
 #include <set>
 
@@ -65,8 +61,6 @@ struct config_struct {
   bool use_opengl_thread;
   bool use_simulation_thread;
 };
-
-#ifndef LASERCAKE_USE_SDL
 
 // for use in its own QThread
 class LasercakeSimulator : public QObject {
@@ -191,8 +185,5 @@ private:
   bool paused_;
   int64_t steps_queued_to_do_while_paused_;
 };
-
-#endif
-
 
 #endif

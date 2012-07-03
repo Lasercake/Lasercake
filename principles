@@ -86,6 +86,7 @@ function_name, struct_name, constant_quantity
 IDENTIFIER_CONSTANT (e.g. enum values. Not an amount of something, just a number that represents something)
 TemplateArgument
 typedefed_thing or typedefed_thing_t (the latter if it'd be nice to have variables named "typedefed_thing").
+ClassDerivedFromQt (but our made-up method names are still method_name)
 
 GLOBAL_var_name: but global variables are forbidden.  "Global" means in any
 namespace, or function-static or class-static. "Variable" means it can vary;

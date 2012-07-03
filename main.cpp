@@ -24,14 +24,9 @@
 #include <string.h>
 #include <math.h>
 
-#include "main.hpp" //LASERCAKE_USE_SDL
-#ifdef LASERCAKE_USE_SDL
-#include "SDL.h"
-#else
 #include <QtGui/QApplication>
 #include <QtCore/QMetaEnum>
 #include <QtCore/QLocale>
-#endif
 
 #if defined(__APPLE__) || defined(__MACOSX__)
 #include "OpenGL/gl.h"
@@ -57,15 +52,14 @@
 #include <boost/scope_exit.hpp>
 #include <boost/program_options.hpp>
 
+#include "main.hpp"
+
 #include "world.hpp"
 #include "specific_worlds.hpp"
 #include "specific_object_types.hpp"
 #include "worldgen.hpp" //only so that world_building_gun is a complete type for
   // http://stackoverflow.com/questions/10730682/does-stdfunctions-copy-constructor-require-the-template-types-argument-types
 
-#ifdef LASERCAKE_USE_SDL
-#include "concurrency_utils.hpp"
-#endif
 
 namespace /* anonymous */ {
 
@@ -256,360 +250,6 @@ std::string get_world_ztree_debug_info(world const& w) {
   return world_ztree_debug_info.str();
 }
 
-// big ifdef
-#ifdef LASERCAKE_USE_SDL
-void sim_thread_step(
-          world& w,
-          view_on_the_world& view,
-          concurrent::m_var<input_news_t>* take_input, //nullptr to not take input
-          bool simulate,
-          bool draw,
-          concurrent::m_var<frame_output_t>* put_output, //nullptr to not put output
-          fine_scalar view_radius
-                    ) {
-  input_news_t input_news;
-  if(take_input) {input_news = take_input->take();}
-
-  const microseconds_t microseconds_before_simulating = get_this_thread_microseconds();
-  if(simulate) {w.update(input_news);}
-  const microseconds_t microseconds_after_simulating = get_this_thread_microseconds();
-  const microseconds_t microseconds_for_simulation = microseconds_after_simulating - microseconds_before_simulating;
-
-  const microseconds_t microseconds_before_drawing = get_this_thread_microseconds();
-  if(take_input) {view.input(input_news);}
-  gl_data_ptr_t gl_data_ptr(new gl_data_t());
-  if(draw) {view.render(w, world_rendering_config(view_radius), *gl_data_ptr);}
-  const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
-  const microseconds_t microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
-
-  const frame_output_t output = {
-    gl_data_ptr,
-    microseconds_for_drawing,
-    microseconds_for_simulation,
-    get_world_ztree_debug_info(w)
-  };
-
-  if(put_output) {put_output->put(output);}
-}
-
-
-
-#ifdef LASERCAKE_USE_SDL
-void get_input(
-    bool& done,
-    input_representation::key_activity_t& key_activity_since_last_frame,
-    input_representation::keys_currently_pressed_t& keys_currently_pressed) {
-  using namespace input_representation;
-
-  SDL_Event event;
-  while ( SDL_PollEvent (&event) ) {
-    switch (event.type) {
-      case SDL_MOUSEMOTION:
-        break;
-
-      case SDL_MOUSEBUTTONDOWN:
-        break;
-
-      case SDL_KEYDOWN:
-        key_activity_since_last_frame.push_back(
-          key_change_t(SDL_GetKeyName(event.key.keysym.sym), PRESSED));
-        break;
-
-      case SDL_KEYUP:
-        key_activity_since_last_frame.push_back(
-          key_change_t(SDL_GetKeyName(event.key.keysym.sym), RELEASED));
-        break;
-
-      case SDL_QUIT:
-        done = true;
-        break;
-
-      default:
-        break;
-    }
-  }
-
-  Uint8 const* const keystate = SDL_GetKeyState(NULL);
-  for(size_t i = SDLK_FIRST; i <= SDLK_LAST; ++i) {
-    if(keystate[i]) {
-      keys_currently_pressed.insert(SDL_GetKeyName((SDLKey)i));
-    }
-  }
-}
-#endif
-
-struct play_state_shared {
-  shared_ptr<world> world_ptr;
-  shared_ptr<view_on_the_world> view_ptr;
-};
-
-play_state_shared new_play_state(worldgen_function_t worldgen, config_struct config) {
-  play_state_shared result;
-  result.world_ptr.reset(new world(worldgen));
-  const object_identifier robot_id = init_test_world_and_return_our_robot(*result.world_ptr, config.crazy_lasers);
-  result.view_ptr.reset(new view_on_the_world(robot_id, world_center_fine_coords));
-  result.view_ptr->drawing_debug_stuff = config.initially_drawing_debug_stuff;
-  return result;
-}
-
-void mainLoop (config_struct config)
-{
-  using namespace input_representation;
-  
-  concurrent::m_var<input_news_t> input_news_pipe;
-  concurrent::m_var<frame_output_t> frame_output_pipe;
-  
-  const worldgen_function_t worldgen = make_world_building_func(config.scenario);
-  if(!worldgen) {
-    std::cerr << "Scenario name given that doesn't exist!: \'" << config.scenario << "\'\n";
-    exit(4);
-  }
-
-  #if !LASERCAKE_NO_THREADS
-  concurrent::thread simulation_thread;
-  #endif
-
-  bool being_single_threaded = false;
-  play_state_shared play_state_if_single_threaded;
-  if(!LASERCAKE_NO_THREADS && config.use_simulation_thread) {
-    #if !LASERCAKE_NO_THREADS
-    simulation_thread = concurrent::thread([&input_news_pipe, &frame_output_pipe, worldgen, config]() {
-      play_state_shared state = new_play_state(worldgen, config);
-      sim_thread_step(*state.world_ptr, *state.view_ptr, nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
-      while(true) {
-        sim_thread_step(*state.world_ptr, *state.view_ptr, &input_news_pipe, true, config.run_drawing_code, &frame_output_pipe, config.view_radius);
-      }
-    }).move();
-    #endif
-  }
-  else {
-    being_single_threaded = true;
-    play_state_if_single_threaded = new_play_state(worldgen, config);
-    sim_thread_step(
-      *play_state_if_single_threaded.world_ptr, *play_state_if_single_threaded.view_ptr,
-      nullptr, false, config.run_drawing_code, &frame_output_pipe, config.view_radius);
-  }
-
-  const bool exploit_parallelism = true;
-  if(!exploit_parallelism) {
-    frame_output_pipe.take(); //ignore the result
-  }
-
-  frame_output_t last_frame_output;
-  last_frame_output.gl_data_ptr.reset(new gl_data_t); //init in case necessary
-  bool done = false;
-  int64_t frame = 0;
-  bool paused = false;
-  int64_t steps_queued_to_do_while_paused = 0;
-
-  microseconds_t microseconds_for_GL = 0;
-  microseconds_t monotonic_microseconds_for_GL = 0;
-  microseconds_t monotonic_microseconds_for_frame = 0;
-  microseconds_t microseconds_for_simulation = 0;
-  microseconds_t microseconds_for_drawing = 0;
-
-  microseconds_t monotonic_microseconds_at_beginning_of_ten_frame_block = get_monotonic_microseconds();
-  microseconds_t monotonic_microseconds_at_beginning_of_hundred_frame_block = monotonic_microseconds_at_beginning_of_ten_frame_block;
-
-  while (true) {
-    const microseconds_t begin_frame_monotonic_microseconds = get_monotonic_microseconds();
-
-    if(config.exit_after_frames == frame) {
-      break;
-    }
-
-    if(being_single_threaded) {
-      if(frame != 0) {
-        sim_thread_step(
-          *play_state_if_single_threaded.world_ptr, *play_state_if_single_threaded.view_ptr,
-          &input_news_pipe, true, true, &frame_output_pipe, config.view_radius);
-      }
-    }
-    
-    // TODO use SDL's TextInput API (and/or switch toolkits)
-    // if that is appropriate for our interface somewhere and/or everywhere.
-
-    // TODO I'd like at least arrow keys to have a different name
-    // - to be Unicode arrow characters rather than e.g. "down".
-    
-    /* Check for events */
-    key_activity_t key_activity_since_last_frame;
-    keys_currently_pressed_t keys_currently_pressed;
-    if(config.have_gui) {
-    #ifdef LASERCAKE_USE_SDL
-      get_input(done, key_activity_since_last_frame, keys_currently_pressed);
-    #endif
-    }
-    input_news_t input_news(keys_currently_pressed, key_activity_since_last_frame);
-
-    for(key_change_t const& c : input_news.key_activity_since_last_frame()) {
-      if(c.second == PRESSED) {
-        key_type const& k = c.first;
-        std::cerr << k << '\n';
-        if(k == "p") { paused = !paused; steps_queued_to_do_while_paused = 0;}
-        if(k == "g") { if(paused) { ++steps_queued_to_do_while_paused; } }
-        if(k == "escape") done = true;
-      }
-    }
-    if(done) {
-      break;
-    }
-    
-    const bool paused_this_time = paused && steps_queued_to_do_while_paused == 0;
-    if(steps_queued_to_do_while_paused > 0) {
-      --steps_queued_to_do_while_paused;
-    }
-
-    if(!paused_this_time) {
-      input_news_pipe.put(input_news);
-      last_frame_output = frame_output_pipe.take();
-      if(last_frame_output.gl_data_ptr == nullptr) {
-        last_frame_output.gl_data_ptr.reset(new gl_data_t);
-      }
-    }
-
-    const microseconds_t microseconds_before_GL = get_this_process_microseconds();
-    const microseconds_t monotonic_microseconds_before_GL = get_monotonic_microseconds();
-
-    if(config.have_gui) {
-      output_gl_data_to_OpenGL(*last_frame_output.gl_data_ptr);
-      glFinish();
-#ifdef LASERCAKE_USE_SDL
-      SDL_GL_SwapBuffers();
-#endif
-    }
-
-    const microseconds_t monotonic_microseconds_after_GL = get_monotonic_microseconds();
-    const microseconds_t microseconds_after_GL = get_this_process_microseconds();
-
-    frame += 1;
-
-    microseconds_for_simulation = last_frame_output.microseconds_for_simulation;
-    microseconds_for_drawing = last_frame_output.microseconds_for_drawing;
-    microseconds_for_GL = microseconds_after_GL - microseconds_before_GL;
-    monotonic_microseconds_for_GL = monotonic_microseconds_after_GL - monotonic_microseconds_before_GL;
-    
-    const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
-
-    monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - begin_frame_monotonic_microseconds;
-
-    std::cerr << last_frame_output.extra_debug_info;
-
-#if !LASERCAKE_NO_TIMING
-    std::ostream& timing_output_ostream = std::cerr;
-#else
-    //ignore its contents, but avoid unused-variable warnings thus:
-    ostream_bundle timing_output_ostream;
-#endif
-    
-    timing_output_ostream
-    << "Frame " << std::left << std::setw(4) << frame << std::right << ":"
-    //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
-    // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
-    //<< std::ios::fixed << std::setprecision(4) << fps << " fps; "
-    << std::setw(4) << get_this_process_mem_usage_megabytes() << "MiB; "
-    << std::setw(6) << show_microseconds_per_frame_as_fps(monotonic_microseconds_for_frame) << "fps"
-    << std::setw(6) << show_microseconds(monotonic_microseconds_for_frame) << "ms"
-    << ":"
-    << std::setw(7) << show_microseconds(microseconds_for_simulation) << "sim"
-    << std::setw(6) << show_microseconds(microseconds_for_drawing) << "draw"
-    << ":" << std::setw(6) << show_microseconds(microseconds_for_simulation + microseconds_for_drawing) << "sd"
-    << " -> " << (ostream_bundle()
-                            << ((microseconds_for_GL < monotonic_microseconds_for_GL) ? (show_microseconds(microseconds_for_GL) + "–") : std::string())
-                            << show_microseconds(monotonic_microseconds_for_GL)
-                        )
-    << "gl\n";
-
-    if(frame % 10 == 0) {
-      const microseconds_t beginning = monotonic_microseconds_at_beginning_of_ten_frame_block;
-      monotonic_microseconds_at_beginning_of_ten_frame_block = end_frame_monotonic_microseconds;
-      const microseconds_t ending = monotonic_microseconds_at_beginning_of_ten_frame_block;
-      
-      timing_output_ostream
-      << show_microseconds_per_frame_as_fps((ending - beginning) / 10)
-      << " fps over the last ten frames " << (frame-10) << "–" << frame << ".\n";
-    }
-    if(frame % 100 == 0) {
-      const microseconds_t beginning = monotonic_microseconds_at_beginning_of_hundred_frame_block;
-      monotonic_microseconds_at_beginning_of_hundred_frame_block = end_frame_monotonic_microseconds;
-      const microseconds_t ending = monotonic_microseconds_at_beginning_of_hundred_frame_block;
-      
-      timing_output_ostream
-      << show_microseconds_per_frame_as_fps((ending - beginning) / 100)
-      << " fps over the last hundred frames " << (frame-100) << "–" << frame << ".\n";
-    }
-  }
-
-#if !LASERCAKE_NO_THREADS
-  if(!being_single_threaded) {
-    simulation_thread.interrupt();
-    simulation_thread.join();
-  }
-#endif
-}
-
-
-#ifdef LASERCAKE_USE_SDL
-
-void print_SDL_GL_attributes()
-{
-    // Print out attributes of the context we created
-    int nAttr;
-    int i;
-
-    int  attr[] = { SDL_GL_RED_SIZE, SDL_GL_BLUE_SIZE, SDL_GL_GREEN_SIZE,
-                    SDL_GL_ALPHA_SIZE, SDL_GL_BUFFER_SIZE, SDL_GL_DEPTH_SIZE };
-
-    const char *desc[] = { "Red size: %d bits\n", "Blue size: %d bits\n", "Green size: %d bits\n",
-                     "Alpha size: %d bits\n", "Color buffer size: %d bits\n",
-                     "Depth buffer size: %d bits\n" };
-
-    nAttr = sizeof(attr) / sizeof(int);
-
-    for (i = 0; i < nAttr; i++) {
-
-        int value;
-        SDL_GL_GetAttribute ((SDL_GLattr)attr[i], &value);
-        printf (desc[i], value);
-    }
-}
-
-SDL_Surface* create_SDL_GL_surface(bool fullscreen)
-{
-  SDL_Surface* result;
-
-  // Don't set color bit sizes (SDL_GL_RED_SIZE, etc)
-  //    Mac OS X will always use 8-8-8-8 ARGB for 32-bit screens and
-  //    5-5-5 RGB for 16-bit screens
-  // TODO but is that accurate for the other OSes?
-
-  // Request a 16-bit depth buffer (without this, there is no depth buffer)
-  SDL_GL_SetAttribute (SDL_GL_DEPTH_SIZE, 16);
-
-
-  // Request double-buffered OpenGL
-  //     The fact that windows are double-buffered on Mac OS X has no effect
-  //     on OpenGL double buffering.
-  SDL_GL_SetAttribute (SDL_GL_DOUBLEBUFFER, 1);
-
-  Uint32 sdl_video_mode_flags = SDL_OPENGL;
-  if (fullscreen) {
-    sdl_video_mode_flags |= SDL_FULLSCREEN;
-  }
-
-  // Create window
-  result = SDL_SetVideoMode (640, 640, 0, sdl_video_mode_flags);
-  if (result == NULL) {
-    fprintf (stderr, "Couldn't set 640x640 OpenGL video mode: %s\n", SDL_GetError());
-    SDL_Quit();
-    exit(2);
-  }
-
-  return result;
-}
-
-#endif
-#endif /*big LASERCAKE_USE_SDL*/
 
 // Boost doesn't appear to provide a reverse-sense bool switch, so:
 boost::program_options::typed_value<bool>* bool_switch_off(bool* v = nullptr) {
@@ -651,10 +291,12 @@ int main(int argc, char *argv[])
       ("scenario", po::value<std::string>(&config.scenario), "which scenario to run (also accepted with --scenario omitted)")
       ("exit-after-frames,e", po::value<int64_t>(&config.exit_after_frames)->default_value(-1), "debug: exit after n frames (negative: never)")
       ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
+      ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
+#if !LASERCAKE_NO_THREADS
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
       ("use-opengl-thread", po::bool_switch(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls")
-      ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
+#endif
     ;
 
     po::variables_map vm;
@@ -667,7 +309,7 @@ int main(int argc, char *argv[])
       config.have_gui = false;
     }
 
-    if(vm.count("no-threads")) {
+    if(LASERCAKE_NO_THREADS || vm.count("no-threads")) {
       config.use_simulation_thread = false;
       config.use_opengl_thread = false;
     }
