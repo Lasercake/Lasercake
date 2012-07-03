@@ -323,24 +323,6 @@ int main(int argc, char *argv[])
     }
   }
 
-#ifdef LASERCAKE_USE_SDL
-  if(config.have_gui) {
-    if(SDL_Init (SDL_INIT_VIDEO) < 0) {
-      fprintf(stderr, "Couldn't initialize SDL: %s\n", SDL_GetError());
-      exit(1);
-    }
-    create_SDL_GL_surface(false);
-    print_SDL_GL_attributes();
-
-    mainLoop(config);
-
-    SDL_Quit();
-  }
-  else {
-    mainLoop(config);
-  }
-  return 0;
-#else
   QCoreApplication::setAttribute(Qt::AA_X11InitThreads);
   QApplication qapp(argc, argv);
   if (!QGLFormat::hasOpenGL()) {
@@ -357,10 +339,7 @@ int main(int argc, char *argv[])
   qRegisterMetaType<time_unit>("time_unit");
   LasercakeController controller(config);
   return qapp.exec();
-#endif
 }
-
-#ifndef LASERCAKE_USE_SDL
 
 namespace /*anonymous*/ {
 microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, boost::optional<QSize> new_viewport_size) {
@@ -854,5 +833,4 @@ void LasercakeController::exit(int status) {
 #endif
 }
 
-#endif
 
