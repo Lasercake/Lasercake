@@ -139,51 +139,7 @@ std::string show_microseconds_per_frame_as_fps(microseconds_t monotonic_microsec
 }
 
 
-void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-  //glEnable(GL_DEPTH_TEST);
-  glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
-  glLoadIdentity();
-  // TODO convert these to plain GL calls and find out how to make a non-stretched non-square viewport.
-  gluPerspective(80, 1, 0.1, 300);
-  gluLookAt(0, 0, 0,
-            gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
-            gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);
 
-  glEnableClientState(GL_VERTEX_ARRAY);
-  glEnableClientState(GL_COLOR_ARRAY);
-
-  std::vector<size_t> gl_collections_by_distance_order;
-  for(auto const& p : gl_data.stuff_to_draw_as_gl_collections_by_distance) {
-    gl_collections_by_distance_order.push_back(p.first);
-  }
-  //sort in descending order
-  std::sort(gl_collections_by_distance_order.rbegin(), gl_collections_by_distance_order.rend());
-  for(size_t i : gl_collections_by_distance_order) {
-    world_rendering::gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance.find(i)->second;
-    if(const size_t count = coll.quads.size()) {
-      glVertexPointer(3, GL_FLOAT, 0, &coll.quads.vertices[0]);
-      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.quads.colors[0]);
-      glDrawArrays(GL_QUADS, 0, count);
-    }
-    if(const size_t count = coll.triangles.size()) {
-      glVertexPointer(3, GL_FLOAT, 0, &coll.triangles.vertices[0]);
-      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.triangles.colors[0]);
-      glDrawArrays(GL_TRIANGLES, 0, count);
-    }
-    if(const size_t count = coll.lines.size()) {
-      glVertexPointer(3, GL_FLOAT, 0, &coll.lines.vertices[0]);
-      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.lines.colors[0]);
-      glDrawArrays(GL_LINES, 0, count);
-    }
-    if(const size_t count = coll.points.size()) {
-      glVertexPointer(3, GL_FLOAT, 0, &coll.points.vertices[0]);
-      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.points.colors[0]);
-      glDrawArrays(GL_POINTS, 0, count);
-    }
-  }
-}
 
 object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lasers) {
   const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(10LL*tile_width+2, 10LL*tile_width+2, 10LL*tile_width+2);
@@ -191,7 +147,7 @@ object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lase
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
   const shared_ptr<autorobot> aur (new autorobot(laser_loc - vector3<fine_scalar>(tile_width*4,tile_width*4,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   w.try_create_object(aur); // we just assume that this works
-  
+
   if(crazy_lasers) {
     const shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
     const shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,4,-1)));
@@ -249,7 +205,108 @@ std::string get_world_ztree_debug_info(world const& w) {
   }
   return world_ztree_debug_info.str();
 }
+} /* end anonymous namespace */
 
+
+LasercakeSimulator::LasercakeSimulator(QObject* parent) : QObject(parent) {}
+
+void LasercakeSimulator::init(worldgen_function_t worldgen, config_struct config) {
+  const microseconds_t microseconds_before_initing = get_this_thread_microseconds();
+  world_ptr_.reset(new world(worldgen));
+  const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers);
+  view_ptr_.reset(new view_on_the_world(robot_id, world_center_fine_coords));
+  view_ptr_->drawing_debug_stuff = config.initially_drawing_debug_stuff;
+  const microseconds_t microseconds_after_initing = get_this_thread_microseconds();
+  microseconds_last_sim_frame_took_ = microseconds_after_initing - microseconds_before_initing; //hack?
+}
+//TODO have each keypress have a time_unit as well.
+//It implicitly computes up to the latest frame for which it
+//has input, currently.
+//Possibly-a-bad-idea: we could compute ahead assuming that
+//the same set of keys are going to stay pressed, and backtrack
+//and re-simulate if that doesn't turn out to be the case.
+
+//for now, just assume updates are in the usual time-steps (bogus)
+void LasercakeSimulator::new_input_as_of(time_unit /*moment*/, input_news_t input_news) {
+  //(TODO?) we don't currently respect the given moment to simulate up to
+  const microseconds_t microseconds_before_simulating = get_this_thread_microseconds();
+  world_ptr_->update(input_news);
+  const microseconds_t microseconds_after_simulating = get_this_thread_microseconds();
+  microseconds_last_sim_frame_took_ = microseconds_after_simulating - microseconds_before_simulating;
+
+  Q_EMIT sim_frame_done(world_ptr_->game_time_elapsed());
+}
+
+// TODO think about that input_news argument and the timing of when it's read etc.
+void LasercakeSimulator::prepare_graphics(input_news_t input_since_last_prepare, fine_scalar view_radius, bool actually_prepare_graphics) {
+  const microseconds_t microseconds_before_drawing = get_this_thread_microseconds();
+  gl_data_ptr_t gl_data_ptr(new gl_data_t());
+  if(actually_prepare_graphics) {
+    view_ptr_->input(input_since_last_prepare);
+    view_ptr_->render(*world_ptr_, world_rendering_config(view_radius), *gl_data_ptr);
+  }
+  const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
+  const microseconds_t microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
+
+  const frame_output_t output = {
+    gl_data_ptr,
+    microseconds_for_drawing,
+    microseconds_last_sim_frame_took_,
+    get_world_ztree_debug_info(*world_ptr_)
+  };
+
+  Q_EMIT frame_output_ready(world_ptr_->game_time_elapsed(), output);
+}
+
+
+
+namespace /*anonymous*/ {
+
+void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+  //glEnable(GL_DEPTH_TEST);
+  glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
+  glLoadIdentity();
+  // TODO convert these to plain GL calls and find out how to make a non-stretched non-square viewport.
+  gluPerspective(80, 1, 0.1, 300);
+  gluLookAt(0, 0, 0,
+            gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
+            gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);
+
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glEnableClientState(GL_COLOR_ARRAY);
+
+  std::vector<size_t> gl_collections_by_distance_order;
+  for(auto const& p : gl_data.stuff_to_draw_as_gl_collections_by_distance) {
+    gl_collections_by_distance_order.push_back(p.first);
+  }
+  //sort in descending order
+  std::sort(gl_collections_by_distance_order.rbegin(), gl_collections_by_distance_order.rend());
+  for(size_t i : gl_collections_by_distance_order) {
+    world_rendering::gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance.find(i)->second;
+    if(const size_t count = coll.quads.size()) {
+      glVertexPointer(3, GL_FLOAT, 0, &coll.quads.vertices[0]);
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.quads.colors[0]);
+      glDrawArrays(GL_QUADS, 0, count);
+    }
+    if(const size_t count = coll.triangles.size()) {
+      glVertexPointer(3, GL_FLOAT, 0, &coll.triangles.vertices[0]);
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.triangles.colors[0]);
+      glDrawArrays(GL_TRIANGLES, 0, count);
+    }
+    if(const size_t count = coll.lines.size()) {
+      glVertexPointer(3, GL_FLOAT, 0, &coll.lines.vertices[0]);
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.lines.colors[0]);
+      glDrawArrays(GL_LINES, 0, count);
+    }
+    if(const size_t count = coll.points.size()) {
+      glVertexPointer(3, GL_FLOAT, 0, &coll.points.vertices[0]);
+      glColorPointer(4, GL_UNSIGNED_BYTE, 0, &coll.points.colors[0]);
+      glDrawArrays(GL_POINTS, 0, count);
+    }
+  }
+}
 
 // Boost doesn't appear to provide a reverse-sense bool switch, so:
 boost::program_options::typed_value<bool>* bool_switch_off(bool* v = nullptr) {
@@ -587,55 +644,6 @@ void LasercakeGLWidget::clear_input_news() {
 }
 
 
-LasercakeSimulator::LasercakeSimulator(QObject* parent) : QObject(parent) {}
-
-void LasercakeSimulator::init(worldgen_function_t worldgen, config_struct config) {
-  const microseconds_t microseconds_before_initing = get_this_thread_microseconds();
-  world_ptr_.reset(new world(worldgen));
-  const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers);
-  view_ptr_.reset(new view_on_the_world(robot_id, world_center_fine_coords));
-  view_ptr_->drawing_debug_stuff = config.initially_drawing_debug_stuff;
-  const microseconds_t microseconds_after_initing = get_this_thread_microseconds();
-  microseconds_last_sim_frame_took_ = microseconds_after_initing - microseconds_before_initing; //hack?
-}
-//TODO have each keypress have a time_unit as well.
-//It implicitly computes up to the latest frame for which it
-//has input, currently.
-//Possibly-a-bad-idea: we could compute ahead assuming that
-//the same set of keys are going to stay pressed, and backtrack
-//and re-simulate if that doesn't turn out to be the case.
-
-//for now, just assume updates are in the usual time-steps (bogus)
-void LasercakeSimulator::new_input_as_of(time_unit /*moment*/, input_news_t input_news) {
-  //(TODO?) we don't currently respect the given moment to simulate up to
-  const microseconds_t microseconds_before_simulating = get_this_thread_microseconds();
-  world_ptr_->update(input_news);
-  const microseconds_t microseconds_after_simulating = get_this_thread_microseconds();
-  microseconds_last_sim_frame_took_ = microseconds_after_simulating - microseconds_before_simulating;
-
-  Q_EMIT sim_frame_done(world_ptr_->game_time_elapsed());
-}
-
-// TODO think about that input_news argument and the timing of when it's read etc.
-void LasercakeSimulator::prepare_graphics(input_news_t input_since_last_prepare, fine_scalar view_radius, bool actually_prepare_graphics) {
-  const microseconds_t microseconds_before_drawing = get_this_thread_microseconds();
-  gl_data_ptr_t gl_data_ptr(new gl_data_t());
-  if(actually_prepare_graphics) {
-    view_ptr_->input(input_since_last_prepare);
-    view_ptr_->render(*world_ptr_, world_rendering_config(view_radius), *gl_data_ptr);
-  }
-  const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
-  const microseconds_t microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
-
-  const frame_output_t output = {
-    gl_data_ptr,
-    microseconds_for_drawing,
-    microseconds_last_sim_frame_took_,
-    get_world_ztree_debug_info(*world_ptr_)
-  };
-
-  Q_EMIT frame_output_ready(world_ptr_->game_time_elapsed(), output);
-}
 
 void LasercakeController::key_changed(input_representation::key_change_t key_change) {
   // Handle things that shouldn't wait until the next time (if any)
