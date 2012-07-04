@@ -19,6 +19,8 @@
 
 */
 
+#include "config.hpp"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,7 +44,9 @@
 #include <locale>
 
 #if !LASERCAKE_NO_TIMING
+#ifdef LASERCAKE_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
+#endif
 
 #include <boost/chrono.hpp>
 #include <boost/chrono/process_cpu_clocks.hpp>
@@ -68,7 +72,7 @@ namespace chrono = boost::chrono;
 #endif
 
 int64_t get_this_process_mem_usage_megabytes() {
-#if !LASERCAKE_NO_TIMING
+#if defined(LASERCAKE_HAVE_SYS_RESOURCE_H) && !LASERCAKE_NO_TIMING
   struct rusage ru;
   getrusage(RUSAGE_SELF, &ru);
   #if defined(__APPLE__) || defined(__MACOSX__)

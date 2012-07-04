@@ -102,6 +102,17 @@
     #define DETECTED_int128_t __int128_t
     #define DETECTED_uint128_t __uint128_t
   #endif
+
+  // Don't use LASERCAKE_IT_SEEMS_TO_BE_WINDOWS outside this fake feature
+  // detection section if you can help it! Ask about specific features
+  // instead.
+  #define LASERCAKE_IT_SEEMS_TO_BE_WINDOWS \
+    ((defined(_WIN32) || defined(__WIN32__) || defined(WIN32)) && !defined(__CYGWIN__))
+
+  #if !LASERCAKE_IT_SEEMS_TO_BE_WINDOWS
+    // TODO use GetProcessMemoryInfo or the like on Windows, if we care enough
+    #define LASERCAKE_HAVE_SYS_RESOURCE_H 1
+  #endif
 #endif
 
 #if !LASERCAKE_NO_THREADS
