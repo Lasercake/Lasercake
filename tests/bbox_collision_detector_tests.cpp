@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
   {
     std::vector<obj_t> results1;
     dect.get_objects_overlapping(results1, bb6);
-    BOOST_CHECK_EQUAL(results1.size(), 0);
+    BOOST_CHECK_EQUAL(results1.size(), 0u);
   }
 
   BOOST_CHECK_EQUAL(dect.exists(42), false);
@@ -131,8 +131,8 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
   {
     std::vector<obj_t> results2;
     dect.get_objects_overlapping(results2, bb6);
-    BOOST_CHECK_EQUAL(results2.size(), 1);
-    if(results2.size() >= 1) {
+    BOOST_CHECK_EQUAL(results2.size(), 1u);
+    if(results2.size() >= 1u) {
       BOOST_CHECK_EQUAL(results2[0], 1337);
     }
   }
@@ -144,8 +144,8 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
   {
     std::vector<obj_t> results3;
     dect.get_objects_overlapping(results3, bb6);
-    BOOST_CHECK_EQUAL(results3.size(), 1);
-    if(results3.size() >= 1) {
+    BOOST_CHECK_EQUAL(results3.size(), 1u);
+    if(results3.size() >= 1u) {
       BOOST_CHECK_EQUAL(results3[0], 1337);
     }
   }
@@ -157,8 +157,8 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
   {
     std::vector<obj_t> results4;
     dect.get_objects_overlapping(results4, bb6);
-    BOOST_CHECK_EQUAL(results4.size(), 2);
-    if(results4.size() >= 2) {
+    BOOST_CHECK_EQUAL(results4.size(), 2u);
+    if(results4.size() >= 2u) {
       std::sort(results4.begin(), results4.end());
       BOOST_CHECK_EQUAL(results4[0], 1337);
       BOOST_CHECK_EQUAL(results4[1], 31337);
@@ -177,12 +177,12 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
   BOOST_CHECK_EQUAL(dect.exists(42), true);
   BOOST_CHECK_EQUAL(*dect.find_bounding_box(42), bb5);
 
-  BOOST_CHECK_EQUAL(dect.size(), 3);
+  BOOST_CHECK_EQUAL(dect.size(), 3u);
 
   {
     std::vector<obj_t> results5;
     dect.get_objects_overlapping(results5, bb8);
-    BOOST_CHECK_EQUAL(results5.size(), 0);
+    BOOST_CHECK_EQUAL(results5.size(), 0u);
   }
 
   dect.insert(189, bb9);
@@ -192,13 +192,13 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
   {
     std::vector<obj_t> results6;
     dect.get_objects_overlapping(results6, bb8);
-    BOOST_CHECK_EQUAL(results6.size(), 3);
+    BOOST_CHECK_EQUAL(results6.size(), 3u);
   }
 
   {
     std::vector<obj_t> results7;
     dect.get_objects_overlapping(results7, bb7);
-    BOOST_CHECK_EQUAL(results7.size(), 4);
+    BOOST_CHECK_EQUAL(results7.size(), 4u);
   }
 
   dect.insert(190, bb10);
@@ -206,23 +206,23 @@ BOOST_AUTO_TEST_CASE( bbox_test_bounding_box_then_detector ) {
   {
     std::vector<obj_t> results8;
     dect.get_objects_overlapping(results8, bb10);
-    BOOST_CHECK_EQUAL(results8.size(), 7);
+    BOOST_CHECK_EQUAL(results8.size(), 7u);
   }
 
-  BOOST_CHECK_EQUAL(dect.size(), 7);
+  BOOST_CHECK_EQUAL(dect.size(), 7u);
 
-  BOOST_CHECK_EQUAL(dect.iterate(boring_dist_struct()).begin()->bbox.min(Y), 0);
+  BOOST_CHECK_EQUAL(dect.iterate(boring_dist_struct()).begin()->bbox.min(Y), 0u);
 
   {
     std::vector<obj_t> results9;
     BOOST_CHECK_NO_THROW(dect.filter(results9, boring_dist_struct()));
-    BOOST_CHECK_EQUAL(results9.size(), 7);
+    BOOST_CHECK_EQUAL(results9.size(), 7u);
   }
 
   {
     std::vector<obj_t> results10;
     BOOST_CHECK_NO_THROW(dect.filter(results10, intersects_a_box(bb6)));
-    BOOST_CHECK_EQUAL(results10.size(), 4);
+    BOOST_CHECK_EQUAL(results10.size(), 4u);
   }
 }
 
