@@ -139,9 +139,8 @@ class object {
 public:
   virtual shape get_initial_personal_space_shape()const = 0;
   virtual shape get_initial_detail_shape()const = 0;
-  /*
-private:
-  virtual void this_virtual_function_makes_this_class_virtual_which_we_need_in_order_to_dynamic_cast_it(){};*/
+
+  virtual ~object() {}
 };
 
 class mobile_object : virtual public object {
