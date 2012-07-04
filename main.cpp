@@ -54,7 +54,10 @@
 #endif
 
 #include <boost/scope_exit.hpp>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <boost/program_options.hpp>
+#pragma GCC diagnostic pop
 
 #include "main.hpp"
 

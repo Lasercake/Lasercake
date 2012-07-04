@@ -28,7 +28,11 @@
 #include <unordered_map>
 #include <boost/utility.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <boost/optional.hpp>
+#pragma GCC diagnostic pop
+
 
 // These are too small to all get their own files.
 
