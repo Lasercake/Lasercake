@@ -68,57 +68,50 @@ struct color {
 };
 static_assert(sizeof(color) == 4*sizeof(GLubyte), "OpenGL needs this data layout.");
 
+struct vertex_with_color {
+  color c;
+  vertex v;
+};
+static_assert(sizeof(vertex_with_color) == 16, "OpenGL needs this data layout.");
 
 struct gl_call_data {
   typedef uint32_t size_type;
   size_type count;
   size_type alloced;
-  vertex* vertices;
-  color* colors;
-  //vertex* vertices_end;
-  //color* colors_end;
+  vertex_with_color* vertices;
+  //vertex_with_color* vertices_end;
   static const size_type default_size = 5;
   static const size_type expand_multiplier = 4;
   gl_call_data()
     : count(0),
       alloced(default_size),
-      vertices((vertex*)malloc(default_size*sizeof(vertex))),
-      colors((color*)malloc(default_size*sizeof(color))) {
+      vertices((vertex_with_color*)malloc(default_size*sizeof(vertex_with_color))) {
     assert(vertices);
-    assert(colors);
   }
   gl_call_data(gl_call_data const& other)
     : count(other.count),
       alloced(other.alloced),
-      vertices((vertex*)malloc(other.alloced*sizeof(vertex))),
-      colors((color*)malloc(other.alloced*sizeof(color))) {
+      vertices((vertex_with_color*)malloc(other.alloced*sizeof(vertex_with_color))) {
     assert(vertices);
-    assert(colors);
-    memcpy(vertices, other.vertices, count*sizeof(vertex));
-    memcpy(colors, other.colors, count*sizeof(color));
+    memcpy(vertices, other.vertices, count*sizeof(vertex_with_color));
   }
   gl_call_data& operator=(gl_call_data const& other) = delete;
-  ~gl_call_data() { free(vertices); free(colors); }
+  ~gl_call_data() { free(vertices); }
   void push_vertex(vertex const& v, color const& c) {
     if(count == alloced) do_realloc();
-    vertices[count] = v;
-    colors[count] = c;
+    vertices[count].c = c;
+    vertices[count].v = v;
     ++count;
   }
   size_type size() const { return count; }
   void do_realloc() {
     const size_type new_size = alloced * expand_multiplier;
     assert(new_size > alloced);
-    vertex* new_vertices = (vertex*)malloc(new_size * sizeof(vertex));
-    color* new_colors = (color*)malloc(new_size * sizeof(color));
+    vertex_with_color* new_vertices = (vertex_with_color*)malloc(new_size * sizeof(vertex_with_color));
     assert(new_vertices);
-    assert(new_colors);
-    memcpy(new_vertices, vertices, count*sizeof(vertex));
-    memcpy(new_colors, colors, count*sizeof(color));
+    memcpy(new_vertices, vertices, count*sizeof(vertex_with_color));
     free(vertices);
-    free(colors);
     vertices = new_vertices;
-    colors = new_colors;
     alloced = new_size;
   }
 };
