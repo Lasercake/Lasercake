@@ -19,6 +19,9 @@
 
 */
 
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 #ifdef LASERCAKE_USE_BOOSTBCP
 
 #define BOOST_TEST_MAIN
