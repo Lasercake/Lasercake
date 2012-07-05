@@ -68,7 +68,7 @@ inline shape tile_shape(vector3<tile_coordinate> tile) {
 }
 
 
-const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 2));
+const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 2)) - 5;
 const vector3<tile_coordinate> world_center_tile_coords(world_center_tile_coord, world_center_tile_coord, world_center_tile_coord);
 const vector3<fine_scalar> world_center_fine_coords = lower_bound_in_fine_units(world_center_tile_coords);
 
