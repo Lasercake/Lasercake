@@ -27,8 +27,9 @@ find_package(OpenGL)
 
 if (USE_BOOSTBCP)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DLASERCAKE_USE_BOOSTBCP=1)
-	# because Boost.Chrono requires -lrt on Linux and OSX; sighs:
-	if(WIN32)
+	# because Boost.Chrono requires -lrt on Linux; sighs:
+	# (TODO use a compile-test instead.)
+	if(WIN32 OR APPLE)
 		set (Boost_LIBRARIES )
 	else()
 		set (Boost_LIBRARIES rt)
