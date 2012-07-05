@@ -808,7 +808,7 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
 
     timing_output_ostream
     << show_microseconds_per_frame_as_fps((ending - beginning) / 10)
-    << " fps over the last ten frames " << (frame_-10) << "–" << frame_ << ".\n";
+    << " fps over the last ten frames " << (frame_-10) << "-" << frame_ << ".\n";
   }
   if(frame_ % 100 == 0) {
     const microseconds_t beginning = monotonic_microseconds_at_beginning_of_hundred_frame_block_;
@@ -817,7 +817,7 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
 
     timing_output_ostream
     << show_microseconds_per_frame_as_fps((ending - beginning) / 100)
-    << " fps over the last hundred frames " << (frame_-100) << "–" << frame_ << ".\n";
+    << " fps over the last hundred frames " << (frame_-100) << "-" << frame_ << ".\n";
   }
 
   monotonic_microseconds_at_beginning_of_frame_ = end_frame_monotonic_microseconds;
