@@ -49,7 +49,7 @@ macro(show_paths output_var_name)
 endmacro()
 
 set(OPT_FLAGS -O3)
-set(WARNING_FLAGS -Wall -Wextra -Wno-unknown-pragmas -fmax-errors=15)
+set(WARNING_FLAGS -Wall -Wextra -Wno-unknown-pragmas -fmax-errors=15 -fdiagnostics-show-option)
 set(SECURITY_FLAGS -fwrapv -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2)
 set(ESSENTIAL_FLAGS -std=c++0x)
 set(OUR_CXX_FLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS})
