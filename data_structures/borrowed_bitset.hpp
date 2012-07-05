@@ -28,7 +28,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include "../utils.hpp"
-#if !LASERCAKE_NO_THREADS
+#if 0 && !LASERCAKE_NO_THREADS
 #include <boost/thread/thread.hpp>
 #endif
 
@@ -106,7 +106,11 @@ inline
 zeroable_bitset_array get_this_thread_array_of_bitset_lists() {
   if(array_of_bitset_lists == nullptr) {
     array_of_bitset_lists = new zeroable_bitset_list[array_of_bitset_lists_len];
-    #if !LASERCAKE_NO_THREADS
+    #if 0 && !LASERCAKE_NO_THREADS
+    // No Boost.Thread for now; fewer deps.
+    // Currently, the borrowed_bitset won't leak memory in Lasercake
+    // because we only create a small, finite number of threads.
+    // We'll use some better solution if that changes (TODO).
       try {
         // (note, if we use forcible thread cancelation, this won't run)
         // Also, donating them to another thread might be more useful
