@@ -19,11 +19,9 @@
 
 */
 
-#include "../data_structures/borrowed_bitset.hpp"
+#include "test_header.hpp"
 
-//#define BOOST_TEST_DYN_LINK
-//#define BOOST_TEST_MODULE borrowed_bitset test
-#include <boost/test/unit_test.hpp>
+#include "../data_structures/borrowed_bitset.hpp"
 
 BOOST_AUTO_TEST_CASE( test_borrowed_bitset ) {
   {
