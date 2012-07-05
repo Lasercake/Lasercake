@@ -584,6 +584,14 @@ input_representation::key_type q_key_event_to_input_rep_key_type(QKeyEvent* even
 }
 }
 
+void LasercakeGLWidget::toggle_fullscreen() {
+  setWindowState(windowState() ^ Qt::WindowFullScreen);
+}
+void LasercakeGLWidget::toggle_fullscreen(bool fullscreen) {
+  if(fullscreen) { setWindowState(windowState() |  Qt::WindowFullScreen); }
+  else           { setWindowState(windowState() & ~Qt::WindowFullScreen); }
+}
+
 void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
   if(event->isAutoRepeat()) {
     // If we someday allow key compression, this won't be a sensible way to stop auto-repeat:
@@ -601,7 +609,15 @@ void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
         close();
         break;
       case Qt::Key_F11:
-        setWindowState(windowState() ^ Qt::WindowFullScreen);
+        toggle_fullscreen();
+        break;
+      case Qt::Key_F:
+        // F11 does Exposé stuff in OS X, and Command-Shift-F seems to be
+        // the "fullscreen" convention there.
+        // (Qt maps OSX command-key to Qt::Key_Control.)
+        if((event->modifiers() & Qt::ShiftModifier) && (event->modifiers() & Qt::ControlModifier)) {
+          toggle_fullscreen();
+        }
         break;
     }
 

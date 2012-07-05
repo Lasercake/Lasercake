@@ -127,6 +127,8 @@ public:
   input_representation::input_news_t get_input_news()const;
   // doesn't clear the keys_currently_pressed, only the history:
   void clear_input_news();
+  void toggle_fullscreen();
+  void toggle_fullscreen(bool fullscreen);
 
 Q_SIGNALS:
   void key_changed(input_representation::key_change_t);
