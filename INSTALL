@@ -26,8 +26,19 @@ It will give you an executable 'lasercake'.
 Then you can run that and/or put it anywhere you like on
 your computer.
 
-These build instructions have been tested on Linux
-[Arch Linux as well as Debian Testing, x86_64, Jan 2012].
-Please tell us if you try to build it elsewhere,
-no matter how successful you are!
+These build instructions have been tested on:
+
+* Linux [Arch Linux as well as Debian Testing, x86_64, June 2012].
+
+* Mac OS X 10.6 [using MacPorts qt4-mac and gcc47;
+                 cmake -DCMAKE_CXX_COMPILER=g++-mp-4.7
+      Run Lasercake and then click on it in the dock to bring the
+      window to the front... our Mac integration needs improvement!]
+
+* MinGW [Cross-compiling for Windows from Linux;
+      I currently have to manually copy all needed .dlls to be
+      next to lasercake.exe (in order to run it in Wine, at least)]
+
+Please tell us if you try to build it elsewhere, no matter how
+successful you are!
 
