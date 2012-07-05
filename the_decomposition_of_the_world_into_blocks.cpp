@@ -217,6 +217,14 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     );
   }
 
+  void worldblock::realize_nonexistent_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded) {
+    neighbors_[dir] =
+        w_->ensure_realization_of_and_get_worldblock_(
+          global_position_ + vector3<worldblock_dimension_type>(cardinal_direction_vectors[dir]) * worldblock_dimension,
+          realineeded
+        );
+  }
+
 
   tile_location worldblock::get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords) {
     return tile_location(coords, this);

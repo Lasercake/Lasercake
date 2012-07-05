@@ -198,6 +198,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     template<cardinal_direction Dir> tile_location get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
 
     template<cardinal_direction Dir> worldblock& ensure_neighbor_realization(level_of_tile_realization_needed realineeded);
+    void realize_nonexistent_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded);
     template<cardinal_direction Dir> tile_location get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded);
     tile_location get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords);
 
@@ -432,12 +433,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       return neighbor->ensure_realization(realineeded);
     }
     else {
-      return *(neighbors_[Dir] =
-        w_->ensure_realization_of_and_get_worldblock_(
-          global_position_ + vector3<worldblock_dimension_type>(cdir_info<Dir>::as_vector()) * worldblock_dimension,
-          realineeded
-        )
-      );
+      realize_nonexistent_neighbor(Dir, realineeded);
+      return *neighbors_[Dir];
     }
   }
 }
