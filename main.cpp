@@ -48,6 +48,9 @@
 #include <sys/resource.h>
 #endif
 
+#ifdef LASERCAKE_USE_BOOSTBCP
+#define BOOST_CHRONO_HEADER_ONLY
+#endif
 #include <boost/chrono.hpp>
 #include <boost/chrono/process_cpu_clocks.hpp>
 #include <boost/chrono/thread_clock.hpp>
@@ -581,6 +584,14 @@ input_representation::key_type q_key_event_to_input_rep_key_type(QKeyEvent* even
 }
 }
 
+void LasercakeGLWidget::toggle_fullscreen() {
+  setWindowState(windowState() ^ Qt::WindowFullScreen);
+}
+void LasercakeGLWidget::toggle_fullscreen(bool fullscreen) {
+  if(fullscreen) { setWindowState(windowState() |  Qt::WindowFullScreen); }
+  else           { setWindowState(windowState() & ~Qt::WindowFullScreen); }
+}
+
 void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
   if(event->isAutoRepeat()) {
     // If we someday allow key compression, this won't be a sensible way to stop auto-repeat:
@@ -598,7 +609,15 @@ void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
         close();
         break;
       case Qt::Key_F11:
-        setWindowState(windowState() ^ Qt::WindowFullScreen);
+        toggle_fullscreen();
+        break;
+      case Qt::Key_F:
+        // F11 does Exposé stuff in OS X, and Command-Shift-F seems to be
+        // the "fullscreen" convention there.
+        // (Qt maps OSX command-key to Qt::Key_Control.)
+        if((event->modifiers() & Qt::ShiftModifier) && (event->modifiers() & Qt::ControlModifier)) {
+          toggle_fullscreen();
+        }
         break;
     }
 
@@ -805,7 +824,7 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
 
     timing_output_ostream
     << show_microseconds_per_frame_as_fps((ending - beginning) / 10)
-    << " fps over the last ten frames " << (frame_-10) << "–" << frame_ << ".\n";
+    << " fps over the last ten frames " << (frame_-10) << "-" << frame_ << ".\n";
   }
   if(frame_ % 100 == 0) {
     const microseconds_t beginning = monotonic_microseconds_at_beginning_of_hundred_frame_block_;
@@ -814,7 +833,7 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
 
     timing_output_ostream
     << show_microseconds_per_frame_as_fps((ending - beginning) / 100)
-    << " fps over the last hundred frames " << (frame_-100) << "–" << frame_ << ".\n";
+    << " fps over the last hundred frames " << (frame_-100) << "-" << frame_ << ".\n";
   }
 
   monotonic_microseconds_at_beginning_of_frame_ = end_frame_monotonic_microseconds;

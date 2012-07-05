@@ -19,11 +19,9 @@
 
 */
 
-#include "../data_structures/bounds_checked_int.hpp"
+#include "test_header.hpp"
 
-//#define BOOST_TEST_DYN_LINK
-//#define BOOST_TEST_MODULE bounds_checked_int test
-#include <boost/test/unit_test.hpp>
+#include "../data_structures/bounds_checked_int.hpp"
 
 typedef bounds_checked_int<uint32_t> u32;
 typedef bounds_checked_int<int32_t> i32;

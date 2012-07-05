@@ -19,6 +19,8 @@
 
 */
 
+#include "test_header.hpp"
+
 #include "../data_structures/bbox_collision_detector.hpp"
 #include "../data_structures/bbox_collision_detector_iteration.hpp"
 
@@ -26,10 +28,6 @@
 // the tests (without bothering the main executable with them).
 #define BBOX_COLLISION_DETECTOR_IMPL_TREAT_AS_HEADER 1
 #include "../data_structures/bbox_collision_detector.cpp"
-
-//#define BOOST_TEST_DYN_LINK
-//#define BOOST_TEST_MODULE bbox_collision_detector test
-#include <boost/test/unit_test.hpp>
 
 typedef int32_t obj_t;
 typedef bbox_collision_detector<obj_t, 32, 1> detector_1d;

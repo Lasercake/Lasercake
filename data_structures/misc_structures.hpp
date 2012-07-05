@@ -34,6 +34,8 @@
 #pragma GCC diagnostic pop
 
 
+#include "../config.hpp"
+
 // These are too small to all get their own files.
 
 template<typename value_type, typename reference = value_type&, typename pointer = value_type*>

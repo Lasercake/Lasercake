@@ -19,15 +19,13 @@
 
 */
 
+#include "test_header.hpp"
+#include <boost/test/parameterized_test.hpp>
+
 #include "../utils.hpp"
 #include <limits>
 #include <array>
 #include <algorithm>
-
-//#define BOOST_TEST_DYN_LINK
-//#define BOOST_TEST_MODULE utils test
-#include <boost/test/unit_test.hpp>
-#include <boost/test/parameterized_test.hpp>
 
 namespace /* anonymous */ {
 

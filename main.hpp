@@ -107,8 +107,8 @@ public:
   shared_ptr<gl_thread_data_t> gl_thread_data_;
   // after thread starts, only thread accesses these:
   LasercakeGLWidget* gl_widget_;
-  uint64_t last_revision_ = 0;
-  microseconds_t microseconds_this_gl_render_took_ = 0;
+  uint64_t last_revision_;
+  microseconds_t microseconds_this_gl_render_took_;
   QSize old_viewport_size_;
 
 protected:
@@ -127,6 +127,8 @@ public:
   input_representation::input_news_t get_input_news()const;
   // doesn't clear the keys_currently_pressed, only the history:
   void clear_input_news();
+  void toggle_fullscreen();
+  void toggle_fullscreen(bool fullscreen);
 
 Q_SIGNALS:
   void key_changed(input_representation::key_change_t);
