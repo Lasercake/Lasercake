@@ -296,23 +296,19 @@ void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
   for(size_t i : gl_collections_by_distance_order) {
     world_rendering::gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance.find(i)->second;
     if(const size_t count = coll.quads.size()) {
-      glVertexPointer(3, GL_FLOAT, sizeof(world_rendering::vertex_with_color), &coll.quads.vertices[0].v);
-      glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(world_rendering::vertex_with_color), &coll.quads.vertices[0].c);
+      glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
       glDrawArrays(GL_QUADS, 0, count);
     }
     if(const size_t count = coll.triangles.size()) {
-      glVertexPointer(3, GL_FLOAT, sizeof(world_rendering::vertex_with_color), &coll.triangles.vertices[0].v);
-      glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(world_rendering::vertex_with_color), &coll.triangles.vertices[0].c);
+      glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
       glDrawArrays(GL_TRIANGLES, 0, count);
     }
     if(const size_t count = coll.lines.size()) {
-      glVertexPointer(3, GL_FLOAT, sizeof(world_rendering::vertex_with_color), &coll.lines.vertices[0].v);
-      glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(world_rendering::vertex_with_color), &coll.lines.vertices[0].c);
+      glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
       glDrawArrays(GL_LINES, 0, count);
     }
     if(const size_t count = coll.points.size()) {
-      glVertexPointer(3, GL_FLOAT, sizeof(world_rendering::vertex_with_color), &coll.points.vertices[0].v);
-      glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(world_rendering::vertex_with_color), &coll.points.vertices[0].c);
+      glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
       glDrawArrays(GL_POINTS, 0, count);
     }
   }
