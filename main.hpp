@@ -107,8 +107,8 @@ public:
   shared_ptr<gl_thread_data_t> gl_thread_data_;
   // after thread starts, only thread accesses these:
   LasercakeGLWidget* gl_widget_;
-  uint64_t last_revision_ = 0;
-  microseconds_t microseconds_this_gl_render_took_ = 0;
+  uint64_t last_revision_;
+  microseconds_t microseconds_this_gl_render_took_;
   QSize old_viewport_size_;
 
 protected:
