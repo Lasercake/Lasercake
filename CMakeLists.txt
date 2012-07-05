@@ -68,8 +68,26 @@ endmacro()
 
 set(OPT_FLAGS -O3)
 set(WARNING_FLAGS -Wall -Wextra -Wno-unknown-pragmas -fmax-errors=15 -fdiagnostics-show-option)
-set(SECURITY_FLAGS -fwrapv -fstack-protector --param=ssp-buffer-size=4 -D_FORTIFY_SOURCE=2)
-set(ESSENTIAL_FLAGS -std=c++0x)
+if(WIN32)
+	# MinGW has various problems with -std=c++0x.  For example,
+	# the compiler with -std=c++0x defines __STRICT_ANSI__
+	# and thus Windows-related headers don't define everything
+	# that Boost headers expect them to.
+	set(ESSENTIAL_FLAGS -std=gnu++0x)
+	# Sadly my MinGW cross-compile leads to linking errors with
+	# -fstack-protector.  TODO try things with the compiler rather
+	# than assuming based on the target platform.  TODO can we
+	# use -fstack-protector here somehow?  (it would be nice.)
+	set(SECURITY_FLAGS -fwrapv -D_FORTIFY_SOURCE=2)
+else()
+	# Clang has trouble parsing GNU libstdc++ headers with -std=gnu++0x
+	# because the 'gnu' (by leaving __STRICT_ANSI__ undefined)
+	# enables various GCC extensions in headers like __float128 that
+	# Clang doesn't understand.  (For some versions of clang and
+	# libstdc++.)  Also, we don't need these GNU extensions.
+	set(ESSENTIAL_FLAGS -std=c++0x)
+	set(SECURITY_FLAGS -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4)
+endif()
 set(OUR_CXX_FLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS})
 set(THEIR_CXX_FLAGS_spaces ${CMAKE_CXX_FLAGS})
 semicolons_to_spaces(OUR_CXX_FLAGS_spaces ${OUR_CXX_FLAGS})
