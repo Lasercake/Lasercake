@@ -111,7 +111,7 @@ semicolons_to_spaces(LASERCAKE_LINK_FLAGS_spaces ${LASERCAKE_LINK_FLAGS})
 show_paths(LASERCAKE_SOURCES_pretty ${LASERCAKE_SOURCES})
 message(STATUS "lasercake link flags: ${LASERCAKE_LINK_FLAGS_spaces}")
 message(STATUS "lasercake sources: ${LASERCAKE_SOURCES_pretty}")
-add_executable (lasercake ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC})
+add_executable (lasercake WIN32 ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC})
 target_link_libraries(lasercake ${LASERCAKE_LINK_FLAGS})
 
 if (NOT USE_BOOSTBCP)
