@@ -7,7 +7,7 @@ set (Lasercake_VERSION_MINOR 1)
 set (OPTIONS_DEFINES )
 # (option THREADS TODO: does anyone need this to compile against a Qt that has threads disabled?
 # Could be permitted, with a bit of work.  Do you have a way to test compiling that configuration?)
-option (USE_BOOSTBCP "On: Use Boost from ./boostbcp/; off: use system Boost." OFF)
+option (USE_BOOSTBCP "On: Use Boost from ./boostbcp/; off: use system Boost." ON)
 option (THREADS "On: Use Qt multithreading for parallelism; off: don't link/use threads." ON)
 option (TIMING "On: Use Boost.Chrono to count performance (e.g. FPS); off: don't count perf." ON)
 option (GLIB "Use GLib slices for some memory allocation (faster; requires glib)." ON)
