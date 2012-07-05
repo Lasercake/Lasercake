@@ -237,65 +237,85 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<double> 
         coords.x + int(!x_close_side), coords.y + int(!y_close_side), coords.z + int(!z_close_side)))
   }};
 
+  const vertex_with_color gl_vertices[2][2][2] =
+    { { { vertex_with_color(glb[0].x, glb[0].y, glb[0].z, tile_color),
+          vertex_with_color(glb[0].x, glb[0].y, glb[1].z, tile_color) },
+        { vertex_with_color(glb[0].x, glb[1].y, glb[0].z, tile_color),
+          vertex_with_color(glb[0].x, glb[1].y, glb[1].z, tile_color) }, },
+      { { vertex_with_color(glb[1].x, glb[0].y, glb[0].z, tile_color),
+          vertex_with_color(glb[1].x, glb[0].y, glb[1].z, tile_color) },
+        { vertex_with_color(glb[1].x, glb[1].y, glb[0].z, tile_color),
+          vertex_with_color(glb[1].x, glb[1].y, glb[1].z, tile_color) } } };
+
   // Draw the farther faces first so that the closer faces will be drawn
   // after -- on top of -- the farther faces.  The closer faces are the ones
   // that have 0,0,0 as a vertex and the farther faces are the ones that have
   // 1,1,1 as a vertex.
 
   // Only output the faces that are not interior to a single kind of material.
-  if(((z_close_side == 0) ? loc.get_neighbor<zplus>(CONTENTS_ONLY) : loc.get_neighbor<zminus>(CONTENTS_ONLY))
-            .stuff_at().contents() != t.contents()){
-    push_quad(coll,
-              vertex(glb[0].x, glb[0].y, glb[1].z),
-              vertex(glb[1].x, glb[0].y, glb[1].z),
-              vertex(glb[1].x, glb[1].y, glb[1].z),
-              vertex(glb[0].x, glb[1].y, glb[1].z),
-              tile_color);
+
+  const tile_contents contents = t.contents();
+  const std::array<bool, 2> x_neighbors_differ = {{
+    loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
+    loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != contents
+  }};
+  const std::array<bool, 2> y_neighbors_differ = {{
+    loc.get_neighbor<yminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
+    loc.get_neighbor<yplus>(CONTENTS_ONLY).stuff_at().contents() != contents
+  }};
+  const std::array<bool, 2> z_neighbors_differ = {{
+    loc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
+    loc.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != contents
+  }};
+
+  const gl_call_data::size_type original_count = coll.quads.count;
+  coll.quads.reserve_new_slots(4 * (
+    x_neighbors_differ[0]+x_neighbors_differ[1]+
+    y_neighbors_differ[0]+y_neighbors_differ[1]+
+    z_neighbors_differ[0]+z_neighbors_differ[1]));
+  vertex_with_color* base = coll.quads.vertices + original_count;
+
+  if (z_neighbors_differ[int(!z_close_side)]) {
+    base[0] = gl_vertices[0][0][1];
+    base[1] = gl_vertices[1][0][1];
+    base[2] = gl_vertices[1][1][1];
+    base[3] = gl_vertices[0][1][1];
+    base += 4;
   }
-  if(((x_close_side == 0) ? loc.get_neighbor<xplus>(CONTENTS_ONLY) : loc.get_neighbor<xminus>(CONTENTS_ONLY))
-            .stuff_at().contents() != t.contents()){
-    push_quad(coll,
-              vertex(glb[1].x, glb[0].y, glb[0].z),
-              vertex(glb[1].x, glb[1].y, glb[0].z),
-              vertex(glb[1].x, glb[1].y, glb[1].z),
-              vertex(glb[1].x, glb[0].y, glb[1].z),
-              tile_color);
+  if (x_neighbors_differ[int(!x_close_side)]) {
+    base[0] = gl_vertices[1][0][0];
+    base[1] = gl_vertices[1][1][0];
+    base[2] = gl_vertices[1][1][1];
+    base[3] = gl_vertices[1][0][1];
+    base += 4;
   }
-  if(((y_close_side == 0) ? loc.get_neighbor<yplus>(CONTENTS_ONLY) : loc.get_neighbor<yminus>(CONTENTS_ONLY))
-            .stuff_at().contents() != t.contents()){
-    push_quad(coll,
-              vertex(glb[0].x, glb[1].y, glb[0].z),
-              vertex(glb[0].x, glb[1].y, glb[1].z),
-              vertex(glb[1].x, glb[1].y, glb[1].z),
-              vertex(glb[1].x, glb[1].y, glb[0].z),
-              tile_color);
+  if (y_neighbors_differ[int(!y_close_side)]) {
+    base[0] = gl_vertices[0][1][0];
+    base[1] = gl_vertices[0][1][1];
+    base[2] = gl_vertices[1][1][1];
+    base[3] = gl_vertices[1][1][0];
+    base += 4;
   }
-  if(((z_close_side == 0) ? loc.get_neighbor<zminus>(CONTENTS_ONLY) : loc.get_neighbor<zplus>(CONTENTS_ONLY))
-            .stuff_at().contents() != t.contents()) {
-    push_quad(coll,
-              vertex(glb[0].x, glb[0].y, glb[0].z),
-              vertex(glb[1].x, glb[0].y, glb[0].z),
-              vertex(glb[1].x, glb[1].y, glb[0].z),
-              vertex(glb[0].x, glb[1].y, glb[0].z),
-              tile_color);
+  if (z_neighbors_differ[z_close_side]) {
+    base[0] = gl_vertices[0][0][0];
+    base[1] = gl_vertices[1][0][0];
+    base[2] = gl_vertices[1][1][0];
+    base[3] = gl_vertices[0][1][0];
+    base += 4;
   }
-  if(((x_close_side == 0) ? loc.get_neighbor<xminus>(CONTENTS_ONLY) : loc.get_neighbor<xplus>(CONTENTS_ONLY))
-            .stuff_at().contents() != t.contents()){
-    push_quad(coll,
-              vertex(glb[0].x, glb[0].y, glb[0].z),
-              vertex(glb[0].x, glb[1].y, glb[0].z),
-              vertex(glb[0].x, glb[1].y, glb[1].z),
-              vertex(glb[0].x, glb[0].y, glb[1].z),
-              tile_color);
+  if (x_neighbors_differ[x_close_side]) {
+    base[0] = gl_vertices[0][0][0];
+    base[1] = gl_vertices[0][1][0];
+    base[2] = gl_vertices[0][1][1];
+    base[3] = gl_vertices[0][0][1];
+    base += 4;
   }
-  if(((y_close_side == 0) ? loc.get_neighbor<yminus>(CONTENTS_ONLY) : loc.get_neighbor<yplus>(CONTENTS_ONLY))
-            .stuff_at().contents() != t.contents()){
-    push_quad(coll,
-              vertex(glb[0].x, glb[0].y, glb[0].z),
-              vertex(glb[0].x, glb[0].y, glb[1].z),
-              vertex(glb[1].x, glb[0].y, glb[1].z),
-              vertex(glb[1].x, glb[0].y, glb[0].z),
-              tile_color);
+  if (y_neighbors_differ[y_close_side]) {
+    base[0] = gl_vertices[0][0][0];
+    base[1] = gl_vertices[0][0][1];
+    base[2] = gl_vertices[1][0][1];
+    base[3] = gl_vertices[1][0][0];
+    base += 4;
   }
 }
 

@@ -69,6 +69,8 @@ struct color {
 static_assert(sizeof(color) == 4*sizeof(GLubyte), "OpenGL needs this data layout.");
 
 struct vertex_with_color {
+  vertex_with_color(vertex v, color c) : c(c), v(v) {}
+  vertex_with_color(GLfloat x, GLfloat y, GLfloat z, color c) : c(c), v(x,y,z) {}
   color c;
   vertex v;
 };
@@ -97,15 +99,24 @@ struct gl_call_data {
   }
   gl_call_data& operator=(gl_call_data const& other) = delete;
   ~gl_call_data() { free(vertices); }
+  void push_vertex(vertex_with_color const& v) {
+    if(count == alloced) do_realloc(alloced * expand_multiplier);
+    vertices[count] = v;
+    ++count;
+  }
   void push_vertex(vertex const& v, color const& c) {
-    if(count == alloced) do_realloc();
+    if(count == alloced) do_realloc(alloced * expand_multiplier);
     vertices[count].c = c;
     vertices[count].v = v;
     ++count;
   }
+  void reserve_new_slots(size_type num_slots) {
+    const size_type new_count = count + num_slots;
+    if(new_count > alloced) do_realloc(new_count * expand_multiplier);
+    count = new_count;
+  }
   size_type size() const { return count; }
-  void do_realloc() {
-    const size_type new_size = alloced * expand_multiplier;
+  void do_realloc(size_type new_size) {
     assert(new_size > alloced);
     vertex_with_color* new_vertices = (vertex_with_color*)malloc(new_size * sizeof(vertex_with_color));
     assert(new_vertices);
