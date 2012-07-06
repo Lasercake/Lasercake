@@ -270,32 +270,11 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
 
   const gl_call_data::size_type original_count = coll.quads.count;
   coll.quads.reserve_new_slots(4 * (
-    x_neighbors_differ[0]+x_neighbors_differ[1]+
-    y_neighbors_differ[0]+y_neighbors_differ[1]+
-    z_neighbors_differ[0]+z_neighbors_differ[1]));
+    x_neighbors_differ[x_close_side]+
+    y_neighbors_differ[y_close_side]+
+    z_neighbors_differ[z_close_side]));
   vertex_with_color* base = coll.quads.vertices + original_count;
 
-  if (z_neighbors_differ[int(!z_close_side)]) {
-    base[0] = gl_vertices[0][0][1];
-    base[1] = gl_vertices[1][0][1];
-    base[2] = gl_vertices[1][1][1];
-    base[3] = gl_vertices[0][1][1];
-    base += 4;
-  }
-  if (x_neighbors_differ[int(!x_close_side)]) {
-    base[0] = gl_vertices[1][0][0];
-    base[1] = gl_vertices[1][1][0];
-    base[2] = gl_vertices[1][1][1];
-    base[3] = gl_vertices[1][0][1];
-    base += 4;
-  }
-  if (y_neighbors_differ[int(!y_close_side)]) {
-    base[0] = gl_vertices[0][1][0];
-    base[1] = gl_vertices[0][1][1];
-    base[2] = gl_vertices[1][1][1];
-    base[3] = gl_vertices[1][1][0];
-    base += 4;
-  }
   if (z_neighbors_differ[z_close_side]) {
     base[0] = gl_vertices[0][0][0];
     base[1] = gl_vertices[1][0][0];
