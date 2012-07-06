@@ -392,20 +392,20 @@ void view_on_the_world::prepare_gl_data(
       for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
         tile_physics_impl::persistent_water_group_info const& g = p.second;
 
-        for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
-          for(tile_location const& bar : foo.second) {
-            vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, bar.coords());
+        for (auto const& suckable_tiles : g.suckable_tiles_by_height.as_map()) {
+          for(tile_location const& suckable_tile : suckable_tiles.second) {
+            vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, suckable_tile.coords());
             gl_collection& coll = gl_collections_by_distance[
-              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
+              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(suckable_tile.coords()), view_loc))
             ];
             push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
           }
         }
-        for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
-          for(tile_location const& bar : foo.second) {
-            vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, bar.coords());
+        for (auto const& pushable_tiles : g.pushable_tiles_by_height.as_map()) {
+          for(tile_location const& pushable_tile : pushable_tiles.second) {
+            vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, pushable_tile.coords());
             gl_collection& coll = gl_collections_by_distance[
-              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(bar.coords()), view_loc))
+              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(pushable_tile.coords()), view_loc))
             ];
             push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
           }
