@@ -30,11 +30,11 @@
 
 #include <set>
 
-#include "rendering_the_world.hpp"
+#include "gl_data_preparation.hpp"
 #include "input_representation.hpp"
 #include "world.hpp"
 
-typedef world_rendering::gl_all_data gl_data_t;
+typedef gl_data_preparation::gl_all_data gl_data_t;
 
 //is a pointer to avoid copying around all that data
 typedef shared_ptr<gl_data_t> gl_data_ptr_t;

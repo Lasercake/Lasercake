@@ -253,7 +253,7 @@ void LasercakeSimulator::prepare_graphics(input_news_t input_since_last_prepare,
   gl_data_ptr_t gl_data_ptr(new gl_data_t());
   if(actually_prepare_graphics) {
     view_ptr_->input(input_since_last_prepare);
-    view_ptr_->render(*world_ptr_, world_rendering_config(view_radius), *gl_data_ptr);
+    view_ptr_->prepare_gl_data(*world_ptr_, gl_data_preparation_config(view_radius), *gl_data_ptr);
   }
   const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
   const microseconds_t microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
@@ -272,7 +272,7 @@ void LasercakeSimulator::prepare_graphics(input_news_t input_since_last_prepare,
 
 namespace /*anonymous*/ {
 
-void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
+void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data) {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
   //glEnable(GL_DEPTH_TEST);
@@ -294,7 +294,7 @@ void output_gl_data_to_OpenGL(world_rendering::gl_all_data const& gl_data) {
   //sort in descending order
   std::sort(gl_collections_by_distance_order.rbegin(), gl_collections_by_distance_order.rend());
   for(size_t i : gl_collections_by_distance_order) {
-    world_rendering::gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance.find(i)->second;
+    gl_data_preparation::gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance.find(i)->second;
     if(const size_t count = coll.quads.size()) {
       glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
       glDrawArrays(GL_QUADS, 0, count);

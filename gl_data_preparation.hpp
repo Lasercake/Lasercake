@@ -19,8 +19,8 @@
 
 */
 
-#ifndef LASERCAKE_RENDERING_THE_WORLD_HPP__
-#define LASERCAKE_RENDERING_THE_WORLD_HPP__
+#ifndef LASERCAKE_GL_DATA_PREPARATION_HPP__
+#define LASERCAKE_GL_DATA_PREPARATION_HPP__
 
 #include <vector>
 #include <unordered_map>
@@ -36,7 +36,7 @@
 #include "input_representation.hpp"
 
 
-namespace world_rendering {
+namespace gl_data_preparation {
 
 // These are to be passed as part of arrays to OpenGL.
 // Thus their data format/layout makes a difference.
@@ -150,11 +150,11 @@ struct gl_all_data {
   vector3<GLfloat> facing_up;
 };
 
-} // end namespace world_rendering
+} // end namespace gl_data_preparation
 
 
-struct world_rendering_config {
-  world_rendering_config(fine_scalar view_radius) : view_radius(view_radius) {}
+struct gl_data_preparation_config {
+  gl_data_preparation_config(fine_scalar view_radius) : view_radius(view_radius) {}
   fine_scalar view_radius;
 };
 
@@ -166,7 +166,7 @@ public:
   void input(input_representation::input_news_t const& input_news);
 
   // To call, default-construct the result and then pass it as a reference.
-  void render(world /*TODO const*/& w, world_rendering_config c, world_rendering::gl_all_data& result);
+  void prepare_gl_data(world /*TODO const*/& w, gl_data_preparation_config c, gl_data_preparation::gl_all_data& result);
 
   // TODO make private and/or trailing underscore
   object_identifier robot_id;

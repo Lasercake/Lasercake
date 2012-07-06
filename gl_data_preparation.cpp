@@ -19,13 +19,13 @@
 
 */
 
-#include "rendering_the_world.hpp"
+#include "gl_data_preparation.hpp"
 #include "world.hpp"
 
 #include "specific_object_types.hpp"
 #include "tile_physics.hpp" // to access internals for debugging-displaying...
 
-using namespace world_rendering;
+using namespace gl_data_preparation;
 
 namespace /* anonymous */ {
 
@@ -202,7 +202,7 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
   }
 }
 
-void render_tile(gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
+void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
   vector3<tile_coordinate> const& coords = loc.coords();
   tile const& t = loc.stuff_at();
   
@@ -320,16 +320,16 @@ void render_tile(gl_collection& coll, tile_location const& loc, vector3<double> 
 }
 
 
-void view_on_the_world::render(
+void view_on_the_world::prepare_gl_data(
   world /*TODO const*/& w,
-  world_rendering_config rendering_config,
-  world_rendering::gl_all_data& gl_data //result
+  gl_data_preparation_config config,
+  gl_data_preparation::gl_all_data& gl_data //result
 ) {
     //for short
     gl_collectionplex& gl_collections_by_distance = gl_data.stuff_to_draw_as_gl_collections_by_distance;
     gl_collections_by_distance.clear();
 
-    //These values are computed every rendering-frame.
+    //These values are computed every GL-preparation-frame.
     vector3<fine_scalar> view_loc;
     vector3<fine_scalar> view_towards;
 
@@ -363,7 +363,7 @@ void view_on_the_world::render(
     vector<object_or_tile_identifier> tiles_to_draw;
 
     if (this->drawing_regular_stuff) {
-      const fine_scalar view_dist = rendering_config.view_radius;
+      const fine_scalar view_dist = config.view_radius;
       w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box::min_and_max(
         view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
         view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
@@ -494,7 +494,7 @@ void view_on_the_world::render(
         tile_location const& loc = *locp;
         tile const& t = loc.stuff_at();
 
-        render_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
+        prepare_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
 
         vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
 
