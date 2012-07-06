@@ -272,7 +272,9 @@ void LasercakeSimulator::prepare_graphics(input_news_t input_since_last_prepare,
 
 namespace /*anonymous*/ {
 
-void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data) {
+typedef int viewport_dimension; // Qt uses 'int' for sizes.
+
+void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data, viewport_dimension viewport_width, viewport_dimension viewport_height) {
   using namespace gl_data_preparation;
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
@@ -280,7 +282,7 @@ void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data) {
   glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
   glLoadIdentity();
   // TODO convert these to plain GL calls and find out how to make a non-stretched non-square viewport.
-  gluPerspective(80, 1, 0.1, 300);
+  gluPerspective(80, (double(viewport_width) / viewport_height), 0.1, 300);
   gluLookAt(0, 0, 0,
             gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
             gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);
@@ -419,7 +421,7 @@ int main(int argc, char *argv[])
 }
 
 namespace /*anonymous*/ {
-microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, boost::optional<QSize> new_viewport_size) {
+microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, QSize viewport_size) {
   gl_widget.makeCurrent();
   BOOST_SCOPE_EXIT((&gl_widget)) {
    gl_widget.doneCurrent();
@@ -429,10 +431,8 @@ microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widge
   // free to fork more threads, and/or wait for the GPU without consuming CPU,
   // etc [mine seems to do both somewhat].)
   const microseconds_t microseconds_before_gl = get_monotonic_microseconds();
-  if(new_viewport_size) {
-    glViewport(0, 0, new_viewport_size->width(), new_viewport_size->height());
-  }
-  output_gl_data_to_OpenGL(*gl_data_ptr);
+  glViewport(0, 0, viewport_size.width(), viewport_size.height());
+  output_gl_data_to_OpenGL(*gl_data_ptr, viewport_size.width(), viewport_size.height());
   //TODO measure the microseconds ~here~ in the different configurations. e.g. should the before/after here be split across threads?
   //gl_data_ptr.reset(); // but if the deletion does happen now, it'll be in this thread, now, delaying swapBuffers etc :(
   // but it's a good time and CPU(cache) to delete the data on...
@@ -446,14 +446,8 @@ void LasercakeGLWidget::do_render_() {
     gl_thread_data_->wait_for_instruction.wakeAll();
   }
   else {
-    boost::optional<QSize> new_viewport_size;
-    if(thread_.old_viewport_size_ != gl_thread_data_->viewport_size) {
-      new_viewport_size = gl_thread_data_->viewport_size;
-      thread_.old_viewport_size_ = gl_thread_data_->viewport_size;
-      new_viewport_size = thread_.old_viewport_size_;
-    }
     gl_thread_data_->microseconds_last_gl_render_took =
-      gl_render(gl_thread_data_->current_data, *this, new_viewport_size);
+      gl_render(gl_thread_data_->current_data, *this, gl_thread_data_->viewport_size);
   }
 }
 LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* parent)
@@ -470,8 +464,6 @@ LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* paren
   gl_thread_data_->quit_now = false;
   gl_thread_data_->revision = 0;
   ++gl_thread_data_->revision; //display right away!
-  // In OpenGL, one doesn't need to call glViewport at initialization time:
-  thread_.old_viewport_size_ = gl_thread_data_->viewport_size;
   if(use_separate_gl_thread_) {
     thread_.gl_widget_ = this;
     thread_.gl_thread_data_ = gl_thread_data_;
@@ -481,7 +473,7 @@ LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* paren
   }
   else {
     gl_thread_data_->microseconds_last_gl_render_took =
-      gl_render(gl_thread_data_->current_data, *this, boost::none);
+      gl_render(gl_thread_data_->current_data, *this, size());
   }
 }
 void LasercakeGLWidget::update_gl_data(gl_data_ptr_t data) {
@@ -499,7 +491,7 @@ microseconds_t LasercakeGLWidget::get_last_gl_render_microseconds() {
 void LasercakeGLThread::run() {
   while(true) {
     gl_data_ptr_t gl_data_ptr;
-    boost::optional<QSize> new_viewport_size;
+    QSize viewport_size;
     {
       QMutexLocker lock(&gl_thread_data_->gl_data_lock);
       gl_thread_data_->microseconds_last_gl_render_took = microseconds_this_gl_render_took_;
@@ -509,13 +501,10 @@ void LasercakeGLThread::run() {
       if(gl_thread_data_->quit_now) {return;}
       gl_data_ptr = gl_thread_data_->current_data;
       last_revision_ = gl_thread_data_->revision;
-      if(old_viewport_size_ != gl_thread_data_->viewport_size) {
-        new_viewport_size = gl_thread_data_->viewport_size;
-        old_viewport_size_ = gl_thread_data_->viewport_size;
-      }
+      viewport_size = gl_thread_data_->viewport_size;
     }
     microseconds_this_gl_render_took_ =
-      gl_render(gl_data_ptr, *gl_widget_, new_viewport_size);
+      gl_render(gl_data_ptr, *gl_widget_, viewport_size);
   }
 }
 void LasercakeGLWidget::resizeEvent(QResizeEvent*) {
