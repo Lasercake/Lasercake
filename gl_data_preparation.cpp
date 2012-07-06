@@ -136,6 +136,13 @@ void push_convex_polygon(vector3<fine_scalar> const& view_loc,
 }
 
 
+fine_scalar manhattan_distance_to_bounding_box(bounding_box b, vector3<fine_scalar> const& v) {
+  const fine_scalar xdist = (v(X) < b.min(X)) ? (b.min(X) - v(X)) : (v(X) > b.max(X)) ? (v(X) - b.max(X)) : 0;
+  const fine_scalar ydist = (v(Y) < b.min(Y)) ? (b.min(Y) - v(Y)) : (v(Y) > b.max(Y)) ? (v(Y) - b.max(Y)) : 0;
+  const fine_scalar zdist = (v(Z) < b.min(Z)) ? (b.min(Z) - v(Z)) : (v(Z) > b.max(Z)) ? (v(Z) - b.max(Z)) : 0;
+  return xdist + ydist + zdist;
+}
+
 tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_box b, vector3<fine_scalar> const& v) {
   const fine_scalar xdist = (v(X) < b.min(X)) ? (b.min(X) - v(X)) : (v(X) > b.max(X)) ? (v(X) - b.max(X)) : 0;
   const fine_scalar ydist = (v(Y) < b.min(Y)) ? (b.min(Y) - v(Y)) : (v(Y) > b.max(Y)) ? (v(Y) - b.max(Y)) : 0;
@@ -321,6 +328,10 @@ void view_on_the_world::prepare_gl_data(
     //for short
     gl_collectionplex& gl_collections_by_distance = gl_data.stuff_to_draw_as_gl_collections_by_distance;
     gl_collections_by_distance.clear();
+    // Calculate a bit conservatively; no harm doing so:
+    const size_t max_gl_collection = get_primitive<size_t>(
+      2*(config.view_radius / tile_width) + (config.view_radius / tile_height) + 5);
+    gl_collections_by_distance.resize(max_gl_collection);
 
     //These values are computed every GL-preparation-frame.
     vector3<fine_scalar> view_loc;
@@ -394,18 +405,26 @@ void view_on_the_world::prepare_gl_data(
 
         for (auto const& suckable_tiles : g.suckable_tiles_by_height.as_map()) {
           for(tile_location const& suckable_tile : suckable_tiles.second) {
+            const bounding_box tile_fine_bbox = fine_bounding_box_of_tile(suckable_tile.coords());
+            if(manhattan_distance_to_bounding_box(tile_fine_bbox, view_loc) > config.view_radius) {
+              continue;
+            }
             vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, suckable_tile.coords());
             gl_collection& coll = gl_collections_by_distance[
-              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(suckable_tile.coords()), view_loc))
+              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
             ];
             push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
           }
         }
         for (auto const& pushable_tiles : g.pushable_tiles_by_height.as_map()) {
           for(tile_location const& pushable_tile : pushable_tiles.second) {
+            const bounding_box tile_fine_bbox = fine_bounding_box_of_tile(pushable_tile.coords());
+            if(manhattan_distance_to_bounding_box(tile_fine_bbox, view_loc) > config.view_radius) {
+              continue;
+            }
             vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, pushable_tile.coords());
             gl_collection& coll = gl_collections_by_distance[
-              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(fine_bounding_box_of_tile(pushable_tile.coords()), view_loc))
+              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
             ];
             push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
           }
@@ -422,10 +441,13 @@ void view_on_the_world::prepare_gl_data(
       vector3<GLfloat> locvf = locvf1;
 
       for (int i = 0; i <= length; ++i) {
+        const bounding_box segment_bbox = bounding_box::spanning_two_points(
+          p.first + (p.second * i / length), p.first + (p.second * (i+1) / length));
+        if(manhattan_distance_to_bounding_box(segment_bbox, view_loc) > config.view_radius) {
+          continue;
+        }
         gl_collection& coll = gl_collections_by_distance[
-          get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(
-            bounding_box::spanning_two_points(p.first + (p.second * i / length), p.first + (p.second * (i+1) / length)),
-            view_loc))
+          get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(segment_bbox, view_loc))
         ];
         const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
         push_quad(coll,

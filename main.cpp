@@ -290,14 +290,10 @@ void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data, v
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
 
-  std::vector<size_t> gl_collections_by_distance_order;
-  for(auto const& p : gl_data.stuff_to_draw_as_gl_collections_by_distance) {
-    gl_collections_by_distance_order.push_back(p.first);
-  }
-  //sort in descending order
-  std::sort(gl_collections_by_distance_order.rbegin(), gl_collections_by_distance_order.rend());
-  for(size_t i : gl_collections_by_distance_order) {
-    gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance.find(i)->second;
+  for(gl_collectionplex::const_reverse_iterator i = gl_data.stuff_to_draw_as_gl_collections_by_distance.rbegin();
+      i != gl_data.stuff_to_draw_as_gl_collections_by_distance.rend();
+      ++i) {
+    gl_collection const& coll = *i;
     if(const size_t count = coll.quads.size()) {
       glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
       glDrawArrays(GL_QUADS, 0, count);

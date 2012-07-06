@@ -147,7 +147,7 @@ struct gl_collection {
 //The gl_collection:s with higher indices here are intended to be
 //further away and rendered first (therefore covered up most
 //by everything else that's closer).
-typedef std::unordered_map<size_t, gl_collection> gl_collectionplex;
+typedef std::vector<gl_collection> gl_collectionplex;
 
 struct gl_all_data {
   gl_collectionplex stuff_to_draw_as_gl_collections_by_distance;
