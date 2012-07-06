@@ -283,13 +283,6 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   coll.quads.reserve_new_slots(4 * (draw_x_close_side + draw_y_close_side + draw_z_close_side));
   vertex_with_color* base = coll.quads.vertices + original_count;
 
-  if (draw_z_close_side) {
-    base[0] = gl_vertices[0][0][0];
-    base[1] = gl_vertices[1][0][0];
-    base[2] = gl_vertices[1][1][0];
-    base[3] = gl_vertices[0][1][0];
-    base += 4;
-  }
   if (draw_x_close_side) {
     base[0] = gl_vertices[0][0][0];
     base[1] = gl_vertices[0][1][0];
@@ -302,6 +295,13 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
     base[1] = gl_vertices[0][0][1];
     base[2] = gl_vertices[1][0][1];
     base[3] = gl_vertices[1][0][0];
+    base += 4;
+  }
+  if (draw_z_close_side) {
+    base[0] = gl_vertices[0][0][0];
+    base[1] = gl_vertices[1][0][0];
+    base[2] = gl_vertices[1][1][0];
+    base[3] = gl_vertices[0][1][0];
     base += 4;
   }
 }
