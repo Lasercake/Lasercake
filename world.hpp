@@ -107,6 +107,7 @@ struct object_or_tile_identifier {
     if (tile_location const* foo = get_tile_location()) { return *foo == other; }
     else return false;
   }
+  bool operator!=(object_or_tile_identifier const& other)const { return !(*this == other); }
   bool operator!=(object_identifier const& other)const { return !(*this == other); }
   bool operator!=(tile_location const& other)const { return !(*this == other); }
 
@@ -165,6 +166,32 @@ public:
 
 
 typedef bbox_collision_detector<object_or_tile_identifier, 64, 3> world_collision_detector;
+typedef bbox_collision_detector<object_identifier, 64, 3> objects_collision_detector;
+// Not the optimal structure, but we've already implemented it:
+typedef bbox_collision_detector<tile_location, 32, 3> tiles_collision_detector;
+inline tiles_collision_detector::bounding_box tile_bbox_to_tiles_collision_detector_bbox(tile_bounding_box bbox) {
+  typedef tiles_collision_detector::bounding_box bbox_type;
+  const bbox_type::coordinate_array loc = {{
+    bbox_type::coordinate_type(bbox.min.x), bbox_type::coordinate_type(bbox.min.y), bbox_type::coordinate_type(bbox.min.z)
+  }};
+  const bbox_type::coordinate_array size_minus_one = {{
+    bbox_type::coordinate_type(bbox.size.x)-1, bbox_type::coordinate_type(bbox.size.y)-1, bbox_type::coordinate_type(bbox.size.z)-1
+  }};
+  return bbox_type::min_and_size_minus_one(loc, size_minus_one);
+}
+inline tiles_collision_detector::bounding_box tile_coords_to_tiles_collision_detector_bbox(vector3<tile_coordinate> coords) {
+  typedef tiles_collision_detector::bounding_box bbox_type;
+  const bbox_type::coordinate_array loc = {{
+    bbox_type::coordinate_type(coords.x), bbox_type::coordinate_type(coords.y), bbox_type::coordinate_type(coords.z)
+  }};
+  const bbox_type::coordinate_array size_minus_one = {{ 0, 0, 0 }};
+  return bbox_type::min_and_size_minus_one(loc, size_minus_one);
+}
+inline tile_bounding_box tiles_collision_detector_bbox_to_tile_bounding_box(tiles_collision_detector::bounding_box bbox) {
+  const vector3<tile_coordinate> min(tile_coordinate(bbox.min(X)), tile_coordinate(bbox.min(Y)), tile_coordinate(bbox.min(Z)));
+  const vector3<tile_coordinate> size(tile_coordinate(bbox.size_minus_one(X))+1, tile_coordinate(bbox.size_minus_one(Y))+1, tile_coordinate(bbox.size_minus_one(Z))+1);
+  return tile_bounding_box(min, size);
+}
 
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
@@ -295,14 +322,10 @@ public:
   }
   
   tile_location make_tile_location(vector3<tile_coordinate> const& coords, level_of_tile_realization_needed realineeded);
-  
-  void collect_things_exposed_to_collision_intersecting(vector<object_or_tile_identifier>& results, bounding_box const& bounds) {
-    ensure_realization_of_space_(get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(bounds), FULL_REALIZATION);
-    things_exposed_to_collision_.get_objects_overlapping(results, bounds);
-  }
-  void collect_things_exposed_to_collision_intersecting(vector<object_or_tile_identifier>& results, tile_bounding_box const& bounds) {
-    ensure_realization_of_space_(bounds, FULL_REALIZATION);
-    things_exposed_to_collision_.get_objects_overlapping(results, convert_to_fine_units(bounds));
+
+  void ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded);
+  void ensure_realization_of_space(bounding_box space, level_of_tile_realization_needed realineeded) {
+    ensure_realization_of_space(get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(space), realineeded);
   }
   
   // old_substance_type doesn't actually do anything except give an assertion.
@@ -323,7 +346,7 @@ public:
     b.combine_with(object_personal_space_shapes_[id].bounds());
     object_detail_shapes_[id] = obj->get_initial_detail_shape();
     b.combine_with(object_detail_shapes_[id].bounds());
-    things_exposed_to_collision_.insert(id, b);
+    objects_exposed_to_collision_.insert(id, b);
     if(shared_ptr<mobile_object> m = boost::dynamic_pointer_cast<mobile_object>(obj)) {
       moving_objects_.insert(make_pair(id, m));
     }
@@ -358,7 +381,8 @@ public:
   object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes_; }
 
   tile_physics_state_t& tile_physics() { return tile_physics_state_; }
-  world_collision_detector const& get_things_exposed_to_collision()const { return things_exposed_to_collision_; }
+  objects_collision_detector const& objects_exposed_to_collision()const { return objects_exposed_to_collision_; }
+  tiles_collision_detector const& tiles_exposed_to_collision()const { return tiles_exposed_to_collision_; }
 
   
 private:
@@ -381,9 +405,10 @@ private:
   object_shapes_t object_personal_space_shapes_;
   object_shapes_t object_detail_shapes_;
   
-  // This currently means all mobile objects,
+  // "exposed to collision" currently means all mobile objects,
   // and all non-interior, non-air tiles.
-  world_collision_detector things_exposed_to_collision_;
+  objects_collision_detector objects_exposed_to_collision_;
+  tiles_collision_detector tiles_exposed_to_collision_;
 
   laser_sfxes_type laser_sfxes_;
   
@@ -397,7 +422,6 @@ private:
   
   
   the_decomposition_of_the_world_into_blocks_impl::worldblock* ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
-  void ensure_realization_of_space_(tile_bounding_box space, level_of_tile_realization_needed realineeded);
   
   // Used only by world_building_gun
   void initialize_tile_contents_(tile_location const& loc, tile_contents contents);

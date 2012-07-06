@@ -510,6 +510,23 @@ bool shape::intersects(shape const& other)const {
   return false;
 }
 
+bool shape::intersects(bounding_box const& other)const {
+  if (!bounds().overlaps(other)) return false;
+
+  for (line_segment const& l : segments_) {
+    if (get_first_intersection(l, other)) return true;
+  }
+
+  for (convex_polygon const& p1 : polygons_) {
+    if (nonshape_intersects(p1, other)) return true;
+  }
+
+  for (bounding_box const& b1 : boxes_) {
+    if (b1.overlaps(other)) return true;
+  }
+  return false;
+}
+
 optional_rational shape::first_intersection( const line_segment& other )const {
   optional_rational result;
   for (convex_polygon const& p : polygons_) {

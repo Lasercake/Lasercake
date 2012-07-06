@@ -29,20 +29,24 @@ void collect_collisions_if_object_personal_space_is_at(
     object_identifier id,
     shape const& new_shape
 ) {
-  vector<object_or_tile_identifier> potential_collisions;
-  w.collect_things_exposed_to_collision_intersecting(potential_collisions, new_shape.bounds());
-  for (auto const& pc : potential_collisions){
-    if (const auto tlocp = pc.get_tile_location()) {
-      if (tile_shape(tlocp->coords()).intersects(new_shape)) {
-        results.insert(pc);
-      }
+  vector<tile_location> potential_collisions_tile;
+  vector<object_identifier> potential_collisions_object;
+  const bounding_box new_shape_bounds = new_shape.bounds();
+  w.ensure_realization_of_space(new_shape_bounds, FULL_REALIZATION);
+  w.tiles_exposed_to_collision().get_objects_overlapping(potential_collisions_tile,
+      tile_bbox_to_tiles_collision_detector_bbox(get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(new_shape_bounds)));
+  w.objects_exposed_to_collision().get_objects_overlapping(potential_collisions_object,
+      new_shape_bounds);
+  for (const tile_location loc : potential_collisions_tile) {
+    if (tile_shape(loc.coords()).intersects(new_shape)) {
+      results.insert(loc);
     }
-    if (const auto oidp = pc.get_object_identifier()) {
-      if (*oidp != id) {
-        if (const auto ps_shape = find_as_pointer(w.get_object_personal_space_shapes(), *oidp)) {
-          if (ps_shape->intersects(new_shape)) {
-            results.insert(pc);
-          }
+  }
+  for (const object_identifier oid : potential_collisions_object) {
+    if (oid != id) {
+      if (const auto ps_shape = find_as_pointer(w.get_object_personal_space_shapes(), oid)) {
+        if (ps_shape->intersects(new_shape)) {
+          results.insert(oid);
         }
       }
     }
@@ -102,7 +106,7 @@ void update_moving_objects_impl(
    objects_map<mobile_object>::type & moving_objects,
    object_shapes_t                  & personal_space_shapes,
    object_shapes_t                  & detail_shapes,
-   world_collision_detector         & things_exposed_to_collision) {
+   objects_collision_detector       & objects_exposed_to_collision) {
    
   // This entire function is kludgy and horrifically un-optimized.
   
@@ -123,9 +127,10 @@ void update_moving_objects_impl(
     p.second->velocity_ = obj_velocity_temp;
   }
   
-  world_collision_detector sweep_box_cd;
-  
+  objects_collision_detector sweep_box_cd;
   unordered_set<object_identifier> objects_with_some_overlap;
+
+  // Initialize all the objects' presumed sweeps through space this frame.
   for (auto const& p : moving_objects) {
     if (shape const* old_personal_space_shape = find_as_pointer(personal_space_shapes, p.first)) {
       shape dst_personal_space_shape(*old_personal_space_shape);
@@ -133,27 +138,41 @@ void update_moving_objects_impl(
       
       bounding_box sweep_bounds = dst_personal_space_shape.bounds();
       sweep_bounds.combine_with(old_personal_space_shape->bounds());
-      
-      sweep_box_cd.insert(p.first, sweep_bounds);
-      
-      vector<object_or_tile_identifier> this_overlaps;
-      sweep_box_cd.get_objects_overlapping(this_overlaps, sweep_bounds);
-      w.collect_things_exposed_to_collision_intersecting(this_overlaps, sweep_bounds);
+
+      // Did this object (1) potentially pass through another object's sweep
+      // and/or (2) potentially hit a stationary object/tile?
+      //
+      // These checks are conservative and bounding-box based.
+      vector<object_identifier> objects_this_could_collide_with;
+      sweep_box_cd.get_objects_overlapping(objects_this_could_collide_with, sweep_bounds);
+      w.ensure_realization_of_space(sweep_bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
+      w.objects_exposed_to_collision().get_objects_overlapping(objects_this_could_collide_with, sweep_bounds);
       
       bool this_is_overlapping = false;
-      for (object_or_tile_identifier const& foo : this_overlaps) {
-        if (object_identifier const* bar = foo.get_object_identifier()) {
-          if (*bar != p.first) {
-            objects_with_some_overlap.insert(*bar);
-            this_is_overlapping = true;
-          }
-        }
-        else {
-          // we must be a tile! nothing to do about that...
+      for (object_identifier obj_id : objects_this_could_collide_with) {
+        if (obj_id != p.first) {
+          objects_with_some_overlap.insert(obj_id);
           this_is_overlapping = true;
         }
       }
+      // Optimization - if this is already overlapping an object's sweep,
+      // we don't need to look at the tiles now.
+      if(!this_is_overlapping) {
+        vector<tile_location> tiles_this_could_collide_with;
+        // TODO we don't even need to get all of them, just see if there are any of them.
+        w.tiles_exposed_to_collision().get_objects_overlapping(tiles_this_could_collide_with,
+          tile_bbox_to_tiles_collision_detector_bbox(get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(sweep_bounds)));
+        if (!tiles_this_could_collide_with.empty()) {
+          // All tiles_exposed_to_collision affect you as you touch them.
+          // Tiles themselves cannot move in this moving_objects way so we don't add
+          // them to any collections here.
+          this_is_overlapping = true;
+        }
+      }
+
       if (this_is_overlapping) objects_with_some_overlap.insert(p.first);
+
+      sweep_box_cd.insert(p.first, sweep_bounds);
     }
   }
   
@@ -221,31 +240,49 @@ void update_moving_objects_impl(
     vector3<fine_scalar> wanted_displacement_this_step = info.remaining_displacement * (times.current_time - info.last_step_time) / (whole_frame_duration - info.last_step_time);
       
     new_shape.translate(wanted_displacement_this_step);
-      
-    vector<object_or_tile_identifier> this_overlaps;
-    w.collect_things_exposed_to_collision_intersecting(this_overlaps, new_shape.bounds());
+
+    vector<object_identifier> objects_this_would_collide_with;
+    vector<tile_location> tiles_this_would_collide_with;
+    // TODO fix if you'd run into water AND rock/object on the same step
+    // (or rewrite this code!)
+    w.ensure_realization_of_space(new_shape.bounds(), CONTENTS_AND_LOCAL_CACHES_ONLY);
+    w.objects_exposed_to_collision().get_objects_overlapping(objects_this_would_collide_with, new_shape.bounds());
+    w.tiles_exposed_to_collision().get_objects_overlapping(tiles_this_would_collide_with,
+      tile_bbox_to_tiles_collision_detector_bbox(get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(new_shape.bounds())));
     
     // This collision code is kludgy because of the way it handles one collision at a time.
     // TODO properly consider multiple collisions in the same step.
     bool this_step_needs_adjusting = false;
-    for (object_or_tile_identifier const& them : this_overlaps) {
-      if (them != id) {
-        tile_location const* locp = them.get_tile_location();
-        if (locp && is_water(locp->stuff_at().contents())) {
-          const fine_scalar current_speed = objp->velocity_.magnitude_within_32_bits();
-          if (current_speed > max_object_speed_through_water) {
-            objp->velocity_ = objp->velocity_ * max_object_speed_through_water / current_speed;
-            info.remaining_displacement = info.remaining_displacement * max_object_speed_through_water / current_speed;
-            this_step_needs_adjusting = true;
-            break;
-          }
+    for (tile_location them : tiles_this_would_collide_with) {
+      if (is_water(them.stuff_at().contents())) {
+        const fine_scalar current_speed = objp->velocity_.magnitude_within_32_bits();
+        if (current_speed > max_object_speed_through_water) {
+          objp->velocity_ = objp->velocity_ * max_object_speed_through_water / current_speed;
+          info.remaining_displacement = info.remaining_displacement * max_object_speed_through_water / current_speed;
+          this_step_needs_adjusting = true;
+          break;
         }
-        else {
+      }
+      else {
+        const bounding_box their_shape = fine_bounding_box_of_tile(them.coords());
+        if (new_shape.intersects(their_shape) && !personal_space_shapes[id].intersects(their_shape)) {
+          this_step_needs_adjusting = true;
+          cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity_, new_shape.bounds(), their_shape);
+
+          objp->velocity_ -= project_onto_cardinal_direction(objp->velocity_, approx_impact_dir);
+          info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, approx_impact_dir);
+          break;
+        }
+      }
+    }
+    if(!this_step_needs_adjusting) {
+      for (object_identifier const& them : objects_this_would_collide_with) {
+        if (them != id) {
           shape their_shape = w.get_personal_space_shape_of_object_or_tile(them);
           if (new_shape.intersects(their_shape) && !personal_space_shapes[id].intersects(their_shape)) {
             this_step_needs_adjusting = true;
             cardinal_direction approx_impact_dir = approximate_direction_of_entry(objp->velocity_, new_shape.bounds(), their_shape.bounds());
-            
+
             objp->velocity_ -= project_onto_cardinal_direction(objp->velocity_, approx_impact_dir);
             info.remaining_displacement -= project_onto_cardinal_direction(info.remaining_displacement, approx_impact_dir);
             break;
@@ -263,8 +300,8 @@ void update_moving_objects_impl(
       // complication and time (since we currently have no reason to consider the
       // detail shape during movement/collisions.)
       personal_space_shapes[id] = new_shape;
-      things_exposed_to_collision.erase(id);
-      things_exposed_to_collision.insert(id, new_shape.bounds());
+      objects_exposed_to_collision.erase(id);
+      objects_exposed_to_collision.insert(id, new_shape.bounds());
       
       info.accumulated_displacement += wanted_displacement_this_step;
       info.remaining_displacement -= wanted_displacement_this_step;
@@ -274,7 +311,7 @@ void update_moving_objects_impl(
       
     if (false) { // if our velocity changed...
         info.remaining_displacement = (objp->velocity() * (whole_frame_duration - times.current_time)) / (whole_frame_duration * velocity_scale_factor);
-        vector<object_or_tile_identifier> new_sweep_overlaps;
+        vector<object_identifier> new_sweep_overlaps;
         
         shape dst_personal_space_shape(personal_space_shapes[id]);
         dst_personal_space_shape.translate(info.remaining_displacement);
@@ -284,14 +321,12 @@ void update_moving_objects_impl(
         sweep_box_cd.insert(id, sweep_bounds);
         sweep_box_cd.get_objects_overlapping(new_sweep_overlaps, sweep_bounds);
       
-        for (object_or_tile_identifier const& foo : new_sweep_overlaps) {
-          if (object_identifier const* bar = foo.get_object_identifier()) {
-            if (*bar != id) {
-              if (objects_with_some_overlap.find(*bar) == objects_with_some_overlap.end()) {
-                objects_with_some_overlap.insert(*bar);
-                trajinfo[*bar] = object_trajectory_info(moving_objects[*bar]->velocity() / velocity_scale_factor);
-                times.queue_next_step(*bar, trajinfo[*bar]);
-              }
+        for (object_identifier const& obj_id : new_sweep_overlaps) {
+          if (obj_id != id) {
+            if (objects_with_some_overlap.find(obj_id) == objects_with_some_overlap.end()) {
+              objects_with_some_overlap.insert(obj_id);
+              trajinfo[obj_id] = object_trajectory_info(moving_objects[obj_id]->velocity() / velocity_scale_factor);
+              times.queue_next_step(obj_id, trajinfo[obj_id]);
             }
           }
         }
@@ -309,15 +344,15 @@ void update_moving_objects_impl(
       
     bounding_box new_bounds = personal_space_shapes[p.first].bounds();
     new_bounds.combine_with(detail_shapes[p.first].bounds());
-    things_exposed_to_collision.erase(p.first);
-    things_exposed_to_collision.insert(p.first, new_bounds);
+    objects_exposed_to_collision.erase(p.first);
+    objects_exposed_to_collision.insert(p.first, new_bounds);
   }
 }
 
 } /* end anonymous namespace */
 
 void world::update_moving_objects() {
-  update_moving_objects_impl(*this, moving_objects_, object_personal_space_shapes_, object_detail_shapes_, things_exposed_to_collision_);
+  update_moving_objects_impl(*this, moving_objects_, object_personal_space_shapes_, object_detail_shapes_, objects_exposed_to_collision_);
 }
 
 #if 0

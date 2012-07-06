@@ -543,27 +543,33 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
 // Per world_building_gun, tiles start out marked interior
 // (usually the common case, and also permits the algorithms here)
 // and don't need to be changed if they actually are interior.
-void initialize_to_not_interior(tile_location const& loc, world_collision_detector& things_exposed_to_collision) {
+void initialize_to_not_interior(
+        tile_location const& loc,
+        tiles_collision_detector& tiles_exposed_to_collision) {
   mutable_stuff_at(loc).set_interiorness(false);
   // A tile is either interior or exposed to collision.
   // TODO: figure out whether surface air should be collision detected with
   // (maybe there's something that detects contact with air? Sodium...?)
   if (loc.stuff_at().contents() != AIR) {
-    things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
+    tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
   }
 }
 
 void initialize_tile_local_caches_relating_to_this_neighbor_impl(
-        world_collision_detector& things_exposed_to_collision, tile_location const& loc, tile adj_tile) {
+        tiles_collision_detector& tiles_exposed_to_collision,
+        tile_location const& loc,
+        tile adj_tile) {
   const tile tile_here = loc.stuff_at();
   if (neighboring_tiles_with_these_contents_are_not_interior(adj_tile.contents(), tile_here.contents())) {
     if(tile_here.is_interior()) {
-      initialize_to_not_interior(loc, things_exposed_to_collision);
+      initialize_to_not_interior(loc, tiles_exposed_to_collision);
     }
   }
 }
 
-void initialize_tile_local_caches_impl(world_collision_detector& things_exposed_to_collision, tile_location const& loc) {
+void initialize_tile_local_caches_impl(
+        tiles_collision_detector& tiles_exposed_to_collision,
+        tile_location const& loc) {
   const tile tile_here = loc.stuff_at();
   bool should_be_interior = true;
   const std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc, CONTENTS_ONLY);
@@ -573,12 +579,12 @@ void initialize_tile_local_caches_impl(world_collision_detector& things_exposed_
       // Between us and them is a 'different types' interface, so we're not interior:
       should_be_interior = false;
       if(adj_tile.is_interior()) {
-        initialize_to_not_interior(adj_loc, things_exposed_to_collision);
+        initialize_to_not_interior(adj_loc, tiles_exposed_to_collision);
       }
     }
   }
   if(should_be_interior == false && tile_here.is_interior()) {
-    initialize_to_not_interior(loc, things_exposed_to_collision);
+    initialize_to_not_interior(loc, tiles_exposed_to_collision);
   }
 }
 
@@ -811,7 +817,7 @@ void replace_substance_impl(
    tile_location const& loc,
    tile_contents old_substance_type,
    tile_contents new_substance_type,
-   world_collision_detector& things_exposed_to_collision)
+   tiles_collision_detector& tiles_exposed_to_collision)
 {
   // For short:
   groupable_water_dimensional_boundaries_TODO_name_this_better_t& groupable_water_dimensional_boundaries_TODO_name_this_better = state.groupable_water_dimensional_boundaries_TODO_name_this_better;
@@ -993,9 +999,9 @@ void replace_substance_impl(
           // No longer interior! Unless you're air, add to the collision detection struct.
           // TODO: figure out whether surface air should be collision detected with
           // (maybe there's something that detects contact with air? Sodium...?)
-          assert_if_ASSERT_EVERYTHING(!things_exposed_to_collision.exists(adj_loc));
+          assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.exists(adj_loc));
           if (adj_loc.stuff_at().contents() != AIR) {
-            things_exposed_to_collision.insert(adj_loc, convert_to_fine_units(tile_bounding_box(adj_loc.coords())));
+            tiles_exposed_to_collision.insert(adj_loc, tile_coords_to_tiles_collision_detector_bbox(adj_loc.coords()));
           }
         }
       }
@@ -1016,8 +1022,8 @@ void replace_substance_impl(
             // TODO: figure out whether surface air should be collision detected with
             // (maybe there's something that detects contact with air? Sodium...?)
             if (adj_loc.stuff_at().contents() != AIR) {
-              assert_if_ASSERT_EVERYTHING(things_exposed_to_collision.exists(adj_loc));
-              things_exposed_to_collision.erase(adj_loc);
+              assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.exists(adj_loc));
+              tiles_exposed_to_collision.erase(adj_loc);
             }
           }
         }
@@ -1027,12 +1033,12 @@ void replace_substance_impl(
     bool should_have_been_collidable = (!loc.stuff_at().is_interior() && !old_substance_type == AIR);
     mutable_stuff_at(loc).set_interiorness(we_are_now_interior);
     if (should_be_collidable && !should_have_been_collidable) {
-      assert_if_ASSERT_EVERYTHING(!things_exposed_to_collision.exists(loc));
-      things_exposed_to_collision.insert(loc, convert_to_fine_units(tile_bounding_box(loc.coords())));
+      assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.exists(loc));
+      tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
     }
     if (!should_be_collidable && should_have_been_collidable) {
-      assert_if_ASSERT_EVERYTHING(things_exposed_to_collision.exists(loc));
-      things_exposed_to_collision.erase(loc);
+      assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.exists(loc));
+      tiles_exposed_to_collision.erase(loc);
     }
   }
   
@@ -1725,11 +1731,11 @@ void world::initialize_tile_contents_(tile_location const& loc, tile_contents co
 }
 
 void world::initialize_tile_local_caches_(tile_location const& loc) {
-  initialize_tile_local_caches_impl(things_exposed_to_collision_, loc);
+  initialize_tile_local_caches_impl(tiles_exposed_to_collision_, loc);
 }
 
 void world::initialize_tile_local_caches_relating_to_this_neighbor_(tile_location const& loc, tile neighbor) {
-  initialize_tile_local_caches_relating_to_this_neighbor_impl(things_exposed_to_collision_, loc, neighbor);
+  initialize_tile_local_caches_relating_to_this_neighbor_impl(tiles_exposed_to_collision_, loc, neighbor);
 }
 
 void world::initialize_tile_water_group_caches_(tile_location const& loc) {
@@ -1742,7 +1748,7 @@ void world::initialize_tile_water_group_caches_(tile_location const& loc) {
 void world::replace_substance(tile_location const& loc,
         tile_contents old_substance_type, tile_contents new_substance_type) {
   state_t& state = get_state(*this);
-  replace_substance_impl(state, loc, old_substance_type, new_substance_type, things_exposed_to_collision_);
+  replace_substance_impl(state, loc, old_substance_type, new_substance_type, tiles_exposed_to_collision_);
 }
 
 void world::update_fluids() {

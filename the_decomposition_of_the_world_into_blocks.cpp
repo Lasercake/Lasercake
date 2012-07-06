@@ -256,7 +256,7 @@ worldblock* world::ensure_realization_of_and_get_worldblock_(vector3<tile_coordi
   return &wb;
 }
 
-void world::ensure_realization_of_space_(tile_bounding_box space, level_of_tile_realization_needed realineeded) {
+void world::ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded) {
   const worldblock_dimension_type wd = worldblock_dimension;
   for (tile_coordinate
        x =  space.min.x                            / wd;

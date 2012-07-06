@@ -177,21 +177,21 @@ object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lase
     std::cerr << "\nInit: ";
     const microseconds_t microseconds_before_init = get_this_process_microseconds();
 
-    vector<object_or_tile_identifier> tiles_near_start;
+    vector<tile_location> tiles_near_start;
     // I choose these distances big enough that, as of the time of writing this comment,
     // the GLOBAL view won't have to realize any new tiles in order to make a complete cycle
     // around world-center.  This is an interim way to get rid of that annoying lag, at the cost
     // of a bit more of annoying startup time.
-    w.collect_things_exposed_to_collision_intersecting(tiles_near_start, bounding_box::min_and_max(
+    const bounding_box initial_area = bounding_box::min_and_max(
       world_center_fine_coords - vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80),
       world_center_fine_coords + vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80)
-    ));
-    for (object_or_tile_identifier const& id : tiles_near_start) {
-      if (tile_location const* locp = id.get_tile_location()) {
-        tile_location const& loc = *locp;
-        if (loc.stuff_at().contents() == GROUPABLE_WATER) {
-          w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
-        }
+    );
+    w.ensure_realization_of_space(initial_area, FULL_REALIZATION);
+    w.tiles_exposed_to_collision().get_objects_overlapping(tiles_near_start,
+        tile_bbox_to_tiles_collision_detector_bbox(get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(initial_area)));
+    for (tile_location loc : tiles_near_start) {
+      if (loc.stuff_at().contents() == GROUPABLE_WATER) {
+        w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
       }
     }
 
@@ -207,11 +207,15 @@ std::string get_world_ztree_debug_info(world const& w) {
   std::stringstream world_ztree_debug_info;
   // hack to print this debug info occasionally
   if(w.game_time_elapsed() % (time_units_per_second * 5) < (time_units_per_second / 15)) {
-    w.get_things_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
+    world_ztree_debug_info << "tiles:";
+    w.tiles_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
+    world_ztree_debug_info << "objects:";
+    w.objects_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
   }
   else {
     // zobj = ztree objects
-    world_ztree_debug_info << w.get_things_exposed_to_collision().size() << " zobj; ";
+    world_ztree_debug_info << "t:" << w.tiles_exposed_to_collision().size()
+      << " o:" << w.objects_exposed_to_collision().size() << " zobj; ";
   }
   return world_ztree_debug_info.str();
 }

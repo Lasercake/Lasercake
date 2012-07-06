@@ -151,6 +151,15 @@ tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_b
   return (xdist + ydist + (zdist * tile_width / tile_height)) / tile_width;
 }
 
+// When you're on two tiles, can this be correct? Is it a problem if it isn't? I think it's alright.
+// (Comparing to converting b to fine units and calling tile_manhattan_distance_to_bounding_box_rounding_down.)
+tile_coordinate tile_manhattan_distance_to_tile_bounding_box(tile_bounding_box b, vector3<tile_coordinate> const& v) {
+  const fine_scalar xdist = (v(X) < b.min.x) ? (b.min.x - v(X)) : (v(X) > b.min.x+(b.size.x-1)) ? (v(X) - (b.min.x+(b.size.x-1))) : 0;
+  const fine_scalar ydist = (v(Y) < b.min.y) ? (b.min.y - v(Y)) : (v(Y) > b.min.y+(b.size.y-1)) ? (v(Y) - (b.min.y+(b.size.y-1))) : 0;
+  const fine_scalar zdist = (v(Z) < b.min.z) ? (b.min.z - v(Z)) : (v(Z) > b.min.z+(b.size.z-1)) ? (v(Z) - (b.min.z+(b.size.z-1))) : 0;
+  return xdist + ydist + zdist;
+}
+
 
 } // end anonymous namespace
 
@@ -388,14 +397,19 @@ void view_on_the_world::prepare_gl_data(
     // Optimization:
     if(gl_data.tint_everything_with_this_color.a == 0xff) { return; }
 
-    vector<object_or_tile_identifier> tiles_to_draw;
+    vector<object_identifier> objects_to_draw;
+    vector<tile_location> tiles_to_draw;
 
-    if (this->drawing_regular_stuff) {
-      const fine_scalar view_dist = config.view_radius;
-      w.collect_things_exposed_to_collision_intersecting(tiles_to_draw, bounding_box::min_and_max(
+    const fine_scalar view_dist = config.view_radius;
+    const bounding_box fine_view_bounds = bounding_box::min_and_max(
         view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
         view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
-      ));
+      );
+    const tile_bounding_box tile_view_bounds = get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(fine_view_bounds);
+    w.ensure_realization_of_space(tile_view_bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    if (this->drawing_regular_stuff) {
+      w.objects_exposed_to_collision().get_objects_overlapping(objects_to_draw, fine_view_bounds);
+      w.tiles_exposed_to_collision().get_objects_overlapping(tiles_to_draw, tile_bbox_to_tiles_collision_detector_bbox(tile_view_bounds));
     }
 
     if (this->drawing_debug_stuff) {
@@ -460,13 +474,12 @@ void view_on_the_world::prepare_gl_data(
       }
     }
 
-    for (object_or_tile_identifier const& id : tiles_to_draw) {
+    for (object_identifier const& id : objects_to_draw) {
       gl_collection& coll = gl_collections_by_distance[
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
       ];
-      if (object_identifier const* mid = id.get_object_identifier()) {
-        shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(*mid)));
-        const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(*mid);
+        shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
+        const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
 
         const color objects_color(0xff00ffaa); //something bright&visible
 
@@ -529,8 +542,10 @@ void view_on_the_world::prepare_gl_data(
           }
         }
       }
-      if (tile_location const* locp = id.get_tile_location()) {
-        tile_location const& loc = *locp;
+    for (tile_location const& loc : tiles_to_draw) {
+        gl_collection& coll = gl_collections_by_distance[
+          get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))
+        ];
         tile const& t = loc.stuff_at();
 
         prepare_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
@@ -570,7 +585,6 @@ void view_on_the_world::prepare_gl_data(
           }
         }
       }
-    }
 
     gl_data.facing = cast_vector3_to_floating<GLfloat>(view_towards - view_loc) / get_primitive_double(tile_width);
     gl_data.facing_up = vector3<GLfloat>(0, 0, 1);

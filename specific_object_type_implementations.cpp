@@ -35,23 +35,30 @@ struct beam_first_contact_finder {
   bool bbox_is_too_large(world_collision_detector::bounding_box const& bbox) const {
     return (bbox.size_minus_one(X) >= too_large || bbox.size_minus_one(Y) >= too_large || bbox.size_minus_one(Z) >= too_large);
   }
+  bool bbox_is_too_large(tiles_collision_detector::bounding_box const& bbox) const {
+    return (bbox.size_minus_one(X) >= (too_large/tile_width) || bbox.size_minus_one(Y) >= (too_large/tile_width) || bbox.size_minus_one(Z) >= (too_large/tile_height));
+  }
+  result_type min_cost(tiles_collision_detector::bounding_box const& bbox) const {
+    // hack - avoid overflow - don't try to filter out too-large regions
+    if(bbox_is_too_large(bbox)) return rational(0);
+    return get_first_intersection(beam_, convert_to_fine_units(tiles_collision_detector_bbox_to_tile_bounding_box(bbox)));
+  }
   result_type min_cost(world_collision_detector::bounding_box const& bbox) const {
     // hack - avoid overflow - don't try to filter out too-large regions
     if(bbox_is_too_large(bbox)) return rational(0);
     return get_first_intersection(beam_, bbox);
   }
-  result_type cost(object_or_tile_identifier id, world_collision_detector::bounding_box const& bbox) const {
+  result_type cost(object_identifier id, world_collision_detector::bounding_box const& bbox) const {
     // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
     if(bbox_is_too_large(bbox)) return result_type();
     if(ignores_.find(id) != ignores_.end()) return result_type();
-    // as an optimization, use tile bounding-boxes directly
-    // (i.e. without converting to shape first)
-    if (tile_location const* tlocp = id.get_tile_location()) {
-      return get_first_intersection(beam_, fine_bounding_box_of_tile(tlocp->coords()));
-    }
-    else {
-      return w_.get_detail_shape_of_object_or_tile(id).first_intersection(beam_);
-    }
+    return w_.get_detail_shape_of_object_or_tile(id).first_intersection(beam_);
+  }
+  result_type cost(tile_location id, tiles_collision_detector::bounding_box const& bbox) const {
+    // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
+    if(bbox_is_too_large(bbox)) return result_type();
+    if(ignores_.find(id) != ignores_.end()) return result_type();
+    return get_first_intersection(beam_, fine_bounding_box_of_tile(id.coords()));
   }
 private:
   world const& w_;
@@ -62,13 +69,24 @@ private:
 void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar> location, vector3<fine_scalar> facing) {
   facing = facing * tile_width * 2 / facing.magnitude_within_32_bits();
   const line_segment beam(location, location + facing * 50);
-  beam_first_contact_finder finder(w, beam, my_id);
-  if(auto hit = w.get_things_exposed_to_collision().find_least(finder)) {
-    const object_or_tile_identifier hit_object = hit->object;
-    const rational best_intercept_point = hit->cost;
+  const beam_first_contact_finder finder(w, beam, my_id);
+  auto hit_tile =  w.tiles_exposed_to_collision().find_least(finder);
+  auto hit_object =  w.objects_exposed_to_collision().find_least(finder);
+  const rational farther_away_than_possible_intercept_point = rational(2); //the valid max is 1
+  rational best_intercept_point = farther_away_than_possible_intercept_point;
+  object_or_tile_identifier hit_thing;
+  if(hit_tile) {
+    hit_thing = hit_tile->object;
+    best_intercept_point = hit_tile->cost;
+  }
+  if(hit_object && hit_object->cost <= best_intercept_point) {
+    hit_thing = hit_object->object;
+    best_intercept_point = hit_object->cost;
+  }
+  if(hit_thing != object_or_tile_identifier()) {
     // TODO do I have to worry about overflow?
     w.add_laser_sfx(location, multiply_rational_into(facing * 50, best_intercept_point));
-    if(tile_location const* locp = hit_object.get_tile_location()) {
+    if(tile_location const* locp = hit_thing.get_tile_location()) {
       if (locp->stuff_at().contents() == ROCK) {
         w.replace_substance(*locp, ROCK, RUBBLE);
       }
@@ -164,6 +182,7 @@ void robot::update(world& w, object_identifier my_id) {
   vector3<fine_scalar> beam_delta = facing_ * 3 / 2;
   
   if (input_news.is_currently_pressed("c") || input_news.is_currently_pressed("v")) {
+    #if 0
     beam_first_contact_finder finder(w, line_segment(location_, location_ + beam_delta), my_id);
     if(auto hit = w.get_things_exposed_to_collision().find_least(finder)) {
       // TODO do I have to worry about overflow?
@@ -178,7 +197,9 @@ void robot::update(world& w, object_identifier my_id) {
         }*/
       }
     }
-    else {
+    else
+    #endif
+    {
       w.add_laser_sfx(location_, beam_delta);
       if (input_news.is_currently_pressed("v") && (carrying_ > 0)) {
         --carrying_;

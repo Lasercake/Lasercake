@@ -201,6 +201,7 @@ public:
   void translate(vector3<polygon_int_type> t);
   
   bool intersects(shape const& other)const;
+  bool intersects(bounding_box const& other)const;
   // returns (was there an intersection?, what fraction of the length of the line segment was the first)
   optional_rational first_intersection(line_segment const& other)const;
   bounding_box bounds()const;
