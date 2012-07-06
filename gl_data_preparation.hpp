@@ -44,6 +44,8 @@ namespace gl_data_preparation {
 // Is vector3<GLfloat>'s layout required to be the same as that of
 // this struct? I believe so.  typedef vector3<GLfloat> vertex; ?
 struct vertex {
+  vertex() {}
+
   vertex(GLfloat x, GLfloat y, GLfloat z) : x(x), y(y), z(z) {}
   /* implicit conversion */ vertex(vector3<GLfloat> const& v) : x(v.x), y(v.y), z(v.z) {}
 
@@ -52,6 +54,7 @@ struct vertex {
 static_assert(sizeof(vertex) == 3*sizeof(GLfloat), "OpenGL needs this data layout.");
 
 struct color {
+  color() {}
 
   // Use hex RGBA values as familiar from e.g. CSS.
   // e.g. 0x00ff0077 is pure green at 50% opacity.
@@ -69,6 +72,8 @@ struct color {
 static_assert(sizeof(color) == 4*sizeof(GLubyte), "OpenGL needs this data layout.");
 
 struct vertex_with_color {
+  vertex_with_color() {}
+
   vertex_with_color(vertex v, color c) : c(c), v(v) {}
   vertex_with_color(GLfloat x, GLfloat y, GLfloat z, color c) : c(c), v(x,y,z) {}
   color c;
@@ -146,6 +151,7 @@ typedef std::unordered_map<size_t, gl_collection> gl_collectionplex;
 
 struct gl_all_data {
   gl_collectionplex stuff_to_draw_as_gl_collections_by_distance;
+  color tint_everything_with_this_color;
   vector3<GLfloat> facing;
   vector3<GLfloat> facing_up;
 };

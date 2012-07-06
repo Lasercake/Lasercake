@@ -202,17 +202,27 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
   }
 }
 
+// Inlining into prepare_tile() is useful, so specify 'inline'.
+inline color compute_tile_color(tile_location const& loc) {
+  vector3<tile_coordinate> const& coords = loc.coords();
+  switch (loc.stuff_at().contents()) {
+    //prepare_tile() doesn't need this case, so omit it:
+    //case AIR: return color(0x00000000);
+    case ROCK: return color(((((get_primitive<uint32_t>(coords.x) + get_primitive<uint32_t>(coords.y) + get_primitive<uint32_t>(coords.z)) % 3)
+                                                * 0x222222u + 0x333333u) << 8) + 0xffu);
+    case RUBBLE: return color(0xffff0077);
+    case GROUPABLE_WATER: return color(0x0000ff77);
+    case UNGROUPABLE_WATER: return color(0x6666ff77);
+    default: assert(false);
+  }
+}
+
 void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
   vector3<tile_coordinate> const& coords = loc.coords();
   tile const& t = loc.stuff_at();
+  const tile_contents contents = t.contents();
   
-  const color tile_color =
-    t.contents() ==              ROCK ? color(((((get_primitive<uint32_t>(coords.x) + get_primitive<uint32_t>(coords.y) + get_primitive<uint32_t>(coords.z)) % 3)
-                                                * 0x222222u + 0x333333u) << 8) + 0xffu) :
-    t.contents() ==            RUBBLE ? color(0xffff0077) :
-    t.contents() ==   GROUPABLE_WATER ? color(0x0000ff77) :
-    t.contents() == UNGROUPABLE_WATER ? color(0x6666ff77) :
-    (assert(false), (/*hack to make this compile*/0?color(0):throw 0xdeadbeef));
+  const color tile_color = compute_tile_color(loc);
 
   // If we make one of the 'glb' members the closest corner of the tile to the player,
   // and the other the farthest, then we can draw the faces in a correct order
@@ -229,10 +239,6 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   const bool is_same_x_coord_as_viewer = (view_tile_loc_rounded_down.x == coords.x);
   const bool is_same_y_coord_as_viewer = (view_tile_loc_rounded_down.y == coords.y);
   const bool is_same_z_coord_as_viewer = (view_tile_loc_rounded_down.z == coords.z);
-  // "is_same_loc_as_viewer" - there is at most one tile with this true!
-  // So we *could* draw that tile specially once instead of doing this bit of
-  // boolean work for every tile - but it's not much work.
-  const bool is_same_loc_as_viewer = is_same_x_coord_as_viewer && is_same_y_coord_as_viewer && is_same_z_coord_as_viewer;
 
   const std::array<vector3<GLfloat>, 2> glb = {{
     convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
@@ -257,8 +263,6 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   // 1,1,1 as a vertex.
 
   // Only output the faces that are not interior to a single kind of material.
-
-  const tile_contents contents = t.contents();
   const std::array<bool, 2> x_neighbors_differ = {{
     loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
     loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != contents
@@ -273,16 +277,18 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   }};
 
   const bool draw_x_close_side = x_neighbors_differ[x_close_side]
-    && (!is_same_x_coord_as_viewer || is_same_loc_as_viewer);
+                                  && !is_same_x_coord_as_viewer;
   const bool draw_y_close_side = y_neighbors_differ[y_close_side]
-    && (!is_same_y_coord_as_viewer || is_same_loc_as_viewer);
+                                  && !is_same_y_coord_as_viewer;
   const bool draw_z_close_side = z_neighbors_differ[z_close_side]
-    && (!is_same_z_coord_as_viewer || is_same_loc_as_viewer);
+                                  && !is_same_z_coord_as_viewer;
 
   const gl_call_data::size_type original_count = coll.quads.count;
   coll.quads.reserve_new_slots(4 * (draw_x_close_side + draw_y_close_side + draw_z_close_side));
   vertex_with_color* base = coll.quads.vertices + original_count;
 
+  //TODO what if you are close enough to a wall or lake-surface that
+  //this falls inside your near clipping plane?
   if (draw_x_close_side) {
     base[0] = gl_vertices[0][0][0];
     base[1] = gl_vertices[0][1][0];
@@ -346,6 +352,14 @@ void view_on_the_world::prepare_gl_data(
 
     const vector3<double> view_loc_double(cast_vector3_to_floating<double>(view_loc) / get_primitive_double(tile_width));
     const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
+
+    // TODO what if you're on a boundary - in more than one tile location - of two different
+    // substances?
+    // What is even the correct thing to display then?
+    const tile_location here = w.make_tile_location(view_tile_loc_rounded_down, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    gl_data.tint_everything_with_this_color = (here.stuff_at().contents() == AIR ? color(0x00000000) : compute_tile_color(here));
+    // Optimization:
+    if(gl_data.tint_everything_with_this_color.a == 0xff) { return; }
 
     vector<object_or_tile_identifier> tiles_to_draw;
 
@@ -522,7 +536,6 @@ void view_on_the_world::prepare_gl_data(
 
     gl_data.facing = cast_vector3_to_floating<GLfloat>(view_towards - view_loc) / get_primitive_double(tile_width);
     gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
-
 }
 
 

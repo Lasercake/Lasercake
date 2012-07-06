@@ -273,6 +273,7 @@ void LasercakeSimulator::prepare_graphics(input_news_t input_since_last_prepare,
 namespace /*anonymous*/ {
 
 void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data) {
+  using namespace gl_data_preparation;
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
   //glEnable(GL_DEPTH_TEST);
@@ -294,7 +295,7 @@ void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data) {
   //sort in descending order
   std::sort(gl_collections_by_distance_order.rbegin(), gl_collections_by_distance_order.rend());
   for(size_t i : gl_collections_by_distance_order) {
-    gl_data_preparation::gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance.find(i)->second;
+    gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance.find(i)->second;
     if(const size_t count = coll.quads.size()) {
       glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
       glDrawArrays(GL_QUADS, 0, count);
@@ -312,6 +313,19 @@ void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data) {
       glDrawArrays(GL_POINTS, 0, count);
     }
   }
+
+  // Is there a simpler way to tint the whole screen a color?
+  const color tint = gl_data.tint_everything_with_this_color;
+  glLoadIdentity();
+  glOrtho(0, 1, 0, 1, -2, -1);
+  vertex_with_color rect[4] = {
+    vertex_with_color(0, 0, 1.5, tint),
+    vertex_with_color(0, 1, 1.5, tint),
+    vertex_with_color(1, 1, 1.5, tint),
+    vertex_with_color(1, 0, 1.5, tint)
+  };
+  glInterleavedArrays(GL_C4UB_V3F, 0, &rect[0]);
+  glDrawArrays(GL_QUADS, 0, 4);
 }
 
 // Boost doesn't appear to provide a reverse-sense bool switch, so:
