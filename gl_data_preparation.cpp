@@ -353,11 +353,27 @@ void view_on_the_world::prepare_gl_data(
     const vector3<double> view_loc_double(cast_vector3_to_floating<double>(view_loc) / get_primitive_double(tile_width));
     const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
 
-    // TODO what if you're on a boundary - in more than one tile location - of two different
-    // substances?
-    // What is even the correct thing to display then?
-    const tile_location here = w.make_tile_location(view_tile_loc_rounded_down, CONTENTS_AND_LOCAL_CACHES_ONLY);
-    gl_data.tint_everything_with_this_color = (here.stuff_at().contents() == AIR ? color(0x00000000) : compute_tile_color(here));
+    const auto tiles_here = get_all_containing_tile_coordinates(view_loc);
+    // Average the color. Take the max opacity, so that you can't see through rock ever.
+    uint32_t total_r = 0;
+    uint32_t total_g = 0;
+    uint32_t total_b = 0;
+    GLubyte max_a = 0;
+    for(auto coords : tiles_here) {
+      const tile_location here = w.make_tile_location(coords, CONTENTS_AND_LOCAL_CACHES_ONLY);
+      const color color_here = (here.stuff_at().contents() == AIR ?
+                                  color(0x00000000) : compute_tile_color(here));
+      total_r += color_here.r;
+      total_g += color_here.g;
+      total_b += color_here.b;
+      max_a = std::max(max_a, color_here.a);
+    }
+    gl_data.tint_everything_with_this_color = color(
+      GLubyte(total_r / tiles_here.size()),
+      GLubyte(total_g / tiles_here.size()),
+      GLubyte(total_b / tiles_here.size()),
+      max_a);
+
     // Optimization:
     if(gl_data.tint_everything_with_this_color.a == 0xff) { return; }
 
