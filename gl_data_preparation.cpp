@@ -223,12 +223,16 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   // viewer is aligned with the tile in a dimension, then which close corner
   // is picked won't change the order of any faces that are actually going to
   // overlap in the display.
-  // Actually, TODO, if you're aligned in one or two of the dimensions,
-  // how will this make the closest tile to you be drawn first and the farthest
-  // drawn last?  This code can't do that currently. Hmm.
   const int x_close_side = (view_tile_loc_rounded_down.x < coords.x) ? 0 : 1;
   const int y_close_side = (view_tile_loc_rounded_down.y < coords.y) ? 0 : 1;
   const int z_close_side = (view_tile_loc_rounded_down.z < coords.z) ? 0 : 1;
+  const bool is_same_x_coord_as_viewer = (view_tile_loc_rounded_down.x == coords.x);
+  const bool is_same_y_coord_as_viewer = (view_tile_loc_rounded_down.y == coords.y);
+  const bool is_same_z_coord_as_viewer = (view_tile_loc_rounded_down.z == coords.z);
+  // "is_same_loc_as_viewer" - there is at most one tile with this true!
+  // So we *could* draw that tile specially once instead of doing this bit of
+  // boolean work for every tile - but it's not much work.
+  const bool is_same_loc_as_viewer = is_same_x_coord_as_viewer && is_same_y_coord_as_viewer && is_same_z_coord_as_viewer;
 
   const std::array<vector3<GLfloat>, 2> glb = {{
     convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
@@ -268,28 +272,32 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
     loc.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != contents
   }};
 
+  const bool draw_x_close_side = x_neighbors_differ[x_close_side]
+    && (!is_same_x_coord_as_viewer || is_same_loc_as_viewer);
+  const bool draw_y_close_side = y_neighbors_differ[y_close_side]
+    && (!is_same_y_coord_as_viewer || is_same_loc_as_viewer);
+  const bool draw_z_close_side = z_neighbors_differ[z_close_side]
+    && (!is_same_z_coord_as_viewer || is_same_loc_as_viewer);
+
   const gl_call_data::size_type original_count = coll.quads.count;
-  coll.quads.reserve_new_slots(4 * (
-    x_neighbors_differ[x_close_side]+
-    y_neighbors_differ[y_close_side]+
-    z_neighbors_differ[z_close_side]));
+  coll.quads.reserve_new_slots(4 * (draw_x_close_side + draw_y_close_side + draw_z_close_side));
   vertex_with_color* base = coll.quads.vertices + original_count;
 
-  if (z_neighbors_differ[z_close_side]) {
+  if (draw_z_close_side) {
     base[0] = gl_vertices[0][0][0];
     base[1] = gl_vertices[1][0][0];
     base[2] = gl_vertices[1][1][0];
     base[3] = gl_vertices[0][1][0];
     base += 4;
   }
-  if (x_neighbors_differ[x_close_side]) {
+  if (draw_x_close_side) {
     base[0] = gl_vertices[0][0][0];
     base[1] = gl_vertices[0][1][0];
     base[2] = gl_vertices[0][1][1];
     base[3] = gl_vertices[0][0][1];
     base += 4;
   }
-  if (y_neighbors_differ[y_close_side]) {
+  if (draw_y_close_side) {
     base[0] = gl_vertices[0][0][0];
     base[1] = gl_vertices[0][0][1];
     base[2] = gl_vertices[1][0][1];
