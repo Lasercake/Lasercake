@@ -334,260 +334,261 @@ void view_on_the_world::prepare_gl_data(
   gl_data_preparation_config config,
   gl_data_preparation::gl_all_data& gl_data //result
 ) {
-    //for short
-    gl_collectionplex& gl_collections_by_distance = gl_data.stuff_to_draw_as_gl_collections_by_distance;
-    gl_collections_by_distance.clear();
-    // Calculate a bit conservatively; no harm doing so:
-    const size_t max_gl_collection = get_primitive<size_t>(
-      2*(config.view_radius / tile_width) + (config.view_radius / tile_height) + 5);
-    gl_collections_by_distance.resize(max_gl_collection);
+  //for short
+  gl_collectionplex& gl_collections_by_distance = gl_data.stuff_to_draw_as_gl_collections_by_distance;
+  gl_collections_by_distance.clear();
+  // Calculate a bit conservatively; no harm doing so:
+  const size_t max_gl_collection = get_primitive<size_t>(
+    2*(config.view_radius / tile_width) + (config.view_radius / tile_height) + 5);
+  gl_collections_by_distance.resize(max_gl_collection);
 
-    //These values are computed every GL-preparation-frame.
-    vector3<fine_scalar> view_loc;
-    vector3<fine_scalar> view_towards;
+  //These values are computed every GL-preparation-frame.
+  vector3<fine_scalar> view_loc;
+  vector3<fine_scalar> view_towards;
 
-    if (view_type == LOCAL) {
-      view_loc = view_loc_for_local_display;
-      view_towards = view_loc + vector3<fine_scalar>(
-        get_primitive_double(globallocal_view_dist) * std::cos(view_direction),
-        get_primitive_double(globallocal_view_dist) * std::sin(view_direction),
-        0
-      );
-    }
-    else if (view_type == ROBOT) {
-      bounding_box b = w.get_object_personal_space_shapes().find(robot_id)->second.bounds();
-      view_loc = ((b.min() + b.max()) / 2);
-      vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(robot_id)->second)->get_facing();
-      view_towards = view_loc + facing;
-    }
-    else {
-      double game_time_in_seconds = get_primitive_double(w.game_time_elapsed()) / get_primitive_double(time_units_per_second);
-      view_towards = surveilled_by_global_display;
-      view_loc = surveilled_by_global_display + vector3<fine_scalar>(
-        get_primitive_double(globallocal_view_dist) * std::cos(game_time_in_seconds * 3 / 4),
-        get_primitive_double(globallocal_view_dist) * std::sin(game_time_in_seconds * 3 / 4),
-        get_primitive_double(globallocal_view_dist / 2) + get_primitive_double(globallocal_view_dist / 4) * std::sin(game_time_in_seconds / 2)
-      );
-    }
+  if (view_type == LOCAL) {
+    view_loc = view_loc_for_local_display;
+    view_towards = view_loc + vector3<fine_scalar>(
+      get_primitive_double(globallocal_view_dist) * std::cos(view_direction),
+      get_primitive_double(globallocal_view_dist) * std::sin(view_direction),
+      0
+    );
+  }
+  else if (view_type == ROBOT) {
+    bounding_box b = w.get_object_personal_space_shapes().find(robot_id)->second.bounds();
+    view_loc = ((b.min() + b.max()) / 2);
+    vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(robot_id)->second)->get_facing();
+    view_towards = view_loc + facing;
+  }
+  else {
+    double game_time_in_seconds = get_primitive_double(w.game_time_elapsed()) / get_primitive_double(time_units_per_second);
+    view_towards = surveilled_by_global_display;
+    view_loc = surveilled_by_global_display + vector3<fine_scalar>(
+      get_primitive_double(globallocal_view_dist) * std::cos(game_time_in_seconds * 3 / 4),
+      get_primitive_double(globallocal_view_dist) * std::sin(game_time_in_seconds * 3 / 4),
+      get_primitive_double(globallocal_view_dist / 2) + get_primitive_double(globallocal_view_dist / 4) * std::sin(game_time_in_seconds / 2)
+    );
+  }
 
-    const vector3<double> view_loc_double(cast_vector3_to_floating<double>(view_loc) / get_primitive_double(tile_width));
-    const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
+  const vector3<double> view_loc_double(cast_vector3_to_floating<double>(view_loc) / get_primitive_double(tile_width));
+  const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
 
-    const auto tiles_here = get_all_containing_tile_coordinates(view_loc);
-    // Average the color. Take the max opacity, so that you can't see through rock ever.
-    uint32_t total_r = 0;
-    uint32_t total_g = 0;
-    uint32_t total_b = 0;
-    GLubyte max_a = 0;
-    for(auto coords : tiles_here) {
-      const tile_location here = w.make_tile_location(coords, CONTENTS_AND_LOCAL_CACHES_ONLY);
-      const color color_here = (here.stuff_at().contents() == AIR ?
-                                  color(0x00000000) : compute_tile_color(here));
-      total_r += color_here.r;
-      total_g += color_here.g;
-      total_b += color_here.b;
-      max_a = std::max(max_a, color_here.a);
-    }
-    gl_data.tint_everything_with_this_color = color(
-      GLubyte(total_r / tiles_here.size()),
-      GLubyte(total_g / tiles_here.size()),
-      GLubyte(total_b / tiles_here.size()),
-      max_a);
+  const auto tiles_here = get_all_containing_tile_coordinates(view_loc);
+  // Average the color. Take the max opacity, so that you can't see through rock ever.
+  uint32_t total_r = 0;
+  uint32_t total_g = 0;
+  uint32_t total_b = 0;
+  GLubyte max_a = 0;
+  for(auto coords : tiles_here) {
+    const tile_location here = w.make_tile_location(coords, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    const color color_here = (here.stuff_at().contents() == AIR ?
+                                color(0x00000000) : compute_tile_color(here));
+    total_r += color_here.r;
+    total_g += color_here.g;
+    total_b += color_here.b;
+    max_a = std::max(max_a, color_here.a);
+  }
+  gl_data.tint_everything_with_this_color = color(
+    GLubyte(total_r / tiles_here.size()),
+    GLubyte(total_g / tiles_here.size()),
+    GLubyte(total_b / tiles_here.size()),
+    max_a);
 
-    // Optimization:
-    if(gl_data.tint_everything_with_this_color.a == 0xff) { return; }
+  // Optimization:
+  if(gl_data.tint_everything_with_this_color.a == 0xff) { return; }
 
-    vector<object_identifier> objects_to_draw;
-    vector<tile_location> tiles_to_draw;
+  vector<object_identifier> objects_to_draw;
+  vector<tile_location> tiles_to_draw;
 
-    const fine_scalar view_dist = config.view_radius;
-    const bounding_box fine_view_bounds = bounding_box::min_and_max(
-        view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
-        view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
-      );
-    const tile_bounding_box tile_view_bounds = get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(fine_view_bounds);
-    w.ensure_realization_of_space(tile_view_bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
-    if (this->drawing_regular_stuff) {
-      w.objects_exposed_to_collision().get_objects_overlapping(objects_to_draw, fine_view_bounds);
-      w.tiles_exposed_to_collision().get_objects_overlapping(tiles_to_draw, tile_bbox_to_tiles_collision_detector_bbox(tile_view_bounds));
-    }
+  const fine_scalar view_dist = config.view_radius;
+  const bounding_box fine_view_bounds = bounding_box::min_and_max(
+      view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
+      view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
+    );
+  const tile_bounding_box tile_view_bounds = get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(fine_view_bounds);
+  w.ensure_realization_of_space(tile_view_bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
+  if (this->drawing_regular_stuff) {
+    w.objects_exposed_to_collision().get_objects_overlapping(objects_to_draw, fine_view_bounds);
+    w.tiles_exposed_to_collision().get_objects_overlapping(tiles_to_draw, tile_bbox_to_tiles_collision_detector_bbox(tile_view_bounds));
+  }
 
-    if (this->drawing_debug_stuff) {
-      // Issue: this doesn't limit to nearby tile state; it iterates everything.
-      for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
-        tile_physics_impl::persistent_water_group_info const& g = p.second;
+  if (this->drawing_debug_stuff) {
+    // Issue: this doesn't limit to nearby tile state; it iterates everything.
+    for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
+      tile_physics_impl::persistent_water_group_info const& g = p.second;
 
-        for (auto const& suckable_tiles : g.suckable_tiles_by_height.as_map()) {
-          for(tile_location const& suckable_tile : suckable_tiles.second) {
-            const bounding_box tile_fine_bbox = fine_bounding_box_of_tile(suckable_tile.coords());
-            if(manhattan_distance_to_bounding_box(tile_fine_bbox, view_loc) > config.view_radius) {
-              continue;
-            }
-            vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, suckable_tile.coords());
-            gl_collection& coll = gl_collections_by_distance[
-              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
-            ];
-            push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
+      for (auto const& suckable_tiles : g.suckable_tiles_by_height.as_map()) {
+        for(tile_location const& suckable_tile : suckable_tiles.second) {
+          const bounding_box tile_fine_bbox = fine_bounding_box_of_tile(suckable_tile.coords());
+          if(manhattan_distance_to_bounding_box(tile_fine_bbox, view_loc) > config.view_radius) {
+            continue;
           }
+          vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, suckable_tile.coords());
+          gl_collection& coll = gl_collections_by_distance[
+            get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
+          ];
+          push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
         }
-        for (auto const& pushable_tiles : g.pushable_tiles_by_height.as_map()) {
-          for(tile_location const& pushable_tile : pushable_tiles.second) {
-            const bounding_box tile_fine_bbox = fine_bounding_box_of_tile(pushable_tile.coords());
-            if(manhattan_distance_to_bounding_box(tile_fine_bbox, view_loc) > config.view_radius) {
-              continue;
-            }
-            vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, pushable_tile.coords());
-            gl_collection& coll = gl_collections_by_distance[
-              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
-            ];
-            push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
+      }
+      for (auto const& pushable_tiles : g.pushable_tiles_by_height.as_map()) {
+        for(tile_location const& pushable_tile : pushable_tiles.second) {
+          const bounding_box tile_fine_bbox = fine_bounding_box_of_tile(pushable_tile.coords());
+          if(manhattan_distance_to_bounding_box(tile_fine_bbox, view_loc) > config.view_radius) {
+            continue;
           }
+          vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, pushable_tile.coords());
+          gl_collection& coll = gl_collections_by_distance[
+            get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
+          ];
+          push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
         }
       }
     }
+  }
 
-    for (auto p : w.get_laser_sfxes()) {
-      const vector3<GLfloat> locvf1 = convert_coordinates_to_GL(view_loc, p.first);
-      const vector3<GLfloat> locvf2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
-      const vector3<GLfloat> dlocvf = locvf2 - locvf1;
-      GLfloat length = 50; //(locvf2 - locvf1).magnitude_within_32_bits();
-      const vector3<GLfloat> dlocvf_per_step = dlocvf / length;
-      vector3<GLfloat> locvf = locvf1;
+  for (auto p : w.get_laser_sfxes()) {
+    const vector3<GLfloat> locvf1 = convert_coordinates_to_GL(view_loc, p.first);
+    const vector3<GLfloat> locvf2 = convert_coordinates_to_GL(view_loc, p.first + p.second);
+    const vector3<GLfloat> dlocvf = locvf2 - locvf1;
+    GLfloat length = 50; //(locvf2 - locvf1).magnitude_within_32_bits();
+    const vector3<GLfloat> dlocvf_per_step = dlocvf / length;
+    vector3<GLfloat> locvf = locvf1;
 
-      for (int i = 0; i <= length; ++i) {
-        const bounding_box segment_bbox = bounding_box::spanning_two_points(
-          p.first + (p.second * i / length), p.first + (p.second * (i+1) / length));
-        if(manhattan_distance_to_bounding_box(segment_bbox, view_loc) > config.view_radius) {
-          continue;
-        }
-        gl_collection& coll = gl_collections_by_distance[
-          get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(segment_bbox, view_loc))
-        ];
-        const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
-        push_quad(coll,
-                  vertex(locvf.x, locvf.y, locvf.z),
-                  vertex(locvf.x, locvf.y, locvf.z + 0.1),
-                  vertex(locvf_next.x, locvf_next.y, locvf_next.z + 0.1),
-                  vertex(locvf_next.x, locvf_next.y, locvf_next.z),
-                  color(0x00ff0077));
-        locvf = locvf_next;
+    for (int i = 0; i <= length; ++i) {
+      const bounding_box segment_bbox = bounding_box::spanning_two_points(
+        p.first + (p.second * i / length), p.first + (p.second * (i+1) / length));
+      if(manhattan_distance_to_bounding_box(segment_bbox, view_loc) > config.view_radius) {
+        continue;
       }
-    }
-
-    for (object_identifier const& id : objects_to_draw) {
       gl_collection& coll = gl_collections_by_distance[
-        get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
+        get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(segment_bbox, view_loc))
       ];
-        shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
-        const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
+      const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
+      push_quad(coll,
+                vertex(locvf.x, locvf.y, locvf.z),
+                vertex(locvf.x, locvf.y, locvf.z + 0.1),
+                vertex(locvf_next.x, locvf_next.y, locvf_next.z + 0.1),
+                vertex(locvf_next.x, locvf_next.y, locvf_next.z),
+                color(0x00ff0077));
+      locvf = locvf_next;
+    }
+  }
 
-        const color objects_color(0xff00ffaa); //something bright&visible
+  for (object_identifier const& id : objects_to_draw) {
+    gl_collection& coll = gl_collections_by_distance[
+      get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
+    ];
+    shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
+    const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
 
-        lasercake_vector<bounding_box>::type const& obj_bboxes = obj_shape->second.get_boxes();
-        for (bounding_box const& bbox : obj_bboxes) {
-          const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
-          const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
-          push_quad(coll,
-                    vertex(bmin.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmax.y, bmin.z),
-                    vertex(bmin.x, bmax.y, bmin.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmin.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmin.y, bmax.z),
-                    vertex(bmin.x, bmin.y, bmax.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmin.x, bmin.y, bmin.z),
-                    vertex(bmin.x, bmin.y, bmax.z),
-                    vertex(bmin.x, bmax.y, bmax.z),
-                    vertex(bmin.x, bmax.y, bmin.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmin.x, bmin.y, bmax.z),
-                    vertex(bmax.x, bmin.y, bmax.z),
-                    vertex(bmax.x, bmax.y, bmax.z),
-                    vertex(bmin.x, bmax.y, bmax.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmin.x, bmax.y, bmin.z),
-                    vertex(bmax.x, bmax.y, bmin.z),
-                    vertex(bmax.x, bmax.y, bmax.z),
-                    vertex(bmin.x, bmax.y, bmax.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmax.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmin.y, bmax.z),
-                    vertex(bmax.x, bmax.y, bmax.z),
-                    vertex(bmax.x, bmax.y, bmin.z),
-                    objects_color);
-        }
+    const color objects_color(0xff00ffaa); //something bright&visible
 
-        lasercake_vector<convex_polygon>::type const& obj_polygons = obj_shape->second.get_polygons();
-        for (convex_polygon const& polygon : obj_polygons) {
-          push_convex_polygon(view_loc, coll, polygon.get_vertices(), color(0x77777777));
+    lasercake_vector<bounding_box>::type const& obj_bboxes = obj_shape->second.get_boxes();
+    for (bounding_box const& bbox : obj_bboxes) {
+      const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
+      const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
+      push_quad(coll,
+                vertex(bmin.x, bmin.y, bmin.z),
+                vertex(bmax.x, bmin.y, bmin.z),
+                vertex(bmax.x, bmax.y, bmin.z),
+                vertex(bmin.x, bmax.y, bmin.z),
+                objects_color);
+      push_quad(coll,
+                vertex(bmin.x, bmin.y, bmin.z),
+                vertex(bmax.x, bmin.y, bmin.z),
+                vertex(bmax.x, bmin.y, bmax.z),
+                vertex(bmin.x, bmin.y, bmax.z),
+                objects_color);
+      push_quad(coll,
+                vertex(bmin.x, bmin.y, bmin.z),
+                vertex(bmin.x, bmin.y, bmax.z),
+                vertex(bmin.x, bmax.y, bmax.z),
+                vertex(bmin.x, bmax.y, bmin.z),
+                objects_color);
+      push_quad(coll,
+                vertex(bmin.x, bmin.y, bmax.z),
+                vertex(bmax.x, bmin.y, bmax.z),
+                vertex(bmax.x, bmax.y, bmax.z),
+                vertex(bmin.x, bmax.y, bmax.z),
+                objects_color);
+      push_quad(coll,
+                vertex(bmin.x, bmax.y, bmin.z),
+                vertex(bmax.x, bmax.y, bmin.z),
+                vertex(bmax.x, bmax.y, bmax.z),
+                vertex(bmin.x, bmax.y, bmax.z),
+                objects_color);
+      push_quad(coll,
+                vertex(bmax.x, bmin.y, bmin.z),
+                vertex(bmax.x, bmin.y, bmax.z),
+                vertex(bmax.x, bmax.y, bmax.z),
+                vertex(bmax.x, bmax.y, bmin.z),
+                objects_color);
+    }
 
-          // TODO so many redundant velocity vectors!!
-          for(auto const& this_vertex : polygon.get_vertices()) {
-            const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
+    lasercake_vector<convex_polygon>::type const& obj_polygons = obj_shape->second.get_polygons();
+    for (convex_polygon const& polygon : obj_polygons) {
+      push_convex_polygon(view_loc, coll, polygon.get_vertices(), color(0x77777777));
+
+      // TODO so many redundant velocity vectors!!
+      for(auto const& this_vertex : polygon.get_vertices()) {
+        const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
+        push_line(coll,
+                  vertex(locv.x, locv.y, locv.z),
+                  vertex(
+                    locv.x + (get_primitive_double(objp->velocity().x) / get_primitive_double(tile_width)),
+                    locv.y + (get_primitive_double(objp->velocity().y) / get_primitive_double(tile_width)),
+                    locv.z + (get_primitive_double(objp->velocity().z) / get_primitive_double(tile_width))),
+                  objects_color);
+      }
+    }
+  }
+
+  for (tile_location const& loc : tiles_to_draw) {
+    gl_collection& coll = gl_collections_by_distance[
+      get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))
+    ];
+    tile const& t = loc.stuff_at();
+
+    prepare_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
+
+    vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
+
+    if (this->drawing_debug_stuff && is_fluid(t.contents())) {
+      if (tile_physics_impl::active_fluid_tile_info const* fluid =
+            find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
+        push_line(coll,
+                  vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
+                  vertex(
+                    locv.x + 0.5 + (get_primitive_double(fluid->velocity.x) / get_primitive_double(tile_width)),
+                    locv.y + 0.5 + (get_primitive_double(fluid->velocity.y) / get_primitive_double(tile_width)),
+                    locv.z + 0.1 + (get_primitive_double(fluid->velocity.z) / get_primitive_double(tile_width))),
+                  color(0x00ff0077));
+
+        for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+          const sub_tile_distance prog = fluid->progress[dir];
+          if (prog > 0) {
+            vector3<GLfloat> directed_prog =
+              (vector3<GLfloat>(cardinal_direction_vectors[dir]) * get_primitive_double(prog)) /
+              get_primitive_double(tile_physics_impl::progress_necessary(dir));
+
             push_line(coll,
-                      vertex(locv.x, locv.y, locv.z),
-                      vertex(
-                        locv.x + (get_primitive_double(objp->velocity().x) / get_primitive_double(tile_width)),
-                        locv.y + (get_primitive_double(objp->velocity().y) / get_primitive_double(tile_width)),
-                        locv.z + (get_primitive_double(objp->velocity().z) / get_primitive_double(tile_width))),
-                      objects_color);
+                        vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
+                        vertex(
+                          locv.x + 0.51 + directed_prog.x,
+                          locv.y + 0.5 + directed_prog.y,
+                          locv.z + 0.1 + directed_prog.z),
+                        color(0x0000ff77));
           }
         }
       }
-    for (tile_location const& loc : tiles_to_draw) {
-        gl_collection& coll = gl_collections_by_distance[
-          get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))
-        ];
-        tile const& t = loc.stuff_at();
-
-        prepare_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
-
-        vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
-
-        if (this->drawing_debug_stuff && is_fluid(t.contents())) {
-          if (tile_physics_impl::active_fluid_tile_info const* fluid =
-                find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
-            push_line(coll,
-                      vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
-                      vertex(
-                        locv.x + 0.5 + (get_primitive_double(fluid->velocity.x) / get_primitive_double(tile_width)),
-                        locv.y + 0.5 + (get_primitive_double(fluid->velocity.y) / get_primitive_double(tile_width)),
-                        locv.z + 0.1 + (get_primitive_double(fluid->velocity.z) / get_primitive_double(tile_width))),
-                      color(0x00ff0077));
-
-            for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
-              const sub_tile_distance prog = fluid->progress[dir];
-              if (prog > 0) {
-                vector3<GLfloat> directed_prog =
-                  (vector3<GLfloat>(cardinal_direction_vectors[dir]) * get_primitive_double(prog)) /
-                  get_primitive_double(tile_physics_impl::progress_necessary(dir));
-
-                push_line(coll,
-                            vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
-                            vertex(
-                              locv.x + 0.51 + directed_prog.x,
-                              locv.y + 0.5 + directed_prog.y,
-                              locv.z + 0.1 + directed_prog.z),
-                            color(0x0000ff77));
-              }
-            }
-          }
-          else {
-            push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.1), color(0x00000077));
-          }
-        }
+      else {
+        push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.1), color(0x00000077));
       }
+    }
+  }
 
-    gl_data.facing = cast_vector3_to_floating<GLfloat>(view_towards - view_loc) / get_primitive_double(tile_width);
-    gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
+  gl_data.facing = cast_vector3_to_floating<GLfloat>(view_towards - view_loc) / get_primitive_double(tile_width);
+  gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
 }
 
 
