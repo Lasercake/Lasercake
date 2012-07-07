@@ -215,9 +215,10 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   
     // Prefer to use tile_location::stuff_at().
     inline tile& get_tile(vector3<tile_coordinate> global_coords) {
-      return tiles_[get_primitive_int(global_coords.x - global_position_.x)]
-                   [get_primitive_int(global_coords.y - global_position_.y)]
-                   [get_primitive_int(global_coords.z - global_position_.z)];
+      return tiles_[
+          get_primitive_int(global_coords.x - global_position_.x)*(worldblock_dimension*worldblock_dimension)
+        + get_primitive_int(global_coords.y - global_position_.y)*(worldblock_dimension)
+        + get_primitive_int(global_coords.z - global_position_.z)];
     }
   
     // Only to be used in tile_location::get_neighbor:
@@ -238,7 +239,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     level_of_tile_realization_needed current_tile_realization_;
     bool is_busy_realizing_;
     world* w_;
-    std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
+    // A three-dimensional array of tile, of worldblock_dimension in each dimension.
+    // std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
+    tile tiles_[worldblock_dimension*worldblock_dimension*worldblock_dimension];
   };
 }
 

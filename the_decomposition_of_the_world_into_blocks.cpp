@@ -49,11 +49,12 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     // randomness only affects speed.  The *correctness* of worldblock
     // would be maintained even with an RNG here that always returned 0.
     auto& rng = w_->get_rng();
-    const boost::random::uniform_int_distribution<worldblock_dimension_type> random_coord(0, worldblock_dimension-1);
-    const tile_contents try1 = tiles_[random_coord(rng)][random_coord(rng)][random_coord(rng)].contents();
-    const tile_contents try2 = tiles_[random_coord(rng)][random_coord(rng)][random_coord(rng)].contents();
+    const boost::random::uniform_int_distribution<worldblock_dimension_type> random_tile(
+              0, worldblock_dimension*worldblock_dimension*worldblock_dimension - 1);
+    const tile_contents try1 = tiles_[random_tile(rng)].contents();
+    const tile_contents try2 = tiles_[random_tile(rng)].contents();
     if(try1 == try2) return try1;
-    else return tiles_[random_coord(rng)][random_coord(rng)][random_coord(rng)].contents();
+    else return tiles_[random_tile(rng)].contents();
   }
 
   // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").
