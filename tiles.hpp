@@ -143,7 +143,7 @@ public:
   // For tile based physics (e.g. water movement)
   // This is so that we don't have to search the collision-detector for relevant objects at every tile.
   bool there_is_an_object_here_that_affects_the_tile_based_physics()const { return tile_data_ & there_is_an_object_here_that_affects_the_tile_based_physics_mask; }
-  bool is_interior()const { return is_interior_bit_(); }
+  bool is_interior()const { return tile_data_ & interior_bit_mask; }
   tile_contents contents()const{ return (tile_contents)(tile_data_ & contents_mask); }
 
   void set_contents(tile_contents new_contents) {
@@ -160,7 +160,6 @@ private:
   static const uint8_t contents_mask = 0x7;
   static const uint8_t interior_bit_mask = (1<<3);
   static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask = (1<<4);
-  bool is_interior_bit_()const{ return tile_data_ & interior_bit_mask; }
   uint8_t tile_data_;
 };
 
