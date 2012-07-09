@@ -164,13 +164,16 @@ public:
   void set_interiorness(bool b) {
     tile_data_ = (tile_data_ & ~interior_bit_mask) | (b ? interior_bit_mask : uint8_t(0));
   }
-private:
+
+  // Public for the sake of performance-related bit hacks:
   static const uint8_t contents_mask = 0x7;
   static const int interior_bit_position = 3;
   static const int there_is_an_object_here_that_affects_the_tile_based_physics_bit_position = 4;
   static const uint8_t interior_bit_mask = (1<<interior_bit_position);
   static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask =
     (1<<there_is_an_object_here_that_affects_the_tile_based_physics_bit_position);
+
+private:
   uint8_t tile_data_;
 };
 

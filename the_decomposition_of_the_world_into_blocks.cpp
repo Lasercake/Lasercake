@@ -91,84 +91,116 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       is_busy_realizing_ = true;
 
       const tile_contents estimated_most_frequent_tile_contents_type = this->estimate_most_frequent_tile_contents_type();
-      
-      for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
+
+      bool contents_are_all_in_the_same_interiorness_class = true;
+      const uint64_t frequent_contents_mask = LASERCAKE_MAKE_UINT64_MASK_FROM_UINT8(
+                tile::interior_bit_mask | estimated_most_frequent_tile_contents_type);
+      for(size_t i = 0; i != worldblock_volume/8; ++i) {
+        // If we make interiorness classes of more than one thing
+        // then TODO handle them better here.
+        if(tile_data_uint64_array[i] != frequent_contents_mask) {
+          contents_are_all_in_the_same_interiorness_class = false;
+          break;
+        }
+      }
+
+      if(!contents_are_all_in_the_same_interiorness_class) {
+        // initialize_tile_local_caches_ initializes both the specified tile and its neighbors.
+        for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
+          for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
+            for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
+              const vector3<tile_coordinate> coords(x,y,z);
+              tile& here = this->get_tile(coords);
+              if(here.contents() != estimated_most_frequent_tile_contents_type) {
+                const tile_location loc(coords, this);
+                w_->initialize_tile_local_caches_(loc);
+              }
+            }
+          }
+        }
+      }
+      // Air is always interior, but this worldblock is anything but all-air,
+      // we have to check whether the neighbors make our border tiles non-interior.
+      bool this_worldblock_is_all_air = contents_are_all_in_the_same_interiorness_class
+                                    && estimated_most_frequent_tile_contents_type == AIR;
+      if(!this_worldblock_is_all_air) {
+        // We now have to explicitly check all the neighbor-faces with neighboring worldblocks,
+        // because our optimization to skip the locally-most-common tile contents doesn't help
+        // with these edges (both because the neighboring worldblock might not have the same
+        // most-common-tile as us, and because that worldblock likely won't be
+        // CONTENTS_AND_LOCAL_CACHES_ONLY-initialized at the same time as us).
+        //
+        // There are 6*(worldblock_dimension**2) of these faces-with-foreign-neighbors.
+        // This is a lot better than naively checking all 6*(worldblock_dimension**3) faces
+        // this worldblock's tiles contain.  This is also better than checking all the
+        // 6*(nearly 6*(worldblock_dimension**2)) faces of this worldblock's edge *tiles*.
+
+        // By ensuring neighbors' realization first, realization doesn't have to be checked for
+        // every get_loc_across_boundary-equivalent (all 6*(worldblock_dimension**2) of them).
+        ensure_neighbor_realization<xminus>(CONTENTS_ONLY);
+        ensure_neighbor_realization<yminus>(CONTENTS_ONLY);
+        ensure_neighbor_realization<zminus>(CONTENTS_ONLY);
+        ensure_neighbor_realization<xplus>(CONTENTS_ONLY);
+        ensure_neighbor_realization<yplus>(CONTENTS_ONLY);
+        ensure_neighbor_realization<zplus>(CONTENTS_ONLY);
+
+        // It makes enough of a performance difference to do this
+        // check_local_caches_cross_worldblock_neighbor rather than
+        // just call world::initialize_tile_local_caches_relating_to_this_neighbor_.
+
+        // check_local_caches_cross_worldblock_neighbor initializes
+        // the specified tile but not its neighbor.
+        for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
+          for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
+            {
+              const tile_coordinate z = global_position_.z;
+              this->check_local_caches_cross_worldblock_neighbor<zminus>(x,y,z);
+            }
+            {
+              const tile_coordinate z = global_position_.z + worldblock_dimension - 1;
+              this->check_local_caches_cross_worldblock_neighbor<zplus>(x,y,z);
+            }
+          }
+        }
+        for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
+          for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
+            {
+              const tile_coordinate y = global_position_.y;
+              this->check_local_caches_cross_worldblock_neighbor<yminus>(x,y,z);
+            }
+            {
+              const tile_coordinate y = global_position_.y + worldblock_dimension - 1;
+              this->check_local_caches_cross_worldblock_neighbor<yplus>(x,y,z);
+            }
+          }
+        }
         for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
           for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
-            const vector3<tile_coordinate> coords(x,y,z);
-            tile& here = this->get_tile(coords);
-            if(here.contents() != estimated_most_frequent_tile_contents_type) {
-              const tile_location loc(coords, this);
-              w_->initialize_tile_local_caches_(loc);
+            {
+              const tile_coordinate x = global_position_.x;
+              this->check_local_caches_cross_worldblock_neighbor<xminus>(x,y,z);
+            }
+            {
+              const tile_coordinate x = global_position_.x + worldblock_dimension - 1;
+              this->check_local_caches_cross_worldblock_neighbor<xplus>(x,y,z);
             }
           }
         }
       }
 
-      // We now have to explicitly check all the neighbor-faces with neighboring worldblocks,
-      // because our optimization to skip the locally-most-common tile contents doesn't help
-      // with these edges (both because the neighboring worldblock might not have the same
-      // most-common-tile as us, and because that worldblock likely won't be
-      // CONTENTS_AND_LOCAL_CACHES_ONLY-initialized at the same time as us).
-      //
-      // There are 6*(worldblock_dimension**2) of these faces-with-foreign-neighbors.
-      // This is a lot better than naively checking all 6*(worldblock_dimension**3) faces
-      // this worldblock's tiles contain.  This is also better than checking all the
-      // 6*(nearly 6*(worldblock_dimension**2)) faces of this worldblock's edge *tiles*.
-      
-      // By ensuring neighbors' realization first, realization doesn't have to be checked for
-      // every get_loc_across_boundary-equivalent (all 6*(worldblock_dimension**2) of them).
-      ensure_neighbor_realization<xminus>(CONTENTS_ONLY);
-      ensure_neighbor_realization<yminus>(CONTENTS_ONLY);
-      ensure_neighbor_realization<zminus>(CONTENTS_ONLY);
-      ensure_neighbor_realization<xplus>(CONTENTS_ONLY);
-      ensure_neighbor_realization<yplus>(CONTENTS_ONLY);
-      ensure_neighbor_realization<zplus>(CONTENTS_ONLY);
-
-      // It makes enough of a performance difference to do this
-      // check_local_caches_cross_worldblock_neighbor rather than
-      // just call world::initialize_tile_local_caches_relating_to_this_neighbor_.
-      
-      for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
-        for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
-          {
-            const tile_coordinate z = global_position_.z;
-            this->check_local_caches_cross_worldblock_neighbor<zminus>(x,y,z);
-          }
-          {
-            const tile_coordinate z = global_position_.z + worldblock_dimension - 1;
-            this->check_local_caches_cross_worldblock_neighbor<zplus>(x,y,z);
-          }
-        }
-      }
-      for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
-        for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
-          {
-            const tile_coordinate y = global_position_.y;
-            this->check_local_caches_cross_worldblock_neighbor<yminus>(x,y,z);
-          }
-          {
-            const tile_coordinate y = global_position_.y + worldblock_dimension - 1;
-            this->check_local_caches_cross_worldblock_neighbor<yplus>(x,y,z);
-          }
-        }
-      }
-      for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
-        for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
-          {
-            const tile_coordinate x = global_position_.x;
-            this->check_local_caches_cross_worldblock_neighbor<xminus>(x,y,z);
-          }
-          {
-            const tile_coordinate x = global_position_.x + worldblock_dimension - 1;
-            this->check_local_caches_cross_worldblock_neighbor<xplus>(x,y,z);
-          }
+      if(!this_worldblock_is_all_air) {
+        for (size_t i = 0; i != worldblock_dimension*worldblock_dimension*worldblock_dimension; ++i) {
+          // Air is always interior.
+          count_of_non_interior_non_air_tiles_here_ += !tiles_[i].is_interior();
         }
       }
 
-      for (size_t i = 0; i != worldblock_dimension*worldblock_dimension*worldblock_dimension; ++i) {
-        count_of_non_interior_non_air_tiles_here_ += (!tiles_[i].is_interior() && tiles_[i].contents() != AIR);
-      }
+      // TODO: if
+      //     count_of_non_interior_non_air_tiles_here_ == 0
+      //     && contents_are_all_in_the_same_interiorness_class
+      // or especially if contents are all the same tile type and
+      // are interior, perhaps we should arrange to have them not
+      // exist in memory at all?
       
       current_tile_realization_ = CONTENTS_AND_LOCAL_CACHES_ONLY;
       is_busy_realizing_ = false;
@@ -180,9 +212,10 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
+      // Optimization:
       if (count_of_non_interior_non_air_tiles_here_ == 0) {
-        // This is to make sure that if we start inside a giant ocean, we'll still
-        // be able to find out what water-group we're inside of.
+        // This check is to make sure that if we start inside a giant ocean, we'll still
+        // be able to find out what water-group we're inside of:
         if(tiles_[0].contents() == GROUPABLE_WATER) {
           w_->initialize_tile_water_group_caches_(tile_location(global_position_, this));
         }

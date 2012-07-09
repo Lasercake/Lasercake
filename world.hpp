@@ -204,6 +204,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   const int worldblock_dimension_exp = 4;
   typedef int worldblock_dimension_type;
   const worldblock_dimension_type worldblock_dimension = (1 << worldblock_dimension_exp);
+  const size_t worldblock_volume = worldblock_dimension*worldblock_dimension*worldblock_dimension;
 
   class worldblock {
   public:
@@ -249,7 +250,18 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     world* w_;
     // A three-dimensional array of tile, of worldblock_dimension in each dimension.
     // std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
-    tile tiles_[worldblock_dimension*worldblock_dimension*worldblock_dimension];
+
+    // Accessing multiple members of unions as a cast does not meet the
+    // standard's strict-aliasing rules[*], but most compilers treat unions of data
+    // (not unions of pointers to data!) as aliasing (probably because they cannot help but be).
+    // [*] only memcpy or casts to char* do - not casts from char*
+    //       or casts to char-sized classes, I believe.
+    union {
+      tile tiles_[worldblock_volume];
+      uint8_t tile_data_uint8_array[worldblock_volume];
+      uint32_t tile_data_uint32_array[worldblock_volume/4];
+      uint64_t tile_data_uint64_array[worldblock_volume/8];
+    };
   };
 }
 

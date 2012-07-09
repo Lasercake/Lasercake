@@ -316,6 +316,17 @@ private:
 };
 
 
+// Use a define so that it can be a constant expression on all compilers.
+#define LASERCAKE_MAKE_UINT64_MASK_FROM_UINT8(b) \
+  ( (uint64_t(uint8_t((b)))<<(8*7)) | (uint64_t(uint8_t((b)))<<(8*6)) \
+  | (uint64_t(uint8_t((b)))<<(8*5)) | (uint64_t(uint8_t((b)))<<(8*4)) \
+  | (uint64_t(uint8_t((b)))<<(8*3)) | (uint64_t(uint8_t((b)))<<(8*2)) \
+  | (uint64_t(uint8_t((b)))<<(8*1)) | (uint64_t(uint8_t((b))))        )
+#define LASERCAKE_MAKE_UINT32_MASK_FROM_UINT8(b) \
+  | (uint32_t(uint8_t((b)))<<(8*3)) | (uint32_t(uint8_t((b)))<<(8*2)) \
+  | (uint32_t(uint8_t((b)))<<(8*1)) | (uint32_t(uint8_t((b))))        )
+
+
 #if defined(LASERCAKE_USE_GLIB)
 template<typename T>
 class g_slice_allocator {
