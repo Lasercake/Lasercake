@@ -138,7 +138,10 @@ inline bool neighboring_tiles_with_these_contents_are_not_interior(tile_contents
 
 class tile {
 public:
-  tile():tile_data_(0){}
+  // 'tile' is trivially-constructible; to get a valid tile you must
+  // call initialize_to_air() or use tile::make_air_tile().
+  void initialize_to_air() { tile_data_ = 0; }
+  static tile make_air_tile() { tile result; result.tile_data_ = 0; return result; }
 
   // For tile based physics (e.g. water movement)
   // This is so that we don't have to search the collision-detector for relevant objects at every tile.
