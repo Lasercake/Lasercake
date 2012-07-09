@@ -211,6 +211,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     worldblock():neighbors_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false),count_of_non_interior_non_air_tiles_here_(0),w_(nullptr){}
     void construct(world* w, vector3<tile_coordinate> global_position) { w_ = w; global_position_ = global_position; }
     bool is_constructed() const { return w_ != nullptr; }
+    tile_bounding_box bounding_box()const {
+      return tile_bounding_box(global_position_, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
+    }
     worldblock& ensure_realization(level_of_tile_realization_needed realineeded) {
       // This function gets called to do nothing a LOT more than it gets called to actually do something;
       // return ASAP if we don't have to do anything.
