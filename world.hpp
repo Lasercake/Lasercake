@@ -239,7 +239,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     // an implementation detail of ensure_realization
     template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(tile_coordinate x, tile_coordinate y, tile_coordinate z);
     tile_contents estimate_most_frequent_tile_contents_type()const;
-  private:
+
     value_for_each_cardinal_direction<worldblock*> neighbors_;
     vector3<tile_coordinate> global_position_; // the lowest x, y, and z among elements in this worldblock
     level_of_tile_realization_needed current_tile_realization_;

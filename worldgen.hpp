@@ -38,18 +38,16 @@ public:
   public:
     worldgen_from_tilespec_t(Functor const& xyz_to_tile_contents) : xyz_to_tile_contents_(xyz_to_tile_contents) {}
     void operator()(world_building_gun make, tile_bounding_box bounds)const {
+      size_t i = 0;
       for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
         for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
-          for (tile_coordinate z = bounds.min.z; z < bounds.min.z + bounds.size.z; ++z) {
+          for (tile_coordinate z = bounds.min.z; z < bounds.min.z + bounds.size.z; ++z, ++i) {
             const vector3<tile_coordinate> l(x, y, z);
             const tile_contents new_contents = xyz_to_tile_contents_(l);
-            if(new_contents != AIR /*silly slight optimization to do this "if"*/) {
-              if (new_contents == ROCK || new_contents == AIR || new_contents == GROUPABLE_WATER || new_contents == RUBBLE) {
-                tile new_tile; new_tile.set_contents(new_contents); new_tile.set_interiorness(true);
-                make.wb_->get_tile(l) = new_tile;
-              }
-              else caller_error("Trying to place a type of tile other than AIR, ROCK, GROUPABLE_WATER, and RUBBLE");
-            }
+            caller_correct_if(new_contents == ROCK || new_contents == AIR || new_contents == GROUPABLE_WATER || new_contents == RUBBLE,
+                              "Trying to place a type of tile other than AIR, ROCK, GROUPABLE_WATER, and RUBBLE");
+            tile new_tile; new_tile.set_contents(new_contents); new_tile.set_interiorness(true);
+            make.wb_->tiles_[i] = new_tile;
           }
         }
       }
