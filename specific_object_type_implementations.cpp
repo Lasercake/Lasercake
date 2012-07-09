@@ -36,7 +36,9 @@ struct beam_first_contact_finder {
     return (bbox.size_minus_one(X) >= too_large || bbox.size_minus_one(Y) >= too_large || bbox.size_minus_one(Z) >= too_large);
   }
   bool bbox_is_too_large(tiles_collision_detector::bounding_box const& bbox) const {
-    return (bbox.size_minus_one(X) >= (too_large/tile_width) || bbox.size_minus_one(Y) >= (too_large/tile_width) || bbox.size_minus_one(Z) >= (too_large/tile_height));
+    return (bbox.size_minus_one(X) >= (too_large/get_primitive_int(tile_width))
+         || bbox.size_minus_one(Y) >= (too_large/get_primitive_int(tile_width))
+         || bbox.size_minus_one(Z) >= (too_large/get_primitive_int(tile_height)));
   }
   result_type min_cost(tiles_collision_detector::bounding_box const& bbox) const {
     // hack - avoid overflow - don't try to filter out too-large regions
