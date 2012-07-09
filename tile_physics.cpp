@@ -546,11 +546,9 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
 void initialize_to_not_interior(
         tile_location const& loc,
         tiles_collision_detector& tiles_exposed_to_collision) {
-  mutable_stuff_at(loc).set_interiorness(false);
   // A tile is either interior or exposed to collision.
-  // TODO: figure out whether surface air should be collision detected with
-  // (maybe there's something that detects contact with air? Sodium...?)
   if (loc.stuff_at().contents() != AIR) {
+    mutable_stuff_at(loc).set_interiorness(false);
     tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
   }
 }
@@ -825,7 +823,8 @@ void replace_substance_impl(
   water_group_identifier& next_water_group_identifier = state.next_water_group_identifier;
   persistent_water_groups_t& persistent_water_groups = state.persistent_water_groups;
   water_groups_by_location_t& water_groups_by_surface_tile = state.water_groups_by_surface_tile;
-  
+
+  //assert_if_ASSERT_EVERYTHING(loc.wb_->current_tile_realization_ == FULL_REALIZATION);
   assert_if_ASSERT_EVERYTHING(loc.stuff_at().contents() == old_substance_type);
   //check_pushable_tiles_sanity(state);
   
@@ -994,20 +993,19 @@ void replace_substance_impl(
       if (neighboring_tiles_with_these_contents_are_not_interior(adj_loc.stuff_at().contents(), new_substance_type)) {
         // Between us and them is a 'different types' interface, so neither us nor them is interior:
         we_are_now_interior = false;
-        if (adj_loc.stuff_at().is_interior()) {
-          mutable_stuff_at(adj_loc).set_interiorness(false);
+        if (adj_loc.stuff_at().is_interior() && adj_loc.stuff_at().contents() != AIR) {
           // No longer interior! Unless you're air, add to the collision detection struct.
-          // TODO: figure out whether surface air should be collision detected with
-          // (maybe there's something that detects contact with air? Sodium...?)
-          assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.exists(adj_loc));
-          if (adj_loc.stuff_at().contents() != AIR) {
-            tiles_exposed_to_collision.insert(adj_loc, tile_coords_to_tiles_collision_detector_bbox(adj_loc.coords()));
-          }
+          assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.  exists(adj_loc));
+          mutable_stuff_at(adj_loc).set_interiorness(false);
+          tiles_exposed_to_collision.insert(adj_loc, tile_coords_to_tiles_collision_detector_bbox(adj_loc.coords()));
         }
       }
       else {
         // If we've become the same as the other tile, we may have made that tile interior
         if (!adj_loc.stuff_at().is_interior()) {
+          // It's non-interior, so it must not be air.
+          assert(adj_loc.stuff_at().contents() != AIR);
+          
           bool they_should_be_interior = true;
           std::array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc);
           for (tile_location const& adj_adj_loc : adj_neighbors) {
@@ -1019,25 +1017,22 @@ void replace_substance_impl(
           if (they_should_be_interior) {
             mutable_stuff_at(adj_loc).set_interiorness(true);
             // Now interior: remove us from the collision detection.
-            // TODO: figure out whether surface air should be collision detected with
-            // (maybe there's something that detects contact with air? Sodium...?)
-            if (adj_loc.stuff_at().contents() != AIR) {
-              assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.exists(adj_loc));
-              tiles_exposed_to_collision.erase(adj_loc);
-            }
+            assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.  exists(adj_loc));
+            tiles_exposed_to_collision.erase(adj_loc);
           }
         }
       }
     }
-    bool should_be_collidable = (!we_are_now_interior && !new_substance_type == AIR);
-    bool should_have_been_collidable = (!loc.stuff_at().is_interior() && !old_substance_type == AIR);
-    mutable_stuff_at(loc).set_interiorness(we_are_now_interior);
+    bool should_be_collidable = (!we_are_now_interior && new_substance_type != AIR);
+    bool should_have_been_collidable = (!loc.stuff_at().is_interior() && old_substance_type != AIR);
     if (should_be_collidable && !should_have_been_collidable) {
-      assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.exists(loc));
+      mutable_stuff_at(loc).set_interiorness(false);
+      assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision . exists(loc));
       tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
     }
     if (!should_be_collidable && should_have_been_collidable) {
-      assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.exists(loc));
+      mutable_stuff_at(loc).set_interiorness(true);
+      assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision . exists(loc));
       tiles_exposed_to_collision.erase(loc);
     }
   }

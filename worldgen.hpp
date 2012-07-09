@@ -46,8 +46,7 @@ public:
             const tile_contents new_contents = xyz_to_tile_contents_(l);
             caller_correct_if(new_contents == ROCK || new_contents == AIR || new_contents == GROUPABLE_WATER || new_contents == RUBBLE,
                               "Trying to place a type of tile other than AIR, ROCK, GROUPABLE_WATER, and RUBBLE");
-            tile new_tile; new_tile.initialize_to_air(); new_tile.set_contents(new_contents); new_tile.set_interiorness(true);
-            make.wb_->tiles_[i] = new_tile;
+            make.wb_->tiles_[i] = tile::make_tile_with_contents_and_interiorness(new_contents, true);
           }
         }
       }

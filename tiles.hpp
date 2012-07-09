@@ -139,9 +139,14 @@ inline bool neighboring_tiles_with_these_contents_are_not_interior(tile_contents
 class tile {
 public:
   // 'tile' is trivially-constructible; to get a valid tile you must
-  // call initialize_to_air() or use tile::make_air_tile().
-  void initialize_to_air() { tile_data_ = 0; }
-  static tile make_air_tile() { tile result; result.tile_data_ = 0; return result; }
+  // call make_tile_with_contents_and_interiorness().
+  static tile make_tile_with_contents_and_interiorness(tile_contents contents, bool interior) {
+    tile result;
+    result.tile_data_ = contents | (uint8_t(interior) << interior_bit_position);
+    return result;
+  }
+
+  // Air is expected to always be marked "interior".
 
   // For tile based physics (e.g. water movement)
   // This is so that we don't have to search the collision-detector for relevant objects at every tile.
@@ -161,8 +166,11 @@ public:
   }
 private:
   static const uint8_t contents_mask = 0x7;
-  static const uint8_t interior_bit_mask = (1<<3);
-  static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask = (1<<4);
+  static const int interior_bit_position = 3;
+  static const int there_is_an_object_here_that_affects_the_tile_based_physics_bit_position = 4;
+  static const uint8_t interior_bit_mask = (1<<interior_bit_position);
+  static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask =
+    (1<<there_is_an_object_here_that_affects_the_tile_based_physics_bit_position);
   uint8_t tile_data_;
 };
 
