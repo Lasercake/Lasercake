@@ -26,17 +26,24 @@ using namespace the_decomposition_of_the_world_into_blocks_impl;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
 
+  // Argument coordinates are worldblock indices, not world-global.
   template<cardinal_direction Dir>
-  void worldblock::check_local_caches_cross_worldblock_neighbor(tile_coordinate x, tile_coordinate y, tile_coordinate z) {
-    const vector3<tile_coordinate> coords(x,y,z);
-    tile& here = this->get_tile(coords);
+  inline void worldblock::check_local_caches_cross_worldblock_neighbor(
+        size_t this_x, size_t this_y, size_t this_z,
+        size_t that_x, size_t that_y, size_t that_z) {
+    const size_t this_idx = this_x*worldblock_dimension*worldblock_dimension + this_y*worldblock_dimension + this_z;
+    const size_t that_idx = that_x*worldblock_dimension*worldblock_dimension + that_y*worldblock_dimension + that_z;
+    if( tiles_[this_idx].contents() != AIR && tiles_[this_idx].is_interior() &&
+        neighboring_tiles_with_these_contents_are_not_interior(
+          tiles_[this_idx].contents(),
+          neighbors_[Dir]->tiles_[that_idx].contents())
+      ) {
+      tiles_[this_idx].set_interiorness(false);
+      ++count_of_non_interior_tiles_here_;
 
-    vector3<tile_coordinate> adj_coords = coords; cdir_info<Dir>::add_to(adj_coords);
-    const tile adj = neighbors_[Dir]->get_tile(adj_coords);
-
-    if(neighboring_tiles_with_these_contents_are_not_interior(adj.contents(), here.contents())) {
+      const vector3<tile_coordinate> coords(global_position_.x+this_x, global_position_.y + this_y, global_position_.z + this_z);
       const tile_location loc(coords, this);
-      w_->initialize_tile_local_caches_relating_to_this_neighbor_(loc, adj);
+      w_->tiles_exposed_to_collision_.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
     }
   }
 
@@ -150,40 +157,28 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 
         // check_local_caches_cross_worldblock_neighbor initializes
         // the specified tile but not its neighbor.
-        for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
-          for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
-            {
-              const tile_coordinate z = global_position_.z;
-              this->check_local_caches_cross_worldblock_neighbor<zminus>(x,y,z);
-            }
-            {
-              const tile_coordinate z = global_position_.z + worldblock_dimension - 1;
-              this->check_local_caches_cross_worldblock_neighbor<zplus>(x,y,z);
-            }
+        for (tile_coordinate x = 0; x != worldblock_dimension; ++x) {
+          for (tile_coordinate y = 0; y != worldblock_dimension; ++y) {
+            const tile_coordinate z1 = 0;
+            const tile_coordinate z2 = worldblock_dimension - 1;
+            this->check_local_caches_cross_worldblock_neighbor<zminus>(x,y,z1, x,y,z2);
+            this->check_local_caches_cross_worldblock_neighbor<zplus >(x,y,z2, x,y,z1);
           }
         }
-        for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
-          for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
-            {
-              const tile_coordinate y = global_position_.y;
-              this->check_local_caches_cross_worldblock_neighbor<yminus>(x,y,z);
-            }
-            {
-              const tile_coordinate y = global_position_.y + worldblock_dimension - 1;
-              this->check_local_caches_cross_worldblock_neighbor<yplus>(x,y,z);
-            }
+        for (tile_coordinate x = 0; x != worldblock_dimension; ++x) {
+          for (tile_coordinate z = 0; z != worldblock_dimension; ++z) {
+            const tile_coordinate y1 = 0;
+            const tile_coordinate y2 = worldblock_dimension - 1;
+            this->check_local_caches_cross_worldblock_neighbor<yminus>(x,y1,z, x,y2,z);
+            this->check_local_caches_cross_worldblock_neighbor<yplus >(x,y2,z, x,y1,z);
           }
         }
-        for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
-          for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
-            {
-              const tile_coordinate x = global_position_.x;
-              this->check_local_caches_cross_worldblock_neighbor<xminus>(x,y,z);
-            }
-            {
-              const tile_coordinate x = global_position_.x + worldblock_dimension - 1;
-              this->check_local_caches_cross_worldblock_neighbor<xplus>(x,y,z);
-            }
+        for (tile_coordinate y = 0; y != worldblock_dimension; ++y) {
+          for (tile_coordinate z = 0; z != worldblock_dimension; ++z) {
+            const tile_coordinate x1 = 0;
+            const tile_coordinate x2 = worldblock_dimension - 1;
+            this->check_local_caches_cross_worldblock_neighbor<xminus>(x1,y,z, x2,y,z);
+            this->check_local_caches_cross_worldblock_neighbor<xplus >(x2,y,z, x1,y,z);
           }
         }
       }

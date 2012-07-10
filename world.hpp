@@ -241,7 +241,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     tile_location get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords);
 
     // an implementation detail of ensure_realization
-    template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(tile_coordinate x, tile_coordinate y, tile_coordinate z);
+    template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(size_t this_x, size_t this_y, size_t this_z, size_t that_x, size_t that_y, size_t that_z);
     tile_contents estimate_most_frequent_tile_contents_type()const;
 
     value_for_each_cardinal_direction<worldblock*> neighbors_;
