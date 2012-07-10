@@ -1007,7 +1007,7 @@ void replace_substance_impl(
         we_are_now_interior = false;
         if (adj_loc.stuff_at().is_interior() && adj_loc.stuff_at().contents() != AIR) {
           // No longer interior! Unless you're air, add to the collision detection struct.
-          assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.  exists(adj_loc));
+          assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.exists(adj_loc));
           set_tile_interiorness(adj_loc, false);
           tiles_exposed_to_collision.insert(adj_loc, tile_coords_to_tiles_collision_detector_bbox(adj_loc.coords()));
         }
@@ -1029,7 +1029,7 @@ void replace_substance_impl(
           if (they_should_be_interior) {
             set_tile_interiorness(adj_loc, true);
             // Now interior: remove us from the collision detection.
-            assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.  exists(adj_loc));
+            assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.exists(adj_loc));
             tiles_exposed_to_collision.erase(adj_loc);
           }
         }
@@ -1038,13 +1038,13 @@ void replace_substance_impl(
     bool should_be_collidable = (!we_are_now_interior && new_substance_type != AIR);
     bool should_have_been_collidable = (!loc.stuff_at().is_interior() && old_substance_type != AIR);
     if (should_be_collidable && !should_have_been_collidable) {
-      assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision . exists(loc));
       set_tile_interiorness(loc, false);
+      assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.exists(loc));
       tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
     }
     if (!should_be_collidable && should_have_been_collidable) {
-      assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision . exists(loc));
       set_tile_interiorness(loc, true);
+      assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.exists(loc));
       tiles_exposed_to_collision.erase(loc);
     }
   }
