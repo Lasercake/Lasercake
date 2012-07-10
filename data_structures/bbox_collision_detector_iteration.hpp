@@ -26,6 +26,7 @@
 
 #include <vector>
 #include <queue>
+#include <boost/shared_ptr.hpp>
 #include <boost/variant.hpp>
 #include <boost/compressed_pair.hpp>
 #include <boost/range/iterator_range.hpp>
