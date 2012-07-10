@@ -97,6 +97,10 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
+      // Per world_building_gun, tiles start out marked interior
+      // (usually the common case, and also permits the algorithms here)
+      // and don't need to be changed if they actually are interior.
+
       const tile_contents estimated_most_frequent_tile_contents_type = this->estimate_most_frequent_tile_contents_type();
 
       bool contents_are_all_in_the_same_interiorness_class = true;
