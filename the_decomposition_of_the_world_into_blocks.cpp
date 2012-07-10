@@ -26,24 +26,76 @@ using namespace the_decomposition_of_the_world_into_blocks_impl;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
 
+  // For initialization purposes.  May only be called on a tile marked interior.
+  void initialize_to_non_interior(
+      worldblock* wb,
+      tile& t,
+      worldblock_dimension_type local_x, worldblock_dimension_type local_y, worldblock_dimension_type local_z,
+      tiles_collision_detector& tiles_exposed_to_collision) {
+
+    assert_if_ASSERT_EVERYTHING(t.is_interior());
+    assert_if_ASSERT_EVERYTHING(&t == &wb->tiles_[local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor]);
+    t.set_interiorness(false);
+    wb->count_of_non_interior_tiles_here_ += 1;
+
+    const vector3<tile_coordinate>& gp = wb->global_position_;
+    const vector3<tile_coordinate> coords(gp.x + local_x, gp.y + local_y, gp.z + local_z);
+    const tile_location loc = wb->get_loc_guaranteed_to_be_in_this_block(coords);
+    tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(coords));
+  }
+
+  template<cardinal_direction Dir> struct neighbor_idx_offset;
+  template<> struct neighbor_idx_offset<xminus> { static const worldblock_dimension_type value = -worldblock_x_factor; };
+  template<> struct neighbor_idx_offset<yminus> { static const worldblock_dimension_type value = -worldblock_y_factor; };
+  template<> struct neighbor_idx_offset<zminus> { static const worldblock_dimension_type value = -worldblock_z_factor; };
+  template<> struct neighbor_idx_offset<xplus > { static const worldblock_dimension_type value =  worldblock_x_factor; };
+  template<> struct neighbor_idx_offset<yplus > { static const worldblock_dimension_type value =  worldblock_y_factor; };
+  template<> struct neighbor_idx_offset<zplus > { static const worldblock_dimension_type value =  worldblock_z_factor; };
+
+  template<cardinal_direction Dir>
+  inline void initialize_tile_neighbor_interiorness_within_worldblock(
+      worldblock* wb,
+      worldblock_dimension_type x, worldblock_dimension_type y, worldblock_dimension_type z,
+      size_t idx,
+      tiles_collision_detector& tiles_exposed_to_collision) {
+    switch (Dir) {
+      case xminus: if(x == 0) {return;} break;
+      case yminus: if(y == 0) {return;} break;
+      case zminus: if(z == 0) {return;} break;
+      case xplus: if(x == worldblock_dimension-1) {return;} break;
+      case yplus: if(y == worldblock_dimension-1) {return;} break;
+      case zplus: if(z == worldblock_dimension-1) {return;} break;
+    }
+    const size_t adj_idx = idx + neighbor_idx_offset<Dir>::value;
+    tile& t = wb->tiles_[idx];
+    tile& adj_tile = wb->tiles_[adj_idx];
+    if(neighboring_tiles_with_these_contents_are_not_interior(t.contents(), adj_tile.contents())) {
+      if(t.is_interior() && t.contents() != AIR) {
+        initialize_to_non_interior(wb, t, x, y, z, tiles_exposed_to_collision);
+      }
+      if(adj_tile.is_interior() && adj_tile.contents() != AIR) {
+        initialize_to_non_interior(wb, adj_tile,
+                                    x + cdir_info<Dir>::x_delta,
+                                    y + cdir_info<Dir>::y_delta,
+                                    z + cdir_info<Dir>::z_delta,
+                                    tiles_exposed_to_collision);
+      }
+    }
+  }
+
   // Argument coordinates are worldblock indices, not world-global.
   template<cardinal_direction Dir>
   inline void worldblock::check_local_caches_cross_worldblock_neighbor(
         size_t this_x, size_t this_y, size_t this_z,
         size_t that_x, size_t that_y, size_t that_z) {
-    const size_t this_idx = this_x*worldblock_dimension*worldblock_dimension + this_y*worldblock_dimension + this_z;
-    const size_t that_idx = that_x*worldblock_dimension*worldblock_dimension + that_y*worldblock_dimension + that_z;
+    const size_t this_idx = this_x*worldblock_x_factor + this_y*worldblock_y_factor + this_z*worldblock_z_factor;
+    const size_t that_idx = that_x*worldblock_x_factor + that_y*worldblock_y_factor + that_z*worldblock_z_factor;
     if( tiles_[this_idx].contents() != AIR && tiles_[this_idx].is_interior() &&
         neighboring_tiles_with_these_contents_are_not_interior(
           tiles_[this_idx].contents(),
           neighbors_[Dir]->tiles_[that_idx].contents())
       ) {
-      tiles_[this_idx].set_interiorness(false);
-      ++count_of_non_interior_tiles_here_;
-
-      const vector3<tile_coordinate> coords(global_position_.x+this_x, global_position_.y + this_y, global_position_.z + this_z);
-      const tile_location loc(coords, this);
-      w_->tiles_exposed_to_collision_.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
+      initialize_to_non_interior(this, tiles_[this_idx], this_x, this_y, this_z, w_->tiles_exposed_to_collision_);
     }
   }
 
@@ -57,7 +109,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     // would be maintained even with an RNG here that always returned 0.
     auto& rng = w_->get_rng();
     const boost::random::uniform_int_distribution<worldblock_dimension_type> random_tile(
-              0, worldblock_dimension*worldblock_dimension*worldblock_dimension - 1);
+              0, worldblock_volume - 1);
     const tile_contents try1 = tiles_[random_tile(rng)].contents();
     const tile_contents try2 = tiles_[random_tile(rng)].contents();
     if(try1 == try2) return try1;
@@ -116,15 +168,18 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       }
 
       if(!contents_are_all_in_the_same_interiorness_class) {
-        // initialize_tile_local_caches_ initializes both the specified tile and its neighbors.
-        for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
-          for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
-            for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
-              const vector3<tile_coordinate> coords(x,y,z);
-              tile& here = this->get_tile(coords);
-              if(here.contents() != estimated_most_frequent_tile_contents_type) {
-                const tile_location loc(coords, this);
-                w_->initialize_tile_local_caches_(loc);
+        // initialize_tile_neighbor_interiorness_within_worldblock initializes both the specified tile and its neighbors.
+        size_t idx = 0;
+        for (tile_coordinate x = 0; x != worldblock_dimension; ++x) {
+          for (tile_coordinate y = 0; y != worldblock_dimension; ++y) {
+            for (tile_coordinate z = 0; z != worldblock_dimension; ++z, ++idx) {
+              if (tiles_[idx].contents() != estimated_most_frequent_tile_contents_type) {
+                initialize_tile_neighbor_interiorness_within_worldblock<xminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
+                initialize_tile_neighbor_interiorness_within_worldblock<yminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
+                initialize_tile_neighbor_interiorness_within_worldblock<zminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
+                initialize_tile_neighbor_interiorness_within_worldblock<xplus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
+                initialize_tile_neighbor_interiorness_within_worldblock<yplus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
+                initialize_tile_neighbor_interiorness_within_worldblock<zplus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
               }
             }
           }

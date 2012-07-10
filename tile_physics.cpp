@@ -552,52 +552,6 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
   //check_group_surface_tiles_cache_and_layer_size_caches(state, new_group);
 }
 
-// Per world_building_gun, tiles start out marked interior
-// (usually the common case, and also permits the algorithms here)
-// and don't need to be changed if they actually are interior.
-void initialize_to_not_interior(
-        tile_location const& loc,
-        tiles_collision_detector& tiles_exposed_to_collision) {
-  // A tile is either interior or exposed to collision.
-  if (loc.stuff_at().contents() != AIR) {
-    set_tile_interiorness(loc, false);
-    tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
-  }
-}
-
-void initialize_tile_local_caches_relating_to_this_neighbor_impl(
-        tiles_collision_detector& tiles_exposed_to_collision,
-        tile_location const& loc,
-        tile adj_tile) {
-  const tile tile_here = loc.stuff_at();
-  if (neighboring_tiles_with_these_contents_are_not_interior(adj_tile.contents(), tile_here.contents())) {
-    if(tile_here.is_interior()) {
-      initialize_to_not_interior(loc, tiles_exposed_to_collision);
-    }
-  }
-}
-
-void initialize_tile_local_caches_impl(
-        tiles_collision_detector& tiles_exposed_to_collision,
-        tile_location const& loc) {
-  const tile tile_here = loc.stuff_at();
-  bool should_be_interior = true;
-  const std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc, CONTENTS_ONLY);
-  for (tile_location const& adj_loc : neighbors) {
-    const tile adj_tile = adj_loc.stuff_at();
-    if (neighboring_tiles_with_these_contents_are_not_interior(adj_tile.contents(), tile_here.contents())) {
-      // Between us and them is a 'different types' interface, so we're not interior:
-      should_be_interior = false;
-      if(adj_tile.is_interior()) {
-        initialize_to_not_interior(adj_loc, tiles_exposed_to_collision);
-      }
-    }
-  }
-  if(should_be_interior == false && tile_here.is_interior()) {
-    initialize_to_not_interior(loc, tiles_exposed_to_collision);
-  }
-}
-
 void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_tiles(state_t const& state) {
   // Here's how we compute the total volume in less than linear time:
   // We take each contiguous row of surface tiles and compute its total length by
@@ -1731,19 +1685,6 @@ bool active_fluid_tile_info::is_in_inactive_state()const {
 }
 
 } // end namespace
-
-
-void world::initialize_tile_contents_(tile_location const& loc, tile_contents contents) {
-  mutable_stuff_at(loc).set_contents(contents);
-}
-
-void world::initialize_tile_local_caches_(tile_location const& loc) {
-  initialize_tile_local_caches_impl(tiles_exposed_to_collision_, loc);
-}
-
-void world::initialize_tile_local_caches_relating_to_this_neighbor_(tile_location const& loc, tile neighbor) {
-  initialize_tile_local_caches_relating_to_this_neighbor_impl(tiles_exposed_to_collision_, loc, neighbor);
-}
 
 void world::initialize_tile_water_group_caches_(tile_location const& loc) {
   if (loc.stuff_at().contents() == GROUPABLE_WATER) {

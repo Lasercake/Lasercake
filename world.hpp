@@ -205,6 +205,10 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   typedef int worldblock_dimension_type;
   const worldblock_dimension_type worldblock_dimension = (1 << worldblock_dimension_exp);
   const size_t worldblock_volume = worldblock_dimension*worldblock_dimension*worldblock_dimension;
+  // For indexing worldblock tiles directly:
+  const worldblock_dimension_type worldblock_x_factor = worldblock_dimension*worldblock_dimension;
+  const worldblock_dimension_type worldblock_y_factor = worldblock_dimension;
+  const worldblock_dimension_type worldblock_z_factor = 1;
 
   class worldblock {
   public:
@@ -226,9 +230,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     // Prefer to use tile_location::stuff_at().
     inline tile& get_tile(vector3<tile_coordinate> global_coords) {
       return tiles_[
-          get_primitive_int(global_coords.x - global_position_.x)*(worldblock_dimension*worldblock_dimension)
-        + get_primitive_int(global_coords.y - global_position_.y)*(worldblock_dimension)
-        + get_primitive_int(global_coords.z - global_position_.z)];
+          get_primitive_int(global_coords.x - global_position_.x)*worldblock_x_factor
+        + get_primitive_int(global_coords.y - global_position_.y)*worldblock_y_factor
+        + get_primitive_int(global_coords.z - global_position_.z)*worldblock_z_factor];
     }
   
     // Only to be used in tile_location::get_neighbor:
@@ -448,11 +452,7 @@ private:
   
   the_decomposition_of_the_world_into_blocks_impl::worldblock* ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
   
-  // Used only by world_building_gun
-  void initialize_tile_contents_(tile_location const& loc, tile_contents contents);
   // Used only in the worldblock stuff
-  void initialize_tile_local_caches_(tile_location const& loc);
-  void initialize_tile_local_caches_relating_to_this_neighbor_(tile_location const& loc, tile neighbor);
   void initialize_tile_water_group_caches_(tile_location const& loc);
 };
 
