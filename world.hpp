@@ -208,7 +208,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 
   class worldblock {
   public:
-    worldblock():neighbors_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false),count_of_non_interior_non_air_tiles_here_(0),w_(nullptr){}
+    worldblock():neighbors_(nullptr),current_tile_realization_(COMPLETELY_IMAGINARY),is_busy_realizing_(false),count_of_non_interior_tiles_here_(0),w_(nullptr){}
     void construct(world* w, vector3<tile_coordinate> global_position) { w_ = w; global_position_ = global_position; }
     bool is_constructed() const { return w_ != nullptr; }
     tile_bounding_box bounding_box()const {
@@ -248,8 +248,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     vector3<tile_coordinate> global_position_; // the lowest x, y, and z among elements in this worldblock
     level_of_tile_realization_needed current_tile_realization_;
     bool is_busy_realizing_;
-    // possible TODO this isn't updated by tile_physics replace_substance_impl():
-    int32_t count_of_non_interior_non_air_tiles_here_;
+    int32_t count_of_non_interior_tiles_here_;
     world* w_;
     // A three-dimensional array of tile, of worldblock_dimension in each dimension.
     // std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;

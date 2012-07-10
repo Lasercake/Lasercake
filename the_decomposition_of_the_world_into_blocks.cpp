@@ -188,15 +188,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
         }
       }
 
-      if(!this_worldblock_is_all_air) {
-        for (size_t i = 0; i != worldblock_dimension*worldblock_dimension*worldblock_dimension; ++i) {
-          // Air is always interior.
-          count_of_non_interior_non_air_tiles_here_ += !tiles_[i].is_interior();
-        }
-      }
-
       // TODO: if
-      //     count_of_non_interior_non_air_tiles_here_ == 0
+      //     count_of_non_interior_tiles_here_ == 0
       //     && contents_are_all_in_the_same_interiorness_class
       // or especially if contents are all the same tile type and
       // are interior, perhaps we should arrange to have them not
@@ -213,7 +206,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       is_busy_realizing_ = true;
 
       // Optimization:
-      if (count_of_non_interior_non_air_tiles_here_ == 0) {
+      if (count_of_non_interior_tiles_here_ == 0) {
         // This check is to make sure that if we start inside a giant ocean, we'll still
         // be able to find out what water-group we're inside of:
         if(tiles_[0].contents() == GROUPABLE_WATER) {

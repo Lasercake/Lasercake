@@ -194,6 +194,7 @@ enum level_of_tile_realization_needed {
 class tile_location;
 namespace tile_physics_impl {
   tile& mutable_stuff_at(tile_location const& loc);
+  void set_tile_interiorness(tile_location const& loc, bool interior);
 }
 
 class tile_location {
@@ -224,6 +225,7 @@ private:
 
   // tile_physics.cpp is the only code permitted to modify tile contents
   friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
+  friend void tile_physics_impl::set_tile_interiorness(tile_location const& loc, bool interior);
 
   // worldblock creates tile_locations explicitly, and obviously knows
   // what worldblock they're in.

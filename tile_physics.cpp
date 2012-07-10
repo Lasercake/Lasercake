@@ -225,7 +225,19 @@ using namespace tile_physics_impl;
 // Other files should change tile contents through replace_substance,
 // and shouldn't be in the business of altering tile caches at all.
 // (TODO: also add something for the there_is_an_object_here_that_affects_the_tile_based_physics thing)
-tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc) { return loc.wb_->get_tile(loc.v_); }
+namespace tile_physics_impl {
+  tile& mutable_stuff_at(tile_location const& loc) {
+    return loc.wb_->get_tile(loc.v_);
+  }
+  void set_tile_interiorness(tile_location const& loc, bool interior) {
+    tile& mutable_stuff = mutable_stuff_at(loc);
+    bool was_interior = mutable_stuff.is_interior();
+    assert(was_interior != interior);
+    loc.wb_->count_of_non_interior_tiles_here_ += was_interior;
+    loc.wb_->count_of_non_interior_tiles_here_ -= interior;
+    mutable_stuff.set_interiorness(interior);
+  }
+}
 
 namespace tile_physics_impl {
 
@@ -548,7 +560,7 @@ void initialize_to_not_interior(
         tiles_collision_detector& tiles_exposed_to_collision) {
   // A tile is either interior or exposed to collision.
   if (loc.stuff_at().contents() != AIR) {
-    mutable_stuff_at(loc).set_interiorness(false);
+    set_tile_interiorness(loc, false);
     tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
   }
 }
@@ -996,7 +1008,7 @@ void replace_substance_impl(
         if (adj_loc.stuff_at().is_interior() && adj_loc.stuff_at().contents() != AIR) {
           // No longer interior! Unless you're air, add to the collision detection struct.
           assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.  exists(adj_loc));
-          mutable_stuff_at(adj_loc).set_interiorness(false);
+          set_tile_interiorness(adj_loc, false);
           tiles_exposed_to_collision.insert(adj_loc, tile_coords_to_tiles_collision_detector_bbox(adj_loc.coords()));
         }
       }
@@ -1015,7 +1027,7 @@ void replace_substance_impl(
             }
           }
           if (they_should_be_interior) {
-            mutable_stuff_at(adj_loc).set_interiorness(true);
+            set_tile_interiorness(adj_loc, true);
             // Now interior: remove us from the collision detection.
             assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.  exists(adj_loc));
             tiles_exposed_to_collision.erase(adj_loc);
@@ -1026,13 +1038,13 @@ void replace_substance_impl(
     bool should_be_collidable = (!we_are_now_interior && new_substance_type != AIR);
     bool should_have_been_collidable = (!loc.stuff_at().is_interior() && old_substance_type != AIR);
     if (should_be_collidable && !should_have_been_collidable) {
-      mutable_stuff_at(loc).set_interiorness(false);
       assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision . exists(loc));
+      set_tile_interiorness(loc, false);
       tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
     }
     if (!should_be_collidable && should_have_been_collidable) {
-      mutable_stuff_at(loc).set_interiorness(true);
       assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision . exists(loc));
+      set_tile_interiorness(loc, true);
       tiles_exposed_to_collision.erase(loc);
     }
   }
