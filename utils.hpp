@@ -392,10 +392,28 @@ template<typename T>
 struct lasercake_nice_allocator {
   typedef g_slice_allocator<T> type;
 };
+template<typename T, typename... Args>
+inline T* lasercake_nice_new(Args... args) {
+  T* ptr = static_cast<T*>(g_slice_alloc(sizeof(T)));
+  new (ptr) T(args...);
+  return ptr;
+}
+template<typename T>
+struct lasercake_nice_deleter {
+  void operator()(T* ptr)const { ptr->~T(); g_slice_free1(sizeof(T), ptr); }
+};
 #else
 template<typename T>
 struct lasercake_nice_allocator {
   typedef std::allocator<T> type;
+};
+template<typename T, typename... Args>
+inline T* lasercake_nice_new(Args... args) {
+  return new T(args...);
+}
+template<typename T>
+struct lasercake_nice_deleter {
+  void operator()(T* ptr)const { delete ptr; }
 };
 #endif
 

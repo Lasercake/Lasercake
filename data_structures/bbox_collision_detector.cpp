@@ -29,7 +29,6 @@
 #include <stack>
 #include <cassert>
 #include <cstdlib>
-#include <boost/scoped_ptr.hpp>
 #include <boost/dynamic_bitset.hpp>
 
 #include "bbox_collision_detector.hpp"
@@ -89,7 +88,7 @@ struct ztree_ops {
   typedef collision_detector::bounding_box<CoordinateBits, NumDimensions> bounding_box;
   typedef impl::zbox<CoordinateBits, NumDimensions> zbox;
   typedef impl::ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_node;
-  typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
+  typedef typename impl::ztree_node_ptr<ztree_node>::type ztree_node_ptr;
   typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
   typedef pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
   typedef id_and_bbox_type* id_and_bbox_ptr;
@@ -197,7 +196,7 @@ struct ztree_ops {
   }
   static void insert_zbox(ztree_node_ptr& tree, id_and_bbox_ptr id_and_bbox, zbox box) {
     if (!tree) {
-      tree.reset(new ztree_node(box));
+      tree.reset(lasercake_nice_new<ztree_node>(box));
       tree->objects_here.insert(id_and_bbox);
     }
     else {
@@ -211,7 +210,7 @@ struct ztree_ops {
         }
       }
       else {
-        ztree_node_ptr new_tree(new ztree_node(zbox::smallest_joint_parent(tree->here, box)));
+        ztree_node_ptr new_tree(lasercake_nice_new<ztree_node>(zbox::smallest_joint_parent(tree->here, box)));
 
         assert_if_ASSERT_EVERYTHING(new_tree->here.num_low_bits() > tree->here.num_low_bits());
         assert_if_ASSERT_EVERYTHING(new_tree->here.subsumes(tree->here));
@@ -359,7 +358,7 @@ bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>&
 bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::operator=(bbox_collision_detector const& other) {
   bboxes_by_object_ = other.bboxes_by_object_;
   objects_sequence_ = other.objects_sequence_;
-  objects_tree_.reset(other.objects_tree_ ? new ztree_node(*other.objects_tree_) : nullptr);
+  objects_tree_.reset(other.objects_tree_ ? lasercake_nice_new<ztree_node>(*other.objects_tree_) : nullptr);
 #ifdef BBOX_COLLISION_DETECTOR_DEBUG
   revision_count_ = other.revision_count_;
 #endif

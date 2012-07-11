@@ -259,7 +259,7 @@ template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinate
 struct ztree_node {
   typedef collision_detector::bounding_box<CoordinateBits, NumDimensions> bounding_box;
   typedef impl::zbox<CoordinateBits, NumDimensions> zbox;
-  typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
+  typedef typename impl::ztree_node_ptr<ztree_node>::type ztree_node_ptr;
   typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
   typedef std::pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
   typedef id_and_bbox_type* id_and_bbox_ptr;
@@ -274,15 +274,13 @@ struct ztree_node {
   ztree_node(zbox box):here(box),child0(nullptr),child1(nullptr){}
   ztree_node(ztree_node const& other) :
     here(other.here),
-    child0(other.child0 ? new ztree_node(*other.child0) : nullptr),
-    child1(other.child1 ? new ztree_node(*other.child1) : nullptr),
+    child0(other.child0 ? lasercake_nice_new<ztree_node>(*other.child0) : nullptr),
+    child1(other.child1 ? lasercake_nice_new<ztree_node>(*other.child1) : nullptr),
     objects_here(other.objects_here)
     {}
   // operator= could exist if we wanted to make zbox non-const.
   // ztree_node& operator=(ztree_node const& other) = delete;
 };
-
-
 
 
 // iterator:
@@ -322,7 +320,7 @@ private:
   typedef std::pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
   typedef id_and_bbox_type* id_and_bbox_ptr;
   typedef impl::ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_node;
-  typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
+  typedef typename impl::ztree_node_ptr<ztree_node>::type ztree_node_ptr;
   typedef collision_detector::bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions> bbox_collision_detector;
 
   typedef impl::ztree_get<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_get;

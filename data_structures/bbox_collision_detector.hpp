@@ -26,7 +26,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
-#include <boost/scoped_ptr.hpp>
+#include <memory>
 #include "../utils.hpp"
 
 namespace collision_detector {
@@ -160,6 +160,12 @@ namespace impl {
 
   template<typename ObjectIdentifier, num_bits_type CoordinateBits, num_coordinates_type NumDimensions>
   struct ztree_node;
+
+  template<typename T>
+  struct ztree_node_ptr {
+    // boost::scoped_ptr works as well, except it doesn't allow custom deleters.
+    typedef std::unique_ptr<T, lasercake_nice_deleter<T> > type;
+  };
 
   struct access_visitor_found_objects;
   struct zbox_debug_visualizer;
@@ -439,7 +445,7 @@ public:
   
 private:
   typedef impl::ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_node;
-  typedef boost::scoped_ptr<ztree_node> ztree_node_ptr;
+  typedef typename impl::ztree_node_ptr<ztree_node>::type ztree_node_ptr;
 
   typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
   typedef std::pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;

@@ -43,6 +43,7 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/variant.hpp>
 #include <boost/variant/get.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 
 #include "utils.hpp"
