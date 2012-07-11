@@ -79,6 +79,33 @@ private:
 
 
 template<typename T>
+class randomized_vector {
+private:
+  typedef std::vector<T> contents_type_;
+public:
+  typedef typename contents_type_::iterator iterator;
+  typedef typename contents_type_::const_iterator const_iterator;
+
+  template<typename RNG>
+  void insert(T const& t, RNG& rng) {
+    size_t new_max_idx = contents_.size();
+    contents_.push_back(t);
+    const boost::random::uniform_int_distribution<size_t> random_item_idx(0, new_max_idx);
+    std::swap(contents_[new_max_idx], contents_[random_item_idx(rng)]);
+  }
+  void clear() { contents_.clear(); }
+  bool empty()const { return contents_.empty(); }
+  size_t size()const { return contents_.size(); }
+  iterator begin() { return contents_.begin(); }
+  iterator end() { return contents_.end(); }
+  const_iterator begin()const { return contents_.begin(); }
+  const_iterator end()const { return contents_.end(); }
+
+private:
+  contents_type_ contents_;
+};
+
+template<typename T>
 class literally_random_access_set {
 public:
   typedef size_t size_type;

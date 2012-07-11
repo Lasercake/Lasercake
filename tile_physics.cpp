@@ -1330,7 +1330,7 @@ void update_fluids_impl(state_t& state) {
   //  There are a lot of relatively-separable rules governing how water tiles move.
   // ==============================================================================
   
-  vector<wanted_move> wanted_moves;
+  randomized_vector<wanted_move> wanted_moves;
   for (pair<const tile_location, active_fluid_tile_info>& p : active_fluids) {
     tile_location const& loc = p.first;
     active_fluid_tile_info& fluid = p.second;
@@ -1452,7 +1452,7 @@ void update_fluids_impl(state_t& state) {
         assert_if_ASSERT_EVERYTHING(progress_ref <= progress_necessary(dir));
         progress_ref += new_progress[dir];
         if (progress_ref > progress_necessary(dir)) {
-          wanted_moves.push_back(wanted_move(loc, dir, new_progress[dir], progress_ref - progress_necessary(dir)));
+          wanted_moves.insert(wanted_move(loc, dir, new_progress[dir], progress_ref - progress_necessary(dir)), state.rng);
           progress_ref = progress_necessary(dir);
         }
       }
@@ -1466,9 +1466,6 @@ void update_fluids_impl(state_t& state) {
   //  composite them when they conflict with each other.
   // ==============================================================================
   
-  
-  std::random_shuffle(wanted_moves.begin(), wanted_moves.end(),
-                      boost::random::random_number_generator<large_fast_noncrypto_rng, size_t>(state.rng));
   std::unordered_set<tile_location> disturbed_tiles;
   
   
