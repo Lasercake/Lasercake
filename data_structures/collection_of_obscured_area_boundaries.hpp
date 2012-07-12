@@ -1,16 +1,19 @@
 
-// The largest logical node in the collection is always the unit square [0,1] \cross [0,1].
+// The largest logical node in the collection is always the square [-1,1] \cross [-1,1].
 
 typedef lasercake_int<int64_t> coord_int_type;
 typedef non_normalized_rational<coord_int_type> coord_type;
 
 class collection_of_obscured_area_boundaries {
 public:
-  bool insert_collection(collection_of_obscured_area_boundaries const& other);
+  //bool insert_collection(collection_of_obscured_area_boundaries const& other);
+  bool insert_from_lines_collection(logical_node_lines_collection const& lines) {
+    top_logical_node().insert_from_lines_collection(lines);
+  }
 private:
   implementation_node top_impnode;
   logical_node top_logical_node() {
-    return logical_node(top_impnode, 0, 0, 0, 0, 1);
+    return logical_node(top_impnode, 0, 0, 0, 0, 0);
   }
 };
 
@@ -70,10 +73,29 @@ struct logical_node {
   uint8_t contents_type;
   uint8_t which_bits_in_byte;
   uint32_t which_byte_in_impnode;
+  // For the bounds info, there's a special case to allow the [-1,1] \cross [-1,1] shape.
+  // (The special case would be, effectively, numerators of -0.5 and a denominator of 0.5).
   // The upper bound numerators are always 1 + these
   coord_int_type x_lower_bound_numerator;
   coord_int_type y_lower_bound_numerator;
   coord_int_type bounds_denominator; // the same for both X and Y, and always a power of 2
+  
+  coord_type min_x()const {
+    if (bounds_denominator == 0) return coord_type(-1,1);
+    else return coord_type(x_lower_bound_numerator, bounds_denominator);
+  }
+  coord_type min_y()const {
+    if (bounds_denominator == 0) return coord_type(-1,1);
+    else return coord_type(y_lower_bound_numerator, bounds_denominator);
+  }
+  coord_type max_x()const {
+    if (bounds_denominator == 0) return coord_type(1,1);
+    else return coord_type(x_lower_bound_numerator+1, bounds_denominator);
+  }
+  coord_type max_y()const {
+    if (bounds_denominator == 0) return coord_type(1,1);
+    else return coord_type(y_lower_bound_numerator+1, bounds_denominator);
+  }
   
   logical_node(i,l,w,nx,ny,d):impnode(i),subimpnode_level(l),which_entry_at_this_subimpnode_level(w),x_lower_bound_numerator(nx),y_lower_bound_numerator(ny),bounds_denominator(d){
     assert(subimpnode_level <= max_subimpnode_level);
@@ -95,21 +117,21 @@ struct logical_node {
     impnode->entries[which_byte_in_impnode] = (impnode->entries[which_byte_in_impnode] & (~(0x3 << which_bits_in_byte))) | (type << which_bits_in_byte);
   }
   
-  COLLECTION OF LINES*& lines_pointer_reference()const {
+  logical_node_lines_collection*& lines_pointer_reference()const {
     assert(contents_type == MIXED_AS_LINES);
     
     const uint32_t which_entry_at_bottom_level = which_entry_at_this_subimpnode_level << (total_subimpnode_levels - subimpnode_level);
     
-    return static_cast<COLLECTION OF LINES*>(impnode->lines_or_further_children[which_entry_at_bottom_level]);
+    return static_cast<logical_node_lines_collection*>(impnode->lines_or_further_children[which_entry_at_bottom_level]);
   }
   
   logical_node child(int which_child)const {
     assert(contents_type == MIXED_AS_CHILDREN);
     
     const uint32_t which_entry_at_next_subimpnode_level = which_entry_at_this_subimpnode_level * 4 + which_child;
-    new_denom = bounds_denominator * 2;
-    new_xnum = x_lower_bound_numerator * 2 + (which_child & 0x1);
-    new_ynum = y_lower_bound_numerator * 2 + ((which_child & 0x2) >> 1);
+    const coord_type new_denom = (bounds_denominator == 0) ? 1 : (bounds_denominator * 2);
+    new_xnum = ((bounds_denominator == 0) ? -1 : (x_lower_bound_numerator * 2)) + (which_child & 0x1);
+    new_ynum = ((bounds_denominator == 0) ? -1 : (y_lower_bound_numerator * 2)) + ((which_child & 0x2) >> 1);
     
     if (subimpnode_level == max_subimpnode_level) {
       assert(which_entry_at_next_subimpnode_level >= 0);
@@ -137,24 +159,28 @@ struct logical_node {
    [1] but it's not "per instance of inserting a polygon", because half the time when the (assumed to be very large compared with this box) polygon doesn't have an edge that hits this box, it instead *completely contains* this box and this box's info gets deleted. So the O(1) at the end of the paragraph ends up being a constant cost /for each time a box is created/ and (in the average case) is not proportional to the number of additional polygons that will be added.
    HOWEVER, TAKE NOTE: if you do a lot of lookups that *aren't* insertions, this logic doesn't apply. There are some worst-case O(number of lines inserted)-per-lookup cases that can't be fixed by adjusting the "too much" number.
 */
+const coord_int_type lines_intolerance_constant = 4;
 void logical_node::split_if_necessary() {
   assert(contents_type == MIXED_AS_LINES);
   
-  if ((number of lines in us) * (width of us) > c) {
-    split into four children, then recursively call this on the children
+  if (lines_pointer_reference()->size() * lines_intolerance_constant > bounds_denominator) {
+    set_contents_type(MIXED_AS_CHILDREN); // This automatically splits the lines we have up among our children.
+    for (int which_child = 0; which_child < 4; ++which_child) {
+      child(which_child).split_if_necessary();
+    }
   }
 }
 
 
-bool collection_of_obscured_area_boundaries::insert_collection(collection_of_obscured_area_boundaries const& other) {
+/*bool collection_of_obscured_area_boundaries::insert_collection(collection_of_obscured_area_boundaries const& other) {
   return top_logical_node().insert_from_other_collection(other.top_logical_node())
-}
+}*/
 
 
 // A utility function for set_contents_type.
-void logical_node::retrieve_all_lines(COLLECTION OF LINES& collector) {
+void logical_node::retrieve_all_lines(logical_node_lines_collection& collector) {
   if (contents_type == MIXED_AS_LINES) {
-    collector.merge_from(*lines_pointer_reference());
+    collector.copy_from_same_or_child(*lines_pointer_reference());
   }
   if (contents_type == MIXED_AS_CHILDREN) {
     for (int which_child = 0; which_child < 4; ++which_child) {
@@ -207,33 +233,27 @@ void logical_node::set_contents_type(uint8_t new_type, bool keep_line_info) {
     // We have to merge the lines containers,
     // and also the children, or children's lines containers, might be behind
     // the SAME POINTER that we're going to use for our own new lines container.
-    COLLECTION OF LINES combined_lines;
-    retrieve_all_lines(combined_lines);
+    logical_node_lines_collection* combined_lines = new logical_node_lines_collection;
+    retrieve_all_lines(*combined_lines);
     clear_children();
-    COLLECTION OF LINES*& lpr = lines_pointer_reference();
+    logical_node_lines_collection*& lpr = lines_pointer_reference();
     assert(lpr == NULL);
-    lpr = new COLLECTION OF LINES(combined_lines);
-    or maybe we should steal from combined_lines if we're using lists and that's faster.
+    lpr = combined_lines;
   }
   else if (keep_line_info && (contents_type == MIXED_AS_CHILDREN) && (new_type == MIXED_AS_LINES))
-    if (!preserve_line_info) {
-      set_contents_type(ALL_CLEAR, true);
-      set_contents_type(new_type, true);
-    }
-    COLLECTION OF LINES*& lpr = lines_pointer_reference();
-    COLLECTION OF LINES original_lines(*lpr);
-    or maybe we should steal from *lpr if we're using lists and that's faster.
-    delete lpr;
+    logical_node_lines_collection*& lpr = lines_pointer_reference();
+    logical_node_lines_collection* original_lines_ptr = lpr;
     lpr = NULL;
     create_children(ALL_CLEAR);
     for (int which_child = 0; which_child < 4; ++which_child) {
       logical_node c = child(which_child);
       
-      COLLECTION OF LINES*& clpr = c.lines_pointer_reference();
+      logical_node_lines_collection*& clpr = c.lines_pointer_reference();
       assert(clpr == NULL);
-      clpr = new COLLECTION OF LINES;
-      clpr->copy_lines_intersecting_node(original_lines, c);
+      clpr = new logical_node_lines_collection;
+      clpr->copy_cropping_to_box(*original_lines_ptr, c);
     }
+    delete original_lines_ptr;
   }
   else {
     // Either there's no line info to be kept, or we've been instructed not to keep it.
@@ -241,18 +261,18 @@ void logical_node::set_contents_type(uint8_t new_type, bool keep_line_info) {
       clear_children();
     }
     if (contents_type == MIXED_AS_LINES) {
-      COLLECTION OF LINES*& lpr = lines_pointer_reference();
+      logical_node_lines_collection*& lpr = lines_pointer_reference();
       delete lpr;
       lpr = NULL;
     }
     
     if (new_type == MIXED_AS_LINES) {
-      COLLECTION OF LINES*& lpr = lines_pointer_reference();
+      logical_node_lines_collection*& lpr = lines_pointer_reference();
       assert(lpr == NULL);
-      lpr = new COLLECTION OF LINES;
+      lpr = new logical_node_lines_collection;
     }
     if (new_type == MIXED_AS_CHILDREN) {
-      create_children(contents_type);
+      create_children((contents_type == MIXED_AS_LINES) ? ALL_CLEAR : contents_type);
     }
   }
   
@@ -262,7 +282,7 @@ void logical_node::set_contents_type(uint8_t new_type, bool keep_line_info) {
   
   set_contents_type_bits(new_type);
 }
-
+/*
 void logical_node::overwrite_from_other_collection(logical_node const& other) {
   set_contents_type(other.contents_type, false);
   if (other.contents_type == MIXED_AS_CHILDREN) {
@@ -320,14 +340,57 @@ bool logical_node::insert_from_other_collection(logical_node const& other) {
     assert(false);
   }
 }
+*/
 
-// assumes b is already "all clear" or "lines", inserts lines, returns whether the inserted lines overlapped any clear area
-bool insert_lines ([collection of relevant lines] p, [treebox reference] b) {
-
-
-  split_if_necessary(b);
+bool logical_node::insert_from_lines_collection(logical_node_lines_collection const& lines) {
+  assert(lines.min_x == min_x());
+  assert(lines.min_y == min_y());
+  assert(lines.max_x == max_x());
+  assert(lines.max_y == max_y());
+  
+  if (lines.empty()) {
+    // Nothing there at all, so nothing there is visible.
+    return false;
+  }
+  // Now: "lines" contains some blockage.
+  else if (contents_type == ALL_BLOCKED) {
+    // We block everything, so nothing there is visible.
+    return false;
+  }
+  // Now: "lines" contains some blockage and we contain some clear area.
+  else if (lines.full()) {
+    set_contents_type(ALL_BLOCKED);
+    // If they were full, then wherever our clear area was, you could see them through it.
+    return true;
+  }
+  // Now: "lines" is mixed and we contain some clear area.
+  else if (contents_type == ALL_CLEAR) {
+    set_contents_type(MIXED_AS_LINES);
+    (*lines_pointer_reference()) = lines;
+    split_if_necessary();
+    // If we were all clear, then wherever their blockage is, it was visible.
+    return true;
+  }
+  // Now: Both ourselves and the other are mixed.
+  else if (contents_type == MIXED_AS_CHILDREN) {
+    bool result = false;
+    for (int which_child = 0; which_child < 4; ++which_child) {
+      logical_node c = child(which_child);
+      logical_node_lines_collection sub_lines;
+      sub_lines.copy_cropping_to_box(lines, c);
+      if (c.insert_from_lines_collection(sub_lines)) result = true;
+    }
+    return result;
+  }
+  else if (contents_type == MIXED_AS_LINES) {
+    const bool result = lines_pointer_reference()->combine(lines);
+    split_if_necessary();
+    return result;
+  }
+  else {
+    assert(false);
+  }
 }
-
 
 
 
@@ -543,6 +606,7 @@ struct logical_node_lines_collection {
   std::vector<axis_aligned_line> hlines;
   std::vector<axis_aligned_line> vlines;
   std::vector<perspective_line> plines;
+  size_t size()const { return hlines.size() + vlines.size() + plines.size(); }
   
   coord_type min_x;
   coord_type min_y;
@@ -551,10 +615,10 @@ struct logical_node_lines_collection {
   
   logical_node_lines_collection():min_x(-1,1),min_y(-1,1),max_x(1,1),max_y(1,1){}
   bool empty()const {
-    return hlines.empty() && vlines.empty() && plines.empty && !left_side.is_obscured_initially;
+    return hlines.empty() && vlines.empty() && plines.empty() && !left_side.is_obscured_initially;
   }
   bool full()const {
-    return hlines.empty() && vlines.empty() && plines.empty && left_side.is_obscured_initially;
+    return hlines.empty() && vlines.empty() && plines.empty() && left_side.is_obscured_initially;
   }
   
   // The "insert" functions are expected to be used a bunch of times in sequence,
@@ -584,58 +648,78 @@ struct logical_node_lines_collection {
     }
   }
   
-  logical_node_lines_collection cropped_to_box(logical_node box) {
-    logical_node_lines_collection result;
-    result.min_x = box.min_x();
-    result.min_y = box.min_y();
-    result.max_x = box.max_x();
-    result.max_y = box.max_y();
+  // Can copy from any (direct or indirect) child.
+  // Use this as many times as is necessary after
+  // default-constructing a logical_node_lines_collection and setting its bounds to the proper values,
+  // in order to collapse a child tree into a single node
+  // (or perform the trivial collapse of a single lines-node to itself, i.e. copying).
+  void copy_from_same_or_child(logical_node_lines_collection const& child_collection) {
+    for (auto const& hline : child_collection.hlines) {
+      insert_hline(hline);
+    }
+    for (auto const& vline : child_collection.vlines) {
+      insert_vline(vline);
+    }
+    for (auto const& pline : child_collection.plines) {
+      insert_pline(pline);
+    }
+    if (child_collection.min_x == min_x && child_collection.min_y == min_y) {
+      left_side.is_obscured_initially = child_collection.left_side.is_obscured_initially;
+    }
+  }
+  
+  // Call this method of a newly default-constructed logical_node_lines_collection.
+  void copy_cropping_to_box(logical_node_lines_collection const& original, logical_node box) {
+    min_x = box.min_x();
+    min_y = box.min_y();
+    max_x = box.max_x();
+    max_y = box.max_y();
     
-    /* We could copy our left-side info, but it's easy to just let it be generated by the insert functions.
+    /* We could copy their left-side info, but it's easy to just let it be generated by the insert functions.
     
-    if (result.min_x == min_x) {
-      result.left_side.tpts.insert(left_side.tpts.lower_bound(tpt(result.min_y, false)), left_side.tpts.upper_bound(tpt(result.max_y, false)));
-      if (result.left_side.tpts.empty()) {
-        result.left_side.is_obscured_initially = left_side.point_is_obscured(result.min_y);
+    if (min_x == original.min_x) {
+      left_side.tpts.insert(original.left_side.tpts.lower_bound(tpt(min_y, false)), original.left_side.tpts.upper_bound(tpt(max_y, false)));
+      if (left_side.tpts.empty()) {
+        left_side.is_obscured_initially = original.left_side.point_is_obscured(min_y);
       }
       else {
-        result.left_side.is_obscured_initially = !result.left_side.begin().is_obscured_beyond;
+        left_side.is_obscured_initially = !left_side.begin().is_obscured_beyond;
       }
     }
     else {
     }*/
     
-    result.left_side.is_obscured_initially = left_side.point_is_obscured(result.min_x, result.min_y);
+    left_side.is_obscured_initially = original.point_is_obscured(min_x, min_y);
     
-    for (auto const& hline : hlines) {
-      if ((hline.b1 <= result.max_x) && (hline.b2 >= result.min_x)
-       && (hline.l  <= result.max_y) && (hline.l  >= result.min_y)) {
-        result.insert_hline(hline);
+    for (auto const& hline : original.hlines) {
+      if ((hline.b1 <= max_x) && (hline.b2 >= min_x)
+       && (hline.l  <= max_y) && (hline.l  >= min_y)) {
+        insert_hline(hline);
       }
     }
-    for (auto const& vline : vlines) {
-      if ((vline.b1 <= result.max_y) && (vline.b2 >= result.min_y)
-       && (vline.l  <= result.max_x) && (vline.l  >= result.min_x)) {
-        result.insert_vline(vline);
+    for (auto const& vline : original.vlines) {
+      if ((vline.b1 <= max_y) && (vline.b2 >= min_y)
+       && (vline.l  <= max_x) && (vline.l  >= min_x)) {
+        insert_vline(vline);
       }
     }
-    for (auto const& pline : plines) {
+    for (auto const& pline : original.plines) {
       // This is ugly, maybe there's a better way to check if a pline intersects a box?
-      if ((  pline.b1.is_x_boundary  && pline.b1.b <= result.max_x)
+      if ((  pline.b1.is_x_boundary  && pline.b1.b <= max_x)
        || ((!pline.b1.is_x_boundary) && (
-                ((pline.slope > 0) && (pline.b1.b <= result.max_y))
-             || ((pline.slope < 0) && (pline.b1.b >= result.min_y))
+                ((pline.slope > 0) && (pline.b1.b <= max_y))
+             || ((pline.slope < 0) && (pline.b1.b >= min_y))
            ))) {
-        if ((  pline.b2.is_x_boundary  && pline.b2.b >= result.min_x)
+        if ((  pline.b2.is_x_boundary  && pline.b2.b >= min_x)
          || ((!pline.b2.is_x_boundary) && (
-                  ((pline.slope > 0) && (pline.b2.b >= result.min_y))
-               || ((pline.slope < 0) && (pline.b2.b <= result.max_y))
+                  ((pline.slope > 0) && (pline.b2.b >= min_y))
+               || ((pline.slope < 0) && (pline.b2.b <= max_y))
              ))) {
-          const coord_type lyx = pline.x_intercept(result.min_y);
-          const coord_type myx = pline.x_intercept(result.max_y);
-          if (((lyx <= result.max_x) && (myx >= result.min_x))
-           || ((lyx >= result.min_x) && (myx <= result.max_x))) {
-            result.insert_pline(pline);
+          const coord_type lyx = pline.x_intercept(min_y);
+          const coord_type myx = pline.x_intercept(max_y);
+          if (((lyx <= max_x) && (myx >= min_x))
+           || ((lyx >= min_x) && (myx <= max_x))) {
+            insert_pline(pline);
           }
         }
       }
@@ -714,7 +798,7 @@ struct logical_node_lines_collection {
   }
   
   needs better name:
-  bool combine(logical_node_lines_collection& other) {
+  bool combine(logical_node_lines_collection const& other) {
     bool result = false;
     
     // ======== Combine the lines info. ==========
@@ -756,7 +840,6 @@ struct logical_node_lines_collection {
       }
     }
     
-    // Then slice the lines up based on the overlaps.
     // For lines that don't have overlaps, note whether or not they're completely obscured.
     // They can only be completely obscured *by the other collection*
     //  (since each line is completely necessary to its own collection)
@@ -768,6 +851,9 @@ struct logical_node_lines_collection {
     mark_obscured_aalines(true , false, other.hlines, ohlines_tpts, completely_visible_ohlines);
     mark_obscured_aalines(false, false, other.vlines, ovlines_tpts, completely_visible_ovlines);
     mark_obscured_plines (       false, other.plines, oplines_tpts, completely_visible_oplines);
+    if ((!completely_visible_ohlines.empty()) || (!completely_visible_ovlines.empty()) || (!completely_visible_oplines.empty())) result = true;
+    
+    // Then slice up the overlapped lines based on the overlaps.
     slice_marked_lines(true ,       hlines, hlines,  hlines_tpts);
     slice_marked_lines(true ,       vlines, vlines,  vlines_tpts);
     slice_marked_lines(true ,       plines, plines,  plines_tpts);
@@ -783,6 +869,7 @@ struct logical_node_lines_collection {
     copy_visible_lines(other.hlines, hlines, completely_visible_ohlines);
     copy_visible_lines(other.vlines, vlines, completely_visible_ovlines);
     copy_visible_lines(other.plines, plines, completely_visible_oplines);
+    
     
     // ======== Combine the left-side info. ==========
     left_side.combine(other.left_side);
