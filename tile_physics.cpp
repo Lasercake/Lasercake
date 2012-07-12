@@ -229,13 +229,9 @@ namespace tile_physics_impl {
   tile& mutable_stuff_at(tile_location const& loc) {
     return loc.wb_->get_tile(loc.v_);
   }
-  void set_tile_interiorness(tile_location const& loc, bool interior) {
-    tile& mutable_stuff = mutable_stuff_at(loc);
-    bool was_interior = mutable_stuff.is_interior();
-    assert(was_interior != interior);
-    loc.wb_->count_of_non_interior_tiles_here_ += was_interior;
-    loc.wb_->count_of_non_interior_tiles_here_ -= interior;
-    mutable_stuff.set_interiorness(interior);
+  inline void set_tile_interiorness(tile_location const& loc, bool interior) {
+    if(interior) loc.wb_->set_tile_interior(loc.v_);
+    else loc.wb_->set_tile_non_interior(loc.v_);
   }
 }
 

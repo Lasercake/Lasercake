@@ -37,11 +37,45 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     assert_if_ASSERT_EVERYTHING(&t == &wb->tiles_[local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor]);
     t.set_interiorness(false);
     wb->count_of_non_interior_tiles_here_ += 1;
+    const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(local_x, local_y, local_z);
+    const worldblock_dimension_type interleaved_high = interleaved >> 6;
+    const worldblock_dimension_type interleaved_low = interleaved & ((1<<6)-1);
+    wb->non_interior_bitmap_small_scale_[interleaved_high] |= uint64_t(1) << interleaved_low;
+    wb->non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
 
     const vector3<tile_coordinate>& gp = wb->global_position_;
     const vector3<tile_coordinate> coords(gp.x + local_x, gp.y + local_y, gp.z + local_z);
     const tile_location loc = wb->get_loc_guaranteed_to_be_in_this_block(coords);
     tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(coords));
+  }
+
+  void worldblock::set_tile_non_interior(vector3<tile_coordinate> global_coords) {
+    const worldblock_dimension_type x = get_primitive_int(global_coords.x - global_position_.x);
+    const worldblock_dimension_type y = get_primitive_int(global_coords.y - global_position_.y);
+    const worldblock_dimension_type z = get_primitive_int(global_coords.z - global_position_.z);
+    const worldblock_dimension_type idx = x*worldblock_x_factor + y*worldblock_y_factor + z*worldblock_z_factor;
+    const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(x, y, z);
+    const worldblock_dimension_type interleaved_high = interleaved >> 6;
+    const worldblock_dimension_type interleaved_low = interleaved & ((1<<6)-1);
+    non_interior_bitmap_small_scale_[interleaved_high] |= uint64_t(1) << interleaved_low;
+    non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
+    tile& t = tiles_[idx];
+    count_of_non_interior_tiles_here_ += t.is_interior();
+    t.set_interiorness(false);
+  }
+  void worldblock::set_tile_interior(vector3<tile_coordinate> global_coords) {
+    const worldblock_dimension_type x = get_primitive_int(global_coords.x - global_position_.x);
+    const worldblock_dimension_type y = get_primitive_int(global_coords.y - global_position_.y);
+    const worldblock_dimension_type z = get_primitive_int(global_coords.z - global_position_.z);
+    const worldblock_dimension_type idx = x*worldblock_x_factor + y*worldblock_y_factor + z*worldblock_z_factor;
+    const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(x, y, z);
+    const worldblock_dimension_type interleaved_high = interleaved >> 6;
+    const worldblock_dimension_type interleaved_low = interleaved & ((1<<6)-1);
+    non_interior_bitmap_small_scale_[interleaved_high] &= ~(uint64_t(1) << interleaved_low);
+    non_interior_bitmap_large_scale_ &= ~(uint64_t(!non_interior_bitmap_small_scale_[interleaved_high]) << interleaved_high);
+    tile& t = tiles_[idx];
+    count_of_non_interior_tiles_here_ -= !t.is_interior();
+    t.set_interiorness(true);
   }
 
   template<cardinal_direction Dir> struct neighbor_idx_offset;
