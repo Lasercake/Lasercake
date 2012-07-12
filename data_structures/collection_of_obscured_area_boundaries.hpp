@@ -114,6 +114,10 @@ template<typename BoundaryLocType = coord_type> struct obscured_areas_tracker_1d
   bool is_obscured_initially;
   std::multiset<tpt<BoundaryLocType>> tpts;
   
+  void clear() {
+    tpts.clear(); is_obscured_initially = false;
+  }
+  
   inline void insert(tpt<BoundaryLocType> t) {
     tpts.insert(t);
   }
@@ -231,6 +235,10 @@ struct logical_node_lines_collection {
   }
   bool full()const {
     return hlines.empty() && vlines.empty() && plines.empty() && left_side.is_obscured_initially;
+  }
+  
+  void clear() {
+    hlines.clear(); vlines.clear(); plines.clear(); left_side.clear();
   }
   
   // The "insert" functions are expected to be used a bunch of times in sequence,
@@ -520,15 +528,15 @@ constexpr int total_entries_at_subimpnode_level(int level) {
 }
 
 constexpr int total_entries_above_subimpnode_level(int level) {
-  return (level == 0) ? 0 : (total_entries_at_subimpnode_level(level - 1) * total_entries_above_subimpnode_level(level - 1));
+  return (level == 0) ? 0 : (total_entries_at_subimpnode_level(level - 1) + total_entries_above_subimpnode_level(level - 1));
 }
 
-const int total_subimpnode_levels = 5;
-const int max_subimpnode_level = total_subimpnode_levels - 1;
+const uint32_t total_subimpnode_levels = 5;
+const uint32_t max_subimpnode_level = total_subimpnode_levels - 1;
 
-const int total_entries = total_entries_above_subimpnode_level(total_subimpnode_levels);
-const int total_entry_bytes = total_entries / 4;
-const int total_entries_at_bottom_subimpnode_level = total_entries_at_subimpnode_level(total_subimpnode_levels);
+const uint32_t total_entries = total_entries_above_subimpnode_level(total_subimpnode_levels);
+const uint32_t total_entry_bytes = total_entries / 4;
+const uint32_t total_entries_at_bottom_subimpnode_level = total_entries_at_subimpnode_level(total_subimpnode_levels);
 
 // An implementation_node contains information about total_subimpnode_levels levels of logical nodes.
 struct implementation_node {
@@ -585,17 +593,15 @@ struct logical_node {
     }
   }
   
-  logical_node(implementation_node* i,uint8_t l,uint32_t w,coord_int_type nx,coord_int_type ny,coord_int_type d):impnode(i),subimpnode_level(l),which_entry_at_this_subimpnode_level(w),x_lower_bound_numerator(nx),y_lower_bound_numerator(ny),bounds_denominator(d)
+  logical_node(implementation_node* i,uint8_t l,uint32_t w,coord_int_type nx,coord_int_type ny,coord_int_type d):impnode(i),which_entry_at_this_subimpnode_level(w),subimpnode_level(l),x_lower_bound_numerator(nx),y_lower_bound_numerator(ny),bounds_denominator(d)
   {
     assert(subimpnode_level <= max_subimpnode_level);
-    assert(subimpnode_level >= 0);
     if (subimpnode_level == 0) {
       contents_type = impnode->top_entry;
     }
     else {
       which_byte_in_impnode = total_entries_above_subimpnode_level(subimpnode_level) + (which_entry_at_this_subimpnode_level/4);
       which_bits_in_byte = 2*(which_entry_at_this_subimpnode_level % 4);
-      assert(which_byte_in_impnode >= 0);
       assert(which_byte_in_impnode < total_entry_bytes);
       contents_type = (impnode->entry_bytes[which_byte_in_impnode] >> which_bits_in_byte) & 0x3;
     }
@@ -623,7 +629,6 @@ struct logical_node {
     const coord_int_type new_ynum = ((bounds_denominator == 0) ? -1 : (y_lower_bound_numerator * 2)) + ((which_child & 0x2) >> 1);
     
     if (subimpnode_level == max_subimpnode_level) {
-      assert(which_entry_at_next_subimpnode_level >= 0);
       assert(which_entry_at_next_subimpnode_level < total_entries_at_bottom_subimpnode_level);
       assert(impnode->lines_or_further_children[which_entry_at_next_subimpnode_level] != NULL);
       return logical_node(static_cast<implementation_node*>(impnode->lines_or_further_children[which_entry_at_next_subimpnode_level]), 0, 0, new_xnum, new_ynum, new_denom);
@@ -645,13 +650,13 @@ class collection_of_obscured_area_boundaries {
 public:
   //bool insert_collection(collection_of_obscured_area_boundaries const& other);
   bool insert_from_lines_collection(logical_node_lines_collection const& lines) {
-    top_logical_node().insert_from_lines_collection(lines);
+    return top_logical_node().insert_from_lines_collection(lines);
   }
-private:
-  implementation_node top_impnode;
   logical_node top_logical_node() {
     return logical_node(&top_impnode, 0, 0, 0, 0, 0);
   }
+private:
+  implementation_node top_impnode;
 };
 
 // If there get to be too many lines in this node [how many?], split into children.
@@ -672,7 +677,7 @@ const coord_int_type lines_intolerance_constant = 4;
 void logical_node::split_if_necessary() {
   assert(contents_type == MIXED_AS_LINES);
   
-  if (lines_pointer_reference()->size() * lines_intolerance_constant > bounds_denominator) {
+  if (lines_intolerance_constant * static_cast<coord_int_type>(lines_pointer_reference()->size()) > bounds_denominator) {
     set_contents_type(MIXED_AS_CHILDREN); // This automatically splits the lines we have up among our children.
     for (int which_child = 0; which_child < 4; ++which_child) {
       child(which_child).split_if_necessary();
