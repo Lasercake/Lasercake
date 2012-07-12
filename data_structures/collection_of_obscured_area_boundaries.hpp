@@ -1,39 +1,530 @@
 
 // The largest logical node in the collection is always the square [-1,1] \cross [-1,1].
 
-typedef lasercake_int<int64_t> coord_int_type;
+#include "../utils.hpp"
+typedef lasercake_int<int64_t>::type coord_int_type;
 typedef non_normalized_rational<coord_int_type> coord_type;
 
-class collection_of_obscured_area_boundaries {
-public:
-  //bool insert_collection(collection_of_obscured_area_boundaries const& other);
-  bool insert_from_lines_collection(logical_node_lines_collection const& lines) {
-    top_logical_node().insert_from_lines_collection(lines);
-  }
-private:
-  implementation_node top_impnode;
-  logical_node top_logical_node() {
-    return logical_node(top_impnode, 0, 0, 0, 0, 0);
+struct bounds_2d {
+  coord_type min_x;
+  coord_type min_y;
+  coord_type max_x;
+  coord_type max_y;
+  bounds_2d(coord_type min_x, coord_type min_y, coord_type max_x, coord_type max_y):min_x(min_x),min_y(min_y),max_x(max_x),max_y(max_y){}
+  bool operator==(bounds_2d const& o)const {
+    return (min_x == o.min_x) && (min_y == o.min_y) && (max_x == o.max_x) && (max_y == o.max_y);
   }
 };
+bounds_2d top_node_bounds(coord_type(-1,1),coord_type(-1,1),coord_type(1,1),coord_type(1,1));
+
+
+
+
+struct axis_aligned_line {
+  axis_aligned_line(coord_type l,coord_type b1,coord_type b2,bool b):l(l),b1(b1),b2(b2),is_obscured_beyond(b){}
+  // The location of the line in one dimension, and its bounds in the other dimension.
+  coord_type l;
+  coord_type b1;
+  coord_type b2;
+  // "beyond" being upwards in the dimension that crosses the line
+  bool is_obscured_beyond;
+  // A... hack, perhaps? ...to allow templating between aalines and plines
+  inline coord_type projective_angle()const { return l; }
+};
+// Assuming that they're perpendicular...
+inline bool intersects(axis_aligned_line l1, axis_aligned_line l2) {
+  return (l1.b1 <= l2.l) && (l2.l <= l1.b2)
+      && (l2.b1 <= l1.l) && (l1.l <= l2.b2);
+}
+struct x_or_y_boundary {
+  x_or_y_boundary(coord_type b, bool i):b(b),is_x_boundary(i){}
+  //x_or_y_boundary(x_or_y_boundary const& o):b(o.b),is_x_boundary(o.is_x_boundary){}
+  coord_type b;
+  bool is_x_boundary;
+};
+struct perspective_line {
+  perspective_line(coord_type m,x_or_y_boundary b1,x_or_y_boundary b2,bool obsright):slope(m),b1(b1),b2(b2),is_obscured_beyond(obsright){}
+  coord_type slope;
+  // A... hack, perhaps? ...to allow templating between aalines and plines
+  inline coord_type projective_angle()const { return slope; }
+  x_or_y_boundary b1;
+  x_or_y_boundary b2;
+  bool is_obscured_beyond; // in this case, meaning to the right
+  bool is_obscured_to_the_right()const { return is_obscured_beyond; }
+  bool is_obscured_above()const { return (slope < coord_type(0)) == is_obscured_beyond; }
+  coord_type y_intercept(coord_type x)const {
+    // slope = y / x;
+    // y = x * slope
+    return x * slope;
+  }
+  coord_type x_intercept(coord_type y)const {
+    // slope = y / x;
+    // x = y / slope
+    return y / slope;
+  }
+  bool point_is_within_end_boundaries(coord_type x, coord_type y)const {
+    if (b1.is_x_boundary && (x < b1.b)) return false;
+    if (b2.is_x_boundary && (x > b2.b)) return false;
+    if (slope > coord_type(0)) {
+      if ((!b1.is_x_boundary) && (y < b1.b)) return false;
+      if ((!b2.is_x_boundary) && (y > b2.b)) return false;
+    }
+    else {
+      if ((!b1.is_x_boundary) && (y > b1.b)) return false;
+      if ((!b2.is_x_boundary) && (y < b2.b)) return false;
+    }
+    return true;
+  }
+};
+struct pline_tpt_loc {
+  pline_tpt_loc(coord_type b, bool i, coord_type m):b(b,i),slope(m){}
+  x_or_y_boundary b;
+  coord_type slope;
+  
+  // A... hack, perhaps? ...to allow templating between aalines and plines
+  operator x_or_y_boundary()const { return b; }
+  
+  bool operator<(pline_tpt_loc const& other)const {
+    if (b.is_x_boundary == other.b.is_x_boundary) {
+      return (b.b < other.b.b) == (b.is_x_boundary || (slope > coord_type(0)));
+    }
+    // How to compare an x boundary to a y boundary, with a given slope?
+    // Let's say we sort by x - then "xbound < ybound" is
+    // x < y / m
+    else if (b.is_x_boundary) {
+      return (b.b < other.b.b / slope);
+    }
+    else if (other.b.is_x_boundary) {
+      return (b.b < other.b.b * slope);
+    }
+    else assert(false);
+  }
+};
+
+// "transition point"
+template<typename BoundaryLocType = coord_type> struct tpt {
+  tpt(BoundaryLocType l, bool b):loc(l),is_obscured_beyond(b){}
+  BoundaryLocType loc;
+  bool is_obscured_beyond;
+  bool operator<(tpt const& other)const{ return loc < other.loc; }
+};
+
+template<typename BoundaryLocType = coord_type> struct obscured_areas_tracker_1d {
+  obscured_areas_tracker_1d():is_obscured_initially(false){}
+  bool is_obscured_initially;
+  std::multiset<tpt<BoundaryLocType>> tpts;
+  
+  inline void insert(tpt<BoundaryLocType> t) {
+    tpts.insert(t);
+  }
+  bool point_is_obscured(BoundaryLocType point)const {
+    if (tpts.empty()) return is_obscured_initially;
+    auto b = tpts.lower_bound(tpt<BoundaryLocType>(point, false));
+    if (b->loc == point) {
+      return true;
+    }
+    else if (b == tpts.begin()){
+      return is_obscured_initially;
+    }
+    else {
+      --b;
+      return b->is_obscured_beyond;
+    }
+  }
+  void combine(obscured_areas_tracker_1d const& other) {
+    auto l1 = tpts.begin();
+    auto l2 = other.tpts.begin();
+    is_obscured_initially = is_obscured_initially || other.is_obscured_initially;
+    
+    bool currently_obscured_1 = is_obscured_initially;
+    bool currently_obscured_2 = other.is_obscured_initially;
+    while ((l1 != tpts.end()) && l2 != other.tpts.end()) {
+      if ((l1->loc == l2->loc) && (currently_obscured_1 || currently_obscured_2) && (l1->is_obscured_beyond || l2->is_obscured_beyond)) {
+        currently_obscured_1 = l1->is_obscured_beyond;
+        currently_obscured_2 = l2->is_obscured_beyond;
+        tpts.erase(l1++);
+        ++l2;
+      }
+      else if (l1->loc <= l2->loc) {
+        currently_obscured_1 = l1->is_obscured_beyond;
+        if (currently_obscured_2) tpts.erase(l1++);
+        else ++l1;
+      }
+      else if (l2->loc <= l1->loc) {
+        currently_obscured_2 = l2->is_obscured_beyond;
+        if (!currently_obscured_1) tpts.insert(*l2);
+        ++l2;
+      }
+    }
+  }
+};
+
+template<class LineType, typename TptLocType> void slice_marked_lines(bool src_lines_is_our_own_collection, std::vector<LineType> const& src_lines, std::vector<LineType>& dst_lines, std::vector<obscured_areas_tracker_1d<TptLocType>> const& tpts) {
+  for (size_t i = 0; i < tpts.size(); ++i) {
+    auto const& switch_points = tpts[i].tpts;
+    auto t = switch_points.begin();
+    if (t != switch_points.end()) {
+      LineType const& line = src_lines[i];
+      // If we're in the dst collection, replace ourselves with the first still-visible piece of ourselves.
+      auto original_b2 = line.b2;
+      if (t->is_obscured_beyond) {
+        auto new_b1 = t->loc;
+        if (src_lines_is_our_own_collection) dst_lines[i].b1 = new_b1;
+        ++t;
+        //TODO: This assertion might fail if rounding error stuff happens. What to do about that?
+        assert(!t->is_obscured_beyond);
+        if (t != switch_points.end()) {
+          if (src_lines_is_our_own_collection) dst_lines[i].b2 = t->loc;
+          else dst_lines.push_back(LineType(line.projective_angle(), new_b1, t->loc, line.is_obscured_beyond));
+        }
+        else {
+          if(!src_lines_is_our_own_collection) dst_lines.push_back(LineType(line.projective_angle(), new_b1, original_b2, line.is_obscured_beyond));
+        }
+      }
+      else {
+        if (src_lines_is_our_own_collection) dst_lines[i].b2 = t->loc;
+        else dst_lines.push_back(LineType(line.projective_angle(), line.b1, t->loc, line.is_obscured_beyond));
+      }
+      
+      // Now insert the rest of the still-visible pieces of ourselves at the end.
+      ++t;
+      while(t != switch_points.end()) {
+        //TODO: This assertion might fail if rounding error stuff happens. What to do about that?
+        assert(!t->is_obscured_beyond);
+        auto startb = t->loc;
+        ++t;
+        if (t == switch_points.end()) {
+          dst_lines.push_back(LineType(line.projective_angle(), startb, original_b2, line.is_obscured_beyond));
+        }
+        else {
+          dst_lines.push_back(LineType(line.projective_angle(), startb, t->loc, line.is_obscured_beyond));
+          ++t;
+        }
+      }
+    }
+  }
+}
+template<class LineType> void purge_obscured_lines(std::vector<LineType>& lines, std::vector<size_t> const& obscured_list) {
+  for (int i = obscured_list.size() - 1; i >= 0 ; --i) {
+    lines[obscured_list[i]] = lines.back(); lines.pop_back();
+  }
+}
+template<class LineType> void copy_visible_lines(std::vector<LineType> const& src_lines, std::vector<LineType> dst_lines, std::vector<size_t> const& visible_list) {
+  for (size_t i : visible_list) {
+    dst_lines.push_back(src_lines[i]);
+  }
+}
+
+struct logical_node_lines_collection {
+  obscured_areas_tracker_1d<> left_side;
+  
+  std::vector<axis_aligned_line> hlines;
+  std::vector<axis_aligned_line> vlines;
+  std::vector<perspective_line> plines;
+  size_t size()const { return hlines.size() + vlines.size() + plines.size(); }
+  
+  bounds_2d bounds;
+  
+  logical_node_lines_collection():bounds(top_node_bounds){}
+  bool empty()const {
+    return hlines.empty() && vlines.empty() && plines.empty() && !left_side.is_obscured_initially;
+  }
+  bool full()const {
+    return hlines.empty() && vlines.empty() && plines.empty() && left_side.is_obscured_initially;
+  }
+  
+  // The "insert" functions are expected to be used a bunch of times in sequence,
+  // which, in total, should create a valid structure.
+  // In the middle of that process, the structure will be invalid.
+  void insert_hline(axis_aligned_line const& hline) {
+    assert(hline.b1 <= bounds.max_x);
+    assert(hline.b2 >= bounds.min_x);
+    assert(hline.l <= bounds.max_y);
+    assert(hline.l >= bounds.min_y);
+    hlines.push_back(hline);
+    if ((hline.b1 <= bounds.min_x) && (hline.b2 >= bounds.min_x)) {
+      left_side.tpts.insert(tpt<>(hline.l, hline.is_obscured_beyond));
+    }
+  }
+  void insert_vline(axis_aligned_line const& vline) {
+    assert(vline.b1 <= bounds.max_y);
+    assert(vline.b2 >= bounds.min_y);
+    assert(vline.l <= bounds.max_x);
+    assert(vline.l >= bounds.min_x);
+    vlines.push_back(vline);
+  }
+  void insert_pline(perspective_line const& pline) {
+    const coord_type y = pline.y_intercept(bounds.min_x);
+    if ((y >= bounds.min_y) && (y <= bounds.max_y)) {
+      left_side.tpts.insert(tpt<>(y, pline.is_obscured_above()));
+    }
+  }
+  
+  // Can copy from any (direct or indirect) child.
+  // Use this as many times as is necessary after
+  // default-constructing a logical_node_lines_collection and setting its bounds to the proper values,
+  // in order to collapse a child tree into a single node
+  // (or perform the trivial collapse of a single lines-node to itself, i.e. copying).
+  void copy_from_same_or_child(logical_node_lines_collection const& child_collection) {
+    for (auto const& hline : child_collection.hlines) {
+      insert_hline(hline);
+    }
+    for (auto const& vline : child_collection.vlines) {
+      insert_vline(vline);
+    }
+    for (auto const& pline : child_collection.plines) {
+      insert_pline(pline);
+    }
+    if (child_collection.bounds.min_x == bounds.min_x && child_collection.bounds.min_y == bounds.min_y) {
+      left_side.is_obscured_initially = child_collection.left_side.is_obscured_initially;
+    }
+  }
+  
+  // Copy another collection, but crop to a certain set of bounds.
+  logical_node_lines_collection(logical_node_lines_collection const& original, bounds_2d bounds):bounds(bounds) {
+    /* We could copy their left-side info, but it's easy to just let it be generated by the insert functions.
+    
+    if (bounds.min_x == original.bounds.min_x) {
+      left_side.tpts.insert(original.left_side.tpts.lower_bound(tpt<>(bounds.min_y, false)), original.left_side.tpts.upper_bound(tpt<>(max_y, false)));
+      if (left_side.tpts.empty()) {
+        left_side.is_obscured_initially = original.left_side.point_is_obscured(bounds.min_y);
+      }
+      else {
+        left_side.is_obscured_initially = !left_side.begin().is_obscured_beyond;
+      }
+    }
+    else {
+    }*/
+    
+    left_side.is_obscured_initially = original.point_is_obscured(bounds.min_x, bounds.min_y);
+    
+    for (auto const& hline : original.hlines) {
+      if ((hline.b1 <= bounds.max_x) && (hline.b2 >= bounds.min_x)
+       && (hline.l  <= bounds.max_y) && (hline.l  >= bounds.min_y)) {
+        insert_hline(hline);
+      }
+    }
+    for (auto const& vline : original.vlines) {
+      if ((vline.b1 <= bounds.max_y) && (vline.b2 >= bounds.min_y)
+       && (vline.l  <= bounds.max_x) && (vline.l  >= bounds.min_x)) {
+        insert_vline(vline);
+      }
+    }
+    for (auto const& pline : original.plines) {
+      // This is ugly, maybe there's a better way to check if a pline intersects a box?
+      if ((  pline.b1.is_x_boundary  && pline.b1.b <= bounds.max_x)
+       || ((!pline.b1.is_x_boundary) && (
+                ((pline.slope > coord_type(0)) && (pline.b1.b <= bounds.max_y))
+             || ((pline.slope < coord_type(0)) && (pline.b1.b >= bounds.min_y))
+           ))) {
+        if ((  pline.b2.is_x_boundary  && pline.b2.b >= bounds.min_x)
+         || ((!pline.b2.is_x_boundary) && (
+                  ((pline.slope > coord_type(0)) && (pline.b2.b >= bounds.min_y))
+               || ((pline.slope < coord_type(0)) && (pline.b2.b <= bounds.max_y))
+             ))) {
+          const coord_type lyx = pline.x_intercept(bounds.min_y);
+          const coord_type myx = pline.x_intercept(bounds.max_y);
+          if (((lyx <= bounds.max_x) && (myx >= bounds.min_x))
+           || ((lyx >= bounds.min_x) && (myx <= bounds.max_x))) {
+            insert_pline(pline);
+          }
+        }
+      }
+    }
+  }
+  
+  bool point_is_obscured(coord_type x, coord_type y)const {
+    // Effectively: Draw a horizontal line back to the left side. If it intersects any lines,
+    // then the closest intersection dictates whether you're obscured or not.
+    // Otherwise, check the left_side structure to see whether you're obscured.
+    bool found_any_lines;
+    coord_type best_distance;
+    bool best_obscuredness;
+    for (auto const& vline : vlines) {
+      if ((vline.l <= x) && (vline.l >= bounds.min_x) && (vline.b1 <= y) && (vline.b2 >= y)) {
+        coord_type distance = x - vline.l;
+        if ((!found_any_lines) || (distance < best_distance)) {
+          found_any_lines = true;
+          best_distance = distance;
+          best_obscuredness = vline.is_obscured_beyond;
+        }
+      }
+    }
+    for (auto const& pline : plines) {
+      coord_type pline_x = pline.x_intercept(y);
+      if ((pline_x <= x) && (pline_x >= bounds.min_x) && pline.point_is_within_end_boundaries(pline_x, y)) {
+        coord_type distance = x - pline_x;
+        if ((!found_any_lines) || (distance < best_distance)) {
+          found_any_lines = true;
+          best_distance = distance;
+          best_obscuredness = pline.is_obscured_to_the_right();
+        }
+      }
+    }
+    if (found_any_lines) {
+      return best_obscuredness;
+    }
+    else {
+      return left_side.point_is_obscured(y);
+    }
+  }
+
+  bool handle_aaline_vs_aaline(axis_aligned_line l1, obscured_areas_tracker_1d<>& l1_info, axis_aligned_line l2, obscured_areas_tracker_1d<>& l2_info) {
+    // Note: If the rules have been followed, they can never intersect outside the box,
+    // so we don't need to check that the point of intersection is inside the box.
+    if (intersects(l1, l2)) {
+      l1_info.insert(tpt<>(l2.l, l2.is_obscured_beyond));
+      l2_info.insert(tpt<>(l1.l, l1.is_obscured_beyond));
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  bool handle_aaline_vs_pline(bool aaline_is_horizontal, axis_aligned_line aaline, obscured_areas_tracker_1d<>& aaline_info, perspective_line pline, obscured_areas_tracker_1d<pline_tpt_loc>& pline_info) {
+    coord_type b = (aaline_is_horizontal ? pline.x_intercept(aaline.l) : pline.y_intercept(aaline.l));
+    // Make sure the point of intersection is inside the box...
+    if (aaline_is_horizontal) {
+      if ((b < bounds.min_x) || (b > bounds.max_x) || (aaline.l < bounds.min_y) || (aaline.l > bounds.max_y)) return false;
+    }
+    else {
+      if ((b < bounds.min_y) || (b > bounds.max_y) || (aaline.l < bounds.min_x) || (aaline.l > bounds.max_x)) return false;
+    }
+    if ((aaline.b1 < b) && (b < aaline.b2) && pline.point_is_within_end_boundaries((aaline_is_horizontal ? b : aaline.l), (aaline_is_horizontal ? aaline.l : b))) {
+      aaline_info.insert(tpt<>(b, (aaline_is_horizontal ? pline.is_obscured_to_the_right() : pline.is_obscured_above())));
+      pline_info.insert(tpt<pline_tpt_loc>(
+          pline_tpt_loc(aaline.l, !aaline_is_horizontal, pline.slope),
+          aaline.is_obscured_beyond == ((pline.slope > coord_type(0)) || !aaline_is_horizontal)
+        ));
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+  
+  void mark_obscured_aalines(logical_node_lines_collection const& other, bool aalines_are_horizontal, bool src_aalines_is_our_own_collection, std::vector<axis_aligned_line> const& src_aalines, std::vector<obscured_areas_tracker_1d<>> const& tpts, std::vector<size_t>& completely_obscured_or_completely_visible_list) {
+    for (size_t i = 0; i < tpts.size(); ++i) {
+      if (tpts[i].tpts.empty()) {
+        axis_aligned_line const& aaline = src_aalines[i];
+        if (other.point_is_obscured(aalines_are_horizontal ? aaline.b1 : aaline.l, aalines_are_horizontal ? aaline.l : aaline.b1) == src_aalines_is_our_own_collection) {
+          completely_obscured_or_completely_visible_list.push_back(i);
+        }
+      }
+    }
+  }
+  void mark_obscured_plines(logical_node_lines_collection const& other, bool src_plines_is_our_own_collection, std::vector<perspective_line> const& src_plines, std::vector<obscured_areas_tracker_1d<pline_tpt_loc>> const& tpts, std::vector<size_t>& completely_obscured_or_completely_visible_list) {
+    for (size_t i = 0; i < tpts.size(); ++i) {
+      if (tpts[i].tpts.empty()) {
+        perspective_line const& pline = src_plines[i];
+        if (other.point_is_obscured(
+              pline.b1.is_x_boundary ? pline.b1.b : pline.x_intercept(pline.b1.b),
+              pline.b1.is_x_boundary ? pline.y_intercept(pline.b1.b) : pline.b1.b
+            ) == src_plines_is_our_own_collection) {
+          completely_obscured_or_completely_visible_list.push_back(i);
+        }
+      }
+    }
+  }
+  
+  bool combine(logical_node_lines_collection const& other) {
+    bool result = false;
+    
+    // ======== Combine the lines info. ==========
+    // First, collect all overlaps.
+    std::vector<obscured_areas_tracker_1d<>>               hlines_tpts(      hlines.size());
+    std::vector<obscured_areas_tracker_1d<>>              ohlines_tpts(other.hlines.size());
+    std::vector<obscured_areas_tracker_1d<>>               vlines_tpts(      vlines.size());
+    std::vector<obscured_areas_tracker_1d<>>              ovlines_tpts(other.vlines.size());
+    std::vector<obscured_areas_tracker_1d<pline_tpt_loc>>  plines_tpts(      plines.size());
+    std::vector<obscured_areas_tracker_1d<pline_tpt_loc>> oplines_tpts(other.plines.size());
+    std::vector<size_t> completely_obscured_hlines;
+    std::vector<size_t> completely_obscured_vlines;
+    std::vector<size_t> completely_obscured_plines;
+    std::vector<size_t> completely_visible_ohlines;
+    std::vector<size_t> completely_visible_ovlines;
+    std::vector<size_t> completely_visible_oplines;
+    for (size_t i = 0; i < hlines.size(); ++i) {
+      for (size_t j = 0; j < other.vlines.size(); ++j) {
+        if (handle_aaline_vs_aaline(hlines[i], hlines_tpts[i], other.vlines[j], ovlines_tpts[j])) result = true;
+      }
+      for (size_t j = 0; j < other.plines.size(); ++j) {
+        if (handle_aaline_vs_pline(true, hlines[i], hlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
+      }
+    }
+    for (size_t i = 0; i < vlines.size(); ++i) {
+      for (size_t j = 0; j < other.hlines.size(); ++j) {
+        if (handle_aaline_vs_aaline(vlines[i], vlines_tpts[i], other.hlines[j], ohlines_tpts[j])) result = true;
+      }
+      for (size_t j = 0; j < other.plines.size(); ++j) {
+        if (handle_aaline_vs_pline(false, vlines[i], vlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
+      }
+    }
+    for (size_t i = 0; i < plines.size(); ++i) {
+      for (size_t j = 0; j < other.hlines.size(); ++j) {
+        if (handle_aaline_vs_pline(true, other.hlines[j], ohlines_tpts[j], plines[i], plines_tpts[i])) result = true;
+      }
+      for (size_t j = 0; j < other.vlines.size(); ++j) {
+        if (handle_aaline_vs_pline(false, other.vlines[j], ovlines_tpts[j], plines[i], plines_tpts[i])) result = true;
+      }
+    }
+    
+    // For lines that don't have overlaps, note whether or not they're completely obscured.
+    // They can only be completely obscured *by the other collection*
+    //  (since each line is completely necessary to its own collection)
+    // and since we haven't modified either collection yet, we can just ask the other collection
+    // whether a point on that line is visible.
+    mark_obscured_aalines(other, true , true ,       hlines,  hlines_tpts, completely_obscured_hlines);
+    mark_obscured_aalines(other, false, true ,       vlines,  vlines_tpts, completely_obscured_vlines);
+    mark_obscured_plines (other,        true ,       plines,  plines_tpts, completely_obscured_plines);
+    mark_obscured_aalines(other, true , false, other.hlines, ohlines_tpts, completely_visible_ohlines);
+    mark_obscured_aalines(other, false, false, other.vlines, ovlines_tpts, completely_visible_ovlines);
+    mark_obscured_plines (other,        false, other.plines, oplines_tpts, completely_visible_oplines);
+    if ((!completely_visible_ohlines.empty()) || (!completely_visible_ovlines.empty()) || (!completely_visible_oplines.empty())) result = true;
+    
+    // Then slice up the overlapped lines based on the overlaps.
+    slice_marked_lines(true ,       hlines, hlines,  hlines_tpts);
+    slice_marked_lines(true ,       vlines, vlines,  vlines_tpts);
+    slice_marked_lines(true ,       plines, plines,  plines_tpts);
+    slice_marked_lines(false, other.hlines, hlines, ohlines_tpts);
+    slice_marked_lines(false, other.vlines, vlines, ovlines_tpts);
+    slice_marked_lines(false, other.plines, plines, oplines_tpts);
+    
+    // When you're done, purge the lines that were completely obscured.
+    // And copy over the completely-visible lines from the other list.
+    purge_obscured_lines(hlines, completely_obscured_hlines);
+    purge_obscured_lines(vlines, completely_obscured_vlines);
+    purge_obscured_lines(plines, completely_obscured_plines);
+    copy_visible_lines(other.hlines, hlines, completely_visible_ohlines);
+    copy_visible_lines(other.vlines, vlines, completely_visible_ovlines);
+    copy_visible_lines(other.plines, plines, completely_visible_oplines);
+    
+    
+    // ======== Combine the left-side info. ==========
+    left_side.combine(other.left_side);
+    
+    return result;
+  }
+};
+
+
 
 const uint8_t ALL_CLEAR = 0x0;
 const uint8_t ALL_BLOCKED = 0x1;
 const uint8_t MIXED_AS_LINES = 0x2;
 const uint8_t MIXED_AS_CHILDREN = 0x3;
 
-int total_entries_at_subimpnode_level(int level) {
-  if (level == 0) return 1;
-  return 4 * total_entries_at_subimpnode_level(level - 1);
+constexpr int total_entries_at_subimpnode_level(int level) {
+  return (level == 0) ? 1 : (4 * total_entries_at_subimpnode_level(level - 1));
 }
 
-int total_entries_above_subimpnode_level(int level) {
-  if (level == 0) return 0;
-  return total_entries_at_subimpnode_level(level - 1) * total_entries_above_subimpnode_level(level - 1);
+constexpr int total_entries_above_subimpnode_level(int level) {
+  return (level == 0) ? 0 : (total_entries_at_subimpnode_level(level - 1) * total_entries_above_subimpnode_level(level - 1));
 }
 
 const int total_subimpnode_levels = 5;
-const int max_subimpnode_level = total_levels - 1;
+const int max_subimpnode_level = total_subimpnode_levels - 1;
 
 const int total_entries = total_entries_above_subimpnode_level(total_subimpnode_levels);
 const int total_entry_bytes = total_entries / 4;
@@ -62,11 +553,11 @@ struct implementation_node {
            a "MIXED_AS_LINES" entry with "MIXED_AS_CHILDREN" entries above it, or
      3) NULL
            otherwise. */
-  void *lines_or_further_children[total_entries_at_bottom_level];
+  void *lines_or_further_children[total_entries_at_bottom_subimpnode_level];
 };
 
 struct logical_node {
-  implementation_node *impnode;
+  implementation_node* impnode;
   uint32_t which_entry_at_this_subimpnode_level;
   uint8_t subimpnode_level;
   
@@ -80,24 +571,22 @@ struct logical_node {
   coord_int_type y_lower_bound_numerator;
   coord_int_type bounds_denominator; // the same for both X and Y, and always a power of 2
   
-  coord_type min_x()const {
-    if (bounds_denominator == 0) return coord_type(-1,1);
-    else return coord_type(x_lower_bound_numerator, bounds_denominator);
-  }
-  coord_type min_y()const {
-    if (bounds_denominator == 0) return coord_type(-1,1);
-    else return coord_type(y_lower_bound_numerator, bounds_denominator);
-  }
-  coord_type max_x()const {
-    if (bounds_denominator == 0) return coord_type(1,1);
-    else return coord_type(x_lower_bound_numerator+1, bounds_denominator);
-  }
-  coord_type max_y()const {
-    if (bounds_denominator == 0) return coord_type(1,1);
-    else return coord_type(y_lower_bound_numerator+1, bounds_denominator);
+  bounds_2d bounds()const {
+    if (bounds_denominator == 0) {
+      return top_node_bounds;
+    }
+    else {
+      return bounds_2d(
+        coord_type(x_lower_bound_numerator  ,bounds_denominator),
+        coord_type(y_lower_bound_numerator  ,bounds_denominator),
+        coord_type(x_lower_bound_numerator+1,bounds_denominator),
+        coord_type(y_lower_bound_numerator+1,bounds_denominator)
+      );
+    }
   }
   
-  logical_node(i,l,w,nx,ny,d):impnode(i),subimpnode_level(l),which_entry_at_this_subimpnode_level(w),x_lower_bound_numerator(nx),y_lower_bound_numerator(ny),bounds_denominator(d){
+  logical_node(implementation_node* i,uint8_t l,uint32_t w,coord_int_type nx,coord_int_type ny,coord_int_type d):impnode(i),subimpnode_level(l),which_entry_at_this_subimpnode_level(w),x_lower_bound_numerator(nx),y_lower_bound_numerator(ny),bounds_denominator(d)
+  {
     assert(subimpnode_level <= max_subimpnode_level);
     assert(subimpnode_level >= 0);
     if (subimpnode_level == 0) {
@@ -105,43 +594,63 @@ struct logical_node {
     }
     else {
       which_byte_in_impnode = total_entries_above_subimpnode_level(subimpnode_level) + (which_entry_at_this_subimpnode_level/4);
-      which_bits_in_byte = 2*(which_entry_at_this_subimpnode_level % 4));
+      which_bits_in_byte = 2*(which_entry_at_this_subimpnode_level % 4);
       assert(which_byte_in_impnode >= 0);
       assert(which_byte_in_impnode < total_entry_bytes);
-      contents_type = (impnode->entries[which_byte_in_impnode] >> which_bits_in_byte) & 0x3;
+      contents_type = (impnode->entry_bytes[which_byte_in_impnode] >> which_bits_in_byte) & 0x3;
     }
   }
   
   void set_contents_type_bits(uint8_t type) {
     contents_type = type;
-    impnode->entries[which_byte_in_impnode] = (impnode->entries[which_byte_in_impnode] & (~(0x3 << which_bits_in_byte))) | (type << which_bits_in_byte);
+    impnode->entry_bytes[which_byte_in_impnode] = (impnode->entry_bytes[which_byte_in_impnode] & (~(0x3 << which_bits_in_byte))) | (type << which_bits_in_byte);
   }
   
   logical_node_lines_collection*& lines_pointer_reference()const {
     assert(contents_type == MIXED_AS_LINES);
     
-    const uint32_t which_entry_at_bottom_level = which_entry_at_this_subimpnode_level << (total_subimpnode_levels - subimpnode_level);
+    const uint32_t which_entry_at_bottom_subimpnode_level = which_entry_at_this_subimpnode_level << (total_subimpnode_levels - subimpnode_level);
     
-    return static_cast<logical_node_lines_collection*>(impnode->lines_or_further_children[which_entry_at_bottom_level]);
+    return reinterpret_cast<logical_node_lines_collection*&>(impnode->lines_or_further_children[which_entry_at_bottom_subimpnode_level]);
   }
   
   logical_node child(int which_child)const {
     assert(contents_type == MIXED_AS_CHILDREN);
     
     const uint32_t which_entry_at_next_subimpnode_level = which_entry_at_this_subimpnode_level * 4 + which_child;
-    const coord_type new_denom = (bounds_denominator == 0) ? 1 : (bounds_denominator * 2);
-    new_xnum = ((bounds_denominator == 0) ? -1 : (x_lower_bound_numerator * 2)) + (which_child & 0x1);
-    new_ynum = ((bounds_denominator == 0) ? -1 : (y_lower_bound_numerator * 2)) + ((which_child & 0x2) >> 1);
+    const coord_int_type new_denom = (bounds_denominator == 0) ? 1 : (bounds_denominator * 2);
+    const coord_int_type new_xnum = ((bounds_denominator == 0) ? -1 : (x_lower_bound_numerator * 2)) + (which_child & 0x1);
+    const coord_int_type new_ynum = ((bounds_denominator == 0) ? -1 : (y_lower_bound_numerator * 2)) + ((which_child & 0x2) >> 1);
     
     if (subimpnode_level == max_subimpnode_level) {
       assert(which_entry_at_next_subimpnode_level >= 0);
-      assert(which_entry_at_next_subimpnode_level < total_entries_at_bottom_level);
+      assert(which_entry_at_next_subimpnode_level < total_entries_at_bottom_subimpnode_level);
       assert(impnode->lines_or_further_children[which_entry_at_next_subimpnode_level] != NULL);
       return logical_node(static_cast<implementation_node*>(impnode->lines_or_further_children[which_entry_at_next_subimpnode_level]), 0, 0, new_xnum, new_ynum, new_denom);
     }
     else {
       return logical_node(impnode, subimpnode_level + 1, which_entry_at_next_subimpnode_level, new_xnum, new_ynum, new_denom);
     }
+  }
+  
+  void split_if_necessary();
+  void retrieve_all_lines(logical_node_lines_collection& collector);
+  void clear_children();
+  void create_children(uint8_t children_contents_type);
+  void set_contents_type(uint8_t new_type, bool keep_line_info = true);
+  bool insert_from_lines_collection(logical_node_lines_collection const& lines);
+};
+
+class collection_of_obscured_area_boundaries {
+public:
+  //bool insert_collection(collection_of_obscured_area_boundaries const& other);
+  bool insert_from_lines_collection(logical_node_lines_collection const& lines) {
+    top_logical_node().insert_from_lines_collection(lines);
+  }
+private:
+  implementation_node top_impnode;
+  logical_node top_logical_node() {
+    return logical_node(&top_impnode, 0, 0, 0, 0, 0);
   }
 };
 
@@ -198,8 +707,8 @@ void logical_node::clear_children() {
     child(which_child).set_contents_type(ALL_CLEAR);
     
     if (subimpnode_level == max_subimpnode_level) {
-      const uint32_t which_entry_at_bottom_level = which_entry_at_this_subimpnode_level * 4 + which_child;
-      implementation_node*& next_impnode = static_cast<implementation_node*&>(impnode->lines_or_further_children[which_entry_at_bottom_level]);
+      const uint32_t which_entry_at_bottom_subimpnode_level = which_entry_at_this_subimpnode_level * 4 + which_child;
+      implementation_node*& next_impnode = reinterpret_cast<implementation_node*&>(impnode->lines_or_further_children[which_entry_at_bottom_subimpnode_level]);
       delete next_impnode;
       next_impnode = NULL;
     }
@@ -210,8 +719,8 @@ void logical_node::create_children(uint8_t children_contents_type) {
   for (int which_child = 0; which_child < 4; ++which_child) {
     // We might have to create pointers for our new children before fetching them.
     if (subimpnode_level == max_subimpnode_level) {
-      const uint32_t which_entry_at_bottom_level = which_entry_at_this_subimpnode_level * 4 + which_child;
-      implementation_node*& next_impnode = static_cast<implementation_node*&>(impnode->lines_or_further_children[which_entry_at_bottom_level]);
+      const uint32_t which_entry_at_bottom_subimpnode_level = which_entry_at_this_subimpnode_level * 4 + which_child;
+      implementation_node*& next_impnode = reinterpret_cast<implementation_node*&>(impnode->lines_or_further_children[which_entry_at_bottom_subimpnode_level]);
       assert(next_impnode == NULL);
       next_impnode = new implementation_node;
     }
@@ -240,7 +749,7 @@ void logical_node::set_contents_type(uint8_t new_type, bool keep_line_info) {
     assert(lpr == NULL);
     lpr = combined_lines;
   }
-  else if (keep_line_info && (contents_type == MIXED_AS_CHILDREN) && (new_type == MIXED_AS_LINES))
+  else if (keep_line_info && (contents_type == MIXED_AS_CHILDREN) && (new_type == MIXED_AS_LINES)) {
     logical_node_lines_collection*& lpr = lines_pointer_reference();
     logical_node_lines_collection* original_lines_ptr = lpr;
     lpr = NULL;
@@ -250,8 +759,7 @@ void logical_node::set_contents_type(uint8_t new_type, bool keep_line_info) {
       
       logical_node_lines_collection*& clpr = c.lines_pointer_reference();
       assert(clpr == NULL);
-      clpr = new logical_node_lines_collection;
-      clpr->copy_cropping_to_box(*original_lines_ptr, c);
+      clpr = new logical_node_lines_collection(*original_lines_ptr, c.bounds());
     }
     delete original_lines_ptr;
   }
@@ -343,10 +851,7 @@ bool logical_node::insert_from_other_collection(logical_node const& other) {
 */
 
 bool logical_node::insert_from_lines_collection(logical_node_lines_collection const& lines) {
-  assert(lines.min_x == min_x());
-  assert(lines.min_y == min_y());
-  assert(lines.max_x == max_x());
-  assert(lines.max_y == max_y());
+  assert(lines.bounds == bounds());
   
   if (lines.empty()) {
     // Nothing there at all, so nothing there is visible.
@@ -366,7 +871,7 @@ bool logical_node::insert_from_lines_collection(logical_node_lines_collection co
   // Now: "lines" is mixed and we contain some clear area.
   else if (contents_type == ALL_CLEAR) {
     set_contents_type(MIXED_AS_LINES);
-    (*lines_pointer_reference()) = lines;
+    lines_pointer_reference()->copy_from_same_or_child(lines);
     split_if_necessary();
     // If we were all clear, then wherever their blockage is, it was visible.
     return true;
@@ -376,8 +881,7 @@ bool logical_node::insert_from_lines_collection(logical_node_lines_collection co
     bool result = false;
     for (int which_child = 0; which_child < 4; ++which_child) {
       logical_node c = child(which_child);
-      logical_node_lines_collection sub_lines;
-      sub_lines.copy_cropping_to_box(lines, c);
+      logical_node_lines_collection sub_lines(lines, c.bounds());
       if (c.insert_from_lines_collection(sub_lines)) result = true;
     }
     return result;
@@ -389,492 +893,6 @@ bool logical_node::insert_from_lines_collection(logical_node_lines_collection co
   }
   else {
     assert(false);
-  }
-}
-
-
-
-struct axis_aligned_line {
-  axis_aligned_line(coord_type l,coord_type b1,coord_type b2,bool b):l(l),b1(b1),b2(b2),is_obscured_beyond(b){}
-  // The location of the line in one dimension, and its bounds in the other dimension.
-  coord_type l;
-  coord_type b1;
-  coord_type b2;
-  // "beyond" being upwards in the dimension that crosses the line
-  bool is_obscured_beyond;
-  // A... hack, perhaps? ...to allow templating between aalines and plines
-  inline coord_type projective_angle()const { return l; }
-}
-// Assuming that they're perpendicular...
-inline bool intersects(axis_aligned_line l1, axis_aligned_line l2) {
-  return (l1.b1 <= l2.l) && (l2.l <= l1.b2)
-      && (l2.b1 <= l1.l) && (l1.l <= l2.b2);
-}
-struct x_or_y_boundary {
-  x_or_y_boundary(coord_type b, bool i):b(b),is_x_boundary(i){}
-  coord_type b;
-  bool is_x_boundary;
-}
-struct perspective_line {
-  perspective_line
-  coord_type slope;
-  // A... hack, perhaps? ...to allow templating between aalines and plines
-  inline coord_type projective_angle()const { return slope; }
-  x_or_y_boundary b1;
-  x_or_y_boundary b2;
-  bool is_obscured_to_the_right;
-  bool is_obscured_above() { return (slope < 0) == is_obscured_to_the_right; }
-  coord_type y_intercept(coord_type x) {
-    // slope = y / x;
-    // y = x * slope
-    return x * slope;
-  }
-  coord_type x_intercept(coord_type y) {
-    // slope = y / x;
-    // x = y / slope
-    return y / slope;
-  }
-  bool point_is_within_end_boundaries(coord_type x, coord_type y){
-    if (b1.is_x_boundary && (x < b1.b)) return false;
-    if (b2.is_x_boundary && (x > b2.b)) return false;
-    if (slope > 0) {
-      if ((!b1.is_x_boundary) && (y < b1.b)) return false;
-      if ((!b2.is_x_boundary) && (y > b2.b)) return false;
-    }
-    else {
-      if ((!b1.is_x_boundary) && (y > b1.b)) return false;
-      if ((!b2.is_x_boundary) && (y < b2.b)) return false;
-    }
-    return true;
-  }
-}
-struct pline_tpt_loc {
-  pline_tpt_loc(coord_type b, bool i, coord_type m):b(b,i),slope(m){}
-  x_or_y_boundary b;
-  coord_type slope;
-  bool operator<(pline_tpt_loc const& other)const {
-    if (b.is_x_boundary == other.b.is_x_boundary) {
-      return (b.b < other.b.b) == (b.is_x_boundary || (slope > 0));
-    }
-    // How to compare an x boundary to a y boundary, with a given slope?
-    // Let's say we sort by x - then "xbound < ybound" is
-    // x < y / m
-    else if (b.is_x_boundary) {
-      return (b.b < other.b.b / slope);
-    }
-    else if (other.b.is_x_boundary) {
-      return (b.b < other.b.b * slope);
-    }
-    else assert(false);
-  }
-}
-
-// "transition point"
-template<typename BoundaryLocType = coord_type> struct tpt {
-  tpt(BoundaryLocType l, bool b):loc(l),is_obscured_beyond(b){}
-  BoundaryLocType loc;
-  bool is_obscured_beyond;
-  bool operator<(tpt const& other)const{ return loc < other.loc; }
-}
-
-template<typename BoundaryLocType = coord_type> struct obscured_areas_tracker_1d {
-  obscured_areas_tracker_1d():is_obscured_initially(false);
-  bool is_obscured_initially;
-  std::multiset<tpt<BoundaryLocType>> tpts;
-  
-  inline void insert(tpt t) {
-    tpts.insert(t);
-  }
-  bool point_is_obscured(BoundaryLocType point) {
-    if (tpts.empty()) return is_obscured_initially;
-    auto b = tpts.lower_bound(point);
-    if (b->loc == point) {
-      return true;
-    }
-    else if (b == tpts.begin()){
-      return is_obscured_initially;
-    }
-    else {
-      --b;
-      return b->is_obscured_beyond;
-    }
-  }
-  void combine(obscured_areas_tracker_1d const& other) {
-    auto l1 = tpts.begin();
-    auto l2 = other.tpts.begin();
-    is_obscured_initially = is_obscured_initially || other.is_obscured_initially;
-    
-    bool currently_obscured_1 = is_obscured_initially;
-    bool currently_obscured_2 = other.is_obscured_initially;
-    while ((l1 != tpts.end()) && l2 != other.tpts.end()) {
-      if ((l1->loc == l2->loc) && (currently_obscured_1 || currently_obscured_2) && (l1->is_obscured_beyond || l2->is_obscured_beyond)) {
-        currently_obscured_1 = l1->is_obscured_beyond;
-        currently_obscured_2 = l2->is_obscured_beyond;
-        tpts.erase(l1++);
-        ++l2;
-      }
-      else if (l1->loc <= l2->loc) {
-        currently_obscured_1 = l1->is_obscured_beyond;
-        if (currently_obscured_2) tpts.erase(l1++);
-        else ++l1;
-      }
-      else if (l2->loc <= l1->loc) {
-        currently_obscured_2 = l2->is_obscured_beyond;
-        if (!currently_obscured_1) tpts.insert(*l2);
-        ++l2;
-      }
-    }
-  }
-}
-
-template<class LineType, typename TptLocType> void slice_marked_lines(bool src_lines_is_our_own_collection, std::vector<LineType>& src_lines, std::vector<LineType>& dst_lines, std::vector<obscured_areas_tracker_1d<TptLocType>> const& tpts) {
-  for (size_t i = 0; i < tpts.size(); ++i) {
-    auto const& switch_points = tpts[i].tpts;
-    LineType& line = src_lines[i];
-    if (t != switch_points.end()) {
-      // Replace ourselves with the first still-visible piece of ourselves.
-      auto original_end = line.b2;
-      if (t->is_obscured_beyond) {
-        line.b1 = t->loc;
-        ++t;
-        This assertion might fail if rounding error stuff happens. What to do about that?
-        assert(!t->is_obscured_beyond);
-        if (t != switch_points.end()) {
-          line.b2 = t->loc;
-        }
-      }
-      else {
-        line.b2 = t->loc;
-      }
-      if (!src_lines_is_our_own_collection) dst_lines.push_back(line);
-      
-      // Now insert the rest of the still-visible pieces of ourselves at the end.
-      ++t;
-      while(t != switch_points.end()) {
-        This assertion might fail if rounding error stuff happens. What to do about that?
-        assert(!t->is_obscured_beyond);
-        auto startb = t->loc;
-        ++t;
-        if (t == switch_points.end()) {
-          dst_lines.push_back(LineType(line.projective_angle(), startb, original_end, line.is_obscured_beyond));
-        }
-        else {
-          dst_lines.push_back(LineType(line.projective_angle(), startb, t->loc, line.is_obscured_beyond));
-          ++t;
-        }
-      }
-    }
-  }
-}
-void mark_obscured_aalines(bool aalines_are_horizontal, bool src_aalines_is_our_own_collection, std::vector<axis_aligned_line> const& src_aalines, std::vector<obscured_areas_tracker_1d> const& tpts, std::vector<size_t>& completely_obscured_or_completely_visible_list) {
-  for (size_t i = 0; i < tpts.size(); ++i) {
-    if (tpts[i].tpts.empty()) {
-      axis_aligned_line const& aaline = src_aalines[i];
-      if (other.point_is_obscured(aalines_are_horizontal ? aaline.b1 : aaline.l, aalines_are_horizontal ? aaline.l : aaline.b1) == src_aalines_is_our_own_collection) {
-        completely_obscured_or_completely_visible_list.push_back(i);
-      }
-    }
-  }
-}
-void mark_obscured_plines(bool src_plines_is_our_own_collection, std::vector<perspective_line> const& src_plines, std::vector<obscured_areas_tracker_1d<pline_tpt_loc>> const& tpts, std::vector<size_t>& completely_obscured_or_completely_visible_list) {
-  for (size_t i = 0; i < tpts.size(); ++i) {
-    if (tpts[i].tpts.empty()) {
-      perspective_line const& pline = src_plines[i];
-      if (other.point_is_obscured(
-            pline.b1.is_x_boundary ? pline.b1.b : pline.x_intercept(pline.b1.b),
-            pline.b1.is_x_boundary ? pline.y_intercept(pline.b1.b) : pline.b1.b
-          ) == src_aalines_is_our_own_collection) {
-        completely_obscured_or_completely_visible_list.push_back(i);
-      }
-    }
-  }
-}
-template<class LineType> void purge_obscured_lines(std::vector<LineType>& lines, std::vector<size_t> const& obscured_list) {
-  for (int i = obscured_list.size() - 1; i >= 0 ; --i) {
-    lines[completely_obscured_list[i]] = lines.back(); lines.pop_back();
-  }
-}
-template<class LineType> void copy_visible_lines(std::vector<LineType> const& src_lines, std::vector<LineType> dst_lines, std::vector<size_t> const& visible_list) {
-  for (i : visible_list) {
-    dst_lines.push_back(src_lines[i]);
-  }
-}
-
-struct logical_node_lines_collection {
-  obscured_areas_tracker_1d<coord_type> left_side;
-  
-  std::vector<axis_aligned_line> hlines;
-  std::vector<axis_aligned_line> vlines;
-  std::vector<perspective_line> plines;
-  size_t size()const { return hlines.size() + vlines.size() + plines.size(); }
-  
-  coord_type min_x;
-  coord_type min_y;
-  coord_type max_x;
-  coord_type max_y;
-  
-  logical_node_lines_collection():min_x(-1,1),min_y(-1,1),max_x(1,1),max_y(1,1){}
-  bool empty()const {
-    return hlines.empty() && vlines.empty() && plines.empty() && !left_side.is_obscured_initially;
-  }
-  bool full()const {
-    return hlines.empty() && vlines.empty() && plines.empty() && left_side.is_obscured_initially;
-  }
-  
-  // The "insert" functions are expected to be used a bunch of times in sequence,
-  // which, in total, should create a valid structure.
-  // In the middle of that process, the structure will be invalid.
-  void insert_hline(axis_aligned_line const& hline) {
-    assert(hline.b1 <= max_x);
-    assert(hline.b2 >= min_x);
-    assert(hline.l <= max_y);
-    assert(hline.l >= min_y);
-    hlines.push_back(hline);
-    if ((hline.b1 <= min_x) && (hline.b2 >= min_x)) {
-      left_side.tpts.insert(tpt(hline.l, hline.is_obscured_beyond));
-    }
-  }
-  void insert_vline(axis_aligned_line const& vline) {
-    assert(vline.b1 <= max_y);
-    assert(vline.b2 >= min_y);
-    assert(vline.l <= max_x);
-    assert(vline.l >= min_x);
-    vlines.push_back(vline);
-  }
-  void insert_pline(perspective_line const& pline) {
-    const coord_type y = pline.y_intercept(min_x);
-    if ((y >= min_y) && (y <= max_y)) {
-      left_side.tpts.insert(tpt(y, pline.is_obscured_above()));
-    }
-  }
-  
-  // Can copy from any (direct or indirect) child.
-  // Use this as many times as is necessary after
-  // default-constructing a logical_node_lines_collection and setting its bounds to the proper values,
-  // in order to collapse a child tree into a single node
-  // (or perform the trivial collapse of a single lines-node to itself, i.e. copying).
-  void copy_from_same_or_child(logical_node_lines_collection const& child_collection) {
-    for (auto const& hline : child_collection.hlines) {
-      insert_hline(hline);
-    }
-    for (auto const& vline : child_collection.vlines) {
-      insert_vline(vline);
-    }
-    for (auto const& pline : child_collection.plines) {
-      insert_pline(pline);
-    }
-    if (child_collection.min_x == min_x && child_collection.min_y == min_y) {
-      left_side.is_obscured_initially = child_collection.left_side.is_obscured_initially;
-    }
-  }
-  
-  // Call this method of a newly default-constructed logical_node_lines_collection.
-  void copy_cropping_to_box(logical_node_lines_collection const& original, logical_node box) {
-    min_x = box.min_x();
-    min_y = box.min_y();
-    max_x = box.max_x();
-    max_y = box.max_y();
-    
-    /* We could copy their left-side info, but it's easy to just let it be generated by the insert functions.
-    
-    if (min_x == original.min_x) {
-      left_side.tpts.insert(original.left_side.tpts.lower_bound(tpt(min_y, false)), original.left_side.tpts.upper_bound(tpt(max_y, false)));
-      if (left_side.tpts.empty()) {
-        left_side.is_obscured_initially = original.left_side.point_is_obscured(min_y);
-      }
-      else {
-        left_side.is_obscured_initially = !left_side.begin().is_obscured_beyond;
-      }
-    }
-    else {
-    }*/
-    
-    left_side.is_obscured_initially = original.point_is_obscured(min_x, min_y);
-    
-    for (auto const& hline : original.hlines) {
-      if ((hline.b1 <= max_x) && (hline.b2 >= min_x)
-       && (hline.l  <= max_y) && (hline.l  >= min_y)) {
-        insert_hline(hline);
-      }
-    }
-    for (auto const& vline : original.vlines) {
-      if ((vline.b1 <= max_y) && (vline.b2 >= min_y)
-       && (vline.l  <= max_x) && (vline.l  >= min_x)) {
-        insert_vline(vline);
-      }
-    }
-    for (auto const& pline : original.plines) {
-      // This is ugly, maybe there's a better way to check if a pline intersects a box?
-      if ((  pline.b1.is_x_boundary  && pline.b1.b <= max_x)
-       || ((!pline.b1.is_x_boundary) && (
-                ((pline.slope > 0) && (pline.b1.b <= max_y))
-             || ((pline.slope < 0) && (pline.b1.b >= min_y))
-           ))) {
-        if ((  pline.b2.is_x_boundary  && pline.b2.b >= min_x)
-         || ((!pline.b2.is_x_boundary) && (
-                  ((pline.slope > 0) && (pline.b2.b >= min_y))
-               || ((pline.slope < 0) && (pline.b2.b <= max_y))
-             ))) {
-          const coord_type lyx = pline.x_intercept(min_y);
-          const coord_type myx = pline.x_intercept(max_y);
-          if (((lyx <= max_x) && (myx >= min_x))
-           || ((lyx >= min_x) && (myx <= max_x))) {
-            insert_pline(pline);
-          }
-        }
-      }
-    }
-  }
-  
-  bool point_is_obscured(coord_type x, coord_type y) {
-    // Effectively: Draw a horizontal line back to the left side. If it intersects any lines,
-    // then the closest intersection dictates whether you're obscured or not.
-    // Otherwise, check the left_side structure to see whether you're obscured.
-    bool found_any_lines;
-    coord_type best_distance;
-    bool best_obscuredness;
-    for (auto const& vline : vlines) {
-      if ((vline.l <= x) && (vline.l >= min_x) && (vline.b1 <= y) && (vline.b2 >= y)) {
-        coord_type distance = x - vline.l;
-        if ((!found_any_lines) || (distance < best_distance)) {
-          found_any_lines = true;
-          best_distance = distance;
-          best_obscuredness = vline.is_obscured_to_the_right;
-        }
-      }
-    }
-    for (auto const& pline : plines) {
-      coord_type pline_x = pline.x_intercept(y);
-      if ((pline_x <= x) && (pline_x >= min_x) && pline.point_is_within_end_boundaries(pline_x, y)) {
-        coord_type distance = x - pline_x;
-        if ((!found_any_lines) || (distance < best_distance)) {
-          found_any_lines = true;
-          best_distance = distance;
-          best_obscuredness = pline.is_obscured_to_the_right;
-        }
-      }
-    }
-    if (found_any_lines) {
-      return best_obscuredness;
-    }
-    else {
-      return left_side.point_is_obscured(y);
-    }
-  }
-
-  bool handle_aaline_vs_aaline(axis_aligned_line l1, obscured_areas_tracker_1d& l1_info, axis_aligned_line l2, obscured_areas_tracker_1d& l2_info) {
-    // Note: If the rules have been followed, they can never intersect outside the box,
-    // so we don't need to check that the point of intersection is inside the box.
-    if (intersects(l1, l2)) {
-      l1_info.insert(tpt(l2.l, l2.is_obscured_beyond));
-      l2_info.insert(tpt(l1.l, l1.is_obscured_beyond));
-      return true;
-    }
-    else {
-      return false;
-    }
-  }
-
-  bool handle_aaline_vs_pline(bool aaline_is_horizontal, axis_aligned_line aaline, obscured_areas_tracker_1d& aaline_info, perspective_line pline, obscured_areas_tracker_1d<pline_tpt_loc>& pline_info) {
-    coord_type b = (aaline_is_horizontal ? pline.x_intercept(aaline.l) : pline.y_intercept(aaline.l));
-    // Make sure the point of intersection is inside the box...
-    if (aaline_is_horizontal) {
-      if ((b < min_x) || (b > max_x) || (aaline.l < min_y) || (aaline.l > max_y)) return false;
-    }
-    else {
-      if ((b < min_y) || (b > max_y) || (aaline.l < min_x) || (aaline.l > max_x)) return false;
-    }
-    if ((aaline.b1 < b) && (b < aaline.b2) && pline.point_is_within_end_boundaries((aaline_is_horizontal ? b : aaline.l), (aaline_is_horizontal ? aaline.l : b))) {
-      aaline_info.insert(tpt(x, (aaline_is_horizontal ? pline.is_obscured_to_the_right : pline.is_obscured_above()));
-      pline_info.insert(tpt<pline_tpt_loc>(
-          pline_tpt_loc(aaline.l, !aaline_is_horizontal, pline.slope),
-          aaline.is_obscured_beyond == ((opline.slope > 0) || !aaline_is_horizontal)
-        ));
-      return true;
-    }
-    else {
-      return false;
-    }
-  }
-  
-  needs better name:
-  bool combine(logical_node_lines_collection const& other) {
-    bool result = false;
-    
-    // ======== Combine the lines info. ==========
-    // First, collect all overlaps.
-    std::vector<obscured_areas_tracker_1d>                 hlines_tpts(      hlines.size());
-    std::vector<obscured_areas_tracker_1d>                ohlines_tpts(other.hlines.size());
-    std::vector<obscured_areas_tracker_1d>                 vlines_tpts(      vlines.size());
-    std::vector<obscured_areas_tracker_1d>                ovlines_tpts(other.vlines.size());
-    std::vector<obscured_areas_tracker_1d<pline_tpt_loc>>  plines_tpts(      plines.size());
-    std::vector<obscured_areas_tracker_1d<pline_tpt_loc>> oplines_tpts(other.plines.size());
-    std::vector<size_t> completely_obscured_hlines;
-    std::vector<size_t> completely_obscured_vlines;
-    std::vector<size_t> completely_obscured_plines;
-    std::vector<size_t> completely_visible_ohlines;
-    std::vector<size_t> completely_visible_ovlines;
-    std::vector<size_t> completely_visible_oplines;
-    for (size_t i = 0; i < hlines.size(); ++i) {
-      for (size_t j = 0; j < other.vlines.size(); ++j) {
-        if (handle_aaline_vs_aaline(hlines[i], hlines_tpts[i], other.vlines[j], ovlines_tpts[j])) result = true;
-      }
-      for (size_t j = 0; j < other.plines.size(); ++j) {
-        if (handle_aaline_vs_pline(true, hlines[i], hlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
-      }
-    }
-    for (size_t i = 0; i < vlines.size(); ++i) {
-      for (size_t j = 0; j < other.hlines.size(); ++j) {
-        if (handle_aaline_vs_aaline(vlines[i], vlines_tpts[i], other.hlines[j], ohlines_tpts[j])) result = true;
-      }
-      for (size_t j = 0; j < other.plines.size(); ++j) {
-        if (handle_aaline_vs_pline(false, vlines[i], vlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
-      }
-    }
-    for (size_t i = 0; i < plines.size(); ++i) {
-      for (size_t j = 0; j < other.hlines.size(); ++j) {
-        if (handle_aaline_vs_pline(true, other.hlines[j], ohlines_tpts[j], plines[i], plines_tpts[i])) result = true;
-      }
-      for (size_t j = 0; j < other.vlines.size(); ++j) {
-        if (handle_aaline_vs_pline(false, other.vlines[j], ovlines_tpts[j], plines[i], plines_tpts[i])) result = true;
-      }
-    }
-    
-    // For lines that don't have overlaps, note whether or not they're completely obscured.
-    // They can only be completely obscured *by the other collection*
-    //  (since each line is completely necessary to its own collection)
-    // and since we haven't modified either collection yet, we can just ask the other collection
-    // whether a point on that line is visible.
-    mark_obscured_aalines(true , true ,       hlines,  hlines_tpts, completely_obscured_hlines);
-    mark_obscured_aalines(false, true ,       vlines,  vlines_tpts, completely_obscured_vlines);
-    mark_obscured_plines (       true ,       plines,  plines_tpts, completely_obscured_plines);
-    mark_obscured_aalines(true , false, other.hlines, ohlines_tpts, completely_visible_ohlines);
-    mark_obscured_aalines(false, false, other.vlines, ovlines_tpts, completely_visible_ovlines);
-    mark_obscured_plines (       false, other.plines, oplines_tpts, completely_visible_oplines);
-    if ((!completely_visible_ohlines.empty()) || (!completely_visible_ovlines.empty()) || (!completely_visible_oplines.empty())) result = true;
-    
-    // Then slice up the overlapped lines based on the overlaps.
-    slice_marked_lines(true ,       hlines, hlines,  hlines_tpts);
-    slice_marked_lines(true ,       vlines, vlines,  vlines_tpts);
-    slice_marked_lines(true ,       plines, plines,  plines_tpts);
-    slice_marked_lines(false, other.hlines, hlines, ohlines_tpts);
-    slice_marked_lines(false, other.vlines, vlines, ovlines_tpts);
-    slice_marked_lines(false, other.plines, plines, oplines_tpts);
-    
-    // When you're done, purge the lines that were completely obscured.
-    // And copy over the completely-visible lines from the other list.
-    purge_obscured_lines(hlines, completely_obscured_hlines);
-    purge_obscured_lines(vlines, completely_obscured_vlines);
-    purge_obscured_lines(plines, completely_obscured_plines);
-    copy_visible_lines(other.hlines, hlines, completely_visible_ohlines);
-    copy_visible_lines(other.vlines, vlines, completely_visible_ovlines);
-    copy_visible_lines(other.plines, plines, completely_visible_oplines);
-    
-    
-    // ======== Combine the left-side info. ==========
-    left_side.combine(other.left_side);
-    
-    return result;
   }
 }
 
