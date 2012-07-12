@@ -363,13 +363,15 @@ bool insert_poly ([collection of possibly relevant lines] p, [treebox reference]
 
 
 struct axis_aligned_line {
-  axis_aligned_line(coord_type y,coord_type x1,coord_type x2,bool b):y(y),x1(x1),x2(x2),is_obscured_above(b){}
+  axis_aligned_line(coord_type l,coord_type b1,coord_type b2,bool b):l(l),b1(b1),b2(b2),is_obscured_beyond(b){}
   // The location of the line in one dimension, and its bounds in the other dimension.
   coord_type l;
   coord_type b1;
   coord_type b2;
   // "beyond" being upwards in the dimension that crosses the line
   bool is_obscured_beyond;
+  // A... hack, perhaps? ...to allow templating between aalines and plines
+  inline coord_type projective_angle()const { return l; }
 }
 // Assuming that they're perpendicular...
 inline bool intersects(axis_aligned_line l1, axis_aligned_line l2) {
@@ -382,9 +384,12 @@ struct x_or_y_boundary {
   bool is_x_boundary;
 }
 struct perspective_line {
+  perspective_line
   coord_type slope;
-  x_or_y_boundary start;
-  x_or_y_boundary end;
+  // A... hack, perhaps? ...to allow templating between aalines and plines
+  inline coord_type projective_angle()const { return slope; }
+  x_or_y_boundary b1;
+  x_or_y_boundary b2;
   bool is_obscured_to_the_right;
   bool is_obscured_above() { return (slope < 0) == is_obscured_to_the_right; }
   coord_type y_intercept(coord_type x) {
@@ -398,15 +403,15 @@ struct perspective_line {
     return y / slope;
   }
   bool point_is_within_end_boundaries(coord_type x, coord_type y){
-    if (start.is_x_boundary && (x < start.b)) return false;
-    if (  end.is_x_boundary && (x >   end.b)) return false;
+    if (b1.is_x_boundary && (x < b1.b)) return false;
+    if (b2.is_x_boundary && (x > b2.b)) return false;
     if (slope > 0) {
-      if ((!start.is_x_boundary) && (y < start.b)) return false;
-      if ((!  end.is_x_boundary) && (y >   end.b)) return false;
+      if ((!b1.is_x_boundary) && (y < b1.b)) return false;
+      if ((!b2.is_x_boundary) && (y > b2.b)) return false;
     }
     else {
-      if ((!start.is_x_boundary) && (y > start.b)) return false;
-      if ((!  end.is_x_boundary) && (y <   end.b)) return false;
+      if ((!b1.is_x_boundary) && (y > b1.b)) return false;
+      if ((!b2.is_x_boundary) && (y < b2.b)) return false;
     }
     return true;
   }
@@ -516,51 +521,76 @@ bool handle_aaline_vs_pline(bool aaline_is_horizontal, axis_aligned_line aaline,
   }
 }
 
-void slice_marked_aalines(bool aalines_are_horizontal, bool src_aalines_is_our_own_collection, std::vector<axis_aligned_line>& src_aalines, std::vector<axis_aligned_line>& dst_aalines, std::vector<obscured_areas_tracker_1d> const& tpts, std::vector<size_t> completely_obscured_or_completely_visible_list) {
+template<class LineType, typename TptLocType> void slice_marked_lines(bool src_lines_is_our_own_collection, std::vector<LineType>& src_lines, std::vector<LineType>& dst_lines, std::vector<obscured_areas_tracker_1d<TptLocType>> const& tpts) {
   for (size_t i = 0; i < tpts.size(); ++i) {
     auto const& switch_points = tpts[i].tpts;
-    axis_aligned_line& aaline = src_aalines[i];
-    if (switch_points.empty()) {
-      // Check if we're completely obscured
-      if (other.point_is_obscured(aalines_are_horizontal ? aaline.b1 : aaline.l, aalines_are_horizontal ? aaline.l : aaline.b1) == src_aalines_is_our_own_collection) {
-        completely_obscured_or_completely_visible_list.push_back(i);
-      }
-    }
-    else {
+    LineType& line = src_lines[i];
+    if (t != switch_points.end()) {
       // Replace ourselves with the first still-visible piece of ourselves.
-      auto t = switch_points.begin();
-      assert(t != switch_points.end());
-      coord_type original_end = aaline.b2;
+      auto original_end = line.b2;
       if (t->is_obscured_beyond) {
-        aaline.b1 = t->loc;
+        line.b1 = t->loc;
         ++t;
         This assertion might fail if rounding error stuff happens. What to do about that?
         assert(!t->is_obscured_beyond);
         if (t != switch_points.end()) {
-          aaline.b2 = t->loc;
+          line.b2 = t->loc;
         }
       }
       else {
-        aaline.b2 = t->loc;
+        line.b2 = t->loc;
       }
-      if (!src_aalines_is_our_own_collection) dst_aalines.push_back(aaline);
+      if (!src_lines_is_our_own_collection) dst_lines.push_back(line);
       
       // Now insert the rest of the still-visible pieces of ourselves at the end.
       ++t;
       while(t != switch_points.end()) {
         This assertion might fail if rounding error stuff happens. What to do about that?
         assert(!t->is_obscured_beyond);
-        coord_type startb = t->loc;
+        auto startb = t->loc;
         ++t;
         if (t == switch_points.end()) {
-          dst_aalines.push_back(axis_aligned_line(aaline.l, startb, original_end, aaline.is_obscured_beyond));
+          dst_lines.push_back(LineType(line.projective_angle(), startb, original_end, line.is_obscured_beyond));
         }
         else {
-          dst_aalines.push_back(axis_aligned_line(aaline.l, startb, t->loc, aaline.is_obscured_beyond));
+          dst_lines.push_back(LineType(line.projective_angle(), startb, t->loc, line.is_obscured_beyond));
           ++t;
         }
       }
     }
+  }
+}
+void mark_obscured_aalines(bool aalines_are_horizontal, bool src_aalines_is_our_own_collection, std::vector<axis_aligned_line> const& src_aalines, std::vector<obscured_areas_tracker_1d> const& tpts, std::vector<size_t>& completely_obscured_or_completely_visible_list) {
+  for (size_t i = 0; i < tpts.size(); ++i) {
+    if (tpts[i].tpts.empty()) {
+      axis_aligned_line const& aaline = src_aalines[i];
+      if (other.point_is_obscured(aalines_are_horizontal ? aaline.b1 : aaline.l, aalines_are_horizontal ? aaline.l : aaline.b1) == src_aalines_is_our_own_collection) {
+        completely_obscured_or_completely_visible_list.push_back(i);
+      }
+    }
+  }
+}
+void mark_obscured_plines(bool src_plines_is_our_own_collection, std::vector<perspective_line> const& src_plines, std::vector<obscured_areas_tracker_1d<pline_tpt_loc>> const& tpts, std::vector<size_t>& completely_obscured_or_completely_visible_list) {
+  for (size_t i = 0; i < tpts.size(); ++i) {
+    if (tpts[i].tpts.empty()) {
+      perspective_line const& pline = src_plines[i];
+      if (other.point_is_obscured(
+            pline.b1.is_x_boundary ? pline.b1.b : pline.x_intercept(pline.b1.b),
+            pline.b1.is_x_boundary ? pline.y_intercept(pline.b1.b) : pline.b1.b
+          ) == src_aalines_is_our_own_collection) {
+        completely_obscured_or_completely_visible_list.push_back(i);
+      }
+    }
+  }
+}
+template<class LineType> void purge_obscured_lines(std::vector<LineType>& lines, std::vector<size_t> const& obscured_list) {
+  for (int i = obscured_list.size() - 1; i >= 0 ; --i) {
+    lines[completely_obscured_list[i]] = lines.back(); lines.pop_back();
+  }
+}
+template<class LineType> void copy_visible_lines(std::vector<LineType> const& src_lines, std::vector<LineType> dst_lines, std::vector<size_t> const& visible_list) {
+  for (i : visible_list) {
+    dst_lines.push_back(src_lines[i]);
   }
 }
 
@@ -570,6 +600,10 @@ struct logical_node_lines_collection {
   std::vector<axis_aligned_line> vlines;
   std::vector<axis_aligned_line> hlines;
   std::vector<perspective_line> plines;
+  
+  logical_node_lines_collection cropped_to_box(logical_node box) {
+    
+  }
   
   bool point_is_obscured(coord_type x, coord_type y) {
     // Effectively: Draw a horizontal line back to the left side. If it intersects any lines,
@@ -656,31 +690,27 @@ struct logical_node_lines_collection {
     //  (since each line is completely necessary to its own collection)
     // and since we haven't modified either collection yet, we can just ask the other collection
     // whether a point on that line is visible.
-    slice_marked_aalines(true , true ,       hlines, hlines,  hlines_tpts, completely_obscured_hlines);
-    slice_marked_aalines(false, true ,       vlines, vlines,  vlines_tpts, completely_obscured_vlines);
-    slice_marked_aalines(true , false, other.hlines, hlines, ohlines_tpts, completely_visible_ohlines);
-    slice_marked_aalines(false, false, other.vlines, vlines, ovlines_tpts, completely_visible_ovlines);
+    mark_obscured_aalines(true , true ,       hlines,  hlines_tpts, completely_obscured_hlines);
+    mark_obscured_aalines(false, true ,       vlines,  vlines_tpts, completely_obscured_vlines);
+    mark_obscured_plines (       true ,       plines,  plines_tpts, completely_obscured_plines);
+    mark_obscured_aalines(true , false, other.hlines, ohlines_tpts, completely_visible_ohlines);
+    mark_obscured_aalines(false, false, other.vlines, ovlines_tpts, completely_visible_ovlines);
+    mark_obscured_plines (       false, other.plines, oplines_tpts, completely_visible_oplines);
+    slice_marked_lines(true ,       hlines, hlines,  hlines_tpts);
+    slice_marked_lines(true ,       vlines, vlines,  vlines_tpts);
+    slice_marked_lines(true ,       plines, plines,  plines_tpts);
+    slice_marked_lines(false, other.hlines, hlines, ohlines_tpts);
+    slice_marked_lines(false, other.vlines, vlines, ovlines_tpts);
+    slice_marked_lines(false, other.plines, plines, oplines_tpts);
     
     // When you're done, purge the lines that were completely obscured.
-    for (int i = completely_obscured_hlines.size() - 1; i >= 0 ; --i) {
-      hlines[completely_obscured_hlines[i]] = hlines.back(); hlines.pop_back();
-    }
-    for (int i = completely_obscured_vlines.size() - 1; i >= 0 ; --i) {
-      vlines[completely_obscured_vlines[i]] = vlines.back(); vlines.pop_back();
-    }
-    for (int i = completely_obscured_plines.size() - 1; i >= 0 ; --i) {
-      plines[completely_obscured_plines[i]] = plines.back(); plines.pop_back();
-    }
     // And copy over the completely-visible lines from the other list.
-    for (size_t i : completely_visible_ohlines) {
-      hlines.push_back(other.hlines[i]);
-    }
-    for (size_t i : completely_visible_ovlines) {
-      vlines.push_back(other.vlines[i]);
-    }
-    for (size_t i : completely_visible_oplines) {
-      plines.push_back(other.plines[i]);
-    }
+    purge_obscured_lines(hlines, completely_obscured_hlines);
+    purge_obscured_lines(vlines, completely_obscured_vlines);
+    purge_obscured_lines(plines, completely_obscured_plines);
+    copy_visible_lines(other.hlines, hlines, completely_visible_ohlines);
+    copy_visible_lines(other.vlines, vlines, completely_visible_ovlines);
+    copy_visible_lines(other.plines, plines, completely_visible_oplines);
     
     // ======== Combine the left-side info. ==========
     left_side.combine(other.left_side);
