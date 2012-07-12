@@ -177,6 +177,61 @@ template<typename IntType> struct non_normalized_rational {
   bool operator!=(non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
     return numerator*o.denominator != o.numerator*denominator; }
+  
+  non_normalized_rational reciprocal()const {
+    return non_normalized_rational(denominator, numerator);
+  }
+  non_normalized_rational operator+(non_normalized_rational const& o)const {
+    // Simplify only the stupidest case.
+    if (denominator == o.denominator) return non_normalized_rational(numerator + numerator, denominator);
+    return non_normalized_rational(numerator * o.denominator + denominator * o.numerator, denominator * o.denominator);
+  }
+  void operator+=(non_normalized_rational const& o) {
+    // Simplify only the stupidest case.
+    if (denominator == o.denominator) {
+      numerator += o.numerator;
+    }
+    else {
+      numerator = numerator * o.denominator + denominator * o.numerator;
+      denominator *= o.denominator;
+    }
+  }
+  non_normalized_rational operator-(non_normalized_rational const& o)const {
+    // Simplify only the stupidest case.
+    if (denominator == o.denominator) return non_normalized_rational(numerator - numerator, denominator);
+    return non_normalized_rational(numerator * o.denominator - denominator * o.numerator, denominator * o.denominator);
+  }
+  void operator-=(non_normalized_rational const& o) {
+    // Simplify only the stupidest case.
+    if (denominator == o.denominator) {
+      numerator -= o.numerator;
+    }
+    else {
+      numerator = numerator * o.denominator - denominator * o.numerator;
+      denominator *= o.denominator;
+    }
+  }
+  non_normalized_rational operator*(non_normalized_rational const& o)const {
+    // Simplify the stupidest cases.
+    if (numerator == o.denominator) return non_normalized_rational(o.numerator, denominator);
+    if (o.numerator == denominator) return non_normalized_rational(numerator, o.denominator);
+    return non_normalized_rational(numerator * o.numerator, denominator * o.denominator);
+  }
+  void operator*=(non_normalized_rational const& o) {
+    // Simplify the stupidest cases.
+    if (numerator == o.denominator) numerator = o.numerator;
+    else if (o.numerator == denominator) denominator = o.denominator;
+    else {
+      numerator *= o.numerator;
+      denominator *= o.denominator;
+    }
+  }
+  non_normalized_rational operator/(non_normalized_rational const& o)const {
+    return *this * o.reciprocal();
+  }
+  void operator/=(non_normalized_rational const& o) {
+    *this *= o.reciprocal();
+  }
 };
 template<typename IntType> inline std::ostream& operator<<(std::ostream& os, non_normalized_rational<IntType>const& r) {
   return os << r.numerator << '/' << r.denominator;
