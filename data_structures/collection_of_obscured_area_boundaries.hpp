@@ -362,26 +362,19 @@ bool insert_poly ([collection of possibly relevant lines] p, [treebox reference]
 
 
 
-struct horizontal_line {
-  horizontal_line(coord_type y,coord_type x1,coord_type x2,bool b):y(y),x1(x1),x2(x2),is_obscured_above(b){}
-  coord_type y;
-  coord_type x1;
-  coord_type x2;
-  bool is_obscured_above;
+struct axis_aligned_line {
+  axis_aligned_line(coord_type y,coord_type x1,coord_type x2,bool b):y(y),x1(x1),x2(x2),is_obscured_above(b){}
+  // The location of the line in one dimension, and its bounds in the other dimension.
+  coord_type l;
+  coord_type b1;
+  coord_type b2;
+  // "beyond" being upwards in the dimension that crosses the line
+  bool is_obscured_beyond;
 }
-struct vertical_line {
-  horizontal_line(coord_type x,coord_type y1,coord_type y2,bool b):x(x),y1(y1),y2(y2),is_obscured_to_the_right(b){}
-  coord_type x;
-  coord_type y1;
-  coord_type y2;
-  bool is_obscured_to_the_right;
-}
-inline bool intersects(horizontal_line h, vertical_line v) {
-  return (h.x1 <= v.x) && (v.x <= h.x2)
-      && (v.y1 <= h.y) && (h.y <= v.x2);
-}
-inline bool intersects(vertical_line v, horizontal_line h) {
-  return intersects(h, v);
+// Assuming that they're perpendicular...
+inline bool intersects(axis_aligned_line l1, axis_aligned_line l2) {
+  return (l1.b1 <= l2.l) && (l2.l <= l1.b2)
+      && (l2.b1 <= l1.l) && (l1.l <= l2.b2);
 }
 struct x_or_y_boundary {
   x_or_y_boundary(coord_type b, bool i):b(b),is_x_boundary(i){}
@@ -497,10 +490,10 @@ template<typename BoundaryLocType = coord_type> struct obscured_areas_tracker_1d
   }
 }
 
-bool handle_hline_vs_vline(horizontal_line hline, obscured_areas_tracker_1d& hline_info, vertical_line vline, obscured_areas_tracker_1d& vline_info) {
-  if (intersects(hline, vline)) {
-    hline_info.insert(tpt(vline.x, vline.is_obscured_to_the_right));
-    vline_info.insert(tpt(hline.y, hline.is_obscured_above       ));
+bool handle_aaline_vs_aaline(axis_aligned_line l1, obscured_areas_tracker_1d& l1_info, axis_aligned_line l2, obscured_areas_tracker_1d& l2_info) {
+  if (intersects(l1, l2)) {
+    l1_info.insert(tpt(l2.l, l2.is_obscured_beyond));
+    l2_info.insert(tpt(l1.l, l1.is_obscured_beyond));
     return true;
   }
   else {
@@ -508,13 +501,13 @@ bool handle_hline_vs_vline(horizontal_line hline, obscured_areas_tracker_1d& hli
   }
 }
 
-bool handle_hline_vs_pline(horizontal_line hline, obscured_areas_tracker_1d& hline_info, perspective_line pline, obscured_areas_tracker_1d<pline_tpt_loc>& pline_info) {
-  coord_type x = opline.x_intercept(hline.y);
-  if ((hline.x1 < x) && (x < hline.x2) && pline.point_is_within_end_boundaries(x, hline.y)) {
-    hline_info.insert(tpt(x, pline.is_obscured_to_the_right));
+bool handle_aaline_vs_pline(bool aaline_is_horizontal, axis_aligned_line aaline, obscured_areas_tracker_1d& aaline_info, perspective_line pline, obscured_areas_tracker_1d<pline_tpt_loc>& pline_info) {
+  coord_type b = (aaline_is_horizontal ? pline.x_intercept(aaline.l) : pline.y_intercept(aaline.l));
+  if ((aaline.b1 < b) && (b < aaline.b2) && pline.point_is_within_end_boundaries((aaline_is_horizontal ? b : aaline.l), (aaline_is_horizontal ? aaline.l : b))) {
+    aaline_info.insert(tpt(x, (aaline_is_horizontal ? pline.is_obscured_to_the_right : pline.is_obscured_above()));
     pline_info.insert(tpt<pline_tpt_loc>(
-        pline_tpt_loc(hline.y, false, opline.slope),
-        (hline.is_obscured_above == (opline.slope > 0))
+        pline_tpt_loc(aaline.l, !aaline_is_horizontal, pline.slope),
+        aaline.is_obscured_beyond == ((opline.slope > 0) || !aaline_is_horizontal)
       ));
     return true;
   }
@@ -523,27 +516,60 @@ bool handle_hline_vs_pline(horizontal_line hline, obscured_areas_tracker_1d& hli
   }
 }
 
-bool handle_vline_vs_pline(vertical_line vline, obscured_areas_tracker_1d& vline_info, perspective_line pline, obscured_areas_tracker_1d<pline_tpt_loc>& pline_info) {
-  coord_type y = opline.y_intercept(vline.x);
-  if ((vline.y1 < y) && (y < vline.y2) && pline.point_is_within_end_boundaries(vline.x, y)) {
-    vline_info.insert(tpt(y, pline.is_obscured_above()));
-    pline_info.insert(tpt<pline_tpt_loc>(
-        pline_tpt_loc(vline.x, true, pline.slope),
-        vline.is_obscured_to_the_right
-      ));
-    return true;
-  }
-  else {
-    return false;
+void slice_marked_aalines(bool aalines_are_horizontal, bool src_aalines_is_our_own_collection, std::vector<axis_aligned_line>& src_aalines, std::vector<axis_aligned_line>& dst_aalines, std::vector<obscured_areas_tracker_1d> const& tpts, std::vector<size_t> completely_obscured_or_completely_visible_list) {
+  for (size_t i = 0; i < tpts.size(); ++i) {
+    auto const& switch_points = tpts[i].tpts;
+    axis_aligned_line& aaline = src_aalines[i];
+    if (switch_points.empty()) {
+      // Check if we're completely obscured
+      if (other.point_is_obscured(aalines_are_horizontal ? aaline.b1 : aaline.l, aalines_are_horizontal ? aaline.l : aaline.b1) == src_aalines_is_our_own_collection) {
+        completely_obscured_or_completely_visible_list.push_back(i);
+      }
+    }
+    else {
+      // Replace ourselves with the first still-visible piece of ourselves.
+      auto t = switch_points.begin();
+      assert(t != switch_points.end());
+      coord_type original_end = aaline.b2;
+      if (t->is_obscured_beyond) {
+        aaline.b1 = t->loc;
+        ++t;
+        This assertion might fail if rounding error stuff happens. What to do about that?
+        assert(!t->is_obscured_beyond);
+        if (t != switch_points.end()) {
+          aaline.b2 = t->loc;
+        }
+      }
+      else {
+        aaline.b2 = t->loc;
+      }
+      if (!src_aalines_is_our_own_collection) dst_aalines.push_back(aaline);
+      
+      // Now insert the rest of the still-visible pieces of ourselves at the end.
+      ++t;
+      while(t != switch_points.end()) {
+        This assertion might fail if rounding error stuff happens. What to do about that?
+        assert(!t->is_obscured_beyond);
+        coord_type startb = t->loc;
+        ++t;
+        if (t == switch_points.end()) {
+          dst_aalines.push_back(axis_aligned_line(aaline.l, startb, original_end, aaline.is_obscured_beyond));
+        }
+        else {
+          dst_aalines.push_back(axis_aligned_line(aaline.l, startb, t->loc, aaline.is_obscured_beyond));
+          ++t;
+        }
+      }
+    }
   }
 }
 
 struct logical_node_lines_collection {
   obscured_areas_tracker_1d<coord_type> left_side;
   
-  std::whatever<vertical_line> vlines;
-  std::whatever<horizontal_line> hlines;
-  std::whatever<perspective_line> plines;
+  std::vector<axis_aligned_line> vlines;
+  std::vector<axis_aligned_line> hlines;
+  std::vector<perspective_line> plines;
   
   bool point_is_obscured(coord_type x, coord_type y) {
     // Effectively: Draw a horizontal line back to the left side. If it intersects any lines,
@@ -553,8 +579,8 @@ struct logical_node_lines_collection {
     coord_type best_distance;
     bool best_obscuredness;
     for (auto const& vline : vlines) {
-      if (vline.x <= x && vline.y1 <= y && vline.y2 >= y) {
-        coord_type distance = x - vline.x;
+      if (vline.l <= x && vline.b1 <= y && vline.b2 >= y) {
+        coord_type distance = x - vline.l;
         if ((!found_any_lines) || (distance < best_distance)) {
           found_any_lines = true;
           best_distance = distance;
@@ -601,26 +627,26 @@ struct logical_node_lines_collection {
     std::vector<size_t> completely_visible_oplines;
     for (size_t i = 0; i < hlines.size(); ++i) {
       for (size_t j = 0; j < other.vlines.size(); ++j) {
-        if (handle_hline_vs_vline(hlines[i], hlines_tpts[i], other.vlines[j], ovlines_tpts[j])) result = true;
+        if (handle_aaline_vs_aaline(hlines[i], hlines_tpts[i], other.vlines[j], ovlines_tpts[j])) result = true;
       }
       for (size_t j = 0; j < other.plines.size(); ++j) {
-        if (handle_hline_vs_pline(hlines[i], hlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
+        if (handle_aaline_vs_pline(true, hlines[i], hlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
       }
     }
     for (size_t i = 0; i < vlines.size(); ++i) {
       for (size_t j = 0; j < other.hlines.size(); ++j) {
-        if (handle_hline_vs_vline(vlines[i], vlines_tpts[i], other.hlines[j], ohlines_tpts[j])) result = true;
+        if (handle_aaline_vs_aaline(vlines[i], vlines_tpts[i], other.hlines[j], ohlines_tpts[j])) result = true;
       }
       for (size_t j = 0; j < other.plines.size(); ++j) {
-        if (handle_vline_vs_pline(vlines[i], vlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
+        if (handle_aaline_vs_pline(false, vlines[i], vlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
       }
     }
     for (size_t i = 0; i < plines.size(); ++i) {
       for (size_t j = 0; j < other.hlines.size(); ++j) {
-        if (handle_hline_vs_pline(plines[i], plines_tpts[i], other.hlines[j], ohlines_tpts[j])) result = true;
+        if (handle_aaline_vs_pline(true, other.hlines[j], ohlines_tpts[j], plines[i], plines_tpts[i])) result = true;
       }
       for (size_t j = 0; j < other.vlines.size(); ++j) {
-        if (handle_vline_vs_pline(plines[i], plines_tpts[i], other.vlines[j], ovlines_tpts[j])) result = true;
+        if (handle_aaline_vs_pline(false, other.vlines[j], ovlines_tpts[j], plines[i], plines_tpts[i])) result = true;
       }
     }
     
@@ -630,51 +656,10 @@ struct logical_node_lines_collection {
     //  (since each line is completely necessary to its own collection)
     // and since we haven't modified either collection yet, we can just ask the other collection
     // whether a point on that line is visible.
-    
-    for (size_t i = 0; i < hlines_tpts.size(); ++i) {
-      auto const& switch_points = hlines_tpts[i].tpts;
-      horizontal_line& hline = hlines[i];
-      if (switch_points.empty()) {
-        // Check if we're completely obscured
-        if (other.point_is_obscured(hline.x1, hline.y)) {
-          completely_obscured_hlines.push_back(i);
-        }
-      }
-      else {
-        // Replace ourselves with the first still-visible piece of ourselves.
-        auto t = switch_points.begin();
-        assert(t != switch_points.end());
-        coord_type original_end = hlines[i].x2;
-        if (t->is_obscured_beyond) {
-          hline.x1 = t->loc;
-          ++t;
-          This assertion might fail if rounding error stuff happens. What to do about that?
-          assert(!t->is_obscured_beyond);
-          if (t != switch_points.end()) {
-            hline.x2 = t->loc;
-          }
-        }
-        else {
-          hline.x2 = t->loc;
-        }
-        // Now insert the rest of the still-visible pieces of ourselves at the end.
-        ++t;
-        while(t != switch_points.end()) {
-          This assertion might fail if rounding error stuff happens. What to do about that?
-          assert(!t->is_obscured_beyond);
-          coord_type startx = t->loc;
-          ++t;
-          if (t == switch_points.end()) {
-            hlines.push_back(horizontal_line(hline.y, startx, original_end, hline.is_obscured_above));
-          }
-          else {
-            hlines.push_back(horizontal_line(hline.y, startx, t->loc, hline.is_obscured_above));
-            ++t;
-          }
-        }
-      }
-    }
-      todo the other five!!
+    slice_marked_aalines(true , true ,       hlines, hlines,  hlines_tpts, completely_obscured_hlines);
+    slice_marked_aalines(false, true ,       vlines, vlines,  vlines_tpts, completely_obscured_vlines);
+    slice_marked_aalines(true , false, other.hlines, hlines, ohlines_tpts, completely_visible_ohlines);
+    slice_marked_aalines(false, false, other.vlines, vlines, ovlines_tpts, completely_visible_ovlines);
     
     // When you're done, purge the lines that were completely obscured.
     for (int i = completely_obscured_hlines.size() - 1; i >= 0 ; --i) {
