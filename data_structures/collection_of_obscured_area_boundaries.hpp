@@ -233,7 +233,7 @@ template<class LineType, typename TptLocType> void slice_marked_lines(bool src_l
   }
 }
 template<class LineType> void purge_obscured_lines(std::vector<LineType>& lines, std::vector<size_t> const& obscured_list) {
-  for (int i = obscured_list.size() - 1; i >= 0 ; --i) {
+  for (int i = obscured_list.size() - 1; i >= 0; --i) {
     lines[obscured_list[i]] = lines.back(); lines.pop_back();
   }
 }
@@ -267,6 +267,25 @@ struct logical_node_lines_collection {
     hlines.clear(); vlines.clear(); plines.clear(); left_side.clear();
   }
   
+  void note_hline_in_left_side(axis_aligned_line const& hline) {
+    if ((hline.b1 <= bounds.min_x) && (hline.b2 >= bounds.min_x)) {
+      left_side.tpts.insert(tpt<>(hline.l, hline.is_obscured_beyond));
+    }
+  }
+  void note_pline_in_left_side(perspective_line const& pline) {
+    const coord_type y = pline.y_intercept(bounds.min_x);
+    if ((y >= bounds.min_y) && (y <= bounds.max_y) && pline.min_x() <= bounds.min_x) {
+      left_side.tpts.insert(tpt<>(y, pline.is_obscured_above()));
+    }
+  }
+  // Only regenerates the tpts; you have to keep track of is_obscured_initially on your own,
+  // since it can't always be inferred
+  void regenerate_left_side_tpts() {
+    left_side.tpts.clear();
+    for (auto const& l : hlines) note_hline_in_left_side(l);
+    for (auto const& l : plines) note_pline_in_left_side(l);
+  }
+  
   // The "insert" functions are expected to be used a bunch of times in sequence,
   // which, in total, should create a valid structure.
   // In the middle of that process, the structure will be invalid.
@@ -276,9 +295,7 @@ struct logical_node_lines_collection {
     assert(hline.l <= bounds.max_y);
     assert(hline.l >= bounds.min_y);
     hlines.push_back(hline);
-    if ((hline.b1 <= bounds.min_x) && (hline.b2 >= bounds.min_x)) {
-      left_side.tpts.insert(tpt<>(hline.l, hline.is_obscured_beyond));
-    }
+    note_hline_in_left_side(hline);
   }
   void insert_vline(axis_aligned_line const& vline) {
     assert(vline.b1 <= bounds.max_y);
@@ -290,11 +307,8 @@ struct logical_node_lines_collection {
   void insert_pline(perspective_line const& pline) {
     assert((pline.b1.is_x_boundary ? pline.b1.b : pline.x_intercept(pline.b1.b))
       < (pline.b2.is_x_boundary ? pline.b2.b : pline.x_intercept(pline.b2.b)));
-    const coord_type y = pline.y_intercept(bounds.min_x);
-    if ((y >= bounds.min_y) && (y <= bounds.max_y) && pline.min_x() <= bounds.min_x) {
-      left_side.tpts.insert(tpt<>(y, pline.is_obscured_above()));
-    }
     plines.push_back(pline);
+    note_pline_in_left_side(pline);
   }
   
   // Can copy from any (direct or indirect) child.
@@ -531,7 +545,10 @@ struct logical_node_lines_collection {
     mark_obscured_aalines(*this, true , false, other.hlines, ohlines_tpts, completely_visible_ohlines);
     mark_obscured_aalines(*this, false, false, other.vlines, ovlines_tpts, completely_visible_ovlines);
     mark_obscured_plines (*this,        false, other.plines, oplines_tpts, completely_visible_oplines);
-    if ((!completely_visible_ohlines.empty()) || (!completely_visible_ovlines.empty()) || (!completely_visible_oplines.empty())) result = true;
+    if (!(completely_obscured_hlines.empty() && completely_obscured_vlines.empty() && completely_obscured_plines.empty() && completely_visible_ohlines.empty() && completely_visible_ovlines.empty() && completely_visible_oplines.empty())) result = true;
+    
+    // If nothing changed, we can skip the rest of this.
+    if (!result) return false;
     
     // Then slice up the overlapped lines based on the overlaps.
     slice_marked_lines(true ,       hlines, hlines,  hlines_tpts);
@@ -550,11 +567,12 @@ struct logical_node_lines_collection {
     copy_visible_lines(other.vlines, vlines, completely_visible_ovlines);
     copy_visible_lines(other.plines, plines, completely_visible_oplines);
     
+    // Regenerate the left-side info.
+    // (We can't meaningfully combine it because sides can have been deleted.)
+    left_side.is_obscured_initially = left_side.is_obscured_initially || other.left_side.is_obscured_initially;
+    regenerate_left_side_tpts();
     
-    // ======== Combine the left-side info. ==========
-    left_side.combine(other.left_side);
-    
-    return result;
+    return true;
   }
 };
 
