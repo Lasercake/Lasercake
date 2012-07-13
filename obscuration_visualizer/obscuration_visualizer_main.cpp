@@ -122,6 +122,7 @@ void draw_lines(logical_node_lines_collection const& lc) {
     glEnd();
   }
   for (auto const& l : lc.plines) {
+  glColor4f(GLfloat(rand()%255) / 255.0, GLfloat(rand()%255) / 255.0, GLfloat(rand()%255) / 255.0, 0.4);
     coord_type startx;
     coord_type starty;
     coord_type endx;
@@ -136,12 +137,24 @@ void draw_lines(logical_node_lines_collection const& lc) {
     }
     if (l.b2.is_x_boundary) {
       endx = l.b2.b;
-      endy = l.y_intercept(startx);
+      endy = l.y_intercept(endx);
     }
     else {
       endy = l.b2.b;
-      endx = l.x_intercept(starty);
+      endx = l.x_intercept(endy);
     }
+    
+    assert(startx <= b.max_x);
+    assert(endx >= b.min_x);
+    if (l.slope > coord_type(0)) {
+      assert(starty <= b.max_y);
+      assert(endy >= b.min_y);
+    }
+    else {
+      assert(endy <= b.max_y);
+      assert(starty >= b.min_y);
+    }
+    
     if (startx < b.min_x) {
       startx = b.min_x;
       starty = l.y_intercept(startx);
@@ -179,6 +192,7 @@ void draw_lines(logical_node_lines_collection const& lc) {
 
 void draw_node(logical_node n) {
   bounds_2d b = n.bounds();
+  glColor4f(1.0,1.0,1.0, 0.3);
   glBegin((n.contents_type == ALL_BLOCKED) ? GL_QUADS : GL_LINE_LOOP);
     draw_vertex(b.min_x, b.min_y);
     draw_vertex(b.max_x, b.min_y);
@@ -191,6 +205,7 @@ void draw_node(logical_node n) {
     }
   }
   if (n.contents_type == MIXED_AS_LINES) {
+    glColor4f(1.0,0.5,0.5, 0.4);
     draw_lines(*(n.lines_pointer_reference()));
   }
 }
@@ -250,7 +265,7 @@ int frame = 0;
     glClear(GL_COLOR_BUFFER_BIT);
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
-    gluLookAt(5+15*std::cos(double(frame) / 200),5+15*std::sin(double(frame) / 200),10,5,5,0,0,0,1);
+    gluLookAt(0.0+1.5*std::cos(double(frame) / 200),0.0+1.5*std::sin(double(frame) / 200),1.0,0,0,0,0,0,1);
     
     glColor4f(0.0,last_was_visible ? 1.0 : 0.0, last_was_visible ? 0.0 : 1.0, 0.4);
     glBegin(GL_POLYGON);
@@ -260,10 +275,9 @@ int frame = 0;
       glVertex3f(-1.0, 1.0, 0.0);
     glEnd();
     
-    glColor4f(1.0,1.0,1.0, 0.4);
     draw_node(foo.top_logical_node());
     
-    glColor4f(1.0,0.0,0.0, 0.4);
+    glColor4f(1.0,0.0,0.0, 0.5);
     draw_lines(lc_to_draw);
     
     int before_GL = SDL_GetTicks();
@@ -277,8 +291,8 @@ int frame = 0;
 	++frame;
 	
     if((frame % 50) == 25) {
-      int min_z = (rand()%200000) + 20;
-      bounding_box::vect min(rand()%(2*min_z) - min_z, rand()%(2*min_z) - min_z, min_z);
+      int min_z = (rand()%2000) + 1000;
+      bounding_box::vect min(rand()%(2*min_z - 1000) - min_z, rand()%(2*min_z  - 1000) - min_z, min_z);
       bounding_box::vect size(1000,1000,1000);
       // Hack - don't bother about straight lines!
       if (min.x == 0) ++min.x;
@@ -296,37 +310,45 @@ int frame = 0;
         coord_type(min.x, (min.y > 0) ? max.z : min.z),
         coord_type(max.x, (min.y > 0) ? max.z : min.z), true));
       lc_to_draw.insert_vline(axis_aligned_line(
-        coord_type(max.x, (min.x > 0) ? max.z : min.z),
-        coord_type(min.y, (min.x > 0) ? max.z : min.z),
-        coord_type(max.y, (min.x > 0) ? max.z : min.z), false));
+        coord_type(max.x, (max.x < 0) ? max.z : min.z),
+        coord_type(min.y, (max.x < 0) ? max.z : min.z),
+        coord_type(max.y, (max.x < 0) ? max.z : min.z), false));
       lc_to_draw.insert_hline(axis_aligned_line(
-        coord_type(max.y, (min.y > 0) ? max.z : min.z),
-        coord_type(min.x, (min.y > 0) ? max.z : min.z),
-        coord_type(max.x, (min.y > 0) ? max.z : min.z), false));
-      if ((min.x > 0) != (min.y > 0))
-        lc_to_draw.insert_pline(perspective_line(coord_type(min.x, min.y),
+        coord_type(max.y, (max.y < 0) ? max.z : min.z),
+        coord_type(min.x, (max.y < 0) ? max.z : min.z),
+        coord_type(max.x, (max.y < 0) ? max.z : min.z), false));
+      if ((min.x > 0) != (min.y > 0)) {
+        assert((min.x > 0) == (((min.x > 0) ? max.z : min.z) > ((min.y > 0) ? max.z : min.z)));
+        lc_to_draw.insert_pline(perspective_line(coord_type(min.y, min.x),
             x_or_y_boundary(coord_type(min.x, (min.x > 0) ? max.z : min.z), true),
             x_or_y_boundary(coord_type(min.y, (min.y > 0) ? max.z : min.z), false),
             true
           ));
-      if ((max.x > 0) != (max.y > 0))
-        lc_to_draw.insert_pline(perspective_line(coord_type(max.x, max.y),
+      }
+      if ((max.x > 0) != (max.y > 0)) {
+        assert((max.x > 0) == (((max.y > 0) ? min.z : max.z) > ((max.x > 0) ? min.z : max.z)));
+        lc_to_draw.insert_pline(perspective_line(coord_type(max.y, max.x),
             x_or_y_boundary(coord_type(max.y, (max.y > 0) ? min.z : max.z), false),
             x_or_y_boundary(coord_type(max.x, (max.x > 0) ? min.z : max.z), true),
-            true
+            false
           ));
-      if ((min.x > 0) == (max.y > 0))
-        lc_to_draw.insert_pline(perspective_line(coord_type(min.x, max.y),
+      }
+      if ((min.x > 0) == (max.y > 0)) {
+        assert((min.x > 0) == (((min.x > 0) ? max.z : min.z) > ((max.y > 0) ? min.z : max.z)));
+        lc_to_draw.insert_pline(perspective_line(coord_type(max.y, min.x),
             x_or_y_boundary(coord_type(min.x, (min.x > 0) ? max.z : min.z), true),
             x_or_y_boundary(coord_type(max.y, (max.y > 0) ? min.z : max.z), false),
             true
           ));
-      if ((max.x > 0) == (min.y > 0))
-        lc_to_draw.insert_pline(perspective_line(coord_type(max.x, min.y),
-            x_or_y_boundary(coord_type(max.x, (max.x > 0) ? min.z : max.z), true),
+      }
+      if ((max.x > 0) == (min.y > 0)) {
+        assert((max.x > 0) == (((min.y > 0) ? max.z : min.z) > ((max.x > 0) ? min.z : max.z)));
+        lc_to_draw.insert_pline(perspective_line(coord_type(min.y, max.x),
             x_or_y_boundary(coord_type(min.y, (min.y > 0) ? max.z : min.z), false),
-            true
+            x_or_y_boundary(coord_type(max.x, (max.x > 0) ? min.z : max.z), true),
+            false
           ));
+      }
     }
     if((frame % 50) == 0) {
       last_was_visible = foo.insert_from_lines_collection(lc_to_draw);
@@ -334,7 +356,7 @@ int frame = 0;
     }
     
     int after = SDL_GetTicks();
-    std::cerr << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";
+    std::cerr << frame << ": " << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";
 
 //    SDL_Delay(50);
   }

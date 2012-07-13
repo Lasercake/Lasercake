@@ -43,15 +43,16 @@ struct x_or_y_boundary {
   bool is_x_boundary;
 };
 struct perspective_line {
-  perspective_line(coord_type m,x_or_y_boundary b1,x_or_y_boundary b2,bool obsright):slope(m),b1(b1),b2(b2),is_obscured_beyond(obsright){}
+  perspective_line(coord_type m,x_or_y_boundary b1,x_or_y_boundary b2,bool obsright):slope(m),b1(b1),b2(b2),is_obscured_beyond(obsright),positive_slope(m > coord_type(0)){}
   coord_type slope;
   // A... hack, perhaps? ...to allow templating between aalines and plines
   inline coord_type projective_angle()const { return slope; }
   x_or_y_boundary b1;
   x_or_y_boundary b2;
   bool is_obscured_beyond; // in this case, meaning to the right
+  bool positive_slope;
   bool is_obscured_to_the_right()const { return is_obscured_beyond; }
-  bool is_obscured_above()const { return (slope < coord_type(0)) == is_obscured_beyond; }
+  bool is_obscured_above()const { return positive_slope !=  is_obscured_beyond; }
   coord_type y_intercept(coord_type x)const {
     // slope = y / x;
     // y = x * slope
@@ -62,10 +63,28 @@ struct perspective_line {
     // x = y / slope
     return y / slope;
   }
+  coord_type min_x()const {
+    return b1.is_x_boundary ? b1.b : x_intercept(b1.b);
+  }
+  coord_type max_x()const {
+    return b2.is_x_boundary ? b2.b : x_intercept(b2.b);
+  }
+  coord_type start_y()const {
+    return b1.is_x_boundary ? y_intercept(b1.b) : b1.b;
+  }
+  coord_type end_y()const {
+    return b2.is_x_boundary ? y_intercept(b2.b) : b2.b;
+  }
+  coord_type min_y()const {
+    return positive_slope ? start_y() : end_y();
+  }
+  coord_type max_y()const {
+    return positive_slope ? end_y() : start_y();
+  }
   bool point_is_within_end_boundaries(coord_type x, coord_type y)const {
     if (b1.is_x_boundary && (x < b1.b)) return false;
     if (b2.is_x_boundary && (x > b2.b)) return false;
-    if (slope > coord_type(0)) {
+    if (positive_slope) {
       if ((!b1.is_x_boundary) && (y < b1.b)) return false;
       if ((!b2.is_x_boundary) && (y > b2.b)) return false;
     }
@@ -77,25 +96,26 @@ struct perspective_line {
   }
 };
 struct pline_tpt_loc {
-  pline_tpt_loc(coord_type b, bool i, coord_type m):b(b,i),slope(m){}
+  pline_tpt_loc(coord_type b, bool i, perspective_line const* pline):b(b,i),pline(pline){}
   x_or_y_boundary b;
-  coord_type slope;
+  perspective_line const* pline;
   
   // A... hack, perhaps? ...to allow templating between aalines and plines
   operator x_or_y_boundary()const { return b; }
   
   bool operator<(pline_tpt_loc const& other)const {
+    assert(pline == other.pline);
     if (b.is_x_boundary == other.b.is_x_boundary) {
-      return (b.b < other.b.b) == (b.is_x_boundary || (slope > coord_type(0)));
+      return (b.b < other.b.b) == (b.is_x_boundary || pline->positive_slope);
     }
     // How to compare an x boundary to a y boundary, with a given slope?
     // Let's say we sort by x - then "xbound < ybound" is
     // x < y / m
     else if (b.is_x_boundary) {
-      return (b.b < other.b.b / slope);
+      return (b.b < pline->x_intercept(other.b.b));
     }
     else if (other.b.is_x_boundary) {
-      return (b.b < other.b.b * slope);
+      return (b.b < pline->y_intercept(other.b.b));
     }
     else assert(false);
   }
@@ -175,9 +195,10 @@ template<class LineType, typename TptLocType> void slice_marked_lines(bool src_l
         auto new_b1 = t->loc;
         if (src_lines_is_our_own_collection) dst_lines[i].b1 = new_b1;
         ++t;
-        //TODO: This assertion might fail if rounding error stuff happens. What to do about that?
-        assert(!t->is_obscured_beyond);
         if (t != switch_points.end()) {
+          //TODO: This assertion might fail if rounding error stuff happens. What to do about that?
+          assert(!t->is_obscured_beyond);
+          
           if (src_lines_is_our_own_collection) dst_lines[i].b2 = t->loc;
           else dst_lines.push_back(LineType(line.projective_angle(), new_b1, t->loc, line.is_obscured_beyond));
         }
@@ -191,16 +212,18 @@ template<class LineType, typename TptLocType> void slice_marked_lines(bool src_l
       }
       
       // Now insert the rest of the still-visible pieces of ourselves at the end.
-      ++t;
       while(t != switch_points.end()) {
+        ++t;
         //TODO: This assertion might fail if rounding error stuff happens. What to do about that?
-        assert(!t->is_obscured_beyond);
+        assert(t->is_obscured_beyond);
         auto startb = t->loc;
         ++t;
         if (t == switch_points.end()) {
           dst_lines.push_back(LineType(line.projective_angle(), startb, original_b2, line.is_obscured_beyond));
         }
         else {
+          //TODO: This assertion might fail if rounding error stuff happens. What to do about that?
+          assert(!t->is_obscured_beyond);
           dst_lines.push_back(LineType(line.projective_angle(), startb, t->loc, line.is_obscured_beyond));
           ++t;
         }
@@ -262,10 +285,13 @@ struct logical_node_lines_collection {
     vlines.push_back(vline);
   }
   void insert_pline(perspective_line const& pline) {
+    assert((pline.b1.is_x_boundary ? pline.b1.b : pline.x_intercept(pline.b1.b))
+      < (pline.b2.is_x_boundary ? pline.b2.b : pline.x_intercept(pline.b2.b)));
     const coord_type y = pline.y_intercept(bounds.min_x);
     if ((y >= bounds.min_y) && (y <= bounds.max_y)) {
       left_side.tpts.insert(tpt<>(y, pline.is_obscured_above()));
     }
+    plines.push_back(pline);
   }
   
   // Can copy from any (direct or indirect) child.
@@ -319,23 +345,13 @@ struct logical_node_lines_collection {
       }
     }
     for (auto const& pline : original.plines) {
-      // This is ugly, maybe there's a better way to check if a pline intersects a box?
-      if ((  pline.b1.is_x_boundary  && pline.b1.b <= bounds.max_x)
-       || ((!pline.b1.is_x_boundary) && (
-                ((pline.slope > coord_type(0)) && (pline.b1.b <= bounds.max_y))
-             || ((pline.slope < coord_type(0)) && (pline.b1.b >= bounds.min_y))
-           ))) {
-        if ((  pline.b2.is_x_boundary  && pline.b2.b >= bounds.min_x)
-         || ((!pline.b2.is_x_boundary) && (
-                  ((pline.slope > coord_type(0)) && (pline.b2.b >= bounds.min_y))
-               || ((pline.slope < coord_type(0)) && (pline.b2.b <= bounds.max_y))
-             ))) {
-          const coord_type lyx = pline.x_intercept(bounds.min_y);
-          const coord_type myx = pline.x_intercept(bounds.max_y);
-          if (((lyx <= bounds.max_x) && (myx >= bounds.min_x))
-           || ((lyx >= bounds.min_x) && (myx <= bounds.max_x))) {
-            insert_pline(pline);
-          }
+      if ((pline.min_x() <= bounds.max_x) && (pline.min_y() <= bounds.max_y) &&
+          (pline.max_x() >= bounds.min_x) && (pline.max_y() >= bounds.min_y)) {
+        const coord_type lyx = pline.x_intercept(bounds.min_y);
+        const coord_type myx = pline.x_intercept(bounds.max_y);
+        if (((lyx <= bounds.max_x) && (myx >= bounds.min_x))
+         || ((lyx >= bounds.min_x) && (myx <= bounds.max_x))) {
+          insert_pline(pline);
         }
       }
     }
@@ -402,8 +418,8 @@ struct logical_node_lines_collection {
     if ((aaline.b1 < b) && (b < aaline.b2) && pline.point_is_within_end_boundaries((aaline_is_horizontal ? b : aaline.l), (aaline_is_horizontal ? aaline.l : b))) {
       aaline_info.insert(tpt<>(b, (aaline_is_horizontal ? pline.is_obscured_to_the_right() : pline.is_obscured_above())));
       pline_info.insert(tpt<pline_tpt_loc>(
-          pline_tpt_loc(aaline.l, !aaline_is_horizontal, pline.slope),
-          aaline.is_obscured_beyond == ((pline.slope > coord_type(0)) || !aaline_is_horizontal)
+          pline_tpt_loc(aaline.l, !aaline_is_horizontal, &pline),
+          aaline.is_obscured_beyond == (pline.positive_slope || !aaline_is_horizontal)
         ));
       return true;
     }
@@ -562,6 +578,10 @@ struct implementation_node {
      3) NULL
            otherwise. */
   void *lines_or_further_children[total_entries_at_bottom_subimpnode_level];
+  
+  implementation_node() {
+    memset(this, 0, sizeof(implementation_node));
+  }
 };
 
 struct logical_node {
@@ -600,7 +620,7 @@ struct logical_node {
       contents_type = impnode->top_entry;
     }
     else {
-      which_byte_in_impnode = total_entries_above_subimpnode_level(subimpnode_level) + (which_entry_at_this_subimpnode_level/4);
+      which_byte_in_impnode = (total_entries_above_subimpnode_level(subimpnode_level) / 4) + (which_entry_at_this_subimpnode_level/4);
       which_bits_in_byte = 2*(which_entry_at_this_subimpnode_level % 4);
       assert(which_byte_in_impnode < total_entry_bytes);
       contents_type = (impnode->entry_bytes[which_byte_in_impnode] >> which_bits_in_byte) & 0x3;
@@ -609,13 +629,20 @@ struct logical_node {
   
   void set_contents_type_bits(uint8_t type) {
     contents_type = type;
-    impnode->entry_bytes[which_byte_in_impnode] = (impnode->entry_bytes[which_byte_in_impnode] & (~(0x3 << which_bits_in_byte))) | (type << which_bits_in_byte);
+    if (subimpnode_level == 0) {
+      impnode->top_entry = type;
+    }
+    else {
+      assert(which_byte_in_impnode < total_entry_bytes);
+      impnode->entry_bytes[which_byte_in_impnode] = (impnode->entry_bytes[which_byte_in_impnode] & (~(0x3 << which_bits_in_byte))) | (type << which_bits_in_byte);
+    }
   }
   
   logical_node_lines_collection*& lines_pointer_reference()const {
     assert(contents_type == MIXED_AS_LINES);
     
-    const uint32_t which_entry_at_bottom_subimpnode_level = which_entry_at_this_subimpnode_level << (total_subimpnode_levels - subimpnode_level);
+    const uint32_t which_entry_at_bottom_subimpnode_level = which_entry_at_this_subimpnode_level << (2*(total_subimpnode_levels - subimpnode_level));
+    assert(which_entry_at_bottom_subimpnode_level < total_entries_at_bottom_subimpnode_level);
     
     return reinterpret_cast<logical_node_lines_collection*&>(impnode->lines_or_further_children[which_entry_at_bottom_subimpnode_level]);
   }
@@ -675,9 +702,7 @@ private:
 */
 const coord_int_type lines_intolerance_constant = 4;
 void logical_node::split_if_necessary() {
-  assert(contents_type == MIXED_AS_LINES);
-  
-  if (lines_intolerance_constant * static_cast<coord_int_type>(lines_pointer_reference()->size()) > bounds_denominator) {
+  if ((contents_type == MIXED_AS_LINES) && (lines_intolerance_constant * static_cast<coord_int_type>(lines_pointer_reference()->size()) > bounds_denominator)) {
     set_contents_type(MIXED_AS_CHILDREN); // This automatically splits the lines we have up among our children.
     for (int which_child = 0; which_child < 4; ++which_child) {
       child(which_child).split_if_necessary();
@@ -713,6 +738,7 @@ void logical_node::clear_children() {
     
     if (subimpnode_level == max_subimpnode_level) {
       const uint32_t which_entry_at_bottom_subimpnode_level = which_entry_at_this_subimpnode_level * 4 + which_child;
+      assert(which_entry_at_bottom_subimpnode_level < total_entries_at_bottom_subimpnode_level);
       implementation_node*& next_impnode = reinterpret_cast<implementation_node*&>(impnode->lines_or_further_children[which_entry_at_bottom_subimpnode_level]);
       delete next_impnode;
       next_impnode = NULL;
@@ -721,16 +747,19 @@ void logical_node::clear_children() {
 }
 // A utility function for set_contents_type.
 void logical_node::create_children(uint8_t children_contents_type) {
+  assert(children_contents_type != MIXED_AS_CHILDREN);
   for (int which_child = 0; which_child < 4; ++which_child) {
     // We might have to create pointers for our new children before fetching them.
     if (subimpnode_level == max_subimpnode_level) {
       const uint32_t which_entry_at_bottom_subimpnode_level = which_entry_at_this_subimpnode_level * 4 + which_child;
+      assert(which_entry_at_bottom_subimpnode_level < total_entries_at_bottom_subimpnode_level);
       implementation_node*& next_impnode = reinterpret_cast<implementation_node*&>(impnode->lines_or_further_children[which_entry_at_bottom_subimpnode_level]);
       assert(next_impnode == NULL);
       next_impnode = new implementation_node;
     }
     
-    child(which_child).set_contents_type(children_contents_type);
+    child(which_child).set_contents_type_bits(children_contents_type);
+    if (children_contents_type == MIXED_AS_LINES) assert(child(which_child).lines_pointer_reference() == NULL);
   }
 }
 
@@ -750,21 +779,26 @@ void logical_node::set_contents_type(uint8_t new_type, bool keep_line_info) {
     logical_node_lines_collection* combined_lines = new logical_node_lines_collection;
     retrieve_all_lines(*combined_lines);
     clear_children();
+    set_contents_type_bits(MIXED_AS_LINES);
     logical_node_lines_collection*& lpr = lines_pointer_reference();
     assert(lpr == NULL);
     lpr = combined_lines;
   }
-  else if (keep_line_info && (contents_type == MIXED_AS_CHILDREN) && (new_type == MIXED_AS_LINES)) {
+  else if (keep_line_info && (contents_type == MIXED_AS_LINES) && (new_type == MIXED_AS_CHILDREN)) {
     logical_node_lines_collection*& lpr = lines_pointer_reference();
     logical_node_lines_collection* original_lines_ptr = lpr;
     lpr = NULL;
-    create_children(ALL_CLEAR);
+    set_contents_type_bits(MIXED_AS_CHILDREN);
+    create_children(MIXED_AS_LINES);
     for (int which_child = 0; which_child < 4; ++which_child) {
       logical_node c = child(which_child);
       
       logical_node_lines_collection*& clpr = c.lines_pointer_reference();
       assert(clpr == NULL);
       clpr = new logical_node_lines_collection(*original_lines_ptr, c.bounds());
+      
+      if (clpr->empty()) c.set_contents_type(ALL_CLEAR);
+      else if (clpr->full()) c.set_contents_type(ALL_BLOCKED);
     }
     delete original_lines_ptr;
   }
@@ -779,21 +813,18 @@ void logical_node::set_contents_type(uint8_t new_type, bool keep_line_info) {
       lpr = NULL;
     }
     
+    uint8_t old_type = contents_type;
+    set_contents_type_bits(new_type);
+    
     if (new_type == MIXED_AS_LINES) {
       logical_node_lines_collection*& lpr = lines_pointer_reference();
       assert(lpr == NULL);
       lpr = new logical_node_lines_collection;
     }
     if (new_type == MIXED_AS_CHILDREN) {
-      create_children((contents_type == MIXED_AS_LINES) ? ALL_CLEAR : contents_type);
+      create_children((old_type == ALL_BLOCKED) ? ALL_BLOCKED : ALL_CLEAR);
     }
   }
-  
-  // Now set the bits.
-  // If neither new_type nor contents_type was a MIXED type, we're just
-  // changing from one ALL type to the other, which requires nothing else.
-  
-  set_contents_type_bits(new_type);
 }
 /*
 void logical_node::overwrite_from_other_collection(logical_node const& other) {
