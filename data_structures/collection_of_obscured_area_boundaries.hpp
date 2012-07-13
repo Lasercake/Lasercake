@@ -19,6 +19,21 @@ bounds_2d top_node_bounds(coord_type(-1,1),coord_type(-1,1),coord_type(1,1),coor
 
 
 
+/* TODO: Conceptually, there are three types of information about a (axis-aligned or perspective) point: x, y, and slope from the origin. Any two of those determine the third, with the relationships:
+ slope = y / x
+ y = slope * x
+ x = y / slope
+
+And any line is simply *one* of those three things held constant, with the other two allowed to vary up to certain bounds.
+To save on rational height (-> rounding error), those bounds can be specified by *either* other coordinate and the cross-computation is only to be done when necessary.
+By this means, they can all be generalized to the same type,
+much the way "axis_aligned_line" generalizes "vertical line" and "horizontal line".
+
+A further note: Vertices made from points in integer three-space know their x, y, and slope with approximately equal rational height, and can compute the third from any two without a height cost (because they share numerators/denominators, and the non_normalized_rational code checks for that.) But once they're cropped in one dimension, the heights of their types-of-information become different.
+
+How this interacts with lines-between-arbitrary-pairs-of-integer-points-in-three-space remains to be considered...
+
+*/
 
 struct axis_aligned_line {
   axis_aligned_line(coord_type l,coord_type b1,coord_type b2,bool b):l(l),b1(b1),b2(b2),is_obscured_beyond(b){}
@@ -287,8 +302,13 @@ struct logical_node_lines_collection {
   }
   
   // The "insert" functions are expected to be used a bunch of times in sequence,
+  // to insert a set of lines that form a closed loop,
   // which, in total, should create a valid structure.
   // In the middle of that process, the structure will be invalid.
+  // left_side.is_obscured_initially isn't updated by this;
+  // currently you have to set it yourself, elsewhere.
+  // It could be inferred from the lines as long as there's at least one line...
+  // but it obviously can't be inferred from the lines when there aren't any
   void insert_hline(axis_aligned_line const& hline) {
     assert(hline.b1 <= bounds.max_x);
     assert(hline.b2 >= bounds.min_x);
@@ -380,15 +400,14 @@ struct logical_node_lines_collection {
     // Otherwise, check the left_side structure to see whether you're obscured.
     assert((x >= bounds.min_x) && (y >= bounds.min_y) && (x <= bounds.max_x) && (y <= bounds.max_y));
     bool found_any_lines = false;
-    coord_type best_distance;
+    coord_type best_x;
     bool best_obscuredness;
     for (auto const& vline : vlines) {
       assert(vline.l >= bounds.min_x);
       if ((vline.l <= x) && (vline.b1 <= y) && (vline.b2 >= y)) {
-        const coord_type distance = x - vline.l;
-        if ((!found_any_lines) || (distance < best_distance)) {
+        if ((!found_any_lines) || (vline.l > best_x)) {
           found_any_lines = true;
-          best_distance = distance;
+          best_x = vline.l;
           best_obscuredness = vline.is_obscured_beyond;
         }
       }
@@ -396,10 +415,9 @@ struct logical_node_lines_collection {
     for (auto const& pline : plines) {
       const coord_type pline_x = pline.x_intercept(y);
       if ((pline_x <= x) && (pline_x >= bounds.min_x) && pline.point_is_within_end_boundaries(pline_x, y)) {
-        const coord_type distance = x - pline_x;
-        if ((!found_any_lines) || (distance < best_distance)) {
+        if ((!found_any_lines) || (pline_x > best_x)) {
           found_any_lines = true;
-          best_distance = distance;
+          best_x = pline_x;
           best_obscuredness = pline.is_obscured_to_the_right();
         }
       }

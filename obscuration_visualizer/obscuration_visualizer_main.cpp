@@ -192,7 +192,7 @@ void draw_lines(logical_node_lines_collection const& lc) {
 
 void draw_node(logical_node n) {
   bounds_2d b = n.bounds();
-  glColor4f(1.0,1.0,1.0, 0.3);
+  glColor4f(1.0,1.0,1.0, 0.2);
   glBegin((n.contents_type == ALL_BLOCKED) ? GL_QUADS : GL_LINE_LOOP);
     draw_vertex(b.min_x, b.min_y);
     draw_vertex(b.max_x, b.min_y);
@@ -249,6 +249,7 @@ int frame = 0;
           if(event.key.keysym.sym == SDLK_r) ++view_dist;
           if(event.key.keysym.sym == SDLK_f) --view_dist;
           if(event.key.keysym.sym == SDLK_m) ++m_mode;
+          if(event.key.keysym.sym == SDLK_u) m_mode += 100;
           if(event.key.keysym.sym != SDLK_ESCAPE)break;
           
         case SDL_QUIT:
@@ -301,7 +302,7 @@ int frame = 0;
 	
     if(m_mode && lc_to_draw.empty()) {
       --m_mode;
-      int min_z = (rand()%2000) + 1000;
+      int min_z = (rand()%60000) + 1000;
       bounding_box::vect min(rand()%(2*min_z - 1000) - min_z, rand()%(2*min_z  - 1000) - min_z, min_z);
       bounding_box::vect size(1000,1000,1000);
       // Hack - avoid having axis-aligned perspective lines
