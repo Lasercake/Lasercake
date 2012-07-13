@@ -122,7 +122,7 @@ void draw_lines(logical_node_lines_collection const& lc) {
     glEnd();
   }
   for (auto const& l : lc.plines) {
-  glColor4f(GLfloat(rand()%255) / 255.0, GLfloat(rand()%255) / 255.0, GLfloat(rand()%255) / 255.0, 0.4);
+  glColor4f(GLfloat(rand()%255) / 255.0, GLfloat(rand()%255) / 255.0, GLfloat(rand()%255) / 255.0, 0.8);
     coord_type startx;
     coord_type starty;
     coord_type endx;
@@ -205,7 +205,7 @@ void draw_node(logical_node n) {
     }
   }
   if (n.contents_type == MIXED_AS_LINES) {
-    glColor4f(1.0,0.5,0.5, 0.4);
+    glColor4f(1.0,0.5,0.5, 0.6);
     draw_lines(*(n.lines_pointer_reference()));
   }
 }
@@ -225,6 +225,7 @@ int frame = 0;
   bounding_box box_to_draw;
   logical_node_lines_collection lc_to_draw;
   bool last_was_visible = true;
+  int m_mode = 0;
   
   while ( !done ) {
 
@@ -247,6 +248,7 @@ int frame = 0;
           if(event.key.keysym.sym == SDLK_d) --view_z;
           if(event.key.keysym.sym == SDLK_r) ++view_dist;
           if(event.key.keysym.sym == SDLK_f) --view_dist;
+          if(event.key.keysym.sym == SDLK_m) ++m_mode;
           if(event.key.keysym.sym != SDLK_ESCAPE)break;
           
         case SDL_QUIT:
@@ -263,16 +265,23 @@ int frame = 0;
 
     //drawing code here
     glClear(GL_COLOR_BUFFER_BIT);
+    glLineWidth(2);
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
-    gluLookAt(0.0+1.5*std::cos(double(frame) / 200),0.0+1.5*std::sin(double(frame) / 200),1.0,0,0,0,0,0,1);
+    gluLookAt(0.0+1.0*std::cos(double(frame) / 200),0.0+1.0*std::sin(double(frame) / 200),2.0,0,0,0,0,0,1);
     
-    glColor4f(0.0,last_was_visible ? 1.0 : 0.0, last_was_visible ? 0.0 : 1.0, 0.4);
-    glBegin(GL_POLYGON);
+    glColor4f(0.0,last_was_visible ? 1.0 : 0.0, last_was_visible ? 0.0 : 1.0, 0.3);
+    glBegin(GL_QUADS);
       glVertex3f(-1.0, -1.0, 0.0);
       glVertex3f(1.0, -1.0, 0.0);
       glVertex3f(1.0, 1.0, 0.0);
       glVertex3f(-1.0, 1.0, 0.0);
+    glEnd();
+    glBegin(GL_QUADS);
+      glVertex3f(-1.2, -1.1, 0.0);
+      glVertex3f(-1.0, -1.1, 0.0);
+      glVertex3f(-1.0, -1.0, 0.0);
+      glVertex3f(-1.2, -1.0, 0.0);
     glEnd();
     
     draw_node(foo.top_logical_node());
@@ -290,11 +299,12 @@ int frame = 0;
     //doing stuff code here
 	++frame;
 	
-    if((frame % 50) == 25) {
+    if(m_mode && lc_to_draw.empty()) {
+      --m_mode;
       int min_z = (rand()%2000) + 1000;
       bounding_box::vect min(rand()%(2*min_z - 1000) - min_z, rand()%(2*min_z  - 1000) - min_z, min_z);
       bounding_box::vect size(1000,1000,1000);
-      // Hack - don't bother about straight lines!
+      // Hack - avoid having axis-aligned perspective lines
       if (min.x == 0) ++min.x;
       if (min.x + size.x == 0) ++min.x;
       if (min.y == 0) ++min.y;
@@ -350,7 +360,8 @@ int frame = 0;
           ));
       }
     }
-    if((frame % 50) == 0) {
+    if(m_mode && !lc_to_draw.empty()) {
+      --m_mode;
       last_was_visible = foo.insert_from_lines_collection(lc_to_draw);
       lc_to_draw.clear();
     }
