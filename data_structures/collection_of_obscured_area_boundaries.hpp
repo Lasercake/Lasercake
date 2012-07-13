@@ -509,7 +509,7 @@ struct logical_node_lines_collection {
     }
   }
   
-  bool combine(logical_node_lines_collection const& other) {
+  bool relate(logical_node_lines_collection const& other, bool insert) {
     assert(bounds == other.bounds);
     bool result = false;
     
@@ -529,26 +529,38 @@ struct logical_node_lines_collection {
     std::vector<size_t> completely_visible_oplines;
     for (size_t i = 0; i < hlines.size(); ++i) {
       for (size_t j = 0; j < other.vlines.size(); ++j) {
-        if (handle_aaline_vs_aaline(hlines[i], hlines_tpts[i], other.vlines[j], ovlines_tpts[j])) result = true;
+        if (handle_aaline_vs_aaline(hlines[i], hlines_tpts[i], other.vlines[j], ovlines_tpts[j])) {
+          if (insert) { result = true; } else { return true; }
+        }
       }
       for (size_t j = 0; j < other.plines.size(); ++j) {
-        if (handle_aaline_vs_pline(true, hlines[i], hlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
+        if (handle_aaline_vs_pline(true, hlines[i], hlines_tpts[i], other.plines[j], oplines_tpts[j])) {
+          if (insert) { result = true; } else { return true; }
+        }
       }
     }
     for (size_t i = 0; i < vlines.size(); ++i) {
       for (size_t j = 0; j < other.hlines.size(); ++j) {
-        if (handle_aaline_vs_aaline(vlines[i], vlines_tpts[i], other.hlines[j], ohlines_tpts[j])) result = true;
+        if (handle_aaline_vs_aaline(vlines[i], vlines_tpts[i], other.hlines[j], ohlines_tpts[j])) {
+          if (insert) { result = true; } else { return true; }
+        }
       }
       for (size_t j = 0; j < other.plines.size(); ++j) {
-        if (handle_aaline_vs_pline(false, vlines[i], vlines_tpts[i], other.plines[j], oplines_tpts[j])) result = true;
+        if (handle_aaline_vs_pline(false, vlines[i], vlines_tpts[i], other.plines[j], oplines_tpts[j])) {
+          if (insert) { result = true; } else { return true; }
+        }
       }
     }
     for (size_t i = 0; i < plines.size(); ++i) {
       for (size_t j = 0; j < other.hlines.size(); ++j) {
-        if (handle_aaline_vs_pline(true, other.hlines[j], ohlines_tpts[j], plines[i], plines_tpts[i])) result = true;
+        if (handle_aaline_vs_pline(true, other.hlines[j], ohlines_tpts[j], plines[i], plines_tpts[i])) {
+          if (insert) { result = true; } else { return true; }
+        }
       }
       for (size_t j = 0; j < other.vlines.size(); ++j) {
-        if (handle_aaline_vs_pline(false, other.vlines[j], ovlines_tpts[j], plines[i], plines_tpts[i])) result = true;
+        if (handle_aaline_vs_pline(false, other.vlines[j], ovlines_tpts[j], plines[i], plines_tpts[i])) {
+          if (insert) { result = true; } else { return true; }
+        }
       }
     }
     
@@ -563,10 +575,17 @@ struct logical_node_lines_collection {
     mark_obscured_aalines(*this, true , false, other.hlines, ohlines_tpts, completely_visible_ohlines);
     mark_obscured_aalines(*this, false, false, other.vlines, ovlines_tpts, completely_visible_ovlines);
     mark_obscured_plines (*this,        false, other.plines, oplines_tpts, completely_visible_oplines);
-    if (!(completely_obscured_hlines.empty() && completely_obscured_vlines.empty() && completely_obscured_plines.empty() && completely_visible_ohlines.empty() && completely_visible_ovlines.empty() && completely_visible_oplines.empty())) result = true;
+    if (!(
+        completely_obscured_hlines.empty() && completely_obscured_vlines.empty() &&
+        completely_obscured_plines.empty() && completely_visible_ohlines.empty() &&
+        completely_visible_ovlines.empty() && completely_visible_oplines.empty())) {
+      if (insert) { result = true; } else { return true; }
+    }
     
-    // If nothing changed, we can skip the rest of this.
+    // If nothing from the other set was visible at all, we can skip the rest of this.
     if (!result) return false;
+    
+    assert(insert);
     
     // Then slice up the overlapped lines based on the overlaps.
     slice_marked_lines(true ,       hlines, hlines,  hlines_tpts);
@@ -591,6 +610,13 @@ struct logical_node_lines_collection {
     regenerate_left_side_tpts();
     
     return true;
+  }
+  
+  bool allows_to_be_visible(logical_node_lines_collection const& other) {
+    return relate(other, false);
+  }
+  bool combine(logical_node_lines_collection const& other) {
+    return relate(other, true);
   }
 };
 
@@ -742,6 +768,7 @@ struct logical_node {
   void clear_children();
   void create_children(uint8_t children_contents_type);
   void set_contents_type(uint8_t new_type, bool keep_line_info = true);
+  bool lines_collection_is_visible(logical_node_lines_collection const& lines);
   bool insert_from_lines_collection(logical_node_lines_collection const& lines);
 };
 
@@ -959,6 +986,44 @@ bool logical_node::insert_from_other_collection(logical_node const& other) {
   }
 }
 */
+
+bool logical_node::lines_collection_is_visible(logical_node_lines_collection const& lines) {
+  assert(lines.bounds == bounds());
+  if (contents_type == MIXED_AS_LINES) { assert(lines_pointer_reference()->bounds == bounds()); }
+  
+  if (lines.empty()) {
+    // Nothing there at all, so nothing there is visible.
+    return false;
+  }
+  else if (contents_type == ALL_BLOCKED) {
+    // We block everything, so nothing there is visible.
+    return false;
+  }
+  else if (lines.full()) {
+    // If they were full, then wherever our clear area was, you could see them through it.
+    return true;
+  }
+  else if (contents_type == ALL_CLEAR) {
+    // If we were all clear, then wherever their blockage is, it was visible.
+    return true;
+  }
+  // Now: Both ourselves and the other are mixed.
+  else if (contents_type == MIXED_AS_CHILDREN) {
+    for (int which_child = 0; which_child < 4; ++which_child) {
+      logical_node c = child(which_child);
+      logical_node_lines_collection sub_lines(lines, c.bounds());
+      if (c.lines_collection_is_visible) return true;
+    }
+    return false;
+  }
+  else if (contents_type == MIXED_AS_LINES) {
+    logical_node_lines_collection& l = *lines_pointer_reference();
+    return l.allows_to_be_visible(lines);
+  }
+  else {
+    assert(false);
+  }
+}
 
 bool logical_node::insert_from_lines_collection(logical_node_lines_collection const& lines) {
   assert(lines.bounds == bounds());
