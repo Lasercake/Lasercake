@@ -3,4 +3,4 @@
 printf '\n\n\n'
 g++ -std=c++0x -o sim -ggdb -Wall -Wextra -Wno-unknown-pragmas -O0 -fmax-errors=15 \
 	-I/usr/include/SDL/ -lSDL -lGL -lGLU \
-	*.cpp "$@"
+	*.cpp ../data_structures/collection_of_obscured_area_boundaries.cpp "$@"

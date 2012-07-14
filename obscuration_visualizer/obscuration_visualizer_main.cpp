@@ -37,6 +37,8 @@
 // purely for a convenient bounding box type:
 #include "../data_structures/polygon_collision_detection.hpp"
 
+using namespace collection_of_obscured_area_boundaries_impl;
+
 static SDL_Surface *gScreen;
 
 static void initAttributes ()
@@ -220,12 +222,13 @@ typedef boost::random::uniform_int_distribution<int64_t> uniform_random;
   
   double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
 int frame = 0;
-  collection_of_obscured_area_boundaries foo;
+  obscured_areas_tree foo;
   
   bounding_box box_to_draw;
   logical_node_lines_collection lc_to_draw;
   bool last_was_visible = true;
   int m_mode = 0;
+  int total_process_milliseconds = 0;
   
   while ( !done ) {
 
@@ -368,7 +371,8 @@ int frame = 0;
     }
     
     int after = SDL_GetTicks();
-    std::cerr << frame << ": " << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";
+    total_process_milliseconds += (after - before_processing);
+    std::cerr << frame << ": " << total_process_milliseconds << ", " << (after - before_processing) << ", " << (before_GL - before_drawing) << ", " << (before_processing - before_GL) << "\n";
 
 //    SDL_Delay(50);
   }
