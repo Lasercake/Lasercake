@@ -475,67 +475,69 @@ void view_on_the_world::prepare_gl_data(
       gl_collection& coll = gl_collections_by_distance[
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
       ];
-      shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
-      const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
+      if ((view_type != ROBOT) || (id != robot_id)) {
+        shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
+        const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
 
-      const color objects_color(0xff00ffaa); //something bright&visible
+        const color objects_color(0xff00ffaa); //something bright&visible
 
-      lasercake_vector<bounding_box>::type const& obj_bboxes = obj_shape->second.get_boxes();
-      for (bounding_box const& bbox : obj_bboxes) {
-        const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
-        const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
-        push_quad(coll,
-                  vertex(bmin.x, bmin.y, bmin.z),
-                  vertex(bmax.x, bmin.y, bmin.z),
-                  vertex(bmax.x, bmax.y, bmin.z),
-                  vertex(bmin.x, bmax.y, bmin.z),
-                  objects_color);
-        push_quad(coll,
-                  vertex(bmin.x, bmin.y, bmin.z),
-                  vertex(bmax.x, bmin.y, bmin.z),
-                  vertex(bmax.x, bmin.y, bmax.z),
-                  vertex(bmin.x, bmin.y, bmax.z),
-                  objects_color);
-        push_quad(coll,
-                  vertex(bmin.x, bmin.y, bmin.z),
-                  vertex(bmin.x, bmin.y, bmax.z),
-                  vertex(bmin.x, bmax.y, bmax.z),
-                  vertex(bmin.x, bmax.y, bmin.z),
-                  objects_color);
-        push_quad(coll,
-                  vertex(bmin.x, bmin.y, bmax.z),
-                  vertex(bmax.x, bmin.y, bmax.z),
-                  vertex(bmax.x, bmax.y, bmax.z),
-                  vertex(bmin.x, bmax.y, bmax.z),
-                  objects_color);
-        push_quad(coll,
-                  vertex(bmin.x, bmax.y, bmin.z),
-                  vertex(bmax.x, bmax.y, bmin.z),
-                  vertex(bmax.x, bmax.y, bmax.z),
-                  vertex(bmin.x, bmax.y, bmax.z),
-                  objects_color);
-        push_quad(coll,
-                  vertex(bmax.x, bmin.y, bmin.z),
-                  vertex(bmax.x, bmin.y, bmax.z),
-                  vertex(bmax.x, bmax.y, bmax.z),
-                  vertex(bmax.x, bmax.y, bmin.z),
-                  objects_color);
-      }
-
-      lasercake_vector<convex_polygon>::type const& obj_polygons = obj_shape->second.get_polygons();
-      for (convex_polygon const& polygon : obj_polygons) {
-        push_convex_polygon(view_loc, coll, polygon.get_vertices(), color(0x77777777));
-
-        // TODO so many redundant velocity vectors!!
-        for(auto const& this_vertex : polygon.get_vertices()) {
-          const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
-          push_line(coll,
-                    vertex(locv.x, locv.y, locv.z),
-                    vertex(
-                      locv.x + (get_primitive_double(objp->velocity().x) / get_primitive_double(tile_width)),
-                      locv.y + (get_primitive_double(objp->velocity().y) / get_primitive_double(tile_width)),
-                      locv.z + (get_primitive_double(objp->velocity().z) / get_primitive_double(tile_width))),
+        lasercake_vector<bounding_box>::type const& obj_bboxes = obj_shape->second.get_boxes();
+        for (bounding_box const& bbox : obj_bboxes) {
+          const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
+          const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
+          push_quad(coll,
+                    vertex(bmin.x, bmin.y, bmin.z),
+                    vertex(bmax.x, bmin.y, bmin.z),
+                    vertex(bmax.x, bmax.y, bmin.z),
+                    vertex(bmin.x, bmax.y, bmin.z),
                     objects_color);
+          push_quad(coll,
+                    vertex(bmin.x, bmin.y, bmin.z),
+                    vertex(bmax.x, bmin.y, bmin.z),
+                    vertex(bmax.x, bmin.y, bmax.z),
+                    vertex(bmin.x, bmin.y, bmax.z),
+                    objects_color);
+          push_quad(coll,
+                    vertex(bmin.x, bmin.y, bmin.z),
+                    vertex(bmin.x, bmin.y, bmax.z),
+                    vertex(bmin.x, bmax.y, bmax.z),
+                    vertex(bmin.x, bmax.y, bmin.z),
+                    objects_color);
+          push_quad(coll,
+                    vertex(bmin.x, bmin.y, bmax.z),
+                    vertex(bmax.x, bmin.y, bmax.z),
+                    vertex(bmax.x, bmax.y, bmax.z),
+                    vertex(bmin.x, bmax.y, bmax.z),
+                    objects_color);
+          push_quad(coll,
+                    vertex(bmin.x, bmax.y, bmin.z),
+                    vertex(bmax.x, bmax.y, bmin.z),
+                    vertex(bmax.x, bmax.y, bmax.z),
+                    vertex(bmin.x, bmax.y, bmax.z),
+                    objects_color);
+          push_quad(coll,
+                    vertex(bmax.x, bmin.y, bmin.z),
+                    vertex(bmax.x, bmin.y, bmax.z),
+                    vertex(bmax.x, bmax.y, bmax.z),
+                    vertex(bmax.x, bmax.y, bmin.z),
+                    objects_color);
+        }
+
+        lasercake_vector<convex_polygon>::type const& obj_polygons = obj_shape->second.get_polygons();
+        for (convex_polygon const& polygon : obj_polygons) {
+          push_convex_polygon(view_loc, coll, polygon.get_vertices(), color(0x77777777));
+
+          // TODO so many redundant velocity vectors!!
+          for(auto const& this_vertex : polygon.get_vertices()) {
+            const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
+            push_line(coll,
+                      vertex(locv.x, locv.y, locv.z),
+                      vertex(
+                        locv.x + (get_primitive_double(objp->velocity().x) / get_primitive_double(tile_width)),
+                        locv.y + (get_primitive_double(objp->velocity().y) / get_primitive_double(tile_width)),
+                        locv.z + (get_primitive_double(objp->velocity().z) / get_primitive_double(tile_width))),
+                      objects_color);
+          }
         }
       }
     }
