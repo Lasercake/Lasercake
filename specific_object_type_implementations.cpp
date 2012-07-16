@@ -69,10 +69,17 @@ private:
   unordered_set<object_or_tile_identifier> ignores_;
 };
 
-void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar> location, vector3<fine_scalar> facing) {
-  facing = facing * tile_width * 2 / facing.magnitude_within_32_bits();
-  const line_segment beam(location, location + facing * 50);
-  const beam_first_contact_finder finder(w, beam, my_id);
+// Returns object_or_tile_identifier() if nothing was hit.
+// Has no side_effects unless add_laser_sfx==true.
+object_or_tile_identifier laser_find(
+    world& w,
+    object_identifier dont_hit_this,
+    vector3<fine_scalar> source,
+    vector3<fine_scalar> beam_vector,
+    bool add_laser_sfx
+) {
+  const line_segment beam(source, source + beam_vector);
+  const beam_first_contact_finder finder(w, beam, dont_hit_this);
   auto hit_tile =  w.tiles_exposed_to_collision().find_least(finder);
   auto hit_object =  w.objects_exposed_to_collision().find_least(finder);
   const rational farther_away_than_possible_intercept_point = rational(2); //the valid max is 1
@@ -86,17 +93,25 @@ void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar>
     hit_thing = hit_object->object;
     best_intercept_point = hit_object->cost;
   }
-  if(hit_thing != object_or_tile_identifier()) {
-    // TODO do I have to worry about overflow?
-    w.add_laser_sfx(location, multiply_rational_into(facing * 50, best_intercept_point));
-    if(tile_location const* locp = hit_thing.get_tile_location()) {
-      if (locp->stuff_at().contents() == ROCK) {
-        w.replace_substance(*locp, ROCK, RUBBLE);
-      }
+  if(add_laser_sfx) {
+    if(hit_thing != object_or_tile_identifier()) {
+      // TODO do I have to worry about overflow?
+      w.add_laser_sfx(source, multiply_rational_into(beam_vector, best_intercept_point));
+    }
+    else {
+      w.add_laser_sfx(source, beam_vector);
     }
   }
-  else {
-    w.add_laser_sfx(location, facing * 50);
+  return hit_thing;
+}
+
+void fire_standard_laser(world& w, object_identifier my_id, vector3<fine_scalar> location, vector3<fine_scalar> facing) {
+  const vector3<fine_scalar> beam_vector = facing * tile_width * 2 / facing.magnitude_within_32_bits() * 50;
+  const object_or_tile_identifier hit_thing = laser_find(w, my_id, location, beam_vector, true);
+  if(tile_location const* locp = hit_thing.get_tile_location()) {
+    if (locp->stuff_at().contents() == ROCK) {
+      w.replace_substance(*locp, ROCK, RUBBLE);
+    }
   }
 }
 
