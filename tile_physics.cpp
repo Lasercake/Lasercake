@@ -278,8 +278,8 @@ water_group_identifier get_water_group_id_by_grouped_tile(state_t const& state, 
   // Crap, we don't know what group we're part of unless we find a surface tile!
   // Find the next surface tile in some arbitrary direction.
   // That tile will tell us what group we're in.
-  auto iter = state.groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.lower_bound(loc);
-  if (iter == state.groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end()) {
+  auto iter = state.groupable_water_volume_calipers.x_boundary_groupable_water_tiles.lower_bound(loc);
+  if (iter == state.groupable_water_volume_calipers.x_boundary_groupable_water_tiles.end()) {
     return NO_WATER_GROUP;
   }
   tile_location const& surface_loc = *iter;
@@ -295,7 +295,7 @@ persistent_water_group_info const& get_water_group_by_grouped_tile(state_t const
 
 ///////////////////////////////
 // Debugging functions:
-void dump_boundary_stuff(groupable_water_dimensional_boundaries_TODO_name_this_better_t& g) {
+void dump_boundary_stuff(groupable_water_volume_calipers_t& g) {
   for (auto const& foo : g.x_boundary_groupable_water_tiles)
     std::cerr << "  " << foo.coords() << "\n";
 }
@@ -470,7 +470,7 @@ bool is_ungrouped_surface_tile(tile_location const& loc, water_groups_by_locatio
 
 void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location const& loc) {
   // For short:
-  groupable_water_dimensional_boundaries_TODO_name_this_better_t& groupable_water_dimensional_boundaries_TODO_name_this_better = state.groupable_water_dimensional_boundaries_TODO_name_this_better;
+  groupable_water_volume_calipers_t& groupable_water_volume_calipers = state.groupable_water_volume_calipers;
   water_group_identifier& next_water_group_identifier = state.next_water_group_identifier;
   persistent_water_groups_t& persistent_water_groups = state.persistent_water_groups;
   water_groups_by_location_t& water_groups_by_surface_tile = state.water_groups_by_surface_tile;
@@ -498,17 +498,17 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
   struct group_collecting_info {
     group_collecting_info(tile_location const& start_loc, water_group_identifier new_group_id,
                           persistent_water_group_info& new_group,
-                          groupable_water_dimensional_boundaries_TODO_name_this_better_t& groupable_water_dimensional_boundaries_TODO_name_this_better,
+                          groupable_water_volume_calipers_t& groupable_water_volume_calipers,
                           water_groups_by_location_t& water_groups_by_surface_tile)
       : new_group_id(new_group_id), new_group(new_group),
-        groupable_water_dimensional_boundaries_TODO_name_this_better(groupable_water_dimensional_boundaries_TODO_name_this_better),
+        groupable_water_volume_calipers(groupable_water_volume_calipers),
         water_groups_by_surface_tile(water_groups_by_surface_tile) {
       try_collect_loc(start_loc);
     }
     
     water_group_identifier new_group_id;
     persistent_water_group_info& new_group;
-    groupable_water_dimensional_boundaries_TODO_name_this_better_t& groupable_water_dimensional_boundaries_TODO_name_this_better;
+    groupable_water_volume_calipers_t& groupable_water_volume_calipers;
     water_groups_by_location_t& water_groups_by_surface_tile;
     std::vector<tile_location> frontier;
     void try_collect_loc(tile_location const& loc) {
@@ -520,12 +520,12 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
     
         // This DOES handle first-initialization properly; it makes some unnecessary checks, but
         // we're not worried about super speed here.
-        groupable_water_dimensional_boundaries_TODO_name_this_better.handle_tile_insertion(loc);
+        groupable_water_volume_calipers.handle_tile_insertion(loc);
       }
     }
   };
   
-  group_collecting_info inf(surface_loc, new_group_id, new_group, groupable_water_dimensional_boundaries_TODO_name_this_better, water_groups_by_surface_tile);
+  group_collecting_info inf(surface_loc, new_group_id, new_group, groupable_water_volume_calipers, water_groups_by_surface_tile);
   while(!inf.frontier.empty()) {
     const tile_location search_loc = inf.frontier.back();
     inf.frontier.pop_back();
@@ -558,7 +558,7 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
   // Here, we look up all "low-x ends of x-rows" and jump to the high-x ends
   num_tiles_by_height.clear();
   
-  auto const& groupable_water_dimensional_boundaries_TODO_name_this_better = state.groupable_water_dimensional_boundaries_TODO_name_this_better;
+  auto const& groupable_water_volume_calipers = state.groupable_water_volume_calipers;
   
   for (tile_location const& surface_loc : surface_tiles) {
     // We're only interested in starting at low-x boundaries
@@ -569,10 +569,10 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
       }
       else {
         // Otherwise, we have to jump to the end of the row using the fancy sorted caches.
-        auto surface_loc_iter = groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.find(surface_loc);
-        assert (surface_loc_iter != groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end());
+        auto surface_loc_iter = groupable_water_volume_calipers.x_boundary_groupable_water_tiles.find(surface_loc);
+        assert (surface_loc_iter != groupable_water_volume_calipers.x_boundary_groupable_water_tiles.end());
         ++surface_loc_iter;
-        assert (surface_loc_iter != groupable_water_dimensional_boundaries_TODO_name_this_better.x_boundary_groupable_water_tiles.end());
+        assert (surface_loc_iter != groupable_water_volume_calipers.x_boundary_groupable_water_tiles.end());
         tile_location const& end_tile = *surface_loc_iter;
 
         assert_if_ASSERT_EVERYTHING(end_tile.coords().y == surface_loc.coords().y && end_tile.coords().z == surface_loc.coords().z);
@@ -781,7 +781,7 @@ void replace_substance_impl(
    tiles_collision_detector& tiles_exposed_to_collision)
 {
   // For short:
-  groupable_water_dimensional_boundaries_TODO_name_this_better_t& groupable_water_dimensional_boundaries_TODO_name_this_better = state.groupable_water_dimensional_boundaries_TODO_name_this_better;
+  groupable_water_volume_calipers_t& groupable_water_volume_calipers = state.groupable_water_volume_calipers;
   active_fluids_t& active_fluids = state.active_fluids;
   water_group_identifier& next_water_group_identifier = state.next_water_group_identifier;
   persistent_water_groups_t& persistent_water_groups = state.persistent_water_groups;
@@ -919,10 +919,10 @@ void replace_substance_impl(
   // 3) Update the relatively-isolated cached info like interiorness
   // ==============================================================================
   if (old_substance_type == GROUPABLE_WATER && new_substance_type != GROUPABLE_WATER) {
-    groupable_water_dimensional_boundaries_TODO_name_this_better.handle_tile_removal(loc);
+    groupable_water_volume_calipers.handle_tile_removal(loc);
   }
   if (new_substance_type == GROUPABLE_WATER && old_substance_type != GROUPABLE_WATER) {
-    groupable_water_dimensional_boundaries_TODO_name_this_better.handle_tile_insertion(loc);
+    groupable_water_volume_calipers.handle_tile_insertion(loc);
   }
   if (new_substance_type != old_substance_type) {
     // Changes can activate nearby water.

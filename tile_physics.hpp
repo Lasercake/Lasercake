@@ -82,7 +82,7 @@ typedef unordered_map<tile_location, water_group_identifier> water_groups_by_loc
 // The only reason we don't is because there's no need for any of the others right now.
 // (And it would take that much extra space (proportional to the that-dimension surface area)
 //   and time (proportional to how much the groupable-water landscape changes)).
-struct groupable_water_dimensional_boundaries_TODO_name_this_better_t {
+struct groupable_water_volume_calipers_t {
   set<tile_location, tile_compare_yzx> x_boundary_groupable_water_tiles;
   //set<tile_location, tile_compare_zxy> y_boundary_groupable_water_tiles;
   //set<tile_location, tile_compare_xyz> z_boundary_groupable_water_tiles;
@@ -143,7 +143,7 @@ struct state_t {
   water_group_identifier next_water_group_identifier;
   water_groups_by_location_t water_groups_by_surface_tile;
   persistent_water_groups_t persistent_water_groups;
-  groupable_water_dimensional_boundaries_TODO_name_this_better_t groupable_water_dimensional_boundaries_TODO_name_this_better;
+  groupable_water_volume_calipers_t groupable_water_volume_calipers;
   active_fluids_t active_fluids;
 
   //only used in replace_substance(), to get world_collision_detector& things_exposed_to_collision:
