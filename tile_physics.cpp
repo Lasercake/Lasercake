@@ -1403,7 +1403,7 @@ void update_fluids_impl(state_t& state) {
           bool pinned_between_obstacles;
           while(true) {
             tile_contents contents_there = walking_loc.stuff_at().contents();
-            if (contents_there == GROUPABLE_WATER || obstructiveness(contents_there) > obstructiveness(GROUPABLE_WATER)) {
+            if (contents_there == GROUPABLE_WATER || contents_there == ROCK) {
               pinned_between_obstacles = true;
               break;
             }
@@ -1585,6 +1585,7 @@ void update_fluids_impl(state_t& state) {
         // (Unless we're slower than min_convincing_speed, which is a kludge that's important for the "fall off pillars" rule.)
         src_fluid.blockage_amount_this_frame[move.dir] = move.excess_progress;
         
+        /*
         sub_tile_distance dst_vel_in_movement_dir;
         auto i = active_fluids.find(dst);
         if (i == active_fluids.end()) dst_vel_in_movement_dir = inactive_fluid_velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
@@ -1594,6 +1595,30 @@ void update_fluids_impl(state_t& state) {
         const sub_tile_distance excess_vel = our_vel_in_movement_dir - acceptable_remaining_vel_for_us;
         if (excess_vel > 0) {
           src_fluid.velocity -= vector3<sub_tile_distance>(cardinal_direction_vectors[move.dir]) * excess_vel;
+        }*/
+        
+        // MEGA-HACK - I have no idea how this is supposed to work, I just experimented
+        // and eventually decided that this was better than the other things I came up with.
+        const sub_tile_distance our_vel_in_movement_dir = src_fluid.velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
+        if (our_vel_in_movement_dir > min_convincing_speed) {
+          sub_tile_distance dst_vel_in_movement_dir;
+          auto i = active_fluids.find(dst);
+          if (i == active_fluids.end()) dst_vel_in_movement_dir = inactive_fluid_velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
+          else                          dst_vel_in_movement_dir = i->second.velocity     .dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
+          const sub_tile_distance excess_vel = our_vel_in_movement_dir - dst_vel_in_movement_dir;
+          const sub_tile_distance vel_transfer = std::max(excess_vel / 2, our_vel_in_movement_dir - min_convincing_speed);
+          if (vel_transfer > 0) {
+            const vector3<sub_tile_distance> change_vector = (vector3<sub_tile_distance>(cardinal_direction_vectors[move.dir]) * vel_transfer);
+            src_fluid.velocity -= change_vector;
+            //if ((move.dir != zminus) || (vel_transfer > gravity_acceleration_magnitude)) {
+            if (is_fluid(dst.stuff_at().contents())) {
+              active_fluids[dst].velocity += change_vector;
+            //}
+            }
+            else {
+              //src_fluid.velocity -= change_vector;
+            }
+          }
         }
       }
     }
@@ -1605,11 +1630,41 @@ void update_fluids_impl(state_t& state) {
   //  Make water groupable if it's ready for that.
   //  Deactive water if needs to be deactivated.
   // ==============================================================================
-  
+  //std::vector<tile_location> water_to_become_groupable;
+  //std::vector<tile_location> water_to_become_ungroupable;
   for (pair<const tile_location, active_fluid_tile_info>& p : active_fluids) {
     tile_location const& loc = p.first;
-    active_fluid_tile_info& fluid = p.second;
+    
+    const auto stuff = loc.stuff_at().contents();
+    if (is_water(stuff)) {
+      active_fluid_tile_info& fluid = p.second;
+      const auto lower_loc = loc.get_neighbor<zminus>(CONTENTS_ONLY);
+      const auto lower_stuff = lower_loc.stuff_at().contents();
+      bool anywhere_downwards_is_a_supporting_tile = ((lower_stuff == GROUPABLE_WATER) || (obstructiveness(lower_stuff) > obstructiveness(GROUPABLE_WATER)));
+      if (!anywhere_downwards_is_a_supporting_tile) {
+        const auto adj_neighbors = get_perpendicular_neighbors(lower_loc, zminus, CONTENTS_ONLY);
+        for (tile_location adj_neighbor : adj_neighbors) {
+          const auto adj_lower_stuff = adj_neighbor.stuff_at().contents();
+          if ((adj_lower_stuff == GROUPABLE_WATER) || (obstructiveness(adj_lower_stuff) > obstructiveness(GROUPABLE_WATER))) {
+            anywhere_downwards_is_a_supporting_tile = true;
+            break;
+          }
+        }
+      }
+      const bool should_be_groupable = anywhere_downwards_is_a_supporting_tile && (std::max(std::abs(fluid.velocity(X)), std::abs(fluid.velocity(Y))) <= min_convincing_speed/2) && (fluid.velocity(Z) <= inactive_fluid_velocity(Z));
+      if (should_be_groupable && (stuff == UNGROUPABLE_WATER)) {
+        //water_to_become_groupable.push_back(loc);
+        replace_substance(state, loc, UNGROUPABLE_WATER, GROUPABLE_WATER);
+      }
+      if (!should_be_groupable && (stuff == GROUPABLE_WATER)) {
+        //water_to_become_ungroupable.push_back(loc);
+        replace_substance(state, loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
+      }
+    }
+    
+    /*active_fluid_tile_info& fluid = p.second;
     tile const& t = loc.stuff_at();
+    
     if (t.contents() == UNGROUPABLE_WATER) {
       //--fluid.frames_until_can_become_groupable;
       //if (fluid.frames_until_can_become_groupable <= 0) {
@@ -1627,8 +1682,13 @@ void update_fluids_impl(state_t& state) {
         if (loc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER)
           replace_substance(state, loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
       }
-    }
+    }*/
   }
+  
+  // Hmm - is it on-average faster to do one of these before the other (wrt inconvenient join/splits)?
+  // Is there a way to more-efficiently do them as a batch?
+  //for (tile_location loc : water_to_become_groupable) replace_substance(state, loc, UNGROUPABLE_WATER, GROUPABLE_WATER);
+  //for (tile_location loc : water_to_become_ungroupable) replace_substance(state, loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
   
   for (auto i = active_fluids.begin(); i != active_fluids.end(); ) {
     tile_location const& loc = i->first;
