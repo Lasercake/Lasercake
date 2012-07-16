@@ -23,6 +23,7 @@
 
 #include "world.hpp"
 #include "tile_physics.hpp"
+#include "data_structures/deque.hpp"
 
 /*
 
@@ -1126,7 +1127,7 @@ void replace_substance_impl(
     struct water_splitting_info {
       unordered_map<tile_location, unordered_set<tile_location>> collected_locs_by_neighbor;
       unordered_map<tile_location, tile_location> neighbors_by_collected_loc;
-      unordered_map<tile_location, std::queue<tile_location>> disconnected_frontiers;
+      unordered_map<tile_location, lasercake_queue<tile_location>::type> disconnected_frontiers;
       unordered_set<tile_location> defunct_frontiers;
       
       // Try to collect a location into one of the fills.
@@ -1182,7 +1183,7 @@ void replace_substance_impl(
     while(inf.disconnected_frontiers.size() > 1) {
       for (auto p = inf.disconnected_frontiers.begin(); p != inf.disconnected_frontiers.end(); ) {
         tile_location const& which_neighbor = p->first;
-        std::queue<tile_location>& frontier = p->second;
+        auto/*queue<tile_location>*/& frontier = p->second;
         bool destroy_this_frontier = (inf.defunct_frontiers.find(which_neighbor) != inf.defunct_frontiers.end());
         
         if (!destroy_this_frontier && frontier.empty()) {
