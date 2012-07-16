@@ -22,6 +22,7 @@
 #include "specific_object_types.hpp"
 
 #include "data_structures/bbox_collision_detector_iteration.hpp"
+#include "tile_physics.hpp"
 
 namespace /* anonymous */ {
 
@@ -215,6 +216,10 @@ void robot::update(world& w, object_identifier my_id) {
     fire_standard_laser(w, my_id, location_ + offset, facing_);
     fire_standard_laser(w, my_id, location_ - offset, facing_);
   }
+  if (input_news.num_times_pressed("m")) {
+    const shared_ptr<autorobot> aur (new autorobot(location_ + facing_ * 2, facing_));
+    w.try_create_object(aur);
+  }
 }
 
 
@@ -264,6 +269,24 @@ bool once_a_second(world& w, int num = 1, int denom = 1) {
   return ((w.game_time_elapsed() * num / denom) % time_units_per_second) == 0;
 }
 
+autorobot::autorobot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location_(location),initial_location_(((location / tile_width) * tile_width) + vector3<fine_scalar>(tile_width / 2, tile_width / 2, 0)),facing_(facing),carrying_(0){
+  fine_scalar bigger_dir;
+  if (std::abs(facing_.x) > std::abs(facing_.y)) {
+    bigger_dir = facing.x;
+    facing_.y = 0;
+    facing_.x = facing_.x > 0 ? tile_width : -tile_width;
+  }
+  else {
+    bigger_dir = facing.y;
+    facing_.x = 0;
+    facing_.y = facing_.y > 0 ? tile_width : -tile_width;
+  }
+  if (std::abs(bigger_dir) < std::abs(facing.z) * 8) {
+    facing_.z = facing_.z > 0 ? tile_height : -tile_height;
+  }
+  else facing_.z = 0;
+}
+
 void autorobot::update(world& w, object_identifier my_id) {
   auto& rng = w.get_rng();
   update_location(location_, w, my_id);
@@ -271,7 +294,7 @@ void autorobot::update(world& w, object_identifier my_id) {
   tile_location i_am_in = w.make_tile_location(get_random_containing_tile_coordinates(location_, rng), FULL_REALIZATION);
   std::array<tile_location, num_cardinal_directions> my_neighbors = get_all_neighbors(i_am_in, FULL_REALIZATION);
 
-  int levitate = 0;
+  /*int levitate = 0;
   int horiz[] = { xplus, xminus, yplus, yminus };
   for(auto dir : horiz) {
     levitate += (my_neighbors[dir].stuff_at().contents() != AIR);
@@ -288,6 +311,73 @@ void autorobot::update(world& w, object_identifier my_id) {
       velocity_.y /= 2;
       velocity_.x += random_vel(rng);
       velocity_.y += random_vel(rng);
+    }
+  }*/
+  //facing_ = facing_ * tile_width / facing_.magnitude_within_32_bits();
+  
+  auto direction_home = initial_location_ - location_;
+  auto mag = i64sqrt(direction_home.x*direction_home.x + direction_home.y*direction_home.y);
+  
+  if (carrying_ < 4) {
+    velocity_.x = facing_.x * velocity_scale_factor / 8;
+    velocity_.y = facing_.y * velocity_scale_factor / 8;
+    
+    if (facing_.z >= 0 || mag >= 10*tile_width) {
+    const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
+    const vector3<fine_scalar> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
+    const vector3<fine_scalar> top_middle(middle(X), middle(Y), shape_bounds.max(Z));
+    /*const vector3<fine_scalar> top_middle(
+      boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>(shape_bounds.min(X), shape_bounds.max(X))(rng),
+      boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>(shape_bounds.min(Y), shape_bounds.max(Y))(rng),
+      shape_bounds.max(Z));*/
+    const vector3<fine_scalar> beam_delta = facing_;
+    beam_first_contact_finder finder(w, line_segment(top_middle, top_middle + beam_delta), my_id);
+    if(auto hit = w.get_things_exposed_to_collision().find_least(finder)) {
+      // TODO do I have to worry about overflow?
+      w.add_laser_sfx(top_middle, multiply_rational_into(beam_delta, hit->cost));
+      if(tile_location const* locp = hit->object.get_tile_location()) {
+        if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
+          w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+          ++carrying_;
+          //w.replace_substance(*locp, locp->stuff_at().contents(), RUBBLE);
+          //tile_physics_impl::get_state(w.tile_physics()).active_fluids[*locp].velocity -= facing_; // Uhh, at what factor? I don't remember the tile velocity rules!!!! - Eli, Jul 14, 2012
+        }
+      }
+    }
+    else {
+      w.add_laser_sfx(top_middle, beam_delta);
+      vector3<fine_scalar> beam_delta2(facing_.x / -4,facing_.y / -4, 1 - shape_bounds.size(Z));
+      auto beam_start2 = top_middle + beam_delta;
+      beam_first_contact_finder finder2(w, line_segment(beam_start2, beam_start2 + beam_delta2), my_id);
+      if(auto hit2 = w.get_things_exposed_to_collision().find_least(finder2)) {
+        w.add_laser_sfx(beam_start2, multiply_rational_into(beam_delta2, hit2->cost));
+        if(tile_location const* locp = hit2->object.get_tile_location()) {
+          if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
+            w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+            ++carrying_;
+            //w.replace_substance(*locp, locp->stuff_at().contents(), RUBBLE);
+            //tile_physics_impl::get_state(w.tile_physics()).active_fluids[*locp].velocity -= beam_delta2; // Uhh, at what factor? I don't remember the tile velocity rules!!!! - Eli, Jul 14, 2012
+          }
+        }
+      }
+      else {
+        w.add_laser_sfx(beam_start2, beam_delta2);
+      }
+    }
+    }
+  }
+  else {
+    if (mag != 0) {
+      velocity_.x = direction_home.x * tile_width * velocity_scale_factor / 8 / mag;
+      velocity_.y = direction_home.y * tile_width * velocity_scale_factor / 8 / mag;
+    }
+    if (mag <= tile_width) {
+      for (auto loc : my_neighbors) {
+        if (loc.stuff_at().contents() == AIR) {
+          w.replace_substance(loc, AIR, RUBBLE);
+          --carrying_;
+        }
+      }
     }
   }
 }

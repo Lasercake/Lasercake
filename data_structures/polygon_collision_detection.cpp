@@ -475,6 +475,8 @@ bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
 bool shape::intersects(shape const& other)const {
   if (!bounds().overlaps(other.bounds())) return false;
   
+  caller_error_if((!segments_.empty()) && (!other.segments_.empty()), "You tried to check whether two shapes that both contain 'segment' parts were intersecting. That shouldn't be allowed to happen, because of the somewhat arbitrary nature of whether two 1D objects intersect in 3D space.");
+  
   for (line_segment const& l : segments_) {
     for (convex_polygon const& p2 : other.polygons_) {
       if (get_first_intersection(l, p2)) return true;
