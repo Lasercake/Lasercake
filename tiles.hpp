@@ -50,10 +50,24 @@ struct tile_bounding_box {
   tile_bounding_box(){}
   tile_bounding_box(vector3<tile_coordinate> coords):min(coords),size(1,1,1){}
   tile_bounding_box(vector3<tile_coordinate> min, vector3<tile_coordinate> size):min(min),size(size){}
+  vector3<tile_coordinate> max()const { return min + (size - vector3<tile_coordinate>(1,1,1)); }
+
   bool contains(vector3<tile_coordinate> v) {
     return (v.x >= min.x && v.x <= min.x + (size.x - 1) &&
             v.y >= min.y && v.y <= min.y + (size.y - 1) &&
             v.z >= min.z && v.z <= min.z + (size.z - 1));
+  }
+  bool overlaps(tile_bounding_box const& o)const {
+    return
+         min.x < (o.min.x+o.size.x) && o.min.x < (min.x+size.x)
+      && min.y < (o.min.y+o.size.y) && o.min.y < (min.y+size.y)
+      && min.z < (o.min.z+o.size.z) && o.min.z < (min.z+size.z);
+  }
+  bool subsumes(tile_bounding_box const& o)const {
+    return
+         min.x <= o.min.x && (o.min.x+o.size.x) <= (min.x+size.x)
+      && min.y <= o.min.y && (o.min.y+o.size.y) <= (min.y+size.y)
+      && min.z <= o.min.z && (o.min.z+o.size.z) <= (min.z+size.z);
   }
 
   class iterator : public boost::iterator_facade<iterator, vector3<tile_coordinate>, boost::forward_traversal_tag, vector3<tile_coordinate>>
