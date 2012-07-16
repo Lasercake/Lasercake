@@ -331,6 +331,7 @@ void autorobot::update(world& w, object_identifier my_id) {
       boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>(shape_bounds.min(Y), shape_bounds.max(Y))(rng),
       shape_bounds.max(Z));*/
     const vector3<fine_scalar> beam_delta = facing_;
+#if 0
     beam_first_contact_finder finder(w, line_segment(top_middle, top_middle + beam_delta), my_id);
     if(auto hit = w.get_things_exposed_to_collision().find_least(finder)) {
       // TODO do I have to worry about overflow?
@@ -364,6 +365,7 @@ void autorobot::update(world& w, object_identifier my_id) {
         w.add_laser_sfx(beam_start2, beam_delta2);
       }
     }
+#endif
     }
   }
   else {
