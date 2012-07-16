@@ -345,42 +345,28 @@ void autorobot::update(world& w, object_identifier my_id) {
       boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>(shape_bounds.min(X), shape_bounds.max(X))(rng),
       boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>(shape_bounds.min(Y), shape_bounds.max(Y))(rng),
       shape_bounds.max(Z));*/
-    const vector3<fine_scalar> beam_delta = facing_;
-#if 0
-    beam_first_contact_finder finder(w, line_segment(top_middle, top_middle + beam_delta), my_id);
-    if(auto hit = w.get_things_exposed_to_collision().find_least(finder)) {
-      // TODO do I have to worry about overflow?
-      w.add_laser_sfx(top_middle, multiply_rational_into(beam_delta, hit->cost));
-      if(tile_location const* locp = hit->object.get_tile_location()) {
+    const vector3<fine_scalar> beam_vector_1 = facing_;
+    const object_or_tile_identifier hit1 = laser_find(w, my_id, top_middle, beam_vector_1, true);
+    if (hit1 != object_or_tile_identifier()) {
+      if (tile_location const* locp = hit1.get_tile_location()) {
         if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
           w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
           ++carrying_;
-          //w.replace_substance(*locp, locp->stuff_at().contents(), RUBBLE);
-          //tile_physics_impl::get_state(w.tile_physics()).active_fluids[*locp].velocity -= facing_; // Uhh, at what factor? I don't remember the tile velocity rules!!!! - Eli, Jul 14, 2012
         }
       }
     }
     else {
-      w.add_laser_sfx(top_middle, beam_delta);
-      vector3<fine_scalar> beam_delta2(facing_.x / -4,facing_.y / -4, 1 - shape_bounds.size(Z));
-      auto beam_start2 = top_middle + beam_delta;
-      beam_first_contact_finder finder2(w, line_segment(beam_start2, beam_start2 + beam_delta2), my_id);
-      if(auto hit2 = w.get_things_exposed_to_collision().find_least(finder2)) {
-        w.add_laser_sfx(beam_start2, multiply_rational_into(beam_delta2, hit2->cost));
-        if(tile_location const* locp = hit2->object.get_tile_location()) {
+      const vector3<fine_scalar> beam_vector_2(facing_.x / -4, facing_.y / -4, 1 - shape_bounds.size(Z));
+      const object_or_tile_identifier hit2 = laser_find(w, my_id, top_middle + beam_vector_1, beam_vector_2, true);
+      if (hit2 != object_or_tile_identifier()) {
+        if (tile_location const* locp = hit2.get_tile_location()) {
           if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
             w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
             ++carrying_;
-            //w.replace_substance(*locp, locp->stuff_at().contents(), RUBBLE);
-            //tile_physics_impl::get_state(w.tile_physics()).active_fluids[*locp].velocity -= beam_delta2; // Uhh, at what factor? I don't remember the tile velocity rules!!!! - Eli, Jul 14, 2012
           }
         }
       }
-      else {
-        w.add_laser_sfx(beam_start2, beam_delta2);
-      }
     }
-#endif
     }
   }
   else {
