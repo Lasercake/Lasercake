@@ -68,7 +68,7 @@ macro(show_paths output_var_name)
 endmacro()
 
 set(OPT_FLAGS -O3)
-set(WARNING_FLAGS -Wall -Wextra -Wno-unknown-pragmas -fmax-errors=15 -fdiagnostics-show-option)
+set(WARNING_FLAGS -g -Wall -Wextra -Wno-unknown-pragmas -fmax-errors=15 -fdiagnostics-show-option)
 if(WIN32)
 	# MinGW has various problems with -std=c++0x.  For example,
 	# the compiler with -std=c++0x defines __STRICT_ANSI__
