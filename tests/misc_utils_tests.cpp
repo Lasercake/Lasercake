@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( my_sqrt ) {
 
 
 void i64log2_test(uint64_t argument) {
-  uint64_t log_result = i64log2(argument);
+  uint64_t log_result = ilog2(argument);
   BOOST_CHECK_LE(1ull << log_result, argument);
   if(log_result != 63) {
     BOOST_CHECK_GT(1ull << (log_result+1), argument);
@@ -57,7 +57,7 @@ void i64log2_test(uint64_t argument) {
 }
 
 BOOST_AUTO_TEST_CASE( my_log ) {
-  BOOST_CHECK_THROW(i64log2(0), std::logic_error);
+  BOOST_CHECK_THROW(ilog2(0u), std::logic_error);
   std::array<uint64_t, 18> numbers_to_test = {{ 1, 2, 3, 4, 5, 17, 232, 500,
     78978978, 8948954789789349789ull, 0xfffffffful, 0x100000000ull,
     0x100000001ull, 0xffffffffffffffffull, 0xfffffffffffffffeull,

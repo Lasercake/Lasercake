@@ -52,7 +52,7 @@ auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
   else return -abs_result;
 }
 
-inline int32_t i64log2(uint64_t argument) {
+inline int32_t ilog2(uint64_t argument) {
   caller_error_if(argument == 0, "the logarithm of zero is undefined");
 #if defined(DETECTED_builtin_clz64)
   return 63 - DETECTED_builtin_clz64(argument);
@@ -67,9 +67,27 @@ inline int32_t i64log2(uint64_t argument) {
   return shift;
 #endif
 }
+inline int32_t ilog2(uint32_t argument) {
+  caller_error_if(argument == 0, "the logarithm of zero is undefined");
+#if defined(DETECTED_builtin_clz64)
+  return 31 - DETECTED_builtin_clz32(argument);
+#else
+  int32_t shift
+         = argument & ((((1ULL << 16) - 1) << 16) << shift) ? 16 : 0;
+  shift += argument & ((((1ULL <<  8) - 1) <<  8) << shift) ?  8 : 0;
+  shift += argument & ((((1ULL <<  4) - 1) <<  4) << shift) ?  4 : 0;
+  shift += argument & ((((1ULL <<  2) - 1) <<  2) << shift) ?  2 : 0;
+  shift += argument & ((((1ULL <<  1) - 1) <<  1) << shift) ?  1 : 0;
+  return shift;
+#endif
+}
 inline int32_t num_bits_in_integer_that_are_not_leading_zeroes(uint64_t i) {
   if(i == 0) return 0;
-  else return i64log2(i) + 1;
+  else return ilog2(i) + 1;
+}
+inline int32_t num_bits_in_integer_that_are_not_leading_zeroes(uint32_t i) {
+  if(i == 0) return 0;
+  else return ilog2(i) + 1;
 }
 template<uint64_t Bits>
 struct static_num_bits_in_integer_that_are_not_leading_zeroes {
@@ -105,7 +123,7 @@ inline uint32_t i64sqrt(uint64_t radicand)
   if(radicand == 0)return 0;
 
   //shift is the log base 2 of radicand, rounded down.
-  int shift = i64log2(radicand);
+  int shift = ilog2(radicand);
 
   //bounds are [lower_bound, upper_bound), a half-open range.
   //lower_bound is guaranteed to be less than or equal to the answer.
