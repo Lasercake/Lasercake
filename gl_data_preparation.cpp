@@ -443,6 +443,7 @@ void view_on_the_world::prepare_gl_data(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
       ];
       if (object_identifier const* mid = id.get_object_identifier()) {
+       if ((view_type != ROBOT) || (*mid != robot_id)) {
         shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(*mid)));
         const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(*mid);
 
@@ -506,6 +507,7 @@ void view_on_the_world::prepare_gl_data(
                       objects_color);
           }
         }
+       }
       }
       if (tile_location const* locp = id.get_tile_location()) {
         tile_location const& loc = *locp;
