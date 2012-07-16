@@ -430,6 +430,20 @@ struct lasercake_vector {
   typedef std::vector<T, typename lasercake_nice_allocator<T>::type > type;
 };
 
+// Include "data_structures/deque.hpp" to use lasercake_deque.
+template<typename T, typename Alloc> class deque;
+template<typename T>
+struct lasercake_deque {
+  typedef deque<T, typename lasercake_nice_allocator<T>::type > type;
+};
+
+// Include "data_structures/deque.hpp" and <queue> to use lasercake_queue.
+namespace std { template<typename T, typename Sequence> class queue; }
+template<typename T>
+struct lasercake_queue {
+  typedef std::queue<T, deque<T, typename lasercake_nice_allocator<T>::type> > type;
+};
+
 
 #endif
 
