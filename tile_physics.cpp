@@ -278,8 +278,8 @@ water_group_identifier get_water_group_id_by_grouped_tile(state_t const& state, 
   // Crap, we don't know what group we're part of unless we find a surface tile!
   // Find the next surface tile in some arbitrary direction.
   // That tile will tell us what group we're in.
-  auto iter = state.groupable_water_volume_calipers.x_boundary_groupable_water_tiles.lower_bound(loc);
-  if (iter == state.groupable_water_volume_calipers.x_boundary_groupable_water_tiles.end()) {
+  auto iter = state.groupable_water_volume_calipers.boundary_tiles_in_dimension.lower_bound(loc);
+  if (iter == state.groupable_water_volume_calipers.boundary_tiles_in_dimension.end()) {
     return NO_WATER_GROUP;
   }
   tile_location const& surface_loc = *iter;
@@ -296,7 +296,7 @@ persistent_water_group_info const& get_water_group_by_grouped_tile(state_t const
 ///////////////////////////////
 // Debugging functions:
 void dump_boundary_stuff(groupable_water_volume_calipers_t& g) {
-  for (auto const& foo : g.x_boundary_groupable_water_tiles)
+  for (auto const& foo : g.boundary_tiles_in_dimension)
     std::cerr << "  " << foo.coords() << "\n";
 }
 void dump_group_info(persistent_water_group_info const& g) {
@@ -569,10 +569,10 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
       }
       else {
         // Otherwise, we have to jump to the end of the row using the fancy sorted caches.
-        auto surface_loc_iter = groupable_water_volume_calipers.x_boundary_groupable_water_tiles.find(surface_loc);
-        assert (surface_loc_iter != groupable_water_volume_calipers.x_boundary_groupable_water_tiles.end());
+        auto surface_loc_iter = groupable_water_volume_calipers.boundary_tiles_in_dimension.find(surface_loc);
+        assert (surface_loc_iter != groupable_water_volume_calipers.boundary_tiles_in_dimension.end());
         ++surface_loc_iter;
-        assert (surface_loc_iter != groupable_water_volume_calipers.x_boundary_groupable_water_tiles.end());
+        assert (surface_loc_iter != groupable_water_volume_calipers.boundary_tiles_in_dimension.end());
         tile_location const& end_tile = *surface_loc_iter;
 
         assert_if_ASSERT_EVERYTHING(end_tile.coords().y == surface_loc.coords().y && end_tile.coords().z == surface_loc.coords().z);
