@@ -19,6 +19,8 @@
 
 */
 
+#include <boost/scope_exit.hpp>
+
 #include "gl_data_preparation.hpp"
 #include "world.hpp"
 
@@ -544,8 +546,16 @@ void view_on_the_world::prepare_gl_data(
   }
 
   if (this->drawing_regular_stuff) {
-    vector<tile_location> tiles_to_draw;
-    w.tiles_exposed_to_collision().get_objects_overlapping(tiles_to_draw, tile_bbox_to_tiles_collision_detector_bbox(tile_view_bounds));
+    // 'static' so that we don't do large memory allocations/copying every frame.
+    // TODO it might be better to iterate directly rather than store in a temp
+    // vector and then iterate that vector.
+    static vector<tile_location> tiles_to_draw;
+    BOOST_SCOPE_EXIT((&tiles_to_draw)) {
+      tiles_to_draw.clear();
+    } BOOST_SCOPE_EXIT_END
+
+    w.get_tiles_exposed_to_collision_within(tiles_to_draw, tile_view_bounds);
+
     for (tile_location const& loc : tiles_to_draw) {
       gl_collection& coll = gl_collections_by_distance[
         get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))

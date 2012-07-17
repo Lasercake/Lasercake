@@ -22,6 +22,8 @@
 #include "world.hpp"
 #include "worldgen.hpp"
 
+#include "data_structures/bbox_collision_detector_iteration.hpp"
+
 using namespace the_decomposition_of_the_world_into_blocks_impl;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
@@ -49,6 +51,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     const vector3<tile_coordinate> coords(gp.x + local_x, gp.y + local_y, gp.z + local_z);
     const tile_location loc = wb->get_loc_guaranteed_to_be_in_this_block(coords);
     wb->w_->tiles_exposed_to_collision_.insert(loc, tile_coords_to_tiles_collision_detector_bbox(coords));
+    if(wb->count_of_non_interior_tiles_here_ == 1) {
+      wb->w_->worldblocks_with_any_tiles_exposed_to_collision_.insert(wb, tile_bbox_to_tiles_collision_detector_bbox(wb->bounding_box()));
+    }
   }
   };
 
@@ -63,6 +68,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     non_interior_bitmap_small_scale_[interleaved_high] |= uint64_t(1) << interleaved_low;
     non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
     tile& t = tiles_[idx];
+    if(count_of_non_interior_tiles_here_ == 0) {
+      w_->worldblocks_with_any_tiles_exposed_to_collision_.insert(this, tile_bbox_to_tiles_collision_detector_bbox(this->bounding_box()));
+    }
     count_of_non_interior_tiles_here_ += t.is_interior();
     t.set_interiorness(false);
   }
@@ -77,8 +85,63 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     non_interior_bitmap_small_scale_[interleaved_high] &= ~(uint64_t(1) << interleaved_low);
     non_interior_bitmap_large_scale_ &= ~(uint64_t(!non_interior_bitmap_small_scale_[interleaved_high]) << interleaved_high);
     tile& t = tiles_[idx];
+    if(!t.is_interior() && count_of_non_interior_tiles_here_ == 1) {
+      w_->worldblocks_with_any_tiles_exposed_to_collision_.erase(this);
+    }
     count_of_non_interior_tiles_here_ -= !t.is_interior();
     t.set_interiorness(true);
+  }
+
+  void worldblock::get_non_interior_tiles(std::vector<tile_location>& results, tile_bounding_box bounds) {
+    const tile_bounding_box wb_bbox = bounding_box();
+
+    if(non_interior_bitmap_large_scale_ && bounds.overlaps(wb_bbox)) {
+      bool entirely_valid = bounds.subsumes(wb_bbox);
+      if(entirely_valid) {results.reserve(results.size() + count_of_non_interior_tiles_here_);}
+      tile_coordinate global_x = global_position_.x;
+      tile_coordinate global_y = global_position_.y;
+      tile_coordinate global_z = global_position_.z;
+      size_t idx = 0;
+      size_t ll_scale_i = 0;
+      do { do { do {
+        if(non_interior_bitmap_large_scale_ & (uint64_t(0xff) << ll_scale_i)) {
+          size_t large_scale_i = ll_scale_i;
+          do { do { do {
+            if(non_interior_bitmap_small_scale_[large_scale_i]) {
+              size_t ss_scale_i = 0;
+              do { do { do {
+                if(non_interior_bitmap_small_scale_[large_scale_i] & (uint64_t(0xff) << ss_scale_i)) {
+                  size_t small_scale_i = ss_scale_i;
+                  do { do { do {
+                    //tile& t = tiles_[idx];
+                    //TODO for drawing code, check it against its neighbors in this code and report?
+                    //Check against this bit or the one in the bitmap?  I think using this one is better/faster since we might use the tile data again (well, apparently not, but...hm.).
+                    if(non_interior_bitmap_small_scale_[large_scale_i] & (uint64_t(1) << small_scale_i)) { // !t.is_interior()) {
+                      const vector3<tile_coordinate> locv(global_x, global_y, global_z); //TODO be modifying this vector all along?
+                      if(entirely_valid || bounds.contains(locv)) {
+                        results.push_back(tile_location(locv, this));
+                      }
+                    }
+                    ++small_scale_i;
+                  global_z ^= (1<<0); idx ^= (1<<0); } while(global_z & (1<<0));
+                  global_y ^= (1<<0); idx ^= (1<<4); } while(global_y & (1<<0));
+                  global_x ^= (1<<0); idx ^= (1<<8); } while(global_x & (1<<0));
+                }
+                ss_scale_i += 8;
+              global_z ^= (1<<1); idx ^= (1<<1); } while(global_z & (1<<1));
+              global_y ^= (1<<1); idx ^= (1<<5); } while(global_y & (1<<1));
+              global_x ^= (1<<1); idx ^= (1<<9); } while(global_x & (1<<1));
+            }
+            ++large_scale_i;
+          global_z ^= (1<<2); idx ^= (1<<2); } while(global_z & (1<<2));
+          global_y ^= (1<<2); idx ^= (1<<6); } while(global_y & (1<<2));
+          global_x ^= (1<<2); idx ^= (1<<10);} while(global_x & (1<<2));
+        }
+        ll_scale_i += 8;
+      global_z ^= (1<<3); idx ^= (1<<3); } while(global_z & (1<<3));
+      global_y ^= (1<<3); idx ^= (1<<7); } while(global_y & (1<<3));
+      global_x ^= (1<<3); idx ^= (1<<11);} while(global_x & (1<<3));
+    }
   }
 
   template<cardinal_direction Dir> struct neighbor_idx_offset;
@@ -410,4 +473,24 @@ void world::ensure_realization_of_space(tile_bounding_box space, level_of_tile_r
   }
 }
 
+void world::get_tiles_exposed_to_collision_within(std::vector<tile_location>& results, tile_bounding_box bounds) {
+  //ensure_realization_of_space(bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
+  struct filter {
+    bool min_cost(tiles_collision_detector::bounding_box const& bbox) {
+      return bounds_.overlaps(bbox);
+    }
+    bool cost(worldblock*, tiles_collision_detector::bounding_box const& bbox)const {
+      return bounds_.overlaps(bbox);
+    }
+    tiles_collision_detector::bounding_box bounds_;
+  };
+  filter f;
+  f.bounds_ = tile_bbox_to_tiles_collision_detector_bbox(bounds);
+  std::vector<worldblock*> relevant_worldblocks;
+  worldblocks_with_any_tiles_exposed_to_collision_.filter(relevant_worldblocks, f);
+  //std::cerr << "[REL-WB-CT:" << relevant_worldblocks.size() << "]\n";
+  for(worldblock* wb : relevant_worldblocks) {
+    wb->get_non_interior_tiles(results, bounds);
+  }
+}
 

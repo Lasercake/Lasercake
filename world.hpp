@@ -232,6 +232,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     tile_location global_position_loc() {
       return tile_location(global_position_, this);
     }
+    void get_non_interior_tiles(std::vector<tile_location>& results, tile_bounding_box bounds);
+
     worldblock& ensure_realization(level_of_tile_realization_needed realineeded) {
       // This function gets called to do nothing a LOT more than it gets called to actually do something;
       // return ASAP if we don't have to do anything.
@@ -295,6 +297,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       uint64_t tile_data_uint64_array[worldblock_volume/8];
     };
   };
+
+  // Not the optimal structure, but we've already implemented it:
+  typedef bbox_collision_detector<worldblock*, 32, 3> worldblocks_collision_detector;
 }
 
 class world_building_gun;
@@ -439,7 +444,14 @@ public:
   objects_collision_detector const& objects_exposed_to_collision()const { return objects_exposed_to_collision_; }
   tiles_collision_detector const& tiles_exposed_to_collision()const { return tiles_exposed_to_collision_; }
 
-  
+  // Requires ensure_realization_of_space(bounds, CONTENTS_AND_LOCAL_CACHES_ONLY)
+  // but does not call it (because ensure_realization_of_space on an
+  // already-realized space takes asymptotically more time for large spaces
+  // with not so many tiles-exposed-to-collision than the rest of
+  // get_tiles_exposed_to_collision_within does.
+  // (TODO improve ensure_realization_of_space).
+  void get_tiles_exposed_to_collision_within(std::vector<tile_location>& results, tile_bounding_box bounds);
+
 private:
   friend class world_building_gun;
   friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
@@ -464,6 +476,7 @@ private:
   // and all non-interior, non-air tiles.
   objects_collision_detector objects_exposed_to_collision_;
   tiles_collision_detector tiles_exposed_to_collision_;
+  the_decomposition_of_the_world_into_blocks_impl::worldblocks_collision_detector worldblocks_with_any_tiles_exposed_to_collision_;
 
   laser_sfxes_type laser_sfxes_;
   
