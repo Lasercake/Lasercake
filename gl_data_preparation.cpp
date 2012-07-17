@@ -239,8 +239,6 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   vector3<tile_coordinate> const& coords = loc.coords();
   tile const& t = loc.stuff_at();
   const tile_contents contents = t.contents();
-  
-  const color tile_color = compute_tile_color(loc);
 
   // If we make one of the 'glb' members the closest corner of the tile to the player,
   // and the other the farthest, then we can draw the faces in a correct order
@@ -294,6 +292,8 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
     convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
         coords.x + int(!x_close_side), coords.y + int(!y_close_side), coords.z + int(!z_close_side)))
   }};
+
+  const color tile_color = compute_tile_color(loc);
 
   const vertex_with_color gl_vertices[2][2][2] =
     { { { vertex_with_color(glb[0].x, glb[0].y, glb[0].z, tile_color),
