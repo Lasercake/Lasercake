@@ -320,38 +320,52 @@ template<typename IntType> struct non_normalized_rational {
   non_normalized_rational():numerator(0),denominator(1){}
   bool operator< (non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
+    const auto prod1 = width_doubling_multiply(numerator, o.denominator);
+    const auto prod2 = width_doubling_multiply(o.numerator, denominator);
     if (is_negative(denominator) == is_negative(o.denominator))
-      return numerator*o.denominator <  o.numerator*denominator;
+      return prod1 < prod2;
     else
-      return numerator*o.denominator >  o.numerator*denominator;
+      return prod1 > prod2;
   }
   bool operator> (non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
+    const auto prod1 = width_doubling_multiply(numerator, o.denominator);
+    const auto prod2 = width_doubling_multiply(o.numerator, denominator);
     if (is_negative(denominator) == is_negative(o.denominator))
-      return numerator*o.denominator >  o.numerator*denominator;
+      return prod1 > prod2;
     else
-      return numerator*o.denominator <  o.numerator*denominator;
+      return prod1 < prod2;
   }
   bool operator<=(non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
+    const auto prod1 = width_doubling_multiply(numerator, o.denominator);
+    const auto prod2 = width_doubling_multiply(o.numerator, denominator);
     if (is_negative(denominator) == is_negative(o.denominator))
-      return numerator*o.denominator <= o.numerator*denominator;
+      return prod1 <= prod2;
     else
-      return numerator*o.denominator >= o.numerator*denominator;
+      return prod1 >= prod2;
   }
   bool operator>=(non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
+    const auto prod1 = width_doubling_multiply(numerator, o.denominator);
+    const auto prod2 = width_doubling_multiply(o.numerator, denominator);
     if (is_negative(denominator) == is_negative(o.denominator))
-      return numerator*o.denominator >= o.numerator*denominator;
+      return prod1 >= prod2;
     else
-      return numerator*o.denominator <= o.numerator*denominator;
+      return prod1 <= prod2;
   }
   bool operator==(non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
-    return numerator*o.denominator == o.numerator*denominator; }
+    const auto prod1 = width_doubling_multiply(numerator, o.denominator);
+    const auto prod2 = width_doubling_multiply(o.numerator, denominator);
+    return prod1 == prod2;
+  }
   bool operator!=(non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
-    return numerator*o.denominator != o.numerator*denominator; }
+    const auto prod1 = width_doubling_multiply(numerator, o.denominator);
+    const auto prod2 = width_doubling_multiply(o.numerator, denominator);
+    return prod1 != prod2;
+  }
   
   non_normalized_rational reciprocal()const {
     return non_normalized_rational(denominator, numerator);
