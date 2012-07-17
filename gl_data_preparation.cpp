@@ -258,23 +258,6 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   const bool is_same_y_coord_as_viewer = (view_tile_loc_rounded_down.y == coords.y);
   const bool is_same_z_coord_as_viewer = (view_tile_loc_rounded_down.z == coords.z);
 
-  const std::array<vector3<GLfloat>, 2> glb = {{
-    convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
-        coords.x +      x_close_side , coords.y +      y_close_side , coords.z +      z_close_side)),
-    convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
-        coords.x + int(!x_close_side), coords.y + int(!y_close_side), coords.z + int(!z_close_side)))
-  }};
-
-  const vertex_with_color gl_vertices[2][2][2] =
-    { { { vertex_with_color(glb[0].x, glb[0].y, glb[0].z, tile_color),
-          vertex_with_color(glb[0].x, glb[0].y, glb[1].z, tile_color) },
-        { vertex_with_color(glb[0].x, glb[1].y, glb[0].z, tile_color),
-          vertex_with_color(glb[0].x, glb[1].y, glb[1].z, tile_color) }, },
-      { { vertex_with_color(glb[1].x, glb[0].y, glb[0].z, tile_color),
-          vertex_with_color(glb[1].x, glb[0].y, glb[1].z, tile_color) },
-        { vertex_with_color(glb[1].x, glb[1].y, glb[0].z, tile_color),
-          vertex_with_color(glb[1].x, glb[1].y, glb[1].z, tile_color) } } };
-
   // Draw the farther faces first so that the closer faces will be drawn
   // after -- on top of -- the farther faces.  The closer faces are the ones
   // that have 0,0,0 as a vertex and the farther faces are the ones that have
@@ -304,6 +287,23 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   const gl_call_data::size_type original_count = coll.quads.count;
   coll.quads.reserve_new_slots(4 * (draw_x_close_side + draw_y_close_side + draw_z_close_side));
   vertex_with_color* base = coll.quads.vertices + original_count;
+
+  const std::array<vector3<GLfloat>, 2> glb = {{
+    convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
+        coords.x +      x_close_side , coords.y +      y_close_side , coords.z +      z_close_side)),
+    convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
+        coords.x + int(!x_close_side), coords.y + int(!y_close_side), coords.z + int(!z_close_side)))
+  }};
+
+  const vertex_with_color gl_vertices[2][2][2] =
+    { { { vertex_with_color(glb[0].x, glb[0].y, glb[0].z, tile_color),
+          vertex_with_color(glb[0].x, glb[0].y, glb[1].z, tile_color) },
+        { vertex_with_color(glb[0].x, glb[1].y, glb[0].z, tile_color),
+          vertex_with_color(glb[0].x, glb[1].y, glb[1].z, tile_color) }, },
+      { { vertex_with_color(glb[1].x, glb[0].y, glb[0].z, tile_color),
+          vertex_with_color(glb[1].x, glb[0].y, glb[1].z, tile_color) },
+        { vertex_with_color(glb[1].x, glb[1].y, glb[0].z, tile_color),
+          vertex_with_color(glb[1].x, glb[1].y, glb[1].z, tile_color) } } };
 
   //TODO what if you are close enough to a wall or lake-surface that
   //this falls inside your near clipping plane?
