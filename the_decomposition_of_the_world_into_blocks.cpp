@@ -26,13 +26,15 @@ using namespace the_decomposition_of_the_world_into_blocks_impl;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
 
+
+  struct worldblock::helpers {
+
   // For initialization purposes.  May only be called on a tile marked interior.
-  void initialize_to_non_interior(
+  static void initialize_to_non_interior(
       worldblock* wb,
       tile& t,
-      worldblock_dimension_type local_x, worldblock_dimension_type local_y, worldblock_dimension_type local_z,
-      tiles_collision_detector& tiles_exposed_to_collision) {
-
+      worldblock_dimension_type local_x, worldblock_dimension_type local_y, worldblock_dimension_type local_z
+  ) {
     assert_if_ASSERT_EVERYTHING(t.is_interior());
     assert_if_ASSERT_EVERYTHING(&t == &wb->tiles_[local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor]);
     t.set_interiorness(false);
@@ -46,8 +48,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     const vector3<tile_coordinate>& gp = wb->global_position_;
     const vector3<tile_coordinate> coords(gp.x + local_x, gp.y + local_y, gp.z + local_z);
     const tile_location loc = wb->get_loc_guaranteed_to_be_in_this_block(coords);
-    tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(coords));
+    wb->w_->tiles_exposed_to_collision_.insert(loc, tile_coords_to_tiles_collision_detector_bbox(coords));
   }
+  };
 
   void worldblock::set_tile_non_interior(vector3<tile_coordinate> global_coords) {
     const worldblock_dimension_type x = get_primitive_int(global_coords.x - global_position_.x);
@@ -90,8 +93,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   inline void initialize_tile_neighbor_interiorness_within_worldblock(
       worldblock* wb,
       worldblock_dimension_type x, worldblock_dimension_type y, worldblock_dimension_type z,
-      size_t idx,
-      tiles_collision_detector& tiles_exposed_to_collision) {
+      size_t idx
+  ) {
     switch (Dir) {
       case xminus: if(x == 0) {return;} break;
       case yminus: if(y == 0) {return;} break;
@@ -105,14 +108,13 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     tile& adj_tile = wb->tiles_[adj_idx];
     if(neighboring_tiles_with_these_contents_are_not_interior(t.contents(), adj_tile.contents())) {
       if(t.is_interior() && t.contents() != AIR) {
-        initialize_to_non_interior(wb, t, x, y, z, tiles_exposed_to_collision);
+        worldblock::helpers::initialize_to_non_interior(wb, t, x, y, z);
       }
       if(adj_tile.is_interior() && adj_tile.contents() != AIR) {
-        initialize_to_non_interior(wb, adj_tile,
+        worldblock::helpers::initialize_to_non_interior(wb, adj_tile,
                                     x + cdir_info<Dir>::x_delta,
                                     y + cdir_info<Dir>::y_delta,
-                                    z + cdir_info<Dir>::z_delta,
-                                    tiles_exposed_to_collision);
+                                    z + cdir_info<Dir>::z_delta);
       }
     }
   }
@@ -129,7 +131,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
           tiles_[this_idx].contents(),
           neighbors_[Dir]->tiles_[that_idx].contents())
       ) {
-      initialize_to_non_interior(this, tiles_[this_idx], this_x, this_y, this_z, w_->tiles_exposed_to_collision_);
+      worldblock::helpers::initialize_to_non_interior(this, tiles_[this_idx], this_x, this_y, this_z);
     }
   }
 
@@ -208,12 +210,12 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
           for (worldblock_dimension_type y = 0; y != worldblock_dimension; ++y) {
             for (worldblock_dimension_type z = 0; z != worldblock_dimension; ++z, ++idx) {
               if (tiles_[idx].contents() != estimated_most_frequent_tile_contents_type) {
-                initialize_tile_neighbor_interiorness_within_worldblock<xminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<yminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<zminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<xplus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<yplus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<zplus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
+                initialize_tile_neighbor_interiorness_within_worldblock<xminus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<yminus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<zminus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<xplus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<yplus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<zplus>(this, x,y,z, idx);
               }
             }
           }

@@ -265,6 +265,11 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(size_t this_x, size_t this_y, size_t this_z, size_t that_x, size_t that_y, size_t that_z);
     tile_contents estimate_most_frequent_tile_contents_type()const;
 
+    // contains static member functions that, as part of worldblock, are
+    // friended by class world, but which don't need to be declared in
+    // world.hpp:
+    struct helpers;
+
     value_for_each_cardinal_direction<worldblock*> neighbors_;
     vector3<tile_coordinate> global_position_; // the lowest x, y, and z among elements in this worldblock
     level_of_tile_realization_needed current_tile_realization_;
