@@ -96,7 +96,7 @@ public:
   template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
     x(other.x),y(other.y),z(other.z){}
   
-  ScalarType& operator[](which_dimension_type index) {
+  BOOST_FORCEINLINE ScalarType& operator[](which_dimension_type index) {
     switch(index) {
       case 0: return x;
       case 1: return y;
@@ -104,7 +104,7 @@ public:
       default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
     }
   }
-  ScalarType operator[](which_dimension_type index)const {
+  BOOST_FORCEINLINE ScalarType operator[](which_dimension_type index)const {
     switch(index) {
       case 0: return x;
       case 1: return y;
@@ -112,8 +112,8 @@ public:
       default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
     }
   }
-  ScalarType operator()(which_dimension_type index)const { return (*this)[index]; }
-  void set(which_dimension_type index, ScalarType value) { (*this)[index] = value; }
+  BOOST_FORCEINLINE ScalarType operator()(which_dimension_type index)const { return (*this)[index]; }
+  BOOST_FORCEINLINE void set(which_dimension_type index, ScalarType value) { (*this)[index] = value; }
 
   // Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
   template<typename OtherType> vector3 operator+(vector3<OtherType> const& other)const {
