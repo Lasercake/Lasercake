@@ -321,11 +321,23 @@ operator>>=(bounds_checked_int<Int,Min,Max>& a, IntAny shift) {
   return a = a >> shift;
 }
 
-// overloading and calling the utils.hpp one
-uint32_t i64sqrt(uint64_t i);
+// overloading and calling the numbers.hpp ones
+#include "numbers.hpp"
 inline bounds_checked_int<uint32_t> i64sqrt(bounds_checked_int<uint64_t> i) {
   return i64sqrt(i.get());
 }
+inline bounds_checked_int<uint16_t> width_doubling_multiply(bounds_checked_int<uint8_t> a1, bounds_checked_int<uint8_t> a2) { return (uint16_t)a1.get() * a2.get(); }
+inline bounds_checked_int<int16_t> width_doubling_multiply(bounds_checked_int<int8_t> a1, bounds_checked_int<int8_t> a2) { return (int16_t)a1.get() * a2.get(); }
+
+inline bounds_checked_int<uint32_t> width_doubling_multiply(bounds_checked_int<uint16_t> a1, bounds_checked_int<uint16_t> a2) { return (uint32_t)a1.get() * a2.get(); }
+inline bounds_checked_int<int32_t> width_doubling_multiply(bounds_checked_int<int16_t> a1, bounds_checked_int<int16_t> a2) { return (int32_t)a1.get() * a2.get(); }
+
+inline bounds_checked_int<uint64_t> width_doubling_multiply(bounds_checked_int<uint32_t> a1, bounds_checked_int<uint32_t> a2) { return (uint64_t)a1.get() * a2.get(); }
+inline bounds_checked_int<int64_t> width_doubling_multiply(bounds_checked_int<int32_t> a1, bounds_checked_int<int32_t> a2) { return (int64_t)a1.get() * a2.get(); }
+
+// Hack - don't return it bounds-checked, because we can't bounds-check it without an int256.
+inline uint128 width_doubling_multiply(bounds_checked_int<uint64_t> a1, bounds_checked_int<uint64_t> a2) { return width_doubling_multiply(a1.get(), a2.get()); }
+inline int128 width_doubling_multiply(bounds_checked_int<int64_t> a1, bounds_checked_int<int64_t> a2) { return width_doubling_multiply(a1.get(), a2.get()); }
 
 namespace std {
 template<typename Int, Int Min, Int Max>
