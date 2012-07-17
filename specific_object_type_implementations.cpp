@@ -331,7 +331,7 @@ void autorobot::update(world& w, object_identifier my_id) {
   //facing_ = facing_ * tile_width / facing_.magnitude_within_32_bits();
   
   auto direction_home = initial_location_ - location_;
-  auto mag = i64sqrt(direction_home.x*direction_home.x + direction_home.y*direction_home.y);
+  auto mag = to_signed_type(i64sqrt(direction_home.x*direction_home.x + direction_home.y*direction_home.y));
   
   if (carrying_ < 4) {
     velocity_.x = facing_.x * velocity_scale_factor / 8;

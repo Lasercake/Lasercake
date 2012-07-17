@@ -202,11 +202,11 @@ namespace std {
   // min(), max(), digits, digits10
   template<typename Int> struct numeric_limits< bounds_checked_int<Int> > : numeric_limits<Int> {};
 }
+#endif
 namespace boost {
   template<typename Int> struct   make_signed< bounds_checked_int<Int> > { typedef bounds_checked_int<typename   make_signed<Int>::type> type; };
   template<typename Int> struct make_unsigned< bounds_checked_int<Int> > { typedef bounds_checked_int<typename make_unsigned<Int>::type> type; };
 }
-#endif
 
 // Checks that the value fits into the target type.
 template<typename Target, typename AnyInt>

@@ -25,6 +25,8 @@
 #include "../config.hpp"
 #include <numeric>
 #include <boost/integer/static_log2.hpp>
+#include <boost/type_traits/make_signed.hpp>
+#include <boost/type_traits/make_unsigned.hpp>
 
 // returns the signum (-1, 0, or 1)
 template <typename Number>
@@ -39,6 +41,19 @@ inline bool is_negative(Number n) {
   // which leads to one less x86 instruction (small code = more fits in cache).
   // (Once inlined and optimized in context, the chosen comparison might make no difference.)
   return (n < 0);
+}
+
+template<typename Int>
+typename boost::make_signed<Int>::type to_signed_type(Int i) {
+  typename boost::make_signed<Int>::type result(i);
+  caller_correct_if(result >= 0, "to_signed_type overflow");
+  return result;
+}
+template<typename Int>
+typename boost::make_unsigned<Int>::type to_unsigned_type(Int i) {
+  caller_correct_if(i >= 0, "to_unsigned_type underflow");
+  typename boost::make_unsigned<Int>::type result(i);
+  return result;
 }
 
 template<typename ScalarType1, typename ScalarType2>

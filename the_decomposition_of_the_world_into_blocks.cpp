@@ -204,9 +204,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       if(!contents_are_all_in_the_same_interiorness_class) {
         // initialize_tile_neighbor_interiorness_within_worldblock initializes both the specified tile and its neighbors.
         size_t idx = 0;
-        for (tile_coordinate x = 0; x != worldblock_dimension; ++x) {
-          for (tile_coordinate y = 0; y != worldblock_dimension; ++y) {
-            for (tile_coordinate z = 0; z != worldblock_dimension; ++z, ++idx) {
+        for (worldblock_dimension_type x = 0; x != worldblock_dimension; ++x) {
+          for (worldblock_dimension_type y = 0; y != worldblock_dimension; ++y) {
+            for (worldblock_dimension_type z = 0; z != worldblock_dimension; ++z, ++idx) {
               if (tiles_[idx].contents() != estimated_most_frequent_tile_contents_type) {
                 initialize_tile_neighbor_interiorness_within_worldblock<xminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
                 initialize_tile_neighbor_interiorness_within_worldblock<yminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
@@ -250,26 +250,26 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 
         // check_local_caches_cross_worldblock_neighbor initializes
         // the specified tile but not its neighbor.
-        for (tile_coordinate x = 0; x != worldblock_dimension; ++x) {
-          for (tile_coordinate y = 0; y != worldblock_dimension; ++y) {
-            const tile_coordinate z1 = 0;
-            const tile_coordinate z2 = worldblock_dimension - 1;
+        for (worldblock_dimension_type x = 0; x != worldblock_dimension; ++x) {
+          for (worldblock_dimension_type y = 0; y != worldblock_dimension; ++y) {
+            const worldblock_dimension_type z1 = 0;
+            const worldblock_dimension_type z2 = worldblock_dimension - 1;
             this->check_local_caches_cross_worldblock_neighbor<zminus>(x,y,z1, x,y,z2);
             this->check_local_caches_cross_worldblock_neighbor<zplus >(x,y,z2, x,y,z1);
           }
         }
-        for (tile_coordinate x = 0; x != worldblock_dimension; ++x) {
-          for (tile_coordinate z = 0; z != worldblock_dimension; ++z) {
-            const tile_coordinate y1 = 0;
-            const tile_coordinate y2 = worldblock_dimension - 1;
+        for (worldblock_dimension_type x = 0; x != worldblock_dimension; ++x) {
+          for (worldblock_dimension_type z = 0; z != worldblock_dimension; ++z) {
+            const worldblock_dimension_type y1 = 0;
+            const worldblock_dimension_type y2 = worldblock_dimension - 1;
             this->check_local_caches_cross_worldblock_neighbor<yminus>(x,y1,z, x,y2,z);
             this->check_local_caches_cross_worldblock_neighbor<yplus >(x,y2,z, x,y1,z);
           }
         }
-        for (tile_coordinate y = 0; y != worldblock_dimension; ++y) {
-          for (tile_coordinate z = 0; z != worldblock_dimension; ++z) {
-            const tile_coordinate x1 = 0;
-            const tile_coordinate x2 = worldblock_dimension - 1;
+        for (worldblock_dimension_type y = 0; y != worldblock_dimension; ++y) {
+          for (worldblock_dimension_type z = 0; z != worldblock_dimension; ++z) {
+            const worldblock_dimension_type x1 = 0;
+            const worldblock_dimension_type x2 = worldblock_dimension - 1;
             this->check_local_caches_cross_worldblock_neighbor<xminus>(x1,y,z, x2,y,z);
             this->check_local_caches_cross_worldblock_neighbor<xplus >(x2,y,z, x1,y,z);
           }
