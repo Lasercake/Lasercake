@@ -229,6 +229,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     tile_bounding_box bounding_box()const {
       return tile_bounding_box(global_position_, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
     }
+    tile_location global_position_loc() {
+      return tile_location(global_position_, this);
+    }
     worldblock& ensure_realization(level_of_tile_realization_needed realineeded) {
       // This function gets called to do nothing a LOT more than it gets called to actually do something;
       // return ASAP if we don't have to do anything.
