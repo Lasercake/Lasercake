@@ -55,7 +55,7 @@ struct beam_first_contact_finder {
     // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
     if(bbox_is_too_large(bbox)) return result_type();
     if(ignores_.find(id) != ignores_.end()) return result_type();
-    return w_.get_detail_shape_of_object_or_tile(id).first_intersection(beam_);
+    return get_first_intersection(beam_, w_.get_detail_shape_of_object_or_tile(id));
   }
   result_type cost(tile_location id, tiles_collision_detector::bounding_box const& bbox) const {
     // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
