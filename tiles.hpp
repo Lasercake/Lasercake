@@ -216,9 +216,9 @@ public:
   //tile_location operator+(cardinal_direction dir)const;
   // Equivalent to operator+, except allowing you to specify the amount of realization needed.
   template<cardinal_direction Dir> tile_location get_neighbor(level_of_tile_realization_needed realineeded)const;
-
   tile_location get_neighbor_by_variable(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
-  //tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
+  std::array<tile, num_cardinal_directions> get_all_neighbor_tiles(level_of_tile_realization_needed realineeded)const;
+
   bool operator==(tile_location const& other)const { return v_ == other.v_; }
   bool operator!=(tile_location const& other)const { return v_ != other.v_; }
   bool operator<(tile_location const& other)const { return v_ < other.v_; }

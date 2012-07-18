@@ -262,17 +262,18 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   // 1,1,1 as a vertex.
 
   // Only output the faces that are not interior to a single kind of material.
+  const std::array<tile, num_cardinal_directions> neighbor_tiles = loc.get_all_neighbor_tiles(CONTENTS_ONLY);
   const std::array<bool, 2> x_neighbors_differ = {{
-    loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
-    loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != contents
+    neighbor_tiles[xminus].contents() != contents,
+    neighbor_tiles[xplus].contents() != contents
   }};
   const std::array<bool, 2> y_neighbors_differ = {{
-    loc.get_neighbor<yminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
-    loc.get_neighbor<yplus>(CONTENTS_ONLY).stuff_at().contents() != contents
+    neighbor_tiles[yminus].contents() != contents,
+    neighbor_tiles[yplus].contents() != contents
   }};
   const std::array<bool, 2> z_neighbors_differ = {{
-    loc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
-    loc.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != contents
+    neighbor_tiles[zminus].contents() != contents,
+    neighbor_tiles[zplus].contents() != contents
   }};
 
   const bool draw_x_close_side = x_neighbors_differ[x_close_side]

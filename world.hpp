@@ -527,5 +527,51 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   }
 }
 
+inline std::array<tile, num_cardinal_directions> tile_location::get_all_neighbor_tiles(level_of_tile_realization_needed realineeded)const {
+  using namespace the_decomposition_of_the_world_into_blocks_impl;
+  const worldblock_dimension_type local_x = get_primitive_int(v_.x - wb_->global_position_.x);
+  const worldblock_dimension_type local_y = get_primitive_int(v_.y - wb_->global_position_.y);
+  const worldblock_dimension_type local_z = get_primitive_int(v_.z - wb_->global_position_.z);
+  const worldblock_dimension_type idx = local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor;
+
+  wb_->ensure_realization(realineeded);
+  std::array<tile, num_cardinal_directions> result = {{
+    ((local_x == 0) ? wb_->ensure_neighbor_realization<xminus>(realineeded).tiles_[idx + (worldblock_x_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_x_factor]),
+    ((local_y == 0) ? wb_->ensure_neighbor_realization<yminus>(realineeded).tiles_[idx + (worldblock_y_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_y_factor]),
+    ((local_z == 0) ? wb_->ensure_neighbor_realization<zminus>(realineeded).tiles_[idx + (worldblock_z_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_z_factor]),
+    ((local_x == worldblock_dimension-1) ? wb_->ensure_neighbor_realization<xplus>(realineeded).tiles_[idx - (worldblock_x_factor*(worldblock_dimension-1))] : wb_->tiles_[idx + worldblock_x_factor]),
+    ((local_y == worldblock_dimension-1) ? wb_->ensure_neighbor_realization<yplus>(realineeded).tiles_[idx - (worldblock_y_factor*(worldblock_dimension-1))] : wb_->tiles_[idx + worldblock_y_factor]),
+    ((local_z == worldblock_dimension-1) ? wb_->ensure_neighbor_realization<zplus>(realineeded).tiles_[idx - (worldblock_z_factor*(worldblock_dimension-1))] : wb_->tiles_[idx + worldblock_z_factor]),
+  }};
+  return result;
+}
+#if 0
+// This didn't provide measurable speed benefits even in prepare_tile() vs the version with
+// realization checks (using CONTENTS_ONLY), so I think it's useless.
+
+// You must ensure they are realized enough for you, or it may crash:
+inline std::array<tile, num_cardinal_directions> tile_location::get_all_neighbor_tiles_without_realizing()const {
+  using namespace the_decomposition_of_the_world_into_blocks_impl;
+  const worldblock_dimension_type local_x = get_primitive_int(v_.x - wb_->global_position_.x);
+  const worldblock_dimension_type local_y = get_primitive_int(v_.y - wb_->global_position_.y);
+  const worldblock_dimension_type local_z = get_primitive_int(v_.z - wb_->global_position_.z);
+  const worldblock_dimension_type idx = local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor;
+
+  std::array<tile, num_cardinal_directions> result = {{
+    ((local_x == 0) ? wb_->neighbors_[xminus]->tiles_[idx + (worldblock_x_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_x_factor]),
+    ((local_y == 0) ? wb_->neighbors_[yminus]->tiles_[idx + (worldblock_y_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_y_factor]),
+    ((local_z == 0) ? wb_->neighbors_[zminus]->tiles_[idx + (worldblock_z_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_z_factor]),
+    ((local_x == worldblock_dimension-1) ? wb_->neighbors_[xplus]->tiles_[idx - (worldblock_x_factor*(worldblock_dimension-1))] : wb_->tiles_[idx + worldblock_x_factor]),
+    ((local_y == worldblock_dimension-1) ? wb_->neighbors_[yplus]->tiles_[idx - (worldblock_y_factor*(worldblock_dimension-1))] : wb_->tiles_[idx + worldblock_y_factor]),
+    ((local_z == worldblock_dimension-1) ? wb_->neighbors_[zplus]->tiles_[idx - (worldblock_z_factor*(worldblock_dimension-1))] : wb_->tiles_[idx + worldblock_z_factor]),
+  }};
+  return result;
+}
+  // prepare_gl_data() has done ensure_realization_of_space(tile_view_bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
+  // which ensures that this tile exists, and that the contents of neighboring worldblock tiles exist because
+  // local caches requires that data to be created. (Or we could expand the bounds by 1 tile.)
+#endif
+
+
 #endif
 
