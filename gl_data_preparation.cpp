@@ -235,20 +235,29 @@ inline color compute_tile_color(tile_location const& loc) {
   }
 }
 
+
+// We only draw faces of the tile that (1) are not material-interior
+// and (2) that face towards the viewer.
+//
+// (For opaque materials, the viewer could not have seen the other faces
+// anyway, if we drew them correctly.)
+//
+// Condition 2 means that the up-to-three faces that we draw
+// will not visually overlap, so it doesn't matter which order OpenGL
+// draws them in
+// (not even in the hardest case, in which they're translucent so the
+// OpenGL depth buffer can't be used, and different colors).
 void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
   vector3<tile_coordinate> const& coords = loc.coords();
   tile const& t = loc.stuff_at();
   const tile_contents contents = t.contents();
 
-  // If we make one of the 'glb' members the closest corner of the tile to the player,
-  // and the other the farthest, then we can draw the faces in a correct order
-  // efficiently.  (Previously this code just used the lower bound for one corner
-  // and the upper bound for the other corner.)
-  //
-  // It doesn't matter what part of the tile we compare against -- if the
-  // viewer is aligned with the tile in a dimension, then which close corner
-  // is picked won't change the order of any faces that are actually going to
-  // overlap in the display.
+  // If the viewer is exactly aligned with the edge of a tile, then this code
+  // will interpret one of the two tile coordinates the viewer is aligned with
+  // as the same coord as the viewer, and one not.  That's acceptable:
+  // the worst that can happen is we draw (or don't draw) a face that
+  // is exactly aligned with the viewer's line-of-sight, which can't
+  // be seen anyway.
   const int x_close_side = (view_tile_loc_rounded_down.x < coords.x) ? 0 : 1;
   const int y_close_side = (view_tile_loc_rounded_down.y < coords.y) ? 0 : 1;
   const int z_close_side = (view_tile_loc_rounded_down.z < coords.z) ? 0 : 1;
@@ -271,17 +280,8 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
     neighbor_tiles[zplus].contents() != contents
   }};
 
-  // We only draw faces of the tile that (1) are not material-interior
-  // and (2) that face towards the viewer.
-  //
-  // (For opaque materials, the viewer could not have seen the other faces
-  // anyway, if we drew them correctly.)
-  //
-  // Condition 2 means that the up-to-three faces that we draw
-  // will not visually overlap, so it doesn't matter which order OpenGL
-  // draws them in
-  // (not even in the hardest case, in which they're translucent so the
-  // OpenGL depth buffer can't be used, and different colors).
+  // Also, for tiles aligned in a dimension with the viewer,
+  // neither face in that dimension is facing towards the viewer.
   const bool draw_x_close_side = x_neighbors_differ[x_close_side]
                                   && !is_same_x_coord_as_viewer;
   const bool draw_y_close_side = y_neighbors_differ[y_close_side]
