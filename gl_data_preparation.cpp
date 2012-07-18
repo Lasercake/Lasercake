@@ -256,11 +256,6 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   const bool is_same_y_coord_as_viewer = (view_tile_loc_rounded_down.y == coords.y);
   const bool is_same_z_coord_as_viewer = (view_tile_loc_rounded_down.z == coords.z);
 
-  // Draw the farther faces first so that the closer faces will be drawn
-  // after -- on top of -- the farther faces.  The closer faces are the ones
-  // that have 0,0,0 as a vertex and the farther faces are the ones that have
-  // 1,1,1 as a vertex.
-
   // Only output the faces that are not interior to a single kind of material.
   const std::array<tile, num_cardinal_directions> neighbor_tiles = loc.get_all_neighbor_tiles(CONTENTS_ONLY);
   const std::array<bool, 2> x_neighbors_differ = {{
@@ -276,6 +271,17 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
     neighbor_tiles[zplus].contents() != contents
   }};
 
+  // We only draw faces of the tile that (1) are not material-interior
+  // and (2) that face towards the viewer.
+  //
+  // (For opaque materials, the viewer could not have seen the other faces
+  // anyway, if we drew them correctly.)
+  //
+  // Condition 2 means that the up-to-three faces that we draw
+  // will not visually overlap, so it doesn't matter which order OpenGL
+  // draws them in
+  // (not even in the hardest case, in which they're translucent so the
+  // OpenGL depth buffer can't be used, and different colors).
   const bool draw_x_close_side = x_neighbors_differ[x_close_side]
                                   && !is_same_x_coord_as_viewer;
   const bool draw_y_close_side = y_neighbors_differ[y_close_side]
@@ -378,6 +384,10 @@ void view_on_the_world::prepare_gl_data(
 
   const auto tiles_here = get_all_containing_tile_coordinates(view_loc);
   // Average the color. Take the max opacity, so that you can't see through rock ever.
+  //
+  // TODO I think the correct thing to do is, if, say, you are half in water, half air,
+  // to make the part of the screen that's in water have blue added, and the air
+  // part have air-color added (i.e., in this case, do nothing :-P).
   uint32_t total_r = 0;
   uint32_t total_g = 0;
   uint32_t total_b = 0;
