@@ -303,15 +303,15 @@ void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data, v
       glDrawArrays(GL_QUADS, 0, count);
     }
     if(const size_t count = coll.triangles.size()) {
-      glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
+      glInterleavedArrays(GL_C4UB_V3F, 0, coll.triangles.vertices);
       glDrawArrays(GL_TRIANGLES, 0, count);
     }
     if(const size_t count = coll.lines.size()) {
-      glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
+      glInterleavedArrays(GL_C4UB_V3F, 0, coll.lines.vertices);
       glDrawArrays(GL_LINES, 0, count);
     }
     if(const size_t count = coll.points.size()) {
-      glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
+      glInterleavedArrays(GL_C4UB_V3F, 0, coll.points.vertices);
       glDrawArrays(GL_POINTS, 0, count);
     }
   }
