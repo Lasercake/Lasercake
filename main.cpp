@@ -19,6 +19,8 @@
 
 */
 
+#define GL_GLEXT_PROTOTYPES 1
+
 #include "config.hpp"
 
 #include <stdio.h>
@@ -280,12 +282,45 @@ typedef int viewport_dimension; // Qt uses 'int' for sizes.
 
 void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data, viewport_dimension viewport_width, viewport_dimension viewport_height) {
   using namespace gl_data_preparation;
+  #define BUFFER_OFFSET(i) ((void*)(i))
+  const GLuint INVALID_BUFFER_ID = 0;
+
+  // This code is intended to have no operations in it that can possibly
+  // throw exceptions, to simplify dealing with OpenGL context state.
+  // When allocating, e.g. via std::vector, wrap it in a try/catch
+  // and do something sensible if there's an exception.
+
+  // TODO perhaps these static data should be member variables and this
+  // function should be a class instead.
+  static bool gl_inited = false;
+  static GLuint rect_VBO_name = INVALID_BUFFER_ID;
+
+  // by_distance_VBO_* indexed by distance*DISTANCE_IDX_FACTOR + this enum:
+  enum by_distance_idx_adjustment_enum {
+    QUADS_IDX = 0, TRIANGLES_IDX, LINES_IDX, POINTS_IDX,
+    DISTANCE_IDX_FACTOR
+  };
+  static std::vector<GLuint> by_distance_VBO_names;
+  static std::vector<size_t> by_distance_VBO_sizes;
+  typedef std::array<vertex_with_color, 4> rect_type;
+  if(!gl_inited) {
+    glGenBuffers(1, &rect_VBO_name);
+    glBindBuffer(GL_ARRAY_BUFFER, rect_VBO_name);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(rect_type), nullptr, GL_STREAM_DRAW);
+    gl_inited = true;
+  }
+  // TODO Apparently atexit we should glDeleteBuffers, glDisable, and stuff?
+
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-  //glEnable(GL_DEPTH_TEST);
+  // Depth func LEQUAL not LESS.  We try to draw objects in back-to-front
+  // order, so rounding error means the front (later) one should win.
+  //glEnable(GL_DEPTH_TEST)
+  //glDepthFunc(GL_LEQUAL);
   glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
   glLoadIdentity();
-  // TODO convert these to plain GL calls and find out how to make a non-stretched non-square viewport.
+
+  // TODO convert these GLU calls to plain GL calls?
   gluPerspective(80, (double(viewport_width) / viewport_height), 0.1, 300);
   gluLookAt(0, 0, 0,
             gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
@@ -294,40 +329,71 @@ void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data, v
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
 
-  for(gl_collectionplex::const_reverse_iterator i = gl_data.stuff_to_draw_as_gl_collections_by_distance.rbegin();
-      i != gl_data.stuff_to_draw_as_gl_collections_by_distance.rend();
-      ++i) {
-    gl_collection const& coll = *i;
-    if(const size_t count = coll.quads.size()) {
-      glInterleavedArrays(GL_C4UB_V3F, 0, coll.quads.vertices);
-      glDrawArrays(GL_QUADS, 0, count);
+  if(gl_data.stuff_to_draw_as_gl_collections_by_distance.size() > by_distance_VBO_names.size()) {
+    const size_t new_buffers_base = by_distance_VBO_names.size()*DISTANCE_IDX_FACTOR;
+    const size_t num_new_buffers = gl_data.stuff_to_draw_as_gl_collections_by_distance.size()*DISTANCE_IDX_FACTOR - new_buffers_base;
+    try {
+      by_distance_VBO_names.resize(new_buffers_base + num_new_buffers);
+      by_distance_VBO_sizes.resize(new_buffers_base + num_new_buffers);
     }
-    if(const size_t count = coll.triangles.size()) {
-      glInterleavedArrays(GL_C4UB_V3F, 0, coll.triangles.vertices);
-      glDrawArrays(GL_TRIANGLES, 0, count);
+    catch(std::bad_alloc const&) {
+      return;
     }
-    if(const size_t count = coll.lines.size()) {
-      glInterleavedArrays(GL_C4UB_V3F, 0, coll.lines.vertices);
-      glDrawArrays(GL_LINES, 0, count);
+    glGenBuffers(num_new_buffers, &by_distance_VBO_names[new_buffers_base]);
+    for(size_t i = 0; i != num_new_buffers; ++i) {
+      by_distance_VBO_sizes[new_buffers_base + i] = 0;
     }
-    if(const size_t count = coll.points.size()) {
-      glInterleavedArrays(GL_C4UB_V3F, 0, coll.points.vertices);
-      glDrawArrays(GL_POINTS, 0, count);
+  }
+
+  for(size_t dist_plus_one = gl_data.stuff_to_draw_as_gl_collections_by_distance.size(); dist_plus_one != 0; --dist_plus_one) {
+    const size_t dist = dist_plus_one - 1;
+    gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance[dist];
+    struct polygon_type {
+      GLenum gl_type;
+      by_distance_idx_adjustment_enum our_idx_adj;
+      gl_call_data gl_collection::* gl_data_container_ptr_to_member;
+    };
+    const std::array<polygon_type, DISTANCE_IDX_FACTOR> types = {{
+      { GL_QUADS, QUADS_IDX, &gl_collection::quads },
+      { GL_TRIANGLES, TRIANGLES_IDX, &gl_collection::triangles },
+      { GL_LINES, LINES_IDX, &gl_collection::lines },
+      { GL_POINTS, POINTS_IDX, &gl_collection::points },
+    }};
+    for (polygon_type type : types) {
+      gl_call_data const& data = coll.*(type.gl_data_container_ptr_to_member);
+      if(const size_t count = data.size()) {
+        const size_t buf_name_idx = dist*DISTANCE_IDX_FACTOR + type.our_idx_adj;
+        glBindBuffer(GL_ARRAY_BUFFER, by_distance_VBO_names[buf_name_idx]);
+        if(by_distance_VBO_sizes[buf_name_idx] < count) {
+          glBufferData(GL_ARRAY_BUFFER, count*sizeof(vertex_with_color), data.vertices, GL_STREAM_DRAW);
+          by_distance_VBO_sizes[buf_name_idx] = count;
+        }
+        else {
+          glBufferSubData(GL_ARRAY_BUFFER, 0, count*sizeof(vertex_with_color), data.vertices);
+        }
+        glInterleavedArrays(GL_C4UB_V3F, 0, BUFFER_OFFSET(0));
+        glDrawArrays(type.gl_type, 0, count);
+      }
     }
   }
 
   // Is there a simpler way to tint the whole screen a color?
   const color tint = gl_data.tint_everything_with_this_color;
+  const rect_type rect = {{
+    vertex_with_color(0, 0, 0, tint),
+    vertex_with_color(0, 1, 0, tint),
+    vertex_with_color(1, 1, 0, tint),
+    vertex_with_color(1, 0, 0, tint)
+  }};
   glLoadIdentity();
-  glOrtho(0, 1, 0, 1, -2, -1);
-  vertex_with_color rect[4] = {
-    vertex_with_color(0, 0, 1.5, tint),
-    vertex_with_color(0, 1, 1.5, tint),
-    vertex_with_color(1, 1, 1.5, tint),
-    vertex_with_color(1, 0, 1.5, tint)
-  };
-  glInterleavedArrays(GL_C4UB_V3F, 0, &rect[0]);
+  glOrtho(0, 1, 0, 1, -1, 1);
+  glBindBuffer(GL_ARRAY_BUFFER, rect_VBO_name);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(rect), &rect[0]);
+  glInterleavedArrays(GL_C4UB_V3F, 0, BUFFER_OFFSET(0));
   glDrawArrays(GL_QUADS, 0, 4);
+  glBindBuffer(GL_ARRAY_BUFFER, INVALID_BUFFER_ID);
+
+  #undef BUFFER_OFFSET
 }
 
 // Boost doesn't appear to provide a reverse-sense bool switch, so:
