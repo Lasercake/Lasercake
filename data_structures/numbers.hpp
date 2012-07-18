@@ -84,7 +84,7 @@ inline int32_t ilog2(uint64_t argument) {
 }
 inline int32_t ilog2(uint32_t argument) {
   caller_error_if(argument == 0, "the logarithm of zero is undefined");
-#if defined(DETECTED_builtin_clz64)
+#if defined(DETECTED_builtin_clz32)
   return 31 - DETECTED_builtin_clz32(argument);
 #else
   int32_t shift
