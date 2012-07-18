@@ -96,14 +96,21 @@ inline int32_t ilog2(uint32_t argument) {
   return shift;
 #endif
 }
-inline int32_t num_bits_in_integer_that_are_not_leading_zeroes(uint64_t i) {
+template<typename Int>
+inline int32_t ilog2(Int argument) {
+  static_assert(sizeof(Int) <= 64, "not implemented");
+  if(std::numeric_limits<Int>::is_signed) caller_error_if(argument <= 0, "logarithm is only defined on positive numbers");
+  if(sizeof(Int) <= 32) return ilog2(uint32_t(argument));
+  else return ilog2(uint64_t(argument));
+}
+
+template<typename Int>
+inline int32_t num_bits_in_integer_that_are_not_leading_zeroes(Int i) {
+  static_assert(!std::numeric_limits<Int>::is_signed, "Don't confuse yourself by calling this on a signed type.");
   if(i == 0) return 0;
   else return ilog2(i) + 1;
 }
-inline int32_t num_bits_in_integer_that_are_not_leading_zeroes(uint32_t i) {
-  if(i == 0) return 0;
-  else return ilog2(i) + 1;
-}
+
 template<uint64_t Bits>
 struct static_num_bits_in_integer_that_are_not_leading_zeroes {
   static const uint64_t value = boost::static_log2<Bits>::value + 1;
