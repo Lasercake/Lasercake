@@ -41,8 +41,6 @@ def main():
 	except OSError:
 		say(ansi_red+"Error: GNU-compatible 'time' not found; please install it."+ansi_end+'\n')
 		exit(1)
-	name_for_this_config = ','.join([re.sub(r'[^-+.a-zA-Z0-9]', r'_', arg) for arg in sys.argv[1:]]) or 'default'
-	build_dir = 'build/'+name_for_this_config
 	cmake_args = []
 	make_args = []
 	making_lasercake = True
@@ -55,11 +53,7 @@ def main():
 				"""Usage:\n./dev-build.py\n\t[CXX=g++-4.6|clang++|..]\n\t[CXXFLAGS='-Os -w']\n\t[args for cmake]\n\nCompiles in a build dir that depends on the flags you give,\nthen runs tests.\n"""
 			   )
 			sys.exit()
-		elif arg == 'test':
-			make_args.append('test-lasercake')
-			making_lasercake = False
 		elif arg == 'no-test':
-			make_args.append('lasercake')
 			running_tests = False
 		elif m_cxx:
 			cmake_args.append('-DCMAKE_CXX_COMPILER='+m_cxx.group(1))
@@ -67,6 +61,10 @@ def main():
 			cmake_args.append('-DCMAKE_CXX_FLAGS='+m_cxxflags.group(1))
 		else:
 			cmake_args.append(arg)
+		if arg == '-DBUILD_SELF_TESTS=OFF':
+			running_tests = False
+	name_for_this_config = ','.join([re.sub(r'[^-+.a-zA-Z0-9]', r'_', arg) for arg in cmake_args]) or 'default'
+	build_dir = 'build/'+name_for_this_config
 	try: os.remove('CMakeCache.txt')
 	except OSError: pass
 	try: os.makedirs(build_dir)
@@ -100,8 +98,8 @@ def main():
 		say(ansi_green+'and you got:\n./'+build_dir+'/lasercake\n(etc.)'+ansi_end+'\n')
 	if running_tests:
 		say(ansi_cyan+'Testing...\n')
-		say_we_are_calling('./'+build_dir+'/test-lasercake')
-		test_status = subprocess.call(['./test-lasercake'])
+		say_we_are_calling('./'+build_dir+'/lasercake --run-self-tests')
+		test_status = subprocess.call(['./lasercake', '--run-self-tests'])
 		if test_status != 0:
 			exit(test_status)
 		say(ansi_green+'success')

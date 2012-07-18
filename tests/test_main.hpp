@@ -19,25 +19,10 @@
 
 */
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+#ifndef LASERCAKE_TEST_MAIN_HPP__
+#define LASERCAKE_TEST_MAIN_HPP__
 
-
-#define main(argc, argv) lasercake_test_main(argc, argv)
-
-
-#ifdef LASERCAKE_USE_BOOSTBCP
-
-#define BOOST_TEST_MAIN
-#include <boost/test/included/unit_test.hpp>
-
-#else
-
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+int lasercake_test_main(int argc, char *argv[]);
 
 #endif
 
-
-#undef main

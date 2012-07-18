@@ -72,6 +72,8 @@
 #include "worldgen.hpp" //only so that world_building_gun is a complete type for
   // http://stackoverflow.com/questions/10730682/does-stdfunctions-copy-constructor-require-the-template-types-argument-types
 
+#include "tests/test_main.hpp"
+
 
 namespace /* anonymous */ {
 
@@ -442,6 +444,9 @@ int main(int argc, char *argv[])
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
       ("use-opengl-thread", po::bool_switch(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls")
 #endif
+#if !LASERCAKE_NO_SELF_TESTS
+      ("run-self-tests", "alternate run mode: run Lasercake's self-tests")
+#endif
     ;
 
     po::variables_map vm;
@@ -462,6 +467,11 @@ int main(int argc, char *argv[])
       std::cout << desc << std::endl;
       exit(0);
     }
+#if !LASERCAKE_NO_SELF_TESTS
+    if(vm.count("run-self-tests")) {
+      return lasercake_test_main(argc, argv);
+    }
+#endif
     if(!vm.count("scenario")) {
       std::cerr << "You didn't give an argument saying which scenario to use! Using default value...\n";
       config.scenario = "default";
