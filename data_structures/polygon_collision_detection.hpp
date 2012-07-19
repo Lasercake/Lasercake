@@ -187,16 +187,34 @@ private:
   mutable polygon_collision_info_cache cache_;
 };
 
+struct convex_polyhedron {
+public:
+  // constructors are currently quartic in the number of vertices; use sparingly
+  convex_polyhedron(std::vector<vector3<polygon_int_type>> const& vs);
+  convex_polyhedron(bounding_box const& bb);
+  std::vector<vector3<polygon_int_type>> const& vertices()const { return vertices_; }
+  std::vector<std::pair<uint8_t, uint8_t>> const& edges()const { return edges_; }
+  std::vector<uint8_t> const& face_info()const { return face_info_; }
+  void translate(vector3<polygon_int_type> t);
+  bounding_box bounds()const;
+private:
+  void init_other_info_from_vertices();
+  std::vector<vector3<polygon_int_type>> vertices_;
+  std::vector<std::pair<uint8_t, uint8_t>> edges_;
+  std::vector<uint8_t> face_info_;
+};
+
 class shape {
 public:
-  shape(                          ) : bounds_cache_is_valid_(false) {}
-  shape(  line_segment const& init) : bounds_cache_is_valid_(false) { segments_.push_back(init); }
-  shape(convex_polygon const& init) : bounds_cache_is_valid_(false) { polygons_.push_back(init); }
-  shape(  bounding_box const& init) : bounds_cache_is_valid_(false) { boxes_   .push_back(init); }
+  shape(                             ) : bounds_cache_is_valid_(false) {}
+  shape(     line_segment const& init) : bounds_cache_is_valid_(false) { segments_ .push_back(init); }
+  shape(   convex_polygon const& init) : bounds_cache_is_valid_(false) { polygons_ .push_back(init); }
+  shape(convex_polyhedron const& init) : bounds_cache_is_valid_(false) { polyhedra_.push_back(init); }
+  shape(     bounding_box const& init) : bounds_cache_is_valid_(false) { boxes_    .push_back(init); }
   shape(lasercake_vector<convex_polygon>::type const& init)
                                     : bounds_cache_is_valid_(false), polygons_(init) {}
   
-  shape(shape const& o):bounds_cache_(o.bounds_cache_),bounds_cache_is_valid_(o.bounds_cache_is_valid_),segments_(o.segments_),polygons_(o.polygons_),boxes_(o.boxes_) {}
+  shape(shape const& o):bounds_cache_(o.bounds_cache_),bounds_cache_is_valid_(o.bounds_cache_is_valid_),segments_(o.segments_),polygons_(o.polygons_),polyhedra_(o.polyhedra_),boxes_(o.boxes_) {}
   
   void translate(vector3<polygon_int_type> t);
   
@@ -207,20 +225,34 @@ public:
   bounding_box bounds()const;
   vector3<polygon_int_type> arbitrary_interior_point()const;
   
-  lasercake_vector<  line_segment>::type const& get_segments()const { return segments_; }
-  lasercake_vector<convex_polygon>::type const& get_polygons()const { return polygons_; }
-  lasercake_vector<  bounding_box>::type const& get_boxes   ()const { return boxes_   ; }
+  lasercake_vector<     line_segment>::type const& get_segments ()const { return segments_ ; }
+  lasercake_vector<   convex_polygon>::type const& get_polygons ()const { return polygons_ ; }
+  lasercake_vector<convex_polyhedron>::type const& get_polyhedra()const { return polyhedra_; }
+  lasercake_vector<     bounding_box>::type const& get_boxes    ()const { return boxes_    ; }
 private:
   mutable bounding_box bounds_cache_;
   mutable bool bounds_cache_is_valid_;
   
-  lasercake_vector<  line_segment>::type segments_;
-  lasercake_vector<convex_polygon>::type polygons_;
-  lasercake_vector<  bounding_box>::type boxes_   ;
+  lasercake_vector<     line_segment>::type segments_;
+  lasercake_vector<   convex_polygon>::type polygons_;
+  lasercake_vector<convex_polyhedron>::type polyhedra_;
+  lasercake_vector<     bounding_box>::type boxes_   ;
 };
 
 optional_rational get_first_intersection(line_segment const& l, bounding_box const& bb);
 optional_rational get_first_intersection(line_segment l, convex_polygon const& p);
+
+// Polyhedron sweep intersection stuff... could possibly use some cleanup (here and in object_motion.cpp)
+struct polyhedron_planes_info_for_intersection {
+  std::vector<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> base_points_and_outward_facing_normals;
+};
+
+// Note that the signs of the max_error vector coordinates MUST be equal to the signs of v coordinates, or 0.
+void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<polygon_int_type> const& v, vector3<polygon_int_type> max_error, std::vector<vector3<polygon_int_type>>& vertex_collector, polyhedron_planes_info_for_intersection& plane_collector);
+
+bool sweep_intersects(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, convex_polyhedron const& other);
+bool sweep_intersects(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, bounding_box const& other);
+bool sweeps_intersect(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps1, std::vector<vector3<polygon_int_type>> const& vs2, polyhedron_planes_info_for_intersection ps2);
 
 /*bool intersects(line_segment l, convex_polygon const& p);
 bool intersects(convex_polygon const& p1, convex_polygon const& p2);

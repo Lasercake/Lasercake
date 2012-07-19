@@ -539,6 +539,16 @@ void view_on_the_world::prepare_gl_data(
                       objects_color);
           }
         }
+        lasercake_vector<convex_polyhedron>::type const& obj_polyhedra = obj_shape->second.get_polyhedra();
+        for (convex_polyhedron const& ph : obj_polyhedra) {
+          for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
+            std::vector<vector3<polygon_int_type>> poly;
+            for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
+              poly.push_back(ph.vertices()[ph.face_info()[i + j + 1]]);
+            }
+            push_convex_polygon(view_loc, coll, poly, color(0x00ffffaa));
+          }
+        }
       }
     }
   }
