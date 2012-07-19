@@ -151,7 +151,7 @@ public:
 
   mobile_object():velocity_(0,0,0){}
   mobile_object(vector3<fine_scalar> velocity):velocity_(velocity){}
-  vector3<fine_scalar> velocity() const { return velocity_; }
+  vector3<fine_scalar> const& velocity() const { return velocity_; }
   vector3<fine_scalar> velocity_;
 };
 
