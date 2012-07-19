@@ -96,6 +96,8 @@ inline Int get_primitive_int(Int a) { return a; }
 
 template<typename AnyInt>
 inline double get_primitive_double(AnyInt a) { return get_primitive_int(a); }
+template<typename AnyInt>
+inline float get_primitive_float(AnyInt a) { return get_primitive_int(a); }
 
 template<
   typename Int,
