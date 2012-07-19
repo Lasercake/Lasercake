@@ -300,8 +300,11 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   typedef bbox_collision_detector<worldblock*, 32, 3> worldblocks_collision_detector;
 }
 
-class world_building_gun;
-typedef std::function<void (world_building_gun, tile_bounding_box)> worldgen_function_t;
+// worldgen_function_t is responsible for initializing every tile in
+// the worldblock, making them initialized to 'interior' (worldblock
+// will take care of detecting the true interiorness), and not marked
+// as anything else.
+typedef std::function<void (the_decomposition_of_the_world_into_blocks_impl::worldblock*, tile_bounding_box)> worldgen_function_t;
 
 
 typedef unordered_map<object_identifier, shape> object_shapes_t;
@@ -451,7 +454,6 @@ public:
   void get_tiles_exposed_to_collision_within(std::vector<tile_location>& results, tile_bounding_box bounds);
 
 private:
-  friend class world_building_gun;
   friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
   time_unit current_game_time_;

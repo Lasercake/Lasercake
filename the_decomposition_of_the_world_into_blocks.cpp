@@ -234,8 +234,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
-      const tile_bounding_box bounds = this->bounding_box();
-      w_->worldgen_function_(world_building_gun(w_, bounds, this), bounds);
+      w_->worldgen_function_(this, this->bounding_box());
       //std::cerr << "A worldblock has been created!\n";
       
       current_tile_realization_ = CONTENTS_ONLY;
@@ -248,7 +247,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
-      // Per world_building_gun, tiles start out marked interior
+      // Per worldgen function requirements, tiles start out marked interior
       // (usually the common case, and also permits the algorithms here)
       // and don't need to be changed if they actually are interior.
 
