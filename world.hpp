@@ -246,16 +246,14 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     // Prefer to use tile_location::stuff_at().
     inline tile& get_tile(vector3<tile_coordinate> global_coords) {
       return tiles_[
-          get_primitive_int(global_coords.x - global_position_.x)*worldblock_x_factor
-        + get_primitive_int(global_coords.y - global_position_.y)*worldblock_y_factor
-        + get_primitive_int(global_coords.z - global_position_.z)*worldblock_z_factor];
+          (get_primitive_int(global_coords.x) & (worldblock_dimension-1))*worldblock_x_factor
+        + (get_primitive_int(global_coords.y) & (worldblock_dimension-1))*worldblock_y_factor
+        + (get_primitive_int(global_coords.z) & (worldblock_dimension-1))*worldblock_z_factor];
     }
 
     void set_tile_non_interior(vector3<tile_coordinate> global_coords);
     void set_tile_interior(vector3<tile_coordinate> global_coords);
   
-    // Only to be used in tile_location::get_neighbor:
-    template<cardinal_direction Dir> bool crossed_boundary(tile_coordinate new_coord);
     template<cardinal_direction Dir> tile_location get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded);
 
     template<cardinal_direction Dir> worldblock& ensure_neighbor_realization(level_of_tile_realization_needed realineeded);
@@ -502,17 +500,18 @@ template<cardinal_direction Dir> inline tile_location tile_location::get_neighbo
   return wb_->get_neighboring_loc<Dir>(v_, realineeded);
 }
 namespace the_decomposition_of_the_world_into_blocks_impl {
-  template<> inline bool worldblock::crossed_boundary<xminus>(tile_coordinate new_coord) { return new_coord < global_position_.x; }
-  template<> inline bool worldblock::crossed_boundary<yminus>(tile_coordinate new_coord) { return new_coord < global_position_.y; }
-  template<> inline bool worldblock::crossed_boundary<zminus>(tile_coordinate new_coord) { return new_coord < global_position_.z; }
-  template<> inline bool worldblock::crossed_boundary<xplus>(tile_coordinate new_coord) { return new_coord >= global_position_.x + worldblock_dimension; }
-  template<> inline bool worldblock::crossed_boundary<yplus>(tile_coordinate new_coord) { return new_coord >= global_position_.y + worldblock_dimension; }
-  template<> inline bool worldblock::crossed_boundary<zplus>(tile_coordinate new_coord) { return new_coord >= global_position_.z + worldblock_dimension; }
+  template<cardinal_direction Dir> bool next_to_boundary(vector3<tile_coordinate> const& coords);
+  template<> inline bool next_to_boundary<xminus>(vector3<tile_coordinate> const& coords) { return (get_primitive_int(coords.x) & (worldblock_dimension-1)) == 0; }
+  template<> inline bool next_to_boundary<yminus>(vector3<tile_coordinate> const& coords) { return (get_primitive_int(coords.y) & (worldblock_dimension-1)) == 0; }
+  template<> inline bool next_to_boundary<zminus>(vector3<tile_coordinate> const& coords) { return (get_primitive_int(coords.z) & (worldblock_dimension-1)) == 0; }
+  template<> inline bool next_to_boundary<xplus>(vector3<tile_coordinate> const& coords) { return (get_primitive_int(coords.x) & (worldblock_dimension-1)) == (worldblock_dimension-1); }
+  template<> inline bool next_to_boundary<yplus>(vector3<tile_coordinate> const& coords) { return (get_primitive_int(coords.y) & (worldblock_dimension-1)) == (worldblock_dimension-1); }
+  template<> inline bool next_to_boundary<zplus>(vector3<tile_coordinate> const& coords) { return (get_primitive_int(coords.z) & (worldblock_dimension-1)) == (worldblock_dimension-1); }
 
   template<cardinal_direction Dir> inline tile_location worldblock::get_neighboring_loc(vector3<tile_coordinate> const& old_coords, level_of_tile_realization_needed realineeded) {
     ensure_realization(realineeded);
     vector3<tile_coordinate> new_coords = old_coords; cdir_info<Dir>::add_to(new_coords);
-    if (crossed_boundary<Dir>(new_coords[cdir_info<Dir>::dimension])) return tile_location(new_coords, &ensure_neighbor_realization<Dir>(realineeded));
+    if (next_to_boundary<Dir>(old_coords)) return tile_location(new_coords, &ensure_neighbor_realization<Dir>(realineeded));
     else return tile_location(new_coords, this);
   }
 
@@ -529,9 +528,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 
 inline std::array<tile, num_cardinal_directions> tile_location::get_all_neighbor_tiles(level_of_tile_realization_needed realineeded)const {
   using namespace the_decomposition_of_the_world_into_blocks_impl;
-  const worldblock_dimension_type local_x = get_primitive_int(v_.x - wb_->global_position_.x);
-  const worldblock_dimension_type local_y = get_primitive_int(v_.y - wb_->global_position_.y);
-  const worldblock_dimension_type local_z = get_primitive_int(v_.z - wb_->global_position_.z);
+  const worldblock_dimension_type local_x = get_primitive_int(v_.x) & (worldblock_dimension-1);
+  const worldblock_dimension_type local_y = get_primitive_int(v_.y) & (worldblock_dimension-1);
+  const worldblock_dimension_type local_z = get_primitive_int(v_.z) & (worldblock_dimension-1);
   const worldblock_dimension_type idx = local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor;
 
   wb_->ensure_realization(realineeded);
@@ -545,32 +544,6 @@ inline std::array<tile, num_cardinal_directions> tile_location::get_all_neighbor
   }};
   return result;
 }
-#if 0
-// This didn't provide measurable speed benefits even in prepare_tile() vs the version with
-// realization checks (using CONTENTS_ONLY), so I think it's useless.
-
-// You must ensure they are realized enough for you, or it may crash:
-inline std::array<tile, num_cardinal_directions> tile_location::get_all_neighbor_tiles_without_realizing()const {
-  using namespace the_decomposition_of_the_world_into_blocks_impl;
-  const worldblock_dimension_type local_x = get_primitive_int(v_.x - wb_->global_position_.x);
-  const worldblock_dimension_type local_y = get_primitive_int(v_.y - wb_->global_position_.y);
-  const worldblock_dimension_type local_z = get_primitive_int(v_.z - wb_->global_position_.z);
-  const worldblock_dimension_type idx = local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor;
-
-  std::array<tile, num_cardinal_directions> result = {{
-    ((local_x == 0) ? wb_->neighbors_[xminus]->tiles_[idx + (worldblock_x_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_x_factor]),
-    ((local_y == 0) ? wb_->neighbors_[yminus]->tiles_[idx + (worldblock_y_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_y_factor]),
-    ((local_z == 0) ? wb_->neighbors_[zminus]->tiles_[idx + (worldblock_z_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_z_factor]),
-    ((local_x == worldblock_dimension-1) ? wb_->neighbors_[xplus]->tiles_[idx - (worldblock_x_factor*(worldblock_dimension-1))] : wb_->tiles_[idx + worldblock_x_factor]),
-    ((local_y == worldblock_dimension-1) ? wb_->neighbors_[yplus]->tiles_[idx - (worldblock_y_factor*(worldblock_dimension-1))] : wb_->tiles_[idx + worldblock_y_factor]),
-    ((local_z == worldblock_dimension-1) ? wb_->neighbors_[zplus]->tiles_[idx - (worldblock_z_factor*(worldblock_dimension-1))] : wb_->tiles_[idx + worldblock_z_factor]),
-  }};
-  return result;
-}
-  // prepare_gl_data() has done ensure_realization_of_space(tile_view_bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
-  // which ensures that this tile exists, and that the contents of neighboring worldblock tiles exist because
-  // local caches requires that data to be created. (Or we could expand the bounds by 1 tile.)
-#endif
 
 
 #endif

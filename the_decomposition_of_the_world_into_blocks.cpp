@@ -58,9 +58,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   };
 
   void worldblock::set_tile_non_interior(vector3<tile_coordinate> global_coords) {
-    const worldblock_dimension_type x = get_primitive_int(global_coords.x - global_position_.x);
-    const worldblock_dimension_type y = get_primitive_int(global_coords.y - global_position_.y);
-    const worldblock_dimension_type z = get_primitive_int(global_coords.z - global_position_.z);
+    const worldblock_dimension_type x = get_primitive_int(global_coords.x) & (worldblock_dimension-1);
+    const worldblock_dimension_type y = get_primitive_int(global_coords.y) & (worldblock_dimension-1);
+    const worldblock_dimension_type z = get_primitive_int(global_coords.z) & (worldblock_dimension-1);
     const worldblock_dimension_type idx = x*worldblock_x_factor + y*worldblock_y_factor + z*worldblock_z_factor;
     const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(x, y, z);
     const worldblock_dimension_type interleaved_high = interleaved >> 6;
@@ -75,9 +75,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     t.set_interiorness(false);
   }
   void worldblock::set_tile_interior(vector3<tile_coordinate> global_coords) {
-    const worldblock_dimension_type x = get_primitive_int(global_coords.x - global_position_.x);
-    const worldblock_dimension_type y = get_primitive_int(global_coords.y - global_position_.y);
-    const worldblock_dimension_type z = get_primitive_int(global_coords.z - global_position_.z);
+    const worldblock_dimension_type x = get_primitive_int(global_coords.x) & (worldblock_dimension-1);
+    const worldblock_dimension_type y = get_primitive_int(global_coords.y) & (worldblock_dimension-1);
+    const worldblock_dimension_type z = get_primitive_int(global_coords.z) & (worldblock_dimension-1);
     const worldblock_dimension_type idx = x*worldblock_x_factor + y*worldblock_y_factor + z*worldblock_z_factor;
     const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(x, y, z);
     const worldblock_dimension_type interleaved_high = interleaved >> 6;
@@ -234,7 +234,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
-      tile_bounding_box bounds(global_position_, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
+      const tile_bounding_box bounds = this->bounding_box();
       w_->worldgen_function_(world_building_gun(w_, bounds, this), bounds);
       //std::cerr << "A worldblock has been created!\n";
       
