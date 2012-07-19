@@ -88,7 +88,20 @@ template<
   Int Max
 >
 class bounds_checked_int;
-//overloaded: a.get() or a
+
+// These get_primitive_* functions are useful for code in which bounds-checked ints
+// can be enabled or disabled.
+//
+// get_primitive_int() returns the underlying int type/value.
+// get_primitive<Type>() does a bounds-checked cast to the target type:
+//     if the mathematical value of the argument doesn't fit within the target
+//     type, it raises an error.
+// get_primitive_[float|double]() casts to floating-point without bounds checks
+//     because with floating point, they basically can't overflow.
+//
+// get_primitive_int_type<>::type gives the type of get_primitive_int()'s
+//     return value.
+
 template<typename Int, Int Min, Int Max>
 inline Int get_primitive_int(bounds_checked_int<Int,Min,Max> a) { return a.get(); }
 template<typename Int>
@@ -98,6 +111,14 @@ template<typename AnyInt>
 inline double get_primitive_double(AnyInt a) { return get_primitive_int(a); }
 template<typename AnyInt>
 inline float get_primitive_float(AnyInt a) { return get_primitive_int(a); }
+
+template<typename Target, typename AnyInt>
+Target get_primitive(AnyInt a);
+
+template<typename Int>
+struct get_primitive_int_type { typedef Int type; };
+template<typename Int, Int Min, Int Max>
+struct get_primitive_int_type< bounds_checked_int<Int,Min,Max> > { typedef Int type; };
 
 template<
   typename Int,
@@ -215,15 +236,6 @@ template<typename Target, typename AnyInt>
 inline Target get_primitive(AnyInt a) {
   return bounds_checked_int<Target>(a).get();
 }
-
-template<typename Int>
-struct get_primitive_int_type {
-  typedef Int type;
-};
-template<typename Int, Int Min, Int Max>
-struct get_primitive_int_type< bounds_checked_int<Int,Min,Max> > {
-  typedef Int type;
-};
 
 
 template<typename Int1, Int1 Min1, Int1 Max1, typename Int2, Int2 Min2, Int2 Max2>
