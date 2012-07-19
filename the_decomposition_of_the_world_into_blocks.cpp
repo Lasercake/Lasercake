@@ -367,18 +367,16 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
         }
       }
       else {
-        // I tried iterating the tile_collision_detector and it was about the
-        // same speed as this where I tested.  (Maybe once we switch to a
-        // faster tile-search structure it'd be worth it.) -Isaac
-        for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
-          for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
-            for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
-              const vector3<tile_coordinate> coords(x,y,z);
-              tile& here = this->get_tile(coords);
+        // I tried iterating the tile_collision_detector, and tried using
+        // get_non_interior_tiles(), and my tests showed each was about the
+        // same speed as this. -Isaac, July 2012
+        size_t idx = 0;
+        for (tile_coordinate x = global_position_.x; x != global_position_.x + worldblock_dimension; ++x) {
+          for (tile_coordinate y = global_position_.y; y != global_position_.y + worldblock_dimension; ++y) {
+            for (tile_coordinate z = global_position_.z; z != global_position_.z + worldblock_dimension; ++z, ++idx) {
               // Checking contents() here: significant speed improvement.
-              // (Some from the inlining, some from not having to construct a tile_location if not GROUPABLE_WATER,
-              // I believe.) --Isaac
-              if (here.contents() == GROUPABLE_WATER) {
+              if (tiles_[idx].contents() == GROUPABLE_WATER && !tiles_[idx].is_interior()) {
+                const vector3<tile_coordinate> coords(x,y,z);
                 w_->initialize_tile_water_group_caches_(tile_location(coords, this));
               }
             }
