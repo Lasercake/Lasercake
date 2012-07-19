@@ -22,17 +22,21 @@
 #include "world.hpp"
 #include "worldgen.hpp"
 
+#include "data_structures/bbox_collision_detector_iteration.hpp"
+
 using namespace the_decomposition_of_the_world_into_blocks_impl;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
 
+
+  struct worldblock::helpers {
+
   // For initialization purposes.  May only be called on a tile marked interior.
-  void initialize_to_non_interior(
+  static void initialize_to_non_interior(
       worldblock* wb,
       tile& t,
-      worldblock_dimension_type local_x, worldblock_dimension_type local_y, worldblock_dimension_type local_z,
-      tiles_collision_detector& tiles_exposed_to_collision) {
-
+      worldblock_dimension_type local_x, worldblock_dimension_type local_y, worldblock_dimension_type local_z
+  ) {
     assert_if_ASSERT_EVERYTHING(t.is_interior());
     assert_if_ASSERT_EVERYTHING(&t == &wb->tiles_[local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor]);
     t.set_interiorness(false);
@@ -46,13 +50,17 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     const vector3<tile_coordinate>& gp = wb->global_position_;
     const vector3<tile_coordinate> coords(gp.x + local_x, gp.y + local_y, gp.z + local_z);
     const tile_location loc = wb->get_loc_guaranteed_to_be_in_this_block(coords);
-    tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(coords));
+    wb->w_->tiles_exposed_to_collision_.insert(loc, tile_coords_to_tiles_collision_detector_bbox(coords));
+    if(wb->count_of_non_interior_tiles_here_ == 1) {
+      wb->w_->worldblocks_with_any_tiles_exposed_to_collision_.insert(wb, tile_bbox_to_tiles_collision_detector_bbox(wb->bounding_box()));
+    }
   }
+  };
 
   void worldblock::set_tile_non_interior(vector3<tile_coordinate> global_coords) {
-    const worldblock_dimension_type x = get_primitive_int(global_coords.x - global_position_.x);
-    const worldblock_dimension_type y = get_primitive_int(global_coords.y - global_position_.y);
-    const worldblock_dimension_type z = get_primitive_int(global_coords.z - global_position_.z);
+    const worldblock_dimension_type x = get_primitive_int(global_coords.x) & (worldblock_dimension-1);
+    const worldblock_dimension_type y = get_primitive_int(global_coords.y) & (worldblock_dimension-1);
+    const worldblock_dimension_type z = get_primitive_int(global_coords.z) & (worldblock_dimension-1);
     const worldblock_dimension_type idx = x*worldblock_x_factor + y*worldblock_y_factor + z*worldblock_z_factor;
     const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(x, y, z);
     const worldblock_dimension_type interleaved_high = interleaved >> 6;
@@ -60,13 +68,16 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     non_interior_bitmap_small_scale_[interleaved_high] |= uint64_t(1) << interleaved_low;
     non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
     tile& t = tiles_[idx];
+    if(count_of_non_interior_tiles_here_ == 0) {
+      w_->worldblocks_with_any_tiles_exposed_to_collision_.insert(this, tile_bbox_to_tiles_collision_detector_bbox(this->bounding_box()));
+    }
     count_of_non_interior_tiles_here_ += t.is_interior();
     t.set_interiorness(false);
   }
   void worldblock::set_tile_interior(vector3<tile_coordinate> global_coords) {
-    const worldblock_dimension_type x = get_primitive_int(global_coords.x - global_position_.x);
-    const worldblock_dimension_type y = get_primitive_int(global_coords.y - global_position_.y);
-    const worldblock_dimension_type z = get_primitive_int(global_coords.z - global_position_.z);
+    const worldblock_dimension_type x = get_primitive_int(global_coords.x) & (worldblock_dimension-1);
+    const worldblock_dimension_type y = get_primitive_int(global_coords.y) & (worldblock_dimension-1);
+    const worldblock_dimension_type z = get_primitive_int(global_coords.z) & (worldblock_dimension-1);
     const worldblock_dimension_type idx = x*worldblock_x_factor + y*worldblock_y_factor + z*worldblock_z_factor;
     const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(x, y, z);
     const worldblock_dimension_type interleaved_high = interleaved >> 6;
@@ -74,8 +85,63 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     non_interior_bitmap_small_scale_[interleaved_high] &= ~(uint64_t(1) << interleaved_low);
     non_interior_bitmap_large_scale_ &= ~(uint64_t(!non_interior_bitmap_small_scale_[interleaved_high]) << interleaved_high);
     tile& t = tiles_[idx];
+    if(!t.is_interior() && count_of_non_interior_tiles_here_ == 1) {
+      w_->worldblocks_with_any_tiles_exposed_to_collision_.erase(this);
+    }
     count_of_non_interior_tiles_here_ -= !t.is_interior();
     t.set_interiorness(true);
+  }
+
+  void worldblock::get_non_interior_tiles(std::vector<tile_location>& results, tile_bounding_box bounds) {
+    const tile_bounding_box wb_bbox = bounding_box();
+
+    if(non_interior_bitmap_large_scale_ && bounds.overlaps(wb_bbox)) {
+      bool entirely_valid = bounds.subsumes(wb_bbox);
+      if(entirely_valid) {results.reserve(results.size() + count_of_non_interior_tiles_here_);}
+      tile_coordinate global_x = global_position_.x;
+      tile_coordinate global_y = global_position_.y;
+      tile_coordinate global_z = global_position_.z;
+      size_t idx = 0;
+      size_t ll_scale_i = 0;
+      do { do { do {
+        if(non_interior_bitmap_large_scale_ & (uint64_t(0xff) << ll_scale_i)) {
+          size_t large_scale_i = ll_scale_i;
+          do { do { do {
+            if(non_interior_bitmap_small_scale_[large_scale_i]) {
+              size_t ss_scale_i = 0;
+              do { do { do {
+                if(non_interior_bitmap_small_scale_[large_scale_i] & (uint64_t(0xff) << ss_scale_i)) {
+                  size_t small_scale_i = ss_scale_i;
+                  do { do { do {
+                    //tile& t = tiles_[idx];
+                    //TODO for drawing code, check it against its neighbors in this code and report?
+                    //Check against this bit or the one in the bitmap?  I think using this one is better/faster since we might use the tile data again (well, apparently not, but...hm.).
+                    if(non_interior_bitmap_small_scale_[large_scale_i] & (uint64_t(1) << small_scale_i)) { // !t.is_interior()) {
+                      const vector3<tile_coordinate> locv(global_x, global_y, global_z); //TODO be modifying this vector all along?
+                      if(entirely_valid || bounds.contains(locv)) {
+                        results.push_back(tile_location(locv, this));
+                      }
+                    }
+                    ++small_scale_i;
+                  global_z ^= (1<<0); idx ^= (1<<0); } while(global_z & (1<<0));
+                  global_y ^= (1<<0); idx ^= (1<<4); } while(global_y & (1<<0));
+                  global_x ^= (1<<0); idx ^= (1<<8); } while(global_x & (1<<0));
+                }
+                ss_scale_i += 8;
+              global_z ^= (1<<1); idx ^= (1<<1); } while(global_z & (1<<1));
+              global_y ^= (1<<1); idx ^= (1<<5); } while(global_y & (1<<1));
+              global_x ^= (1<<1); idx ^= (1<<9); } while(global_x & (1<<1));
+            }
+            ++large_scale_i;
+          global_z ^= (1<<2); idx ^= (1<<2); } while(global_z & (1<<2));
+          global_y ^= (1<<2); idx ^= (1<<6); } while(global_y & (1<<2));
+          global_x ^= (1<<2); idx ^= (1<<10);} while(global_x & (1<<2));
+        }
+        ll_scale_i += 8;
+      global_z ^= (1<<3); idx ^= (1<<3); } while(global_z & (1<<3));
+      global_y ^= (1<<3); idx ^= (1<<7); } while(global_y & (1<<3));
+      global_x ^= (1<<3); idx ^= (1<<11);} while(global_x & (1<<3));
+    }
   }
 
   template<cardinal_direction Dir> struct neighbor_idx_offset;
@@ -90,8 +156,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   inline void initialize_tile_neighbor_interiorness_within_worldblock(
       worldblock* wb,
       worldblock_dimension_type x, worldblock_dimension_type y, worldblock_dimension_type z,
-      size_t idx,
-      tiles_collision_detector& tiles_exposed_to_collision) {
+      size_t idx
+  ) {
     switch (Dir) {
       case xminus: if(x == 0) {return;} break;
       case yminus: if(y == 0) {return;} break;
@@ -105,14 +171,13 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     tile& adj_tile = wb->tiles_[adj_idx];
     if(neighboring_tiles_with_these_contents_are_not_interior(t.contents(), adj_tile.contents())) {
       if(t.is_interior() && t.contents() != AIR) {
-        initialize_to_non_interior(wb, t, x, y, z, tiles_exposed_to_collision);
+        worldblock::helpers::initialize_to_non_interior(wb, t, x, y, z);
       }
       if(adj_tile.is_interior() && adj_tile.contents() != AIR) {
-        initialize_to_non_interior(wb, adj_tile,
+        worldblock::helpers::initialize_to_non_interior(wb, adj_tile,
                                     x + cdir_info<Dir>::x_delta,
                                     y + cdir_info<Dir>::y_delta,
-                                    z + cdir_info<Dir>::z_delta,
-                                    tiles_exposed_to_collision);
+                                    z + cdir_info<Dir>::z_delta);
       }
     }
   }
@@ -129,7 +194,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
           tiles_[this_idx].contents(),
           neighbors_[Dir]->tiles_[that_idx].contents())
       ) {
-      initialize_to_non_interior(this, tiles_[this_idx], this_x, this_y, this_z, w_->tiles_exposed_to_collision_);
+      worldblock::helpers::initialize_to_non_interior(this, tiles_[this_idx], this_x, this_y, this_z);
     }
   }
 
@@ -169,8 +234,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
-      tile_bounding_box bounds(global_position_, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
-      w_->worldgen_function_(world_building_gun(w_, bounds, this), bounds);
+      w_->worldgen_function_(this, this->bounding_box());
       //std::cerr << "A worldblock has been created!\n";
       
       current_tile_realization_ = CONTENTS_ONLY;
@@ -183,7 +247,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
-      // Per world_building_gun, tiles start out marked interior
+      // Per worldgen function requirements, tiles start out marked interior
       // (usually the common case, and also permits the algorithms here)
       // and don't need to be changed if they actually are interior.
 
@@ -204,16 +268,16 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       if(!contents_are_all_in_the_same_interiorness_class) {
         // initialize_tile_neighbor_interiorness_within_worldblock initializes both the specified tile and its neighbors.
         size_t idx = 0;
-        for (tile_coordinate x = 0; x != worldblock_dimension; ++x) {
-          for (tile_coordinate y = 0; y != worldblock_dimension; ++y) {
-            for (tile_coordinate z = 0; z != worldblock_dimension; ++z, ++idx) {
+        for (worldblock_dimension_type x = 0; x != worldblock_dimension; ++x) {
+          for (worldblock_dimension_type y = 0; y != worldblock_dimension; ++y) {
+            for (worldblock_dimension_type z = 0; z != worldblock_dimension; ++z, ++idx) {
               if (tiles_[idx].contents() != estimated_most_frequent_tile_contents_type) {
-                initialize_tile_neighbor_interiorness_within_worldblock<xminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<yminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<zminus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<xplus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<yplus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
-                initialize_tile_neighbor_interiorness_within_worldblock<zplus>(this, x,y,z, idx, w_->tiles_exposed_to_collision_);
+                initialize_tile_neighbor_interiorness_within_worldblock<xminus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<yminus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<zminus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<xplus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<yplus>(this, x,y,z, idx);
+                initialize_tile_neighbor_interiorness_within_worldblock<zplus>(this, x,y,z, idx);
               }
             }
           }
@@ -250,26 +314,26 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 
         // check_local_caches_cross_worldblock_neighbor initializes
         // the specified tile but not its neighbor.
-        for (tile_coordinate x = 0; x != worldblock_dimension; ++x) {
-          for (tile_coordinate y = 0; y != worldblock_dimension; ++y) {
-            const tile_coordinate z1 = 0;
-            const tile_coordinate z2 = worldblock_dimension - 1;
+        for (worldblock_dimension_type x = 0; x != worldblock_dimension; ++x) {
+          for (worldblock_dimension_type y = 0; y != worldblock_dimension; ++y) {
+            const worldblock_dimension_type z1 = 0;
+            const worldblock_dimension_type z2 = worldblock_dimension - 1;
             this->check_local_caches_cross_worldblock_neighbor<zminus>(x,y,z1, x,y,z2);
             this->check_local_caches_cross_worldblock_neighbor<zplus >(x,y,z2, x,y,z1);
           }
         }
-        for (tile_coordinate x = 0; x != worldblock_dimension; ++x) {
-          for (tile_coordinate z = 0; z != worldblock_dimension; ++z) {
-            const tile_coordinate y1 = 0;
-            const tile_coordinate y2 = worldblock_dimension - 1;
+        for (worldblock_dimension_type x = 0; x != worldblock_dimension; ++x) {
+          for (worldblock_dimension_type z = 0; z != worldblock_dimension; ++z) {
+            const worldblock_dimension_type y1 = 0;
+            const worldblock_dimension_type y2 = worldblock_dimension - 1;
             this->check_local_caches_cross_worldblock_neighbor<yminus>(x,y1,z, x,y2,z);
             this->check_local_caches_cross_worldblock_neighbor<yplus >(x,y2,z, x,y1,z);
           }
         }
-        for (tile_coordinate y = 0; y != worldblock_dimension; ++y) {
-          for (tile_coordinate z = 0; z != worldblock_dimension; ++z) {
-            const tile_coordinate x1 = 0;
-            const tile_coordinate x2 = worldblock_dimension - 1;
+        for (worldblock_dimension_type y = 0; y != worldblock_dimension; ++y) {
+          for (worldblock_dimension_type z = 0; z != worldblock_dimension; ++z) {
+            const worldblock_dimension_type x1 = 0;
+            const worldblock_dimension_type x2 = worldblock_dimension - 1;
             this->check_local_caches_cross_worldblock_neighbor<xminus>(x1,y,z, x2,y,z);
             this->check_local_caches_cross_worldblock_neighbor<xplus >(x2,y,z, x1,y,z);
           }
@@ -302,18 +366,16 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
         }
       }
       else {
-        // I tried iterating the tile_collision_detector and it was about the
-        // same speed as this where I tested.  (Maybe once we switch to a
-        // faster tile-search structure it'd be worth it.) -Isaac
-        for (tile_coordinate x = global_position_.x; x < global_position_.x + worldblock_dimension; ++x) {
-          for (tile_coordinate y = global_position_.y; y < global_position_.y + worldblock_dimension; ++y) {
-            for (tile_coordinate z = global_position_.z; z < global_position_.z + worldblock_dimension; ++z) {
-              const vector3<tile_coordinate> coords(x,y,z);
-              tile& here = this->get_tile(coords);
+        // I tried iterating the tile_collision_detector, and tried using
+        // get_non_interior_tiles(), and my tests showed each was about the
+        // same speed as this. -Isaac, July 2012
+        size_t idx = 0;
+        for (tile_coordinate x = global_position_.x; x != global_position_.x + worldblock_dimension; ++x) {
+          for (tile_coordinate y = global_position_.y; y != global_position_.y + worldblock_dimension; ++y) {
+            for (tile_coordinate z = global_position_.z; z != global_position_.z + worldblock_dimension; ++z, ++idx) {
               // Checking contents() here: significant speed improvement.
-              // (Some from the inlining, some from not having to construct a tile_location if not GROUPABLE_WATER,
-              // I believe.) --Isaac
-              if (here.contents() == GROUPABLE_WATER) {
+              if (tiles_[idx].contents() == GROUPABLE_WATER && !tiles_[idx].is_interior()) {
+                const vector3<tile_coordinate> coords(x,y,z);
                 w_->initialize_tile_water_group_caches_(tile_location(coords, this));
               }
             }
@@ -408,4 +470,24 @@ void world::ensure_realization_of_space(tile_bounding_box space, level_of_tile_r
   }
 }
 
+void world::get_tiles_exposed_to_collision_within(std::vector<tile_location>& results, tile_bounding_box bounds) {
+  //ensure_realization_of_space(bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
+  struct filter {
+    bool min_cost(tiles_collision_detector::bounding_box const& bbox) {
+      return bounds_.overlaps(bbox);
+    }
+    bool cost(worldblock*, tiles_collision_detector::bounding_box const& bbox)const {
+      return bounds_.overlaps(bbox);
+    }
+    tiles_collision_detector::bounding_box bounds_;
+  };
+  filter f;
+  f.bounds_ = tile_bbox_to_tiles_collision_detector_bbox(bounds);
+  std::vector<worldblock*> relevant_worldblocks;
+  worldblocks_with_any_tiles_exposed_to_collision_.filter(relevant_worldblocks, f);
+  //std::cerr << "[REL-WB-CT:" << relevant_worldblocks.size() << "]\n";
+  for(worldblock* wb : relevant_worldblocks) {
+    wb->get_non_interior_tiles(results, bounds);
+  }
+}
 

@@ -220,8 +220,6 @@ public:
   
   bool intersects(shape const& other)const;
   bool intersects(bounding_box const& other)const;
-  // returns (was there an intersection?, what fraction of the length of the line segment was the first)
-  optional_rational first_intersection(line_segment const& other)const;
   bounding_box bounds()const;
   vector3<polygon_int_type> arbitrary_interior_point()const;
   
@@ -239,6 +237,8 @@ private:
   lasercake_vector<     bounding_box>::type boxes_   ;
 };
 
+// returns (was there an intersection?, what fraction of the length of the line segment was the first)
+optional_rational get_first_intersection(line_segment const& other, shape const& s);
 optional_rational get_first_intersection(line_segment const& l, bounding_box const& bb);
 optional_rational get_first_intersection(line_segment l, convex_polygon const& p);
 

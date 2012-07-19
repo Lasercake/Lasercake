@@ -87,6 +87,38 @@ private:
   }
 };
 
+class spiky {
+public:
+  tile_contents operator()(coords l) {
+    const coord height = get_height(make_pair(l.x, l.y));
+    return
+      (l.z < height) ? ROCK : AIR;
+  }
+private:
+  unordered_map<std::pair<coord, coord>, coord> height_map_;
+  // RNG default-initialized for now
+  // (so, deterministic except for worldblock realization order)
+  large_fast_noncrypto_rng rng_;
+
+  static const int a_spike_height = 20;
+
+  coord get_height(pair<coord, coord> loc) {
+    const auto iter = height_map_.find(loc);
+    if (iter == height_map_.end()) {
+      const int which = boost::random::uniform_int_distribution<int>(0,20)(rng_);
+      int spike_max = a_spike_height;
+      if (which < 5) spike_max *= 3;
+      if (which == 0) spike_max *= 5;
+      const boost::random::uniform_int_distribution<int> random_spike_height(0,spike_max);
+      coord height = wcc + random_spike_height(rng_);
+      height_map_.insert(make_pair(loc, height));
+      return height;
+    }
+    else {
+      return iter->second;
+    }
+  }
+};
 
 
 template<typename Functor>
@@ -177,6 +209,9 @@ worldgen_function_t make_world_building_func(std::string scenario) {
   }
   if (scenario == "simple_hills") {
     return worldgen_from_tilespec(with_state<simple_hills>());
+  }
+  if (scenario == "spiky") {
+    return worldgen_from_tilespec(with_state<spiky>());
   }
   if (scenario == "pressure_tunnel" || scenario == "pressure_tunnel_ground") {
     const bool has_ground = (scenario == "pressure_tunnel_ground");

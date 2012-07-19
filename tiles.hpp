@@ -41,6 +41,32 @@ using std::unordered_set;
 
 
 
+// The minimum valid tile_coordinate is zero.
+//
+// This prevents accidentally dividing negative tile_coordinates,
+// expecting it to round towards lowest, and possibly having it
+// round towards zero instead.
+//
+// The type is signed, however, to make code more likely to be
+// correct: subtracting two tile_coordinates should generally
+// produce a signed number.
+//
+// These decisions mean that the unavoidable boundaries of
+// the space are
+// bounding_box::min_and_max(
+//   vector3<fine_scalar>(0,0,0),
+//   vector3<fine_scalar>(INT32_MAX*tile_width, INT32_MAX*tile_width,
+//                                              INT32_MAX*tile_height),
+// ).
+// In practice they should be, at least, a few worldblocks away
+// from that or more, so that local/regional effects like tile
+// physics and lasers don't try to look in places beyond the edge.
+//
+// TODO it might be reasonable to also have a tile type of
+// IMPENETRABLE_EDGE_OF_THE_WORLD and have a few (or few thousand)
+// worldblocks worth of those as necessary at all the edges,
+// just to be extra cautious. Currently we just rely on the user
+// not bothering to go nearly that far from the world-center coordinate.
 typedef lasercake_int<int32_t>::type tile_coordinate;
 typedef lasercake_int<int32_t>::type tile_coordinate_signed_type;
 
@@ -216,9 +242,9 @@ public:
   //tile_location operator+(cardinal_direction dir)const;
   // Equivalent to operator+, except allowing you to specify the amount of realization needed.
   template<cardinal_direction Dir> tile_location get_neighbor(level_of_tile_realization_needed realineeded)const;
-
   tile_location get_neighbor_by_variable(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
-  //tile_location operator-(cardinal_direction dir)const { return (*this)+(-dir); }
+  std::array<tile, num_cardinal_directions> get_all_neighbor_tiles(level_of_tile_realization_needed realineeded)const;
+
   bool operator==(tile_location const& other)const { return v_ == other.v_; }
   bool operator!=(tile_location const& other)const { return v_ != other.v_; }
   bool operator<(tile_location const& other)const { return v_ < other.v_; }

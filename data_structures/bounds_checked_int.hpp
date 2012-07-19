@@ -88,7 +88,20 @@ template<
   Int Max
 >
 class bounds_checked_int;
-//overloaded: a.get() or a
+
+// These get_primitive_* functions are useful for code in which bounds-checked ints
+// can be enabled or disabled.
+//
+// get_primitive_int() returns the underlying int type/value.
+// get_primitive<Type>() does a bounds-checked cast to the target type:
+//     if the mathematical value of the argument doesn't fit within the target
+//     type, it raises an error.
+// get_primitive_[float|double]() casts to floating-point without bounds checks
+//     because with floating point, they basically can't overflow.
+//
+// get_primitive_int_type<>::type gives the type of get_primitive_int()'s
+//     return value.
+
 template<typename Int, Int Min, Int Max>
 inline Int get_primitive_int(bounds_checked_int<Int,Min,Max> a) { return a.get(); }
 template<typename Int>
@@ -96,6 +109,16 @@ inline Int get_primitive_int(Int a) { return a; }
 
 template<typename AnyInt>
 inline double get_primitive_double(AnyInt a) { return get_primitive_int(a); }
+template<typename AnyInt>
+inline float get_primitive_float(AnyInt a) { return get_primitive_int(a); }
+
+template<typename Target, typename AnyInt>
+Target get_primitive(AnyInt a);
+
+template<typename Int>
+struct get_primitive_int_type { typedef Int type; };
+template<typename Int, Int Min, Int Max>
+struct get_primitive_int_type< bounds_checked_int<Int,Min,Max> > { typedef Int type; };
 
 template<
   typename Int,
@@ -202,26 +225,17 @@ namespace std {
   // min(), max(), digits, digits10
   template<typename Int> struct numeric_limits< bounds_checked_int<Int> > : numeric_limits<Int> {};
 }
+#endif
 namespace boost {
   template<typename Int> struct   make_signed< bounds_checked_int<Int> > { typedef bounds_checked_int<typename   make_signed<Int>::type> type; };
   template<typename Int> struct make_unsigned< bounds_checked_int<Int> > { typedef bounds_checked_int<typename make_unsigned<Int>::type> type; };
 }
-#endif
 
 // Checks that the value fits into the target type.
 template<typename Target, typename AnyInt>
 inline Target get_primitive(AnyInt a) {
   return bounds_checked_int<Target>(a).get();
 }
-
-template<typename Int>
-struct get_primitive_int_type {
-  typedef Int type;
-};
-template<typename Int, Int Min, Int Max>
-struct get_primitive_int_type< bounds_checked_int<Int,Min,Max> > {
-  typedef Int type;
-};
 
 
 template<typename Int1, Int1 Min1, Int1 Max1, typename Int2, Int2 Min2, Int2 Max2>
@@ -321,11 +335,23 @@ operator>>=(bounds_checked_int<Int,Min,Max>& a, IntAny shift) {
   return a = a >> shift;
 }
 
-// overloading and calling the utils.hpp one
-uint32_t i64sqrt(uint64_t i);
+// overloading and calling the numbers.hpp ones
+#include "numbers.hpp"
 inline bounds_checked_int<uint32_t> i64sqrt(bounds_checked_int<uint64_t> i) {
   return i64sqrt(i.get());
 }
+inline bounds_checked_int<uint16_t> width_doubling_multiply(bounds_checked_int<uint8_t> a1, bounds_checked_int<uint8_t> a2) { return (uint16_t)a1.get() * a2.get(); }
+inline bounds_checked_int<int16_t> width_doubling_multiply(bounds_checked_int<int8_t> a1, bounds_checked_int<int8_t> a2) { return (int16_t)a1.get() * a2.get(); }
+
+inline bounds_checked_int<uint32_t> width_doubling_multiply(bounds_checked_int<uint16_t> a1, bounds_checked_int<uint16_t> a2) { return (uint32_t)a1.get() * a2.get(); }
+inline bounds_checked_int<int32_t> width_doubling_multiply(bounds_checked_int<int16_t> a1, bounds_checked_int<int16_t> a2) { return (int32_t)a1.get() * a2.get(); }
+
+inline bounds_checked_int<uint64_t> width_doubling_multiply(bounds_checked_int<uint32_t> a1, bounds_checked_int<uint32_t> a2) { return (uint64_t)a1.get() * a2.get(); }
+inline bounds_checked_int<int64_t> width_doubling_multiply(bounds_checked_int<int32_t> a1, bounds_checked_int<int32_t> a2) { return (int64_t)a1.get() * a2.get(); }
+
+// Hack - don't return it bounds-checked, because we can't bounds-check it without an int256.
+inline uint128 width_doubling_multiply(bounds_checked_int<uint64_t> a1, bounds_checked_int<uint64_t> a2) { return width_doubling_multiply(a1.get(), a2.get()); }
+inline int128 width_doubling_multiply(bounds_checked_int<int64_t> a1, bounds_checked_int<int64_t> a2) { return width_doubling_multiply(a1.get(), a2.get()); }
 
 namespace std {
 template<typename Int, Int Min, Int Max>

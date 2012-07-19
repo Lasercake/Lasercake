@@ -24,41 +24,33 @@
 
 #include "world.hpp"
 
-class world_building_gun {
+// Don't construct worldgen_function_t:s yourself; use worldgen_from_tilespec().
+template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
+class worldgen_from_tilespec_t {
 public:
-  world_building_gun(world* w, tile_bounding_box bounds,
-                     the_decomposition_of_the_world_into_blocks_impl::worldblock* wb):w_(w),wb_(wb),bounds_(bounds){}
-private:
-  world* w_;
-  the_decomposition_of_the_world_into_blocks_impl::worldblock* wb_;
-  tile_bounding_box bounds_;
-public:
-  template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
-  class worldgen_from_tilespec_t {
-  public:
-    worldgen_from_tilespec_t(Functor const& xyz_to_tile_contents) : xyz_to_tile_contents_(xyz_to_tile_contents) {}
-    void operator()(world_building_gun make, tile_bounding_box bounds)const {
-      size_t i = 0;
-      for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
-        for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
-          for (tile_coordinate z = bounds.min.z; z < bounds.min.z + bounds.size.z; ++z, ++i) {
-            const vector3<tile_coordinate> l(x, y, z);
-            const tile_contents new_contents = xyz_to_tile_contents_(l);
-            caller_correct_if(new_contents == ROCK || new_contents == AIR || new_contents == GROUPABLE_WATER || new_contents == RUBBLE,
-                              "Trying to place a type of tile other than AIR, ROCK, GROUPABLE_WATER, and RUBBLE");
-            make.wb_->tiles_[i] = tile::make_tile_with_contents_and_interiorness(new_contents, true);
-          }
+  worldgen_from_tilespec_t(Functor const& xyz_to_tile_contents) : xyz_to_tile_contents_(xyz_to_tile_contents) {}
+  void operator()(the_decomposition_of_the_world_into_blocks_impl::worldblock* wb, tile_bounding_box bounds)const {
+    size_t i = 0;
+    for (tile_coordinate x = bounds.min.x; x < bounds.min.x + bounds.size.x; ++x) {
+      for (tile_coordinate y = bounds.min.y; y < bounds.min.y + bounds.size.y; ++y) {
+        for (tile_coordinate z = bounds.min.z; z < bounds.min.z + bounds.size.z; ++z, ++i) {
+          const vector3<tile_coordinate> l(x, y, z);
+          const tile_contents new_contents = xyz_to_tile_contents_(l);
+          caller_correct_if(new_contents == ROCK || new_contents == AIR || new_contents == GROUPABLE_WATER || new_contents == RUBBLE,
+                            "Trying to place a type of tile other than AIR, ROCK, GROUPABLE_WATER, and RUBBLE");
+          wb->tiles_[i] = tile::make_tile_with_contents_and_interiorness(new_contents, true);
         }
       }
     }
-  private:
-    Functor xyz_to_tile_contents_;
-  };
+  }
+private:
+  Functor xyz_to_tile_contents_;
 };
+
 
 template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
 worldgen_function_t worldgen_from_tilespec(Functor const& xyz_to_tile_contents) {
-  return worldgen_function_t(world_building_gun::worldgen_from_tilespec_t<Functor>(xyz_to_tile_contents));
+  return worldgen_function_t(worldgen_from_tilespec_t<Functor>(xyz_to_tile_contents));
 }
 
 #endif

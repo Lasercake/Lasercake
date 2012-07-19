@@ -19,6 +19,8 @@
 
 */
 
+#include <boost/scope_exit.hpp>
+
 #include "gl_data_preparation.hpp"
 #include "world.hpp"
 
@@ -29,24 +31,25 @@ using namespace gl_data_preparation;
 
 namespace /* anonymous */ {
 
-template<typename Float, typename Int>
-vector3<Float> cast_vector3_to_floating(vector3<Int> v) {
-  return vector3<Float>(get_primitive_double(v.x), get_primitive_double(v.y), get_primitive_double(v.z));
+template<typename Int>
+inline vector3<GLfloat> cast_vector3_to_float(vector3<Int> v) {
+  return vector3<GLfloat>(get_primitive_float(v.x), get_primitive_float(v.y), get_primitive_float(v.z));
+}
+template<typename Int>
+inline vector3<double> cast_vector3_to_double(vector3<Int> v) {
+  return vector3<double>(get_primitive_double(v.x), get_primitive_double(v.y), get_primitive_double(v.z));
 }
 
-vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
-  return cast_vector3_to_floating<GLfloat>(input - view_center) / get_primitive_double(tile_width);
+inline vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
+  return cast_vector3_to_float(input - view_center);
 }
 
-vector3<GLfloat> convert_tile_coordinates_to_GL(vector3<double> view_center_double, vector3<tile_coordinate> input) {
+inline vector3<GLfloat> convert_tile_coordinates_to_GL(vector3<double> view_center_double, vector3<tile_coordinate> input) {
   // (Floats don't have enough precision to represent tile_coordinates exactly,
   // which before subtraction they must do. Doubles do.)
-  const vector3<double> input_as_tile_width_scale_double(
-    get_primitive_double(input.x),
-    get_primitive_double(input.y),
-    get_primitive_double(input.z) * (get_primitive_double(tile_height) / get_primitive_double(tile_width)));
-  vector3<GLfloat> result(input_as_tile_width_scale_double - view_center_double);
-  return result;
+  vector3<double> tile_fine_scalar_min = cast_vector3_to_double(input).multiply_piecewise_by(cast_vector3_to_double(tile_size));
+  vector3<GLfloat> tile_gl_min(tile_fine_scalar_min - view_center_double);
+  return tile_gl_min;
 }
 
 
@@ -233,22 +236,29 @@ inline color compute_tile_color(tile_location const& loc) {
   }
 }
 
+
+// We only draw faces of the tile that (1) are not material-interior
+// and (2) that face towards the viewer.
+//
+// (For opaque materials, the viewer could not have seen the other faces
+// anyway, if we drew them correctly.)
+//
+// Condition 2 means that the up-to-three faces that we draw
+// will not visually overlap, so it doesn't matter which order OpenGL
+// draws them in
+// (not even in the hardest case, in which they're translucent so the
+// OpenGL depth buffer can't be used, and different colors).
 void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
   vector3<tile_coordinate> const& coords = loc.coords();
   tile const& t = loc.stuff_at();
   const tile_contents contents = t.contents();
-  
-  const color tile_color = compute_tile_color(loc);
 
-  // If we make one of the 'glb' members the closest corner of the tile to the player,
-  // and the other the farthest, then we can draw the faces in a correct order
-  // efficiently.  (Previously this code just used the lower bound for one corner
-  // and the upper bound for the other corner.)
-  //
-  // It doesn't matter what part of the tile we compare against -- if the
-  // viewer is aligned with the tile in a dimension, then which close corner
-  // is picked won't change the order of any faces that are actually going to
-  // overlap in the display.
+  // If the viewer is exactly aligned with the edge of a tile, then this code
+  // will interpret one of the two tile coordinates the viewer is aligned with
+  // as the same coord as the viewer, and one not.  That's acceptable:
+  // the worst that can happen is we draw (or don't draw) a face that
+  // is exactly aligned with the viewer's line-of-sight, which can't
+  // be seen anyway.
   const int x_close_side = (view_tile_loc_rounded_down.x < coords.x) ? 0 : 1;
   const int y_close_side = (view_tile_loc_rounded_down.y < coords.y) ? 0 : 1;
   const int z_close_side = (view_tile_loc_rounded_down.z < coords.z) ? 0 : 1;
@@ -256,52 +266,71 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   const bool is_same_y_coord_as_viewer = (view_tile_loc_rounded_down.y == coords.y);
   const bool is_same_z_coord_as_viewer = (view_tile_loc_rounded_down.z == coords.z);
 
-  const std::array<vector3<GLfloat>, 2> glb = {{
-    convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
-        coords.x +      x_close_side , coords.y +      y_close_side , coords.z +      z_close_side)),
-    convert_tile_coordinates_to_GL(view_loc_double, vector3<tile_coordinate>(
-        coords.x + int(!x_close_side), coords.y + int(!y_close_side), coords.z + int(!z_close_side)))
-  }};
-
-  const vertex_with_color gl_vertices[2][2][2] =
-    { { { vertex_with_color(glb[0].x, glb[0].y, glb[0].z, tile_color),
-          vertex_with_color(glb[0].x, glb[0].y, glb[1].z, tile_color) },
-        { vertex_with_color(glb[0].x, glb[1].y, glb[0].z, tile_color),
-          vertex_with_color(glb[0].x, glb[1].y, glb[1].z, tile_color) }, },
-      { { vertex_with_color(glb[1].x, glb[0].y, glb[0].z, tile_color),
-          vertex_with_color(glb[1].x, glb[0].y, glb[1].z, tile_color) },
-        { vertex_with_color(glb[1].x, glb[1].y, glb[0].z, tile_color),
-          vertex_with_color(glb[1].x, glb[1].y, glb[1].z, tile_color) } } };
-
-  // Draw the farther faces first so that the closer faces will be drawn
-  // after -- on top of -- the farther faces.  The closer faces are the ones
-  // that have 0,0,0 as a vertex and the farther faces are the ones that have
-  // 1,1,1 as a vertex.
-
   // Only output the faces that are not interior to a single kind of material.
-  const std::array<bool, 2> x_neighbors_differ = {{
-    loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
-    loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != contents
-  }};
-  const std::array<bool, 2> y_neighbors_differ = {{
-    loc.get_neighbor<yminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
-    loc.get_neighbor<yplus>(CONTENTS_ONLY).stuff_at().contents() != contents
-  }};
-  const std::array<bool, 2> z_neighbors_differ = {{
-    loc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() != contents,
-    loc.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != contents
-  }};
+  const std::array<tile, num_cardinal_directions> neighbor_tiles = loc.get_all_neighbor_tiles(CONTENTS_ONLY);
+  // Also, for tiles aligned in a dimension with the viewer,
+  // neither face in that dimension is facing towards the viewer.
+  //->near
+  bool draw_x_close_side;
+  bool draw_y_close_side;
+  bool draw_z_close_side;
 
-  const bool draw_x_close_side = x_neighbors_differ[x_close_side]
-                                  && !is_same_x_coord_as_viewer;
-  const bool draw_y_close_side = y_neighbors_differ[y_close_side]
-                                  && !is_same_y_coord_as_viewer;
-  const bool draw_z_close_side = z_neighbors_differ[z_close_side]
-                                  && !is_same_z_coord_as_viewer;
-
+  const vector3<double> tile_fine_scalar_min = cast_vector3_to_double(coords).multiply_piecewise_by(cast_vector3_to_double(tile_size));
+  const vector3<GLfloat> tile_gl_min = vector3<GLfloat>(tile_fine_scalar_min - view_loc_double);
+  const vector3<GLfloat> tile_gl_max = tile_gl_min + cast_vector3_to_float(tile_size);
+  vector3<GLfloat> tile_gl_near;
+  vector3<GLfloat> tile_gl_far;
+  if(x_close_side == 0) {
+    tile_gl_near.x = tile_gl_min.x;
+    tile_gl_far.x = tile_gl_max.x;
+    draw_x_close_side = (neighbor_tiles[xminus].contents() != contents
+                                            && !is_same_x_coord_as_viewer);
+  }
+  else {
+    tile_gl_far.x = tile_gl_min.x;
+    tile_gl_near.x = tile_gl_max.x;
+    draw_x_close_side = (neighbor_tiles[xplus].contents() != contents
+                                            && !is_same_x_coord_as_viewer);
+  }
+  if(y_close_side == 0) {
+    tile_gl_near.y = tile_gl_min.y;
+    tile_gl_far.y = tile_gl_max.y;
+    draw_y_close_side = (neighbor_tiles[yminus].contents() != contents
+                                            && !is_same_y_coord_as_viewer);
+  }
+  else {
+    tile_gl_far.y = tile_gl_min.y;
+    tile_gl_near.y = tile_gl_max.y;
+    draw_y_close_side = (neighbor_tiles[yplus].contents() != contents
+                                            && !is_same_y_coord_as_viewer);
+  }
+  if(z_close_side == 0) {
+    tile_gl_near.z = tile_gl_min.z;
+    tile_gl_far.z = tile_gl_max.z;
+    draw_z_close_side = (neighbor_tiles[zminus].contents() != contents
+                                            && !is_same_z_coord_as_viewer);
+  }
+  else {
+    tile_gl_far.z = tile_gl_min.z;
+    tile_gl_near.z = tile_gl_max.z;
+    draw_z_close_side = (neighbor_tiles[zplus].contents() != contents
+                                            && !is_same_z_coord_as_viewer);
+  }
   const gl_call_data::size_type original_count = coll.quads.count;
   coll.quads.reserve_new_slots(4 * (draw_x_close_side + draw_y_close_side + draw_z_close_side));
   vertex_with_color* base = coll.quads.vertices + original_count;
+
+  const color tile_color = compute_tile_color(loc);
+
+  const vertex_with_color gl_vertices[2][2][2] =
+    { { { vertex_with_color(tile_gl_near.x, tile_gl_near.y, tile_gl_near.z, tile_color),
+          vertex_with_color(tile_gl_near.x, tile_gl_near.y, tile_gl_far.z,  tile_color) },
+        { vertex_with_color(tile_gl_near.x, tile_gl_far.y,  tile_gl_near.z, tile_color),
+          vertex_with_color(tile_gl_near.x, tile_gl_far.y,  tile_gl_far.z,  tile_color) }, },
+      { { vertex_with_color(tile_gl_far.x,  tile_gl_near.y, tile_gl_near.z, tile_color),
+          vertex_with_color(tile_gl_far.x,  tile_gl_near.y, tile_gl_far.z,  tile_color) },
+        { vertex_with_color(tile_gl_far.x,  tile_gl_far.y,  tile_gl_near.z, tile_color),
+          vertex_with_color(tile_gl_far.x,  tile_gl_far.y,  tile_gl_far.z,  tile_color) } } };
 
   //TODO what if you are close enough to a wall or lake-surface that
   //this falls inside your near clipping plane?
@@ -370,11 +399,15 @@ void view_on_the_world::prepare_gl_data(
     );
   }
 
-  const vector3<double> view_loc_double(cast_vector3_to_floating<double>(view_loc) / get_primitive_double(tile_width));
+  const vector3<double> view_loc_double(cast_vector3_to_double(view_loc));
   const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
 
   const auto tiles_here = get_all_containing_tile_coordinates(view_loc);
   // Average the color. Take the max opacity, so that you can't see through rock ever.
+  //
+  // TODO I think the correct thing to do is, if, say, you are half in water, half air,
+  // to make the part of the screen that's in water have blue added, and the air
+  // part have air-color added (i.e., in this case, do nothing :-P).
   uint32_t total_r = 0;
   uint32_t total_g = 0;
   uint32_t total_b = 0;
@@ -458,10 +491,11 @@ void view_on_the_world::prepare_gl_data(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(segment_bbox, view_loc))
       ];
       const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
+      const float apparent_laser_height = get_primitive_float(tile_height) / 2;
       push_quad(coll,
                 vertex(locvf.x, locvf.y, locvf.z),
-                vertex(locvf.x, locvf.y, locvf.z + 0.1),
-                vertex(locvf_next.x, locvf_next.y, locvf_next.z + 0.1),
+                vertex(locvf.x, locvf.y, locvf.z + apparent_laser_height),
+                vertex(locvf_next.x, locvf_next.y, locvf_next.z + apparent_laser_height),
                 vertex(locvf_next.x, locvf_next.y, locvf_next.z),
                 color(0x00ff0077));
       locvf = locvf_next;
@@ -531,11 +565,8 @@ void view_on_the_world::prepare_gl_data(
           for(auto const& this_vertex : polygon.get_vertices()) {
             const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
             push_line(coll,
-                      vertex(locv.x, locv.y, locv.z),
-                      vertex(
-                        locv.x + (get_primitive_double(objp->velocity().x) / get_primitive_double(tile_width)),
-                        locv.y + (get_primitive_double(objp->velocity().y) / get_primitive_double(tile_width)),
-                        locv.z + (get_primitive_double(objp->velocity().z) / get_primitive_double(tile_width))),
+                      locv,
+                      locv + cast_vector3_to_float(objp->velocity()),
                       objects_color);
           }
         }
@@ -554,8 +585,16 @@ void view_on_the_world::prepare_gl_data(
   }
 
   if (this->drawing_regular_stuff) {
-    vector<tile_location> tiles_to_draw;
-    w.tiles_exposed_to_collision().get_objects_overlapping(tiles_to_draw, tile_bbox_to_tiles_collision_detector_bbox(tile_view_bounds));
+    // 'static' so that we don't do large memory allocations/copying every frame.
+    // TODO it might be better to iterate directly rather than store in a temp
+    // vector and then iterate that vector.
+    static vector<tile_location> tiles_to_draw;
+    BOOST_SCOPE_EXIT((&tiles_to_draw)) {
+      tiles_to_draw.clear();
+    } BOOST_SCOPE_EXIT_END
+
+    w.get_tiles_exposed_to_collision_within(tiles_to_draw, tile_view_bounds);
+
     for (tile_location const& loc : tiles_to_draw) {
       gl_collection& coll = gl_collections_by_distance[
         get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))
@@ -570,11 +609,8 @@ void view_on_the_world::prepare_gl_data(
         if (tile_physics_impl::active_fluid_tile_info const* fluid =
               find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
           push_line(coll,
-                    vertex(locv.x+0.5, locv.y+0.5, locv.z + 0.1),
-                    vertex(
-                      locv.x + 0.5 + (get_primitive_double(fluid->velocity.x) / get_primitive_double(tile_width)),
-                      locv.y + 0.5 + (get_primitive_double(fluid->velocity.y) / get_primitive_double(tile_width)),
-                      locv.z + 0.1 + (get_primitive_double(fluid->velocity.z) / get_primitive_double(tile_width))),
+                    locv + cast_vector3_to_float(tile_size)/2,
+                    locv + cast_vector3_to_float(tile_size)/2 + cast_vector3_to_float(fluid->velocity),
                     color(0x00ff0077));
 
           for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
@@ -601,7 +637,7 @@ void view_on_the_world::prepare_gl_data(
     }
   }
 
-  gl_data.facing = cast_vector3_to_floating<GLfloat>(view_towards - view_loc) / get_primitive_double(tile_width);
+  gl_data.facing = cast_vector3_to_float(view_towards - view_loc);
   gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
 }
 

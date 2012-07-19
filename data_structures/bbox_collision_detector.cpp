@@ -391,5 +391,6 @@ namespace collision_detector {
 template class bbox_collision_detector<object_or_tile_identifier, 64, 3>;
 template class bbox_collision_detector<object_identifier, 64, 3>;
 template class bbox_collision_detector<tile_location, 32, 3>;
+template class bbox_collision_detector<the_decomposition_of_the_world_into_blocks_impl::worldblock*, 32, 3>;
 }
 #endif

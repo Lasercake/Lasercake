@@ -75,66 +75,81 @@ typedef unordered_map<water_group_identifier, persistent_water_group_info> persi
 typedef unordered_map<tile_location, water_group_identifier> water_groups_by_location_t;
 
 
+template<cardinal_direction Dir> struct volume_calipers_tile_compare_for_dir;
+template<> struct volume_calipers_tile_compare_for_dir<xplus > { typedef tile_compare_yzx type; };
+template<> struct volume_calipers_tile_compare_for_dir<xminus> { typedef tile_compare_yzx type; };
+template<> struct volume_calipers_tile_compare_for_dir<yplus > { typedef tile_compare_zxy type; };
+template<> struct volume_calipers_tile_compare_for_dir<yminus> { typedef tile_compare_zxy type; };
+template<> struct volume_calipers_tile_compare_for_dir<zplus > { typedef tile_compare_xyz type; };
+template<> struct volume_calipers_tile_compare_for_dir<zminus> { typedef tile_compare_xyz type; };
 
+// TileLocationIsPartOfVolume is a predicate (functor returning bool)
+// with a member: static const level_of_tile_realization_needed realineeded = ...;
+template<cardinal_direction Dir, typename TileLocationIsPartOfVolume>
+struct volume_calipers {
+  typedef typename volume_calipers_tile_compare_for_dir<Dir>::type tile_compare;
+  static const level_of_tile_realization_needed realineeded = TileLocationIsPartOfVolume::realineeded;
+  static const cardinal_direction forward  = Dir;
+  static const cardinal_direction backward = cdir_info<Dir>::opposite;
 
-// We could easily keep lists of boundary tiles in all three dimensions
-// (Just uncomment the six commented lines below.)
-// The only reason we don't is because there's no need for any of the others right now.
-// (And it would take that much extra space (proportional to the that-dimension surface area)
-//   and time (proportional to how much the groupable-water landscape changes)).
-struct groupable_water_dimensional_boundaries_TODO_name_this_better_t {
-  set<tile_location, tile_compare_yzx> x_boundary_groupable_water_tiles;
-  //set<tile_location, tile_compare_zxy> y_boundary_groupable_water_tiles;
-  //set<tile_location, tile_compare_xyz> z_boundary_groupable_water_tiles;
+  // This set contains the boundary tiles that are part of the volume,
+  // but not the boundary tiles that are non-volume.
+  set<tile_location, tile_compare> boundary_tiles_in_dimension;
+  TileLocationIsPartOfVolume predicate;
+
+  // These functions must be called whenever a relevant tile
+  // changes its TileLocationIsPartOfVolume status.
+  // ("inserted" = predicate is true, "removed" = predicate is false)
   void handle_tile_insertion(tile_location const& loc) {
-    handle_tile_insertion_in_dimension<tile_compare_yzx, xplus>(x_boundary_groupable_water_tiles, loc);
-  //  handle_tile_insertion_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
-  //  handle_tile_insertion_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
+    // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
+    const tile_location further_in_positive_direction_loc = loc.get_neighbor<forward >(realineeded);
+    const tile_location further_in_negative_direction_loc = loc.get_neighbor<backward>(realineeded);
+    bool we_are_boundary_tile = false;
+    if (predicate(further_in_positive_direction_loc)) {
+      if (predicate(further_in_positive_direction_loc.get_neighbor<forward >(realineeded))) {
+        boundary_tiles_in_dimension.erase(further_in_positive_direction_loc);
+      }
+    }
+    else we_are_boundary_tile = true;
+    if (predicate(further_in_negative_direction_loc)) {
+      if (predicate(further_in_negative_direction_loc.get_neighbor<backward>(realineeded))) {
+        boundary_tiles_in_dimension.erase(further_in_negative_direction_loc);
+      }
+    }
+    else we_are_boundary_tile = true;
+
+    if (we_are_boundary_tile) boundary_tiles_in_dimension.insert(loc);
   }
   void handle_tile_removal(tile_location const& loc) {
-    handle_tile_removal_in_dimension<tile_compare_yzx, xplus>(x_boundary_groupable_water_tiles, loc);
-  //  handle_tile_removal_in_dimension(y_boundary_groupable_water_tiles, loc, cdir_yplus);
-  //  handle_tile_removal_in_dimension(z_boundary_groupable_water_tiles, loc, cdir_zplus);
-  }
-private:
-  template <typename Compare, cardinal_direction Dir>
-  static void handle_tile_removal_in_dimension(set<tile_location, Compare>& boundary_tiles_set, tile_location const& loc) {
     // This tile is no longer groupable at all, so it can't be a boundary tile
-    boundary_tiles_set.erase(loc);
+    boundary_tiles_in_dimension.erase(loc);
 
     // If there are groupable tiles next to us, they must now be boundary tiles,
     // because our deletion exposed them
-    const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
-    const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);
-    if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      boundary_tiles_set.insert(further_in_positive_direction_loc);
+    const tile_location further_in_positive_direction_loc = loc.get_neighbor<forward >(realineeded);
+    const tile_location further_in_negative_direction_loc = loc.get_neighbor<backward>(realineeded);
+    if (predicate(further_in_positive_direction_loc)) {
+      boundary_tiles_in_dimension.insert(further_in_positive_direction_loc);
     }
-    if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      boundary_tiles_set.insert(further_in_negative_direction_loc);
+    if (predicate(further_in_negative_direction_loc)) {
+      boundary_tiles_in_dimension.insert(further_in_negative_direction_loc);
     }
-  }
-  template <typename Compare, cardinal_direction Dir>
-  static void handle_tile_insertion_in_dimension(set<tile_location, Compare>& boundary_tiles_set, tile_location const& loc) {
-    // We *may* have removed boundaries in either direction, and we *may* now be a boundary tile ourselves.
-    const tile_location further_in_positive_direction_loc = loc.get_neighbor<Dir                     >(CONTENTS_ONLY);
-    const tile_location further_in_negative_direction_loc = loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY);
-    bool we_are_boundary_tile = false;
-    if (further_in_positive_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if (further_in_positive_direction_loc.get_neighbor<Dir                     >(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
-        boundary_tiles_set.erase(further_in_positive_direction_loc);
-      }
-    }
-    else we_are_boundary_tile = true;
-    if (further_in_negative_direction_loc.stuff_at().contents() == GROUPABLE_WATER) {
-      if (further_in_negative_direction_loc.get_neighbor<cdir_info<Dir>::opposite>(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
-        boundary_tiles_set.erase(further_in_negative_direction_loc);
-      }
-    }
-    else we_are_boundary_tile = true;
-
-    if (we_are_boundary_tile) boundary_tiles_set.insert(loc);
   }
 };
+
+struct is_groupable_water {
+  static const level_of_tile_realization_needed realineeded = CONTENTS_ONLY;
+  bool operator()(tile_location const& loc)const {
+    return loc.stuff_at().contents() == GROUPABLE_WATER;
+  }
+};
+
+// We could easily keep lists of boundary tiles in all three dimensions.
+// The only reason we don't is because there's no need for any of the others right now.
+// (And it would take that much extra space (proportional to the that-dimension surface area)
+//   and time (proportional to how much the groupable-water landscape changes)).
+typedef volume_calipers<xplus, is_groupable_water> groupable_water_volume_calipers_t;
+
 
 struct state_t {
   //state_t(world_collision_detector& d):next_water_group_identifier(1), things_exposed_to_collision(d){}
@@ -143,7 +158,7 @@ struct state_t {
   water_group_identifier next_water_group_identifier;
   water_groups_by_location_t water_groups_by_surface_tile;
   persistent_water_groups_t persistent_water_groups;
-  groupable_water_dimensional_boundaries_TODO_name_this_better_t groupable_water_dimensional_boundaries_TODO_name_this_better;
+  groupable_water_volume_calipers_t groupable_water_volume_calipers;
   active_fluids_t active_fluids;
 
   //only used in replace_substance(), to get world_collision_detector& things_exposed_to_collision:

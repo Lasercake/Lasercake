@@ -55,7 +55,7 @@ struct beam_first_contact_finder {
     // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
     if(bbox_is_too_large(bbox)) return result_type();
     if(ignores_.find(id) != ignores_.end()) return result_type();
-    return w_.get_detail_shape_of_object_or_tile(id).first_intersection(beam_);
+    return get_first_intersection(beam_, w_.get_detail_shape_of_object_or_tile(id));
   }
   result_type cost(tile_location id, tiles_collision_detector::bounding_box const& bbox) const {
     // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
@@ -331,7 +331,7 @@ void autorobot::update(world& w, object_identifier my_id) {
   //facing_ = facing_ * tile_width / facing_.magnitude_within_32_bits();
   
   auto direction_home = initial_location_ - location_;
-  auto mag = i64sqrt(direction_home.x*direction_home.x + direction_home.y*direction_home.y);
+  auto mag = to_signed_type(i64sqrt(direction_home.x*direction_home.x + direction_home.y*direction_home.y));
   
   if (carrying_ < 4) {
     velocity_.x = facing_.x * velocity_scale_factor / 8;

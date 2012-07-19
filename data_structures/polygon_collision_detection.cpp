@@ -1238,16 +1238,16 @@ bool shape::intersects(bounding_box const& other)const {
   return false;
 }
 
-optional_rational shape::first_intersection( const line_segment& other )const {
+optional_rational get_first_intersection(line_segment const& l, shape const& s) {
   optional_rational result;
-  for (convex_polygon const& p : polygons_) {
-    optional_rational here = get_first_intersection(other, p);
+  for (convex_polygon const& p : s.get_polygons()) {
+    const optional_rational here = get_first_intersection(l, p);
     if (here && (!result || *here < *result)) {
       result = *here;
     }
   }
-  for (bounding_box const& bb : boxes_) {
-    optional_rational here = get_first_intersection(other, bb);
+  for (bounding_box const& bb : s.get_boxes()) {
+    const optional_rational here = get_first_intersection(l, bb);
     if (here && (!result || *here < *result)) {
       result = *here;
     }
