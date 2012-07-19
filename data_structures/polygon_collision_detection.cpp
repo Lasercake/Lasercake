@@ -271,7 +271,7 @@ vector3<polygon_int_type> forcedly_directed_plane_normal(vector3<polygon_int_typ
   }
 }
 
-bool sweeps_intersect_onesided(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps2) {
+faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face_onesided(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps2) {
   for (auto const& p : ps2.base_points_and_outward_facing_normals) {
     bool excludes_entire = true;
     for (vector3<polygon_int_type> v : vs1) {
@@ -281,18 +281,18 @@ bool sweeps_intersect_onesided(std::vector<vector3<polygon_int_type>> const& vs1
       }
     }
     if (excludes_entire) {
-      return false;
+      return p;
     }
   }
-  return true;
+  return none;
 }
 
 } /* end anonymous namespace */
 
-bool sweeps_intersect(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps1, std::vector<vector3<polygon_int_type>> const& vs2, polyhedron_planes_info_for_intersection ps2) {
-  if (!sweeps_intersect_onesided(vs1, ps2)) return false;
-  if (!sweeps_intersect_onesided(vs2, ps1)) return false;
-  return true;
+faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps1, std::vector<vector3<polygon_int_type>> const& vs2, polyhedron_planes_info_for_intersection ps2) {
+  if (auto result = get_excluding_face_onesided(vs1, ps2)) return result;
+  if (auto result = get_excluding_face_onesided(vs2, ps1)) return result;
+  return none;
 }
 
 void compute_planes_info_for_intersection(convex_polyhedron const& ph, polyhedron_planes_info_for_intersection& collector) {
@@ -305,10 +305,10 @@ void compute_planes_info_for_intersection(convex_polyhedron const& ph, polyhedro
   }
 }
 
-bool sweep_intersects(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, convex_polyhedron const& other) {
+faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, convex_polyhedron const& other) {
   polyhedron_planes_info_for_intersection other_ps;
   compute_planes_info_for_intersection(other, other_ps);
-  return sweeps_intersect(vs, ps, other.vertices(), other_ps);
+  return get_excluding_face(vs, ps, other.vertices(), other_ps);
 }
 
 // TODO do sweep_intersects(stuff, bounding_box) in a more efficient way
@@ -335,11 +335,28 @@ void compute_info_for_intersection(bounding_box const& bb, std::vector<vector3<p
   plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
       bb.max(), vector3<polygon_int_type>(0,0,1)));
 }
-bool sweep_intersects(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, bounding_box const& other) {
+faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, bounding_box const& other) {
   std::vector<vector3<polygon_int_type>> other_vs;
   polyhedron_planes_info_for_intersection other_ps;
   compute_info_for_intersection(other, other_vs, other_ps);
-  return sweeps_intersect(vs, ps, other_vs, other_ps);
+  return get_excluding_face(vs, ps, other_vs, other_ps);
+}
+
+faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(convex_polyhedron const& p1, convex_polyhedron const& p2) {
+  polyhedron_planes_info_for_intersection ps1;
+  polyhedron_planes_info_for_intersection ps2;
+  compute_planes_info_for_intersection(p1, ps1);
+  compute_planes_info_for_intersection(p2, ps2);
+  return get_excluding_face(p1.vertices(), ps1, p2.vertices(), ps2);
+}
+
+faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(convex_polyhedron const& p, bounding_box const& bb) {
+  polyhedron_planes_info_for_intersection ps1;
+  std::vector<vector3<polygon_int_type>> vs2;
+  polyhedron_planes_info_for_intersection ps2;
+  compute_planes_info_for_intersection(p, ps1);
+  compute_info_for_intersection(bb, vs2, ps2);
+  return get_excluding_face(p.vertices(), ps1, vs2, ps2);
 }
 
 void convex_polyhedron::init_other_info_from_vertices() {
@@ -1138,23 +1155,6 @@ bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
   return false;
 }
 
-bool nonshape_intersects(convex_polyhedron const& p1, convex_polyhedron const& p2) {
-  polyhedron_planes_info_for_intersection ps1;
-  polyhedron_planes_info_for_intersection ps2;
-  compute_planes_info_for_intersection(p1, ps1);
-  compute_planes_info_for_intersection(p2, ps2);
-  return sweeps_intersect(p1.vertices(), ps1, p2.vertices(), ps2);
-}
-
-bool nonshape_intersects(convex_polyhedron const& p, bounding_box const& bb) {
-  polyhedron_planes_info_for_intersection ps1;
-  std::vector<vector3<polygon_int_type>> vs2;
-  polyhedron_planes_info_for_intersection ps2;
-  compute_planes_info_for_intersection(p, ps1);
-  compute_info_for_intersection(bb, vs2, ps2);
-  return sweeps_intersect(p.vertices(), ps1, vs2, ps2);
-}
-
 } /* end anonymous namespace */
 
 bool shape::intersects(shape const& other)const {
@@ -1197,10 +1197,10 @@ bool shape::intersects(shape const& other)const {
       if (nonshape_intersects(p2, p1)) return true;
     }
     for (convex_polyhedron const& p2 : other.polyhedra_) {
-      if (nonshape_intersects(p1, p2)) return true;
+      if (!get_excluding_face(p1, p2)) return true;
     }
     for (bounding_box const& b2 : other.boxes_) {
-      if (nonshape_intersects(p1, b2)) return true;
+      if (!get_excluding_face(p1, b2)) return true;
     }
   }
 
@@ -1212,7 +1212,7 @@ bool shape::intersects(shape const& other)const {
       if (nonshape_intersects(p2, b1)) return true;
     }
     for (convex_polyhedron const& p2 : other.polyhedra_) {
-      if (nonshape_intersects(p2, b1)) return true;
+      if (!get_excluding_face(p2, b1)) return true;
     }
     for (bounding_box const& b2 : other.boxes_) {
       if (b1.overlaps(b2)) return true;

@@ -194,13 +194,13 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
     polyhedron_planes_info_for_intersection sweep_planes;
     compute_sweep_allowing_rounding_error(p, movement_this_step, local_error, sweep_vertices, sweep_planes);
     for (convex_polyhedron const& p2 : s2->get_polyhedra()) {
-      if (sweep_intersects(sweep_vertices, sweep_planes, p2)) {
+      if (!get_excluding_face(sweep_vertices, sweep_planes, p2)) {
         intersects = true;
         goto doublebreak;
       }
     }
     for (bounding_box const& bb : s2->get_boxes()) {
-      if (sweep_intersects(sweep_vertices, sweep_planes, bb)) {
+      if (!get_excluding_face(sweep_vertices, sweep_planes, bb)) {
         intersects = true;
         goto doublebreak;
       }
@@ -486,7 +486,8 @@ void update_moving_objects_impl(
             }
             else {
               // We hit a solyd objyct, o noez.
-              if (o1pss->intersects(tile_shape(locp->coords()))) {
+              shape t = tile_shape(locp->coords());
+              if (o1pss->intersects(t)) {
                 // If we were already inside the object, ignore the collision;
                 // we wouldn't want an infinite loop.
                 // However, this should never happen.
@@ -498,8 +499,11 @@ void update_moving_objects_impl(
                 update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
                 //std::cerr << "!!!" << inf1.last_time_updated << "\n";
                 ++inf1.invalidation_counter; // required in case update_object_to_time did nothing
-                // TODO TODO MAXIMALLY TEMPORARY HACK: Stop moving!
-                obj1->velocity_ = vector3<fine_scalar>(0,0,0);
+                // TODO FIX HACK: Assuming that mobile objects are a polyhedron and tiles a bbox
+                auto base_point_and_normal = *get_excluding_face(*(o1pss->get_polyhedra().begin()), *(t.get_boxes().begin()));
+                obj1->velocity_ -= (base_point_and_normal.second * obj1->velocity().dot<fine_scalar>(base_point_and_normal.second)) / base_point_and_normal.second.dot<fine_scalar>(base_point_and_normal.second);
+                // Hack: Avoid getting locked in a nonzero velocity due to rounding error, by squashing it
+                //if (obj1->velocity().magnitude_within_32_bits_is_less_than(5)) obj1->velocity_ = vector3<fine_scalar>(0,0,0);
                 
                 assert_about_overlaps(moving_objects, personal_space_shapes, objects_info);
               }
@@ -522,9 +526,14 @@ void update_moving_objects_impl(
             assert (!o1pss->intersects(*o2pss));
             assert_about_overlaps(moving_objects, personal_space_shapes,objects_info);
             
-            // TODO TEMPORARY HACK: Just stick together and equalize velocities
-            obj1->velocity_ = (obj1->velocity() + obj2->velocity()) / 2;
-            obj2->velocity_ = obj1->velocity();
+            // TODO FIX HACK: Assuming that mobile objects are one polyhedron
+            auto base_point_and_normal = *get_excluding_face(*(o1pss->get_polyhedra().begin()), *(o2pss->get_polyhedra().begin()));
+            auto veldiff = (base_point_and_normal.second * (obj1->velocity() - obj2->velocity()).dot<fine_scalar>(base_point_and_normal.second)) / base_point_and_normal.second.dot<fine_scalar>(base_point_and_normal.second);
+            obj1->velocity_ -= veldiff;
+            obj2->velocity_ += veldiff;
+            
+            //obj1->velocity_ = (obj1->velocity() + obj2->velocity()) / 2;
+            //obj2->velocity_ = obj1->velocity();
           
             // If we updated anything about the objects, they might have new collisions.
             // If we *didn't*, they won't repeat the same collision again, since we have
