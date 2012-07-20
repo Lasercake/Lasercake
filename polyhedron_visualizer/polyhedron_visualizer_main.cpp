@@ -117,20 +117,17 @@ large_fast_noncrypto_rng rng(time(NULL));
 typedef boost::random::uniform_int_distribution<int64_t> uniform_random;
   
   
-  double view_x = 5, view_y = 5, view_z = 5, view_dist = 20;
+  vector3<polygon_int_type> velocity(1,2,3);
 int frame = 0;
 
-  convex_polyhedron foo(bounding_box::min_and_max(
-    - vector3<polygon_int_type>(3, 3, 3),
-      vector3<polygon_int_type>(3, 3, 3)
-  ));
-  polyhedron_planes_info_for_intersection bar;
-  compute_planes_info_for_intersection(foo, bar);
-  
-  std::vector<vector3<polygon_int_type>> sweep_verts;
-  polyhedron_planes_info_for_intersection sweep_bar;
-  
-  compute_sweep_allowing_rounding_error(foo, vector3<polygon_int_type>(1, 2, 3), vector3<polygon_int_type>(1,1,1), sweep_verts, sweep_bar);
+  std::vector<vector3<polygon_int_type>> verts;
+  verts.push_back(vector3<polygon_int_type>(3, 3, 3));
+  verts.push_back(vector3<polygon_int_type>(3, -3, 3));
+  verts.push_back(vector3<polygon_int_type>(-3, -3, 3));
+  verts.push_back(vector3<polygon_int_type>(-3, 3, 3));
+  verts.push_back(vector3<polygon_int_type>(0, 0, -3));
+  convex_polyhedron foo(verts);
+  //convex_polyhedron foo(bounding_box::min_and_max(-vector3<polygon_int_type>(3, 3, 3), vector3<polygon_int_type>(3, 3, 3)));
   
   bool draw_sweep_verts = false;
   bool draw_sweep_normals = false;
@@ -154,14 +151,14 @@ int frame = 0;
           if(event.key.keysym.sym == SDLK_x) draw_normals = !draw_normals;
           if(event.key.keysym.sym == SDLK_c) draw_sweep_verts = !draw_sweep_verts;
           if(event.key.keysym.sym == SDLK_v) draw_sweep_normals = !draw_sweep_normals;
-          if(event.key.keysym.sym == SDLK_q) ++view_x;
-          if(event.key.keysym.sym == SDLK_a) --view_x;
-          if(event.key.keysym.sym == SDLK_w) ++view_y;
-          if(event.key.keysym.sym == SDLK_s) --view_y;
-          if(event.key.keysym.sym == SDLK_e) ++view_z;
-          if(event.key.keysym.sym == SDLK_d) --view_z;
-          if(event.key.keysym.sym == SDLK_r) ++view_dist;
-          if(event.key.keysym.sym == SDLK_f) --view_dist;
+          if(event.key.keysym.sym == SDLK_q) ++velocity[X];
+          if(event.key.keysym.sym == SDLK_a) --velocity[X];
+          if(event.key.keysym.sym == SDLK_w) ++velocity[Y];
+          if(event.key.keysym.sym == SDLK_s) --velocity[Y];
+          if(event.key.keysym.sym == SDLK_e) ++velocity[Z];
+          if(event.key.keysym.sym == SDLK_d) --velocity[Z];
+          //if(event.key.keysym.sym == SDLK_r) ++view_dist;
+          //if(event.key.keysym.sym == SDLK_f) --view_dist;
           if(event.key.keysym.sym != SDLK_ESCAPE)break;
           
         case SDL_QUIT:
@@ -181,6 +178,14 @@ int frame = 0;
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
     gluLookAt(5+15*std::cos(double(frame) / 200),5+15*std::sin(double(frame) / 200),10,5,5,0,0,0,1);
+    
+  polyhedron_planes_info_for_intersection bar;
+  compute_planes_info_for_intersection(foo, bar);
+  
+  std::vector<vector3<polygon_int_type>> sweep_verts;
+  polyhedron_planes_info_for_intersection sweep_bar;
+  
+  compute_sweep_allowing_rounding_error(foo, velocity, vector3<polygon_int_type>(sign(velocity(X)),sign(velocity(Y)),sign(velocity(Z))), sweep_verts, sweep_bar);
     
     if (draw_poly) {
           for (uint8_t i = 0; i < foo.face_info().size(); i += foo.face_info()[i] + 1) {
