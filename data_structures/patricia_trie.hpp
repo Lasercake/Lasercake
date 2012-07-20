@@ -66,6 +66,27 @@ public:
   }
 };
 
+// Exception safety:
+//
+// Member deleters and destructors,
+// and Coord move-assignment and move-construction,
+// must be nothrow or else the tree may be left in an
+// inconsistent state.
+//
+// If any monoid operation can throw, then the monoids may
+// be left in an inconsistent state but the strong guarantee*
+// holds for all aspects of the tree except the monoids.
+// (*every operation completely succeeds, or has no effect
+// and throws an exception).
+//
+// 'insert' can throw errors from node_allocator.
+//
+// 'insert' and 'erase' can throw errors from 'monoid'.
+//
+// The default-constructor can only throw errors from
+//   Coord's and monoid's default-constructors.
+//
+// Non-mutating operations cannot throw exceptions.
 struct default_pow2_radix_patricia_trie_traits {
   typedef trivial_monoid monoid;
   typedef default_deleter leaf_deleter;
@@ -84,9 +105,9 @@ public:
   typedef typename Traits::monoid monoid_type;
   typedef typename Traits::leaf_deleter leaf_deleter;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
-  // noexcept:
-  pow2_radix_patricia_trie_node() : ptr(), parent(), siblings(), loc_min(), size_exponent_in_each_dimension(coordinate_bits), monoid() {}
-  ~pow2_radix_patricia_trie_node() {
+
+  pow2_radix_patricia_trie_node() : ptr(), parent(), siblings(), size_exponent_in_each_dimension(coordinate_bits), monoid(), loc_min() {}
+  void delete_ptr() {
     if(sub_nodes_type* sub_nodes_ptr = sub_nodes()) {
       sub_nodes_ptr->~sub_nodes_type();
       node_allocator().deallocate(sub_nodes_ptr, 1);
@@ -94,14 +115,53 @@ public:
     if(T* leaf_ptr = leaf()) {
       leaf_deleter()(leaf_ptr);
     }
+    ptr = nullptr;
+  }
+  void move_initialize_from_except_userdata(pow2_radix_patricia_trie_node& other) BOOST_NOEXCEPT {
+    assert(ptr == nullptr);
+    ptr = other.ptr;
+    other.ptr = nullptr;
+    parent = other.parent;
+    siblings = other.siblings;
+    size_exponent_in_each_dimension = other.size_exponent_in_each_dimension;
+    if (siblings) {
+      siblings = static_cast<sub_nodes_type*>(this - (&other - &other.siblings[0]));
+      if(parent) {
+        assert(parent->ptr == other.siblings);
+        parent->ptr = siblings;
+      }
+    }
+    if (sub_nodes_type* children = this->sub_nodes()) {
+      for (node_type& child : *children) {
+        child.parent = this;
+      }
+    }
+  }
+  ~pow2_radix_patricia_trie_node() { delete_ptr(); }
+
+  // TODO maybe implement copy-constructor that copies whole tree? or subtree?
+  pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node const& other) = delete;
+  pow2_radix_patricia_trie_node& operator=(pow2_radix_patricia_trie_node const& other) = delete;
+
+  // monoid operations might conceivably throw, but destructors shouldn't
+  // and Coord assignment shouldn't and primitive assignment can't.
+  pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node&& other)
+          : ptr(nullptr), monoid(std::move(other.monoid)), loc_min(std::move(other.loc_min)) {
+    move_initialize_from_except_userdata(other);
+  }
+  pow2_radix_patricia_trie_node& operator=(pow2_radix_patricia_trie_node&& other) {
+    monoid = std::move(other.monoid);
+    loc_min = std::move(other.loc_min);
+    delete_ptr();
+    move_initialize_from_except_userdata(other);
   }
 
   void* ptr;
   node_type* parent; // nullptr for root node
   sub_nodes_type* siblings; // nullptr for root node
-  loc_type loc_min;
   num_bits_type size_exponent_in_each_dimension; // 0 for ptr-to-leaf node; CoordBits for root node
   monoid_type monoid;
+  loc_type loc_min; // after monoid for the sake of the move-constructor
   // TODO monoid...
   //TODO:   tile tile_that_everything_here_is; //if count_of_non_interior_tiles_here_==0 (and is all uniform!?)
   //  ah that monoids by if same, same, otherwise UNSPECIFIED.
@@ -228,6 +288,23 @@ public:
           // it throws, we won't be in a partial state and have destructors
           // mess things up.
           new_location_for_node_original_contents->monoid = node->monoid;
+          new_location_for_node_original_contents->loc_min = node->loc_min;
+          new_location_for_node_original_contents->size_exponent_in_each_dimension = node->size_exponent_in_each_dimension;
+
+          // Compute shared coords here in case some Coord ops can throw.
+          loc_type shared_loc_min;
+          const Coord mask = (~Coord(0) << shared_size_exponent);
+          for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
+            shared_loc_min[dim] = node->loc_min[dim] & mask;
+          }
+          // If Coord move throws, we're in trouble, because we're moving
+          // an array of them so some of node's coords could be overwritten
+          // already and we have no reliable way to restore them without
+          // nothrow move.  This is why we require nothrow Coord move.
+          //
+          // Nevertheless do this inside the try/catch so we at least
+          // don't leak memory if it throws.
+          node->loc_min = std::move(shared_loc_min);
         }
         catch(...) {
           intermediate_nodes->~sub_nodes_type();
@@ -238,17 +315,6 @@ public:
         // continue moving node's contents to its new location
         // nothrow
         new_location_for_node_original_contents->ptr = node->ptr;
-        new_location_for_node_original_contents->loc_min = node->loc_min;
-        new_location_for_node_original_contents->size_exponent_in_each_dimension = node->size_exponent_in_each_dimension;
-        //node->parent remains the same
-        //node->siblings remains the same
-
-        // set node to the new intermediate node
-        // nothrow
-        const Coord mask = (~Coord(0) << shared_size_exponent);
-        for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
-          node->loc_min[dim] = new_location_for_node_original_contents->loc_min[dim] & mask;
-        }
         node->ptr = intermediate_nodes;
         node->size_exponent_in_each_dimension = shared_size_exponent;
         //node->parent remains the same
@@ -258,6 +324,10 @@ public:
         // nothrow
         node = new_leaf_ptr_node;
       }
+
+      assert(node->ptr == nullptr);
+      node->size_exponent_in_each_dimension = 0;
+      node->loc_min = leaf_loc;
     }
     catch(...) {
       leaf_deleter()(leaf_ptr);
@@ -265,8 +335,6 @@ public:
     }
     // nothrow
     node->ptr = leaf_ptr;
-    node->size_exponent_in_each_dimension = 0;
-    node->loc_min = leaf_loc;
 
     // is this a time waste? if starting at the root,
     // and if not worrying about exceptions,
