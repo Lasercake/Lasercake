@@ -371,7 +371,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
         // Check if we've already collected this plane
         bool already_collected = false;
         for (int l = i; l != -1; l = (l == i) ? j : (l == j) ? k : -1) {
-          auto range = indexes_of_already_created_polygons_by_index_of_point.equal_range(l);
+          const auto range = indexes_of_already_created_polygons_by_index_of_point.equal_range(l);
           for (auto pair : boost::make_iterator_range(range.first, range.second)) {
             assert(pair.first == l);
             const uint8_t poly_start_idx = pair.second;
@@ -447,7 +447,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
   for (uint8_t i = 0; i < vs.size(); ++i) {
     for (uint8_t j = i + 1; j < vs.size(); ++j) {
       int shared_polys_found = 0;
-      auto range = indexes_of_already_created_polygons_by_index_of_point.equal_range(i);
+      const auto range = indexes_of_already_created_polygons_by_index_of_point.equal_range(i);
       for (auto pair : boost::make_iterator_range(range.first, range.second)) {
         assert(pair.first == i);
         uint8_t poly_start_idx = pair.second;
@@ -496,13 +496,14 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
   }};
   // Collapse parallel dirs.
   // This is mostly unnecessary, but needed for the plane-generated-by-line code.
-  for (int dir = 0; dir < num_dimensions; ++dir) {
-    if ((v((dir+1) % num_dimensions) == 0) && (v((dir+2) % num_dimensions) == 0)) {
-      dirs[3][dir] += dirs[dir](dir);
-      dirs[dir][dir] = 0;
+  for (int dim = 0; dim < num_dimensions; ++dim) {
+    if ((v((dim+1) % num_dimensions) == 0) && (v((dim+2) % num_dimensions) == 0)) {
+      dirs[3][dim] += dirs[dim](dim);
+      dirs[dim][dim] = 0;
       //std::cerr << "eliminating parallel " << dir << "\n";
     }
   }
+  
   // In order from "fewest to most components" to make things more efficient in one place.
   // Each bit (1 << n) represents whether the nth direction vector was used.
   /*static const std::array<uint8_t, 16> combinations_by_idx = {{
@@ -529,6 +530,16 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     dirs[0] + dirs[2] + dirs[3],
     dirs[1] + dirs[2] + dirs[3],
     dirs[0] + dirs[1] + dirs[2] + dirs[3]
+  }};
+  static const std::array<uint16_t, 3> B_and_not_v_combos = {{
+    (1<<0x1) | (1<<0x3) | (1<<0x5) | (1<<0x7),
+    (1<<0x2) | (1<<0x3) | (1<<0x6) | (1<<0x7),
+    (1<<0x4) | (1<<0x5) | (1<<0x6) | (1<<0x7),
+  }};
+  static const std::array<uint16_t, 3> v_and_not_B_combos = {{
+    (1<<0x8) | (1<<0xA) | (1<<0xC) | (1<<0xE),
+    (1<<0x8) | (1<<0x9) | (1<<0xC) | (1<<0xD),
+    (1<<0x8) | (1<<0x9) | (1<<0xA) | (1<<0xB),
   }};
   /*static const std::array<uint16_t, 16> combinations_with_only_shared_dirs_by_idx = {{
     0xffff,
@@ -609,7 +620,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
         else {
           bool p_plus_vector_is_shadowed = true;
           bool p_minus_vector_is_shadowed = true;
-          auto range = normals_by_point_idx.equal_range(i);
+          const auto range = normals_by_point_idx.equal_range(i);
           for (auto pair : boost::make_iterator_range(range.first, range.second)) {
             auto normal = pair.second;
             const polygon_int_type dotprod = vectors_by_combo[combo].dot<polygon_int_type>(normal);
@@ -649,7 +660,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
         }
         if (diff_vector != vector3<polygon_int_type>(0,0,0)) {
           bool point_2_is_shadowed = true;
-          auto range = normals_by_point_idx.equal_range(i);
+          const auto range = normals_by_point_idx.equal_range(i);
           for (auto pair : boost::make_iterator_range(range.first, range.second)) {
             auto normal = pair.second;
             const polygon_int_type dotprod = diff_vector.dot<polygon_int_type>(normal);
@@ -670,6 +681,73 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
         }
       }}}}
     }}}}
+    
+    // Special case: If v has exactly one zero-entry, it does some extra obscuring.
+    for (int dim = 0; dim < num_dimensions; ++dim) {
+      if (v(dim) == 0) {
+        const int dim2 = (dim+1) % num_dimensions;
+        const int dim3 = (dim+2) % num_dimensions;
+        if ((v(dim2) != 0) && (v(dim3) != 0)) {
+          for (int j = 0; j < 2; ++j) {
+            const int dimA = j ? dim2 : dim3;
+            const int dimB = j ? dim3 : dim2;
+            if ((existences_of_translates[i] & B_and_not_v_combos[dimB]) && (existences_of_translates[i] & v_and_not_B_combos[dimB])) {
+              // One may eliminate the other.
+              //vector3<polygon_int_type> const& B = dirs[dimB];
+              optional_rational v_eliminating_min = none;
+              optional_rational v_eliminating_max = none;
+              optional_rational B_eliminating_min = none;
+              optional_rational B_eliminating_max = none;
+              if ((v(dimA) < 0) == (v(dimB) < 0)) {
+                v_eliminating_max = rational(v(dimB), v(dimA));
+                B_eliminating_max = rational(v(dimB), v(dimA));
+              }
+              else {
+                v_eliminating_min = rational(v(dimB), v(dimA));
+                B_eliminating_min = rational(v(dimB), v(dimA));
+              }
+              const auto range = normals_by_point_idx.equal_range(i);
+              for (auto pair : boost::make_iterator_range(range.first, range.second)) {
+                auto normal = pair.second;
+                if (normal(dimB) == 0) {
+                  if (normal(dimA) == 0) {
+                    // it's a wash - that normal represents the same plane we're considering,
+                    // so it contains everything
+                  }
+                  else if ((normal(dimA) < 0) == (v(dimA) < 0)) {
+                    // hack - completely eliminate B from being eliminated
+                    B_eliminating_max = 0;
+                    B_eliminating_min = 1;
+                  }
+                  else {
+                    // hack - completely eliminate v from being eliminated
+                    v_eliminating_max = 0;
+                    v_eliminating_min = 1;
+                  }
+                }
+                else {
+                  const rational slope(-normal(dimA), normal(dimB));
+                  if ((normal(dimB) < 0) == (v(dimA) < 0)) {
+                    if (!v_eliminating_max || (*v_eliminating_max > slope)) v_eliminating_max = slope;
+                    if (!B_eliminating_min || (*B_eliminating_min < slope)) B_eliminating_min = slope;
+                  }
+                  else {
+                    if (!B_eliminating_max || (*B_eliminating_max > slope)) B_eliminating_max = slope;
+                    if (!v_eliminating_min || (*v_eliminating_min < slope)) v_eliminating_min = slope;
+                  }
+                }
+              }
+              
+              const bool keep_B = B_eliminating_min && B_eliminating_max && (*B_eliminating_min > *B_eliminating_max);
+              const bool keep_v = v_eliminating_min && v_eliminating_max && (*v_eliminating_min > *v_eliminating_max);
+              assert (keep_v || keep_B);
+              if (!keep_B) existences_of_translates[i] &= ~B_and_not_v_combos[dimB];
+              if (!keep_v) existences_of_translates[i] &= ~v_and_not_B_combos[dimB];
+            }
+          }
+        }
+      }
+    }
     
     // The target structure will have all non-eliminated points as vertices
     for (int combo = 0; combo < 16; ++combo) {
@@ -703,10 +781,22 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
               const vector3<polygon_int_type> base_point = p+vectors_by_combo[base_combo];
               const vector3<polygon_int_type> point2 = base_point + dirs[plane_dir_1];
               const vector3<polygon_int_type> point3 = base_point + dirs[plane_dir_2];
-              plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
-                  base_point,
-                  forcedly_directed_plane_normal(base_point, point2, point3, jb ? -dirs[j] : + dirs[j])
-                ));
+              vector3<polygon_int_type> normal = plane_normal(base_point, point2, point3);
+              // It might be in the wrong direction...
+              for (uint8_t v = 0; v < ph.vertices().size(); ++v) {
+                if (v != i) {
+                  polygon_int_type dotprod = (ph.vertices()[v] - ph.vertices()[i]).dot<polygon_int_type>(normal);
+                  if (dotprod < 0) {
+                    break;
+                  }
+                  if (dotprod > 0) {
+                    normal = -normal;
+                    break;
+                  }
+                }
+              }
+              plane_collector.base_points_and_outward_facing_normals.push_back(
+                 std::make_pair(base_point, normal));
             }
           }
         }
@@ -760,14 +850,27 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
             }
           }
           if (ends_found[0] && ends_found[1]) {
-            const int dir_to_construct_interior_point_in =
+            /*const int dir_to_construct_interior_point_in =
               ((i != 0) && (parallel_dir != 0)) ? 0 :
               ((i != 1) && (parallel_dir != 1)) ? 1 : 2;
             const vector3<polygon_int_type> interior_direction =
                (combo & (1 << dir_to_construct_interior_point_in)) ?
                (-dirs[dir_to_construct_interior_point_in]) :
-               dirs[dir_to_construct_interior_point_in];
-            const vector3<polygon_int_type> normal = forcedly_directed_plane_normal(moved_line_ends[0], moved_line_ends[1], moved_line_ends[0] + dirs[i], interior_direction);
+               dirs[dir_to_construct_interior_point_in];*/
+            vector3<polygon_int_type> normal = plane_normal(moved_line_ends[0], moved_line_ends[1], moved_line_ends[0] + dirs[i]);
+            // It might be in the wrong direction...
+            for (uint8_t i = 0; i < ph.vertices().size(); ++i) {
+              if ((i != l.first) && (i != l.second)) {
+                polygon_int_type dotprod = (ph.vertices()[i] - ph.vertices()[l.first]).dot<polygon_int_type>(normal);
+                if (dotprod < 0) {
+                  break;
+                }
+                if (dotprod > 0) {
+                  normal = -normal;
+                  break;
+                }
+              }
+            }
             plane_collector.base_points_and_outward_facing_normals.push_back(
                std::make_pair(moved_line_ends[0], normal));
             // I used these redundant things to help me visualize this earlier.
