@@ -261,9 +261,9 @@ vector3<polygon_int_type> plane_normal(vector3<polygon_int_type> p1, vector3<pol
     (p1(X) * (p2(Y) - p3(Y))) + (p2(X) * (p3(Y) - p1(Y))) + (p3(X) * (p1(Y) - p2(Y)))
   );
 }
-vector3<polygon_int_type> forcedly_directed_plane_normal(vector3<polygon_int_type> p1, vector3<polygon_int_type> p2, vector3<polygon_int_type> p3, vector3<polygon_int_type> interior_point) {
+vector3<polygon_int_type> forcedly_directed_plane_normal(vector3<polygon_int_type> p1, vector3<polygon_int_type> p2, vector3<polygon_int_type> p3, vector3<polygon_int_type> interior_direction) {
   const vector3<polygon_int_type> arbitrary_normal = plane_normal(p1, p2, p3);
-  if ((interior_point - p1).dot<polygon_int_type>(arbitrary_normal) > 0) {
+  if (interior_direction.dot<polygon_int_type>(arbitrary_normal) > 0) {
     return -arbitrary_normal;
   }
   else {
@@ -481,24 +481,37 @@ convex_polyhedron::convex_polyhedron(bounding_box const& bb) {
   init_other_info_from_vertices();
 }
 
+bool vectors_are_parallel(vector3<polygon_int_type> const& v1, vector3<polygon_int_type> const& v2) {
+  return (v1(X) * v2(Y) == v2(X) * v1(Y)) && (v1(X) * v2(Z) == v2(X) * v1(Z)) && (v1(Y) * v2(Z) == v2(Y) * v1(Z));
+}
+
 void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<polygon_int_type> const& v, vector3<polygon_int_type> max_error, std::vector<vector3<polygon_int_type>>& vertex_collector, polyhedron_planes_info_for_intersection& plane_collector) {
   // Essentially, the polyhedron plus the entire space the polyhedron can reach by moving
   // in any combination of 0-to-1 of each of the following vectors:
-  const std::array<vector3<polygon_int_type>, 4> dirs = {{
+  std::array<vector3<polygon_int_type>, 4> dirs = {{
     vector3<polygon_int_type>(max_error(X), 0, 0),
     vector3<polygon_int_type>(0, max_error(Y), 0),
     vector3<polygon_int_type>(0, 0, max_error(Z)),
     v
   }};
+  // Collapse parallel dirs.
+  // This is mostly unnecessary, but needed for the plane-generated-by-line code.
+  for (int dir = 0; dir < num_dimensions; ++dir) {
+    if ((v((dir+1) % num_dimensions) == 0) && (v((dir+2) % num_dimensions) == 0)) {
+      dirs[3][dir] += dirs[dir](dir);
+      dirs[dir][dir] = 0;
+      //std::cerr << "eliminating parallel " << dir << "\n";
+    }
+  }
   // In order from "fewest to most components" to make things more efficient in one place.
   // Each bit (1 << n) represents whether the nth direction vector was used.
-  static const std::array<uint8_t, 16> combinations_by_idx = {{
+  /*static const std::array<uint8_t, 16> combinations_by_idx = {{
     0,
     0x1, 0x2, 0x4, 0x8,
     0x3, 0x5, 0x9, 0x6, 0xA, 0xC,
     0x7, 0xB, 0xD, 0xE,
     0xF
-  }};
+  }};*/
   const std::array<vector3<polygon_int_type>, 16> vectors_by_combo = {{
     vector3<polygon_int_type>(0,0,0),
     dirs[0],
@@ -517,7 +530,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     dirs[1] + dirs[2] + dirs[3],
     dirs[0] + dirs[1] + dirs[2] + dirs[3]
   }};
-  static const std::array<uint16_t, 16> combinations_with_only_shared_dirs_by_idx = {{
+  /*static const std::array<uint16_t, 16> combinations_with_only_shared_dirs_by_idx = {{
     0xffff,
     (1<<0x1) | (1<<0x3) | (1<<0x5) | (1<<0x7) | (1<<0x9) | (1<<0xB) | (1<<0xD) | (1<<0xF),
     (1<<0x2) | (1<<0x3) | (1<<0x6) | (1<<0x7) | (1<<0xA) | (1<<0xB) | (1<<0xE) | (1<<0xF),
@@ -552,7 +565,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     (1<<0x0) | (1<<0x2),
     (1<<0x0) | (1<<0x1),
     (1<<0x0),
-  }};
+  }};*/
   
   std::unordered_multimap<uint8_t, vector3<polygon_int_type>> normals_by_point_idx;
   for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
@@ -563,7 +576,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     }
   }
   
-  // Three hacks: (1) We assume that the error is in the direction of the velocity,
+  // Three hacks: (1) We rely on the fact that the error is in the same direction in each dimension as v,
   //    and so (2) the combos (errorx + errory + errorz) and (v) are always concealed, so we eliminate them here,
   //    and (3) they wouldn't necessarily be eliminated anywhere else.
   // All other invalid vectors get eliminated properly though.
@@ -579,7 +592,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     // Of course, some of that information is redundant.
     // If, for instance, p obscures p+e1, then for any x, p+x obscures p+x+e1.
     // So we only have to make the following checks:
-    for (int j = 1; j < 16; ++j) { // (the 0 vector is meaningless for this)
+    /*for (int j = 1; j < 16; ++j) { // (the 0 vector is meaningless for this)
       const uint8_t combo = combinations_by_idx[j];
       //std::cerr << "grr, " << std::hex << j << ", " << (int)combo << ", " << existences_of_translates[i] << std::dec << "\n";
       // Wait, no, we can't skip already-eliminated vectors because they may be still relevant if
@@ -621,7 +634,42 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
           }
         }
       //}
-    }
+    }*/
+    
+    // Eliminate all combos that are obscured by another combo.
+    // I'm sure this could be optimized.
+    std::array<int, 4> di1 = {{0,0,0,0}};
+    std::array<int, 4> di2 = {{0,0,0,0}};
+    for(di1[0] = 0; di1[0] < 2; ++di1[0]) { for(di1[1] = 0; di1[1] < 2; ++di1[1]) { for(di1[2] = 0; di1[2] < 2; ++di1[2]) { for(di1[3] = 0; di1[3] < 2; ++di1[3]) {
+      for(di2[0] = 0; di2[0] < 2; ++di2[0]) { for(di2[1] = 0; di2[1] < 2; ++di2[1]) { for(di2[2] = 0; di2[2] < 2; ++di2[2]) { for(di2[3] = 0; di2[3] < 2; ++di2[3]) {
+        vector3<polygon_int_type> diff_vector(0,0,0);
+        for (int dir = 0; dir < 4; ++dir) {
+          if (di2[dir]) diff_vector += dirs[dir];
+          if (di1[dir]) diff_vector -= dirs[dir];
+        }
+        if (diff_vector != vector3<polygon_int_type>(0,0,0)) {
+          bool point_2_is_shadowed = true;
+          auto range = normals_by_point_idx.equal_range(i);
+          for (auto pair : boost::make_iterator_range(range.first, range.second)) {
+            auto normal = pair.second;
+            const polygon_int_type dotprod = diff_vector.dot<polygon_int_type>(normal);
+            //std::cerr << p << normal << vectors_by_combo[combo] << "\n";
+            if (dotprod > 0) {
+              point_2_is_shadowed = false;
+              break;
+            }
+          }
+          if (point_2_is_shadowed) {
+            existences_of_translates[i] &= ~(1 << (
+              (di2[0] ? (1 << 0) : 0) |
+              (di2[1] ? (1 << 1) : 0) |
+              (di2[2] ? (1 << 2) : 0) |
+              (di2[3] ? (1 << 3) : 0)
+            ));
+          }
+        }
+      }}}}
+    }}}}
     
     // The target structure will have all non-eliminated points as vertices
     for (int combo = 0; combo < 16; ++combo) {
@@ -657,7 +705,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
               const vector3<polygon_int_type> point3 = base_point + dirs[plane_dir_2];
               plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
                   base_point,
-                  forcedly_directed_plane_normal(base_point, point2, point3, jb ? p : (p + dirs[j]))
+                  forcedly_directed_plane_normal(base_point, point2, point3, jb ? -dirs[j] : + dirs[j])
                 ));
             }
           }
@@ -669,40 +717,68 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
   for (std::pair<uint8_t, uint8_t> l : ph.edges()) {
     // It can also create planes of motion in the directions of the rounding error or movement.
     // There are (theoretically) 12+12+8 = 32 possible lines that can spawn planes this way.
+    // All the other directions have to be held constant,
+    // except that if this is a line in the direction of one of the vectors, it's okay (and in fact, inevitable)
+    // for the two endpoints to differ in that direction.
     //std::cerr << "hi " << ph.vertices()[l.first] << ph.vertices()[l.second] << "\n";
+    const vector3<polygon_int_type> line_vector = ph.vertices()[l.second] - ph.vertices()[l.first];
+    int parallel_dir = -1;
+    //    std::cerr << line_vector << "\n";
+    for (int dir = 0; dir < 4; ++dir) {
+      if (dirs[dir] != vector3<polygon_int_type>(0,0,0)) {
+        if (vectors_are_parallel(line_vector, dirs[dir])) {
+     //   std::cerr << dir << "\n";
+          assert(parallel_dir == -1);
+          parallel_dir = dir;
+        }
+      }
+    }
+    uint8_t parallel_dir_bit = (parallel_dir == -1) ? 0 : (1 << parallel_dir);
     for (int i = 0; i < 4; ++i) {
-      std::array<vector3<polygon_int_type>, 2> moved_line_ends;
-      std::array<bool, 2> ends_found = {{false, false}};
-      vector3<polygon_int_type> interior_point;
+      if (i == parallel_dir) continue;
+      
       //std::cerr << i << "lol\n";
-      for (int j = 0; j < 2; ++j) {
-        auto v = j ? l.second : l.first;
-        for (int combo = 0; combo < 15; ++combo) { // (this is "for each combo with less than four components")
-          if (!(combo & (1 << i))) {
+      for (int combo = 0; combo < 15; ++combo) { // (this is "for each combo with less than four components")
+        if ((!(combo & (1 << i))) && (!(combo & parallel_dir_bit))) { // i.e. "for each combo with out those directions in it"
+          std::array<vector3<polygon_int_type>, 2> moved_line_ends;
+          std::array<bool, 2> ends_found = {{false, false}};
+          for (int j = 0; j < 2; ++j) {
+            auto v = j ? l.second : l.first;
+            if (existences_of_translates[v] & (1 << (combo | parallel_dir_bit))) {
+              const uint8_t combo2 = (combo | (1 << i));
+              if (existences_of_translates[v] & (1 << (combo2 | parallel_dir_bit))) {
+                ends_found[j] = true;
+                moved_line_ends[j] = ph.vertices()[v]+vectors_by_combo[combo | parallel_dir_bit];
+              }
+            }
             if (existences_of_translates[v] & (1 << combo)) {
               const uint8_t combo2 = (combo | (1 << i));
               if (existences_of_translates[v] & (1 << combo2)) {
                 ends_found[j] = true;
-                //std::cerr << combo << "! \n";
                 moved_line_ends[j] = ph.vertices()[v]+vectors_by_combo[combo];
-                if (j == 0) {
-                  const int dir_to_construct_interior_point_in = (i == 0) ? 1 : 0;
-                  interior_point =
-                    (combo & (1 << dir_to_construct_interior_point_in)) ?
-                    ph.vertices()[v] :
-                    (ph.vertices()[v] + dirs[dir_to_construct_interior_point_in]);
-                }
               }
             }
           }
+          if (ends_found[0] && ends_found[1]) {
+            const int dir_to_construct_interior_point_in =
+              ((i != 0) && (parallel_dir != 0)) ? 0 :
+              ((i != 1) && (parallel_dir != 1)) ? 1 : 2;
+            const vector3<polygon_int_type> interior_direction =
+               (combo & (1 << dir_to_construct_interior_point_in)) ?
+               (-dirs[dir_to_construct_interior_point_in]) :
+               dirs[dir_to_construct_interior_point_in];
+            const vector3<polygon_int_type> normal = forcedly_directed_plane_normal(moved_line_ends[0], moved_line_ends[1], moved_line_ends[0] + dirs[i], interior_direction);
+            plane_collector.base_points_and_outward_facing_normals.push_back(
+               std::make_pair(moved_line_ends[0], normal));
+            // I used these redundant things to help me visualize this earlier.
+            /*plane_collector.base_points_and_outward_facing_normals.push_back(
+               std::make_pair(moved_line_ends[1], normal));
+            plane_collector.base_points_and_outward_facing_normals.push_back(
+               std::make_pair(moved_line_ends[0] + dirs[i], normal));
+            plane_collector.base_points_and_outward_facing_normals.push_back(
+               std::make_pair(moved_line_ends[1] + dirs[i], normal));*/
+          }
         }
-      }
-      if (ends_found[0] && ends_found[1]) {
-      //std::cerr << "LOL!\n";
-        plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
-           moved_line_ends[0],
-           forcedly_directed_plane_normal(moved_line_ends[0], moved_line_ends[1], moved_line_ends[0] + dirs[i], interior_point)
-         ));
       }
     }
   }
