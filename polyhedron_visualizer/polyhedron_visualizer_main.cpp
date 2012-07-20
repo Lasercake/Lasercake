@@ -126,13 +126,14 @@ int frame = 0;
   verts.push_back(vector3<polygon_int_type>(-3, -3, 3));
   verts.push_back(vector3<polygon_int_type>(-3, 3, 3));
   verts.push_back(vector3<polygon_int_type>(0, 0, -3));
-  convex_polyhedron foo(verts);
-  //convex_polyhedron foo(bounding_box::min_and_max(-vector3<polygon_int_type>(3, 3, 3), vector3<polygon_int_type>(3, 3, 3)));
+  convex_polyhedron foo1(verts);
+  convex_polyhedron foo2(bounding_box::min_and_max(-vector3<polygon_int_type>(3, 3, 3), vector3<polygon_int_type>(3, 3, 3)));
   
   bool draw_sweep_verts = false;
   bool draw_sweep_normals = false;
   bool draw_normals = false;
   bool draw_poly = true;
+  bool use_foo1 = false;
     
   while ( !done ) {
 
@@ -151,6 +152,7 @@ int frame = 0;
           if(event.key.keysym.sym == SDLK_x) draw_normals = !draw_normals;
           if(event.key.keysym.sym == SDLK_c) draw_sweep_verts = !draw_sweep_verts;
           if(event.key.keysym.sym == SDLK_v) draw_sweep_normals = !draw_sweep_normals;
+          if(event.key.keysym.sym == SDLK_b) use_foo1 = !use_foo1;
           if(event.key.keysym.sym == SDLK_q) ++velocity[X];
           if(event.key.keysym.sym == SDLK_a) --velocity[X];
           if(event.key.keysym.sym == SDLK_w) ++velocity[Y];
@@ -178,7 +180,8 @@ int frame = 0;
     glLoadIdentity();
     gluPerspective(80, 1, 1, 100);
     gluLookAt(5+15*std::cos(double(frame) / 200),5+15*std::sin(double(frame) / 200),10,5,5,0,0,0,1);
-    
+  
+  auto const& foo = use_foo1 ? foo1 : foo2;
   polyhedron_planes_info_for_intersection bar;
   compute_planes_info_for_intersection(foo, bar);
   
