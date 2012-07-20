@@ -541,42 +541,12 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     (1<<0x8) | (1<<0x9) | (1<<0xC) | (1<<0xD),
     (1<<0x8) | (1<<0x9) | (1<<0xA) | (1<<0xB),
   }};
-  /*static const std::array<uint16_t, 16> combinations_with_only_shared_dirs_by_idx = {{
-    0xffff,
+  static const std::array<uint16_t, 4> combos_including_dir = {{
     (1<<0x1) | (1<<0x3) | (1<<0x5) | (1<<0x7) | (1<<0x9) | (1<<0xB) | (1<<0xD) | (1<<0xF),
     (1<<0x2) | (1<<0x3) | (1<<0x6) | (1<<0x7) | (1<<0xA) | (1<<0xB) | (1<<0xE) | (1<<0xF),
     (1<<0x4) | (1<<0x5) | (1<<0x6) | (1<<0x7) | (1<<0xC) | (1<<0xD) | (1<<0xE) | (1<<0xF),
     (1<<0x8) | (1<<0x9) | (1<<0xA) | (1<<0xB) | (1<<0xC) | (1<<0xD) | (1<<0xE) | (1<<0xF),
-    (1<<0x3) | (1<<0x7) | (1<<0xB) | (1<<0xF),
-    (1<<0x5) | (1<<0x7) | (1<<0xD) | (1<<0xF),
-    (1<<0x9) | (1<<0xB) | (1<<0xD) | (1<<0xF),
-    (1<<0x6) | (1<<0x7) | (1<<0xE) | (1<<0xF),
-    (1<<0xA) | (1<<0xB) | (1<<0xE) | (1<<0xF),
-    (1<<0xC) | (1<<0xD) | (1<<0xE) | (1<<0xF),
-    (1<<0x7) | (1<<0xF),
-    (1<<0xB) | (1<<0xF),
-    (1<<0xD) | (1<<0xF),
-    (1<<0xE) | (1<<0xF),
-    (1<<0xF),
   }};
-  static const std::array<uint16_t, 16> combinations_with_no_shared_dirs_by_idx = {{
-    0xffff,
-    (1<<0x0) | (1<<0x2) | (1<<0x4) | (1<<0x6) | (1<<0x8) | (1<<0xA) | (1<<0xC) | (1<<0xE),
-    (1<<0x0) | (1<<0x1) | (1<<0x4) | (1<<0x5) | (1<<0x8) | (1<<0x9) | (1<<0xC) | (1<<0xD),
-    (1<<0x0) | (1<<0x1) | (1<<0x2) | (1<<0x3) | (1<<0x8) | (1<<0x9) | (1<<0xA) | (1<<0xB),
-    (1<<0x0) | (1<<0x1) | (1<<0x2) | (1<<0x3) | (1<<0x4) | (1<<0x5) | (1<<0x6) | (1<<0x7),
-    (1<<0x0) | (1<<0x4) | (1<<0x8) | (1<<0xC),
-    (1<<0x0) | (1<<0x2) | (1<<0x8) | (1<<0xA),
-    (1<<0x0) | (1<<0x2) | (1<<0x4) | (1<<0x6),
-    (1<<0x0) | (1<<0x1) | (1<<0x8) | (1<<0x9),
-    (1<<0x0) | (1<<0x1) | (1<<0x4) | (1<<0x5),
-    (1<<0x0) | (1<<0x1) | (1<<0x2) | (1<<0x3),
-    (1<<0x0) | (1<<0x8),
-    (1<<0x0) | (1<<0x4),
-    (1<<0x0) | (1<<0x2),
-    (1<<0x0) | (1<<0x1),
-    (1<<0x0),
-  }};*/
   
   std::unordered_multimap<uint8_t, vector3<polygon_int_type>> normals_by_point_idx;
   for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
@@ -647,6 +617,11 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
       //}
     }*/
     
+    // Eliminate all combos that include a zero vector.
+    for (int dir = 0; dir < 4; ++dir) {
+      if (dirs[dir] == vector3<polygon_int_type>(0,0,0)) existences_of_translates[i] &= ~combos_including_dir[dir];
+    }
+    
     // Eliminate all combos that are obscured by another combo.
     // I'm sure this could be optimized.
     std::array<int, 4> di1 = {{0,0,0,0}};
@@ -688,6 +663,14 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
         const int dim2 = (dim+1) % num_dimensions;
         const int dim3 = (dim+2) % num_dimensions;
         if ((v(dim2) != 0) && (v(dim3) != 0)) {
+          // If you have eight coplanar points, two of them are subsumed by the others
+          //std::cerr << (int)i << std::hex << ", " << existences_of_translates[i] << ", " << ((~(combos_including_dir[dim] | (1 << (1 << 3)))) & 0xffff) << "\n";
+          if (existences_of_translates[i] == ((~(combos_including_dir[dim] | (1 << (1 << 3)))) & 0xffff)) {
+          //std::cerr << "erjeajirjeairjiearearaerae";
+            existences_of_translates[i] &= ~(1 << ((1 << dim2) | (1 << dim3)));
+            //existences_of_translates[i] &= ~(1 << (1 << 3));
+          }
+        
           for (int j = 0; j < 2; ++j) {
             const int dimA = j ? dim2 : dim3;
             const int dimB = j ? dim3 : dim2;
@@ -709,20 +692,21 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
               const auto range = normals_by_point_idx.equal_range(i);
               for (auto pair : boost::make_iterator_range(range.first, range.second)) {
                 auto normal = pair.second;
+                //  std::cerr << normal << dimA << dimB << "\n";
                 if (normal(dimB) == 0) {
                   if (normal(dimA) == 0) {
                     // it's a wash - that normal represents the same plane we're considering,
                     // so it contains everything
                   }
                   else if ((normal(dimA) < 0) == (v(dimA) < 0)) {
-                    // hack - completely eliminate B from being eliminated
-                    B_eliminating_max = 0;
-                    B_eliminating_min = 1;
+                    // hack - completely eliminate v from being eliminated
+                    v_eliminating_max = rational(0);
+                    v_eliminating_min = rational(1);
                   }
                   else {
-                    // hack - completely eliminate v from being eliminated
-                    v_eliminating_max = 0;
-                    v_eliminating_min = 1;
+                    // hack - completely eliminate B from being eliminated
+                    B_eliminating_max = rational(0);
+                    B_eliminating_min = rational(1);
                   }
                 }
                 else {
@@ -811,6 +795,8 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     // except that if this is a line in the direction of one of the vectors, it's okay (and in fact, inevitable)
     // for the two endpoints to differ in that direction.
     //std::cerr << "hi " << ph.vertices()[l.first] << ph.vertices()[l.second] << "\n";
+    
+    // Special case: If we're parallel to one of the directions of movement, we need to ignore the difference between not-including-that-direction and including-that-direction.
     const vector3<polygon_int_type> line_vector = ph.vertices()[l.second] - ph.vertices()[l.first];
     int parallel_dir = -1;
     //    std::cerr << line_vector << "\n";
@@ -824,26 +810,43 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
       }
     }
     uint8_t parallel_dir_bit = (parallel_dir == -1) ? 0 : (1 << parallel_dir);
+        
     for (int i = 0; i < 4; ++i) {
       if (i == parallel_dir) continue;
       
+      // Special case: If v has exactly one zero-entry, make sure to handle the hexagonal planes that can be generated.
+      uint8_t ignore_coplanar_v_bit = 0;
+      if (i < 3) {
+        const int dim2 = (i+1) % num_dimensions;
+        const int dim3 = (i+2) % num_dimensions;
+        if ((v(dim2) == 0) || (v(dim3) == 0)) {
+          ignore_coplanar_v_bit = (1 << 3);
+        }
+      }
+      
       //std::cerr << i << "lol\n";
       for (int combo = 0; combo < 15; ++combo) { // (this is "for each combo with less than four components")
-        if ((!(combo & (1 << i))) && (!(combo & parallel_dir_bit))) { // i.e. "for each combo with out those directions in it"
+        if (
+                (!(combo & (1 << i)))
+             && (!(combo & parallel_dir_bit))
+             && (!(combo & ignore_coplanar_v_bit))
+            ) { // i.e. "for each combo without those directions in it"
           std::array<vector3<polygon_int_type>, 2> moved_line_ends;
           std::array<bool, 2> ends_found = {{false, false}};
           for (int j = 0; j < 2; ++j) {
-            auto v = j ? l.second : l.first;
-            if (existences_of_translates[v] & (1 << (combo | parallel_dir_bit))) {
-              const uint8_t combo2 = (combo | (1 << i));
-              if (existences_of_translates[v] & (1 << (combo2 | parallel_dir_bit))) {
-                ends_found[j] = true;
-                moved_line_ends[j] = ph.vertices()[v]+vectors_by_combo[combo | parallel_dir_bit];
-              }
-            }
-            if (existences_of_translates[v] & (1 << combo)) {
-              const uint8_t combo2 = (combo | (1 << i));
-              if (existences_of_translates[v] & (1 << combo2)) {
+            const auto v = j ? l.second : l.first;
+            uint16_t combos_check1 =
+              (1 << (combo)) |
+              (1 << (combo | parallel_dir_bit)) |
+              (1 << (combo | ignore_coplanar_v_bit)) |
+              (1 << (combo | ignore_coplanar_v_bit | parallel_dir_bit));
+            uint16_t combos_check2 =
+              (1 << (combo | (1 << i))) |
+              (1 << (combo | (1 << i) | parallel_dir_bit)) |
+              (1 << (combo | (1 << i) | ignore_coplanar_v_bit)) |
+              (1 << (combo | (1 << i) | ignore_coplanar_v_bit | parallel_dir_bit));
+            if (existences_of_translates[v] & combos_check1) {
+              if (existences_of_translates[v] & combos_check2) {
                 ends_found[j] = true;
                 moved_line_ends[j] = ph.vertices()[v]+vectors_by_combo[combo];
               }
@@ -861,7 +864,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
             // It might be in the wrong direction...
             for (uint8_t i = 0; i < ph.vertices().size(); ++i) {
               if ((i != l.first) && (i != l.second)) {
-                polygon_int_type dotprod = (ph.vertices()[i] - ph.vertices()[l.first]).dot<polygon_int_type>(normal);
+                polygon_int_type dotprod = (ph.vertices()[i] - moved_line_ends[0]).dot<polygon_int_type>(normal);
                 if (dotprod < 0) {
                   break;
                 }
@@ -874,12 +877,12 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
             plane_collector.base_points_and_outward_facing_normals.push_back(
                std::make_pair(moved_line_ends[0], normal));
             // I used these redundant things to help me visualize this earlier.
-            /*plane_collector.base_points_and_outward_facing_normals.push_back(
+            plane_collector.base_points_and_outward_facing_normals.push_back(
                std::make_pair(moved_line_ends[1], normal));
             plane_collector.base_points_and_outward_facing_normals.push_back(
                std::make_pair(moved_line_ends[0] + dirs[i], normal));
             plane_collector.base_points_and_outward_facing_normals.push_back(
-               std::make_pair(moved_line_ends[1] + dirs[i], normal));*/
+               std::make_pair(moved_line_ends[1] + dirs[i], normal));
           }
         }
       }
