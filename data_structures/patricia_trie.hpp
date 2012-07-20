@@ -229,127 +229,7 @@ public:
   // also, it could have subtraction and then it would be a bit faster...hmm.
   // and how can we check whether it doesn't need any propagation...
   // == identity? is-a-boring-type(like nan)? adding-it-didn't-change-the-value-so-aboves-dont-need-changing, ah.
-  void insert(loc_type const& leaf_loc, T* leaf_ptr, monoid_type leaf_monoid = monoid_type()) {
-    // invariant: this 'node' variable changes but is never nullptr.
-    node_type* node;
-    try {
-      node = this->find_node(leaf_loc);
-      caller_error_if(node->points_to_leaf() && node->loc_min == leaf_loc, "Inserting a leaf in a location that's already in the tree");
-      if (!node->is_empty()) {
-        // That child's location was too specific (wrong) for us.
-        sub_nodes_type* intermediate_nodes = node_allocator().allocate(1);
-        if (!intermediate_nodes) {
-          throw std::bad_alloc();
-        }
-        try {
-          // nothrow except monoids
-          new (intermediate_nodes) sub_nodes_type();
-          for (node_type& intermediate_node : *intermediate_nodes) {
-            intermediate_node.ptr = nullptr;
-            intermediate_node.size_exponent_in_each_dimension = 0;
-            intermediate_node.parent = node;
-            intermediate_node.siblings = intermediate_nodes;
-          }
-        }
-        catch(...) {
-          node_allocator().deallocate(intermediate_nodes, 1);
-          throw;
-        }
-
-        num_bits_type shared_size_exponent;
-        node_type* new_location_for_node_original_contents;
-        node_type* new_leaf_ptr_node;
-        try {
-          // loop is nothrow
-          shared_size_exponent = 0;
-          for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
-            const num_bits_type dim_shared_size_exponent =
-                    num_bits_in_integer_that_are_not_leading_zeroes(
-                      to_unsigned_type(node->loc_min[dim] ^ leaf_loc[dim]));
-            if(shared_size_exponent < dim_shared_size_exponent) {
-              shared_size_exponent = dim_shared_size_exponent;
-            }
-          }
-
-          // assert is typically nothrow, and it's also okay
-          // if it throws here.
-          assert(shared_size_exponent < coordinate_bits);
-          assert(shared_size_exponent > 0);
-
-          // move node's contents to its new location
-          new_location_for_node_original_contents =    // nothrow
-              &child_matching(*intermediate_nodes, shared_size_exponent, node->loc_min);
-          new_leaf_ptr_node =    // nothrow
-              &child_matching(*intermediate_nodes, shared_size_exponent, leaf_loc);
-
-          assert(new_location_for_node_original_contents != new_leaf_ptr_node);
-
-          // Monoid ops may throw. Do the copy before anything else so that if
-          // it throws, we won't be in a partial state and have destructors
-          // mess things up.
-          new_location_for_node_original_contents->monoid = node->monoid;
-          new_location_for_node_original_contents->loc_min = node->loc_min;
-          new_location_for_node_original_contents->size_exponent_in_each_dimension = node->size_exponent_in_each_dimension;
-
-          // Compute shared coords here in case some Coord ops can throw.
-          loc_type shared_loc_min;
-          const Coord mask = (~Coord(0) << shared_size_exponent);
-          for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
-            shared_loc_min[dim] = node->loc_min[dim] & mask;
-          }
-          // If Coord move throws, we're in trouble, because we're moving
-          // an array of them so some of node's coords could be overwritten
-          // already and we have no reliable way to restore them without
-          // nothrow move.  This is why we require nothrow Coord move.
-          //
-          // Nevertheless do this inside the try/catch so we at least
-          // don't leak memory if it throws.
-          node->loc_min = std::move(shared_loc_min);
-        }
-        catch(...) {
-          intermediate_nodes->~sub_nodes_type();
-          node_allocator().deallocate(intermediate_nodes, 1);
-          throw;
-        }
-
-        // continue moving node's contents to its new location
-        // nothrow
-        new_location_for_node_original_contents->ptr = node->ptr;
-        node->ptr = intermediate_nodes;
-        node->size_exponent_in_each_dimension = shared_size_exponent;
-        //node->parent remains the same
-        //node->siblings remains the same
-        //node->monoid remains the same (it will be updated later as one of the parents)
-
-        // nothrow
-        node = new_leaf_ptr_node;
-      }
-
-      assert(node->ptr == nullptr);
-      node->size_exponent_in_each_dimension = 0;
-      node->loc_min = leaf_loc;
-    }
-    catch(...) {
-      leaf_deleter()(leaf_ptr);
-      throw;
-    }
-    // nothrow
-    node->ptr = leaf_ptr;
-
-    // is this a time waste? if starting at the root,
-    // and if not worrying about exceptions,
-    // we could have updated them on the way down,
-    // though the short-circuit wouldn't take effect then.
-    node_type* parent = node->parent;
-    while(parent) {
-      // += ?
-      monoid_type sum = parent->monoid + leaf_monoid;
-      if (sum == parent->monoid) { break; }
-      parent->monoid = std::move(sum);
-      parent = parent->parent;
-    }
-    node->monoid = std::move(leaf_monoid);
-  }
+  void insert(loc_type const& leaf_loc, T* leaf_ptr, monoid_type leaf_monoid = monoid_type());
 
   node_type const* find_node(loc_type leaf_loc)const {
     node_type const* node = this->ascend_(leaf_loc);
@@ -381,37 +261,166 @@ public:
   }
 
   // erase returns true iff something was erased.
-  bool erase(loc_type leaf_loc) {
-    node_type*const node = find_node(leaf_loc);
-    if (T* leaf = node->leaf()) {
-      leaf_deleter()(leaf);
-      node->ptr = nullptr;
-      // also could keep immediate-children-counts explicitly in nodes...
-      // TODO shorten tree where appropriate
-      
-      if (!(node->monoid == monoid_type())) {
-        sub_nodes_type* siblings = node->siblings;
-        node_type* parent = node->parent;
-
-        node->monoid = monoid_type();
-        while(parent) {
-          // -= ?
-          monoid_type sum = monoid_type();
-          for (node_type& sibling : *siblings) {
-            sum = sum + sibling.monoid;
-          }
-          if (sum == parent->monoid) { break; }
-          parent->monoid = sum;
-
-          siblings = parent->siblings;
-          parent = parent->parent;
-        }
-      }
-      return true;
-    }
-    else { return false; }
-  }
+  bool erase(loc_type leaf_loc);
 };
 //weak_ptr<node_type> ?
+
+
+template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
+inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type const& leaf_loc, T* leaf_ptr, monoid_type leaf_monoid) {
+  // invariant: this 'node' variable changes but is never nullptr.
+  node_type* node;
+  try {
+    node = this->find_node(leaf_loc);
+    caller_error_if(node->points_to_leaf() && node->loc_min == leaf_loc, "Inserting a leaf in a location that's already in the tree");
+    if (!node->is_empty()) {
+      // That child's location was too specific (wrong) for us.
+      sub_nodes_type* intermediate_nodes = node_allocator().allocate(1);
+      if (!intermediate_nodes) {
+        throw std::bad_alloc();
+      }
+      try {
+        // nothrow except monoids
+        new (intermediate_nodes) sub_nodes_type();
+        for (node_type& intermediate_node : *intermediate_nodes) {
+          intermediate_node.ptr = nullptr;
+          intermediate_node.size_exponent_in_each_dimension = 0;
+          intermediate_node.parent = node;
+          intermediate_node.siblings = intermediate_nodes;
+        }
+      }
+      catch(...) {
+        node_allocator().deallocate(intermediate_nodes, 1);
+        throw;
+      }
+
+      num_bits_type shared_size_exponent;
+      node_type* new_location_for_node_original_contents;
+      node_type* new_leaf_ptr_node;
+      try {
+        // loop is nothrow
+        shared_size_exponent = 0;
+        for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
+          const num_bits_type dim_shared_size_exponent =
+                  num_bits_in_integer_that_are_not_leading_zeroes(
+                    to_unsigned_type(node->loc_min[dim] ^ leaf_loc[dim]));
+          if(shared_size_exponent < dim_shared_size_exponent) {
+            shared_size_exponent = dim_shared_size_exponent;
+          }
+        }
+
+        // assert is typically nothrow, and it's also okay
+        // if it throws here.
+        assert(shared_size_exponent < coordinate_bits);
+        assert(shared_size_exponent > 0);
+
+        // move node's contents to its new location
+        new_location_for_node_original_contents =    // nothrow
+            &child_matching(*intermediate_nodes, shared_size_exponent, node->loc_min);
+        new_leaf_ptr_node =    // nothrow
+            &child_matching(*intermediate_nodes, shared_size_exponent, leaf_loc);
+
+        assert(new_location_for_node_original_contents != new_leaf_ptr_node);
+
+        // Monoid ops may throw. Do the copy before anything else so that if
+        // it throws, we won't be in a partial state and have destructors
+        // mess things up.
+        new_location_for_node_original_contents->monoid = node->monoid;
+        new_location_for_node_original_contents->loc_min = node->loc_min;
+        new_location_for_node_original_contents->size_exponent_in_each_dimension = node->size_exponent_in_each_dimension;
+
+        // Compute shared coords here in case some Coord ops can throw.
+        loc_type shared_loc_min;
+        const Coord mask = (~Coord(0) << shared_size_exponent);
+        for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
+          shared_loc_min[dim] = node->loc_min[dim] & mask;
+        }
+        // If Coord move throws, we're in trouble, because we're moving
+        // an array of them so some of node's coords could be overwritten
+        // already and we have no reliable way to restore them without
+        // nothrow move.  This is why we require nothrow Coord move.
+        //
+        // Nevertheless do this inside the try/catch so we at least
+        // don't leak memory if it throws.
+        node->loc_min = std::move(shared_loc_min);
+      }
+      catch(...) {
+        intermediate_nodes->~sub_nodes_type();
+        node_allocator().deallocate(intermediate_nodes, 1);
+        throw;
+      }
+
+      // continue moving node's contents to its new location
+      // nothrow
+      new_location_for_node_original_contents->ptr = node->ptr;
+      node->ptr = intermediate_nodes;
+      node->size_exponent_in_each_dimension = shared_size_exponent;
+      //node->parent remains the same
+      //node->siblings remains the same
+      //node->monoid remains the same (it will be updated later as one of the parents)
+
+      // nothrow
+      node = new_leaf_ptr_node;
+    }
+
+    assert(node->ptr == nullptr);
+    node->size_exponent_in_each_dimension = 0;
+    node->loc_min = leaf_loc;
+  }
+  catch(...) {
+    leaf_deleter()(leaf_ptr);
+    throw;
+  }
+  // nothrow
+  node->ptr = leaf_ptr;
+
+  // is this a time waste? if starting at the root,
+  // and if not worrying about exceptions,
+  // we could have updated them on the way down,
+  // though the short-circuit wouldn't take effect then.
+  node_type* parent = node->parent;
+  while(parent) {
+    // += ?
+    monoid_type sum = parent->monoid + leaf_monoid;
+    if (sum == parent->monoid) { break; }
+    parent->monoid = std::move(sum);
+    parent = parent->parent;
+  }
+  node->monoid = std::move(leaf_monoid);
+}
+
+
+template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
+inline bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_type leaf_loc) {
+  node_type*const node = find_node(leaf_loc);
+  if (T* leaf = node->leaf()) {
+    leaf_deleter()(leaf);
+    node->ptr = nullptr;
+    // also could keep immediate-children-counts explicitly in nodes...
+    // TODO shorten tree where appropriate
+
+    if (!(node->monoid == monoid_type())) {
+      sub_nodes_type* siblings = node->siblings;
+      node_type* parent = node->parent;
+
+      node->monoid = monoid_type();
+      while(parent) {
+        // -= ?
+        monoid_type sum = monoid_type();
+        for (node_type& sibling : *siblings) {
+          sum = sum + sibling.monoid;
+        }
+        if (sum == parent->monoid) { break; }
+        parent->monoid = sum;
+
+        siblings = parent->siblings;
+        parent = parent->parent;
+      }
+    }
+    return true;
+  }
+  else { return false; }
+}
+
 
 #endif
