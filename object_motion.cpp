@@ -259,7 +259,7 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
       }
       const auto i1 = objects_info.find(id);
       const time_type ltu1 = (i1 == objects_info.end()) ? time_type(0) : i1->second.last_time_updated;
-      assert(ltu1 == min_time); // TODO just use this instead and not pass min_time?
+      assert(ltu1 == min_time); // TODO just use this instead and not pass the min_time argument?
       const auto i2 = objects_info.find(other_id);
       const time_type ltu2 = (i2 == objects_info.end()) ? time_type(0) : i2->second.last_time_updated;
       if (optional_time result = get_first_moment_of_intersection(personal_space_shape, opss, obj->velocity(), other_velocity, ltu1, ltu2)) {
