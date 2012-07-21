@@ -154,10 +154,17 @@ void float_above_ground(vector3<fine_scalar>& velocity_, world& w, object_identi
 } /* end anonymous namespace */
 
 shape robot::get_initial_personal_space_shape()const {
-  return shape(bounding_box::min_and_max(
+  /*return shape(convex_polyhedron(bounding_box::min_and_max(
     location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
     location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
-  ));
+  )));*/
+  std::vector<vector3<fine_scalar>> verts;
+  verts.push_back(location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10));
+  verts.push_back(location_ + vector3<fine_scalar>(tile_width * 3 / 10, -tile_width * 3 / 10, tile_width * 3 / 10));
+  verts.push_back(location_ + vector3<fine_scalar>(-tile_width * 3 / 10, -tile_width * 3 / 10, tile_width * 3 / 10));
+  verts.push_back(location_ + vector3<fine_scalar>(-tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10));
+  verts.push_back(location_ + vector3<fine_scalar>(0, 0, -tile_width * 3 / 10));
+  return shape(convex_polyhedron(verts));
 }
 
 shape robot::get_initial_detail_shape()const {
@@ -166,11 +173,11 @@ shape robot::get_initial_detail_shape()const {
 
 void robot::update(world& w, object_identifier my_id) {
   update_location(location_, w, my_id);
-  float_above_ground(velocity_, w, my_id);
+  //float_above_ground(velocity_, w, my_id);
     
   input_representation::input_news_t const& input_news = w.input_news();
-  velocity_.x -= velocity_.x / 2;
-  velocity_.y -= velocity_.y / 2;
+  velocity_.x = divide_rounding_towards_zero(velocity_.x, 2);
+  velocity_.y = divide_rounding_towards_zero(velocity_.y, 2);
   const fine_scalar xymag = i64sqrt(facing_.x*facing_.x + facing_.y*facing_.y);
   if (input_news.is_currently_pressed("x")) {
     velocity_.x = facing_.x * tile_width * velocity_scale_factor / 8 / xymag;
@@ -239,10 +246,10 @@ void robot::update(world& w, object_identifier my_id) {
 
 
 shape laser_emitter::get_initial_personal_space_shape()const {
-  return shape(bounding_box::min_and_max(
+  return shape(convex_polyhedron(bounding_box::min_and_max(
     location_ - vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10),
     location_ + vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10)
-  ));
+  )));
 }
 
 shape laser_emitter::get_initial_detail_shape()const {
@@ -269,10 +276,10 @@ void laser_emitter::update(world& w, object_identifier my_id) {
 
 
 shape autorobot::get_initial_personal_space_shape()const {
-  return shape(bounding_box::min_and_max(
+  return shape(convex_polyhedron(bounding_box::min_and_max(
     location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
     location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
-  ));
+  )));
 }
 
 shape autorobot::get_initial_detail_shape()const {

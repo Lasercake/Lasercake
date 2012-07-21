@@ -445,7 +445,7 @@ template<typename IntType> struct non_normalized_rational {
   }
   non_normalized_rational operator+(non_normalized_rational const& o)const {
     // Simplify only the stupidest case.
-    if (denominator == o.denominator) return non_normalized_rational(numerator + numerator, denominator);
+    if (denominator == o.denominator) return non_normalized_rational(numerator + o.numerator, denominator);
     return non_normalized_rational(numerator * o.denominator + denominator * o.numerator, denominator * o.denominator);
   }
   void operator+=(non_normalized_rational const& o) {
@@ -460,7 +460,7 @@ template<typename IntType> struct non_normalized_rational {
   }
   non_normalized_rational operator-(non_normalized_rational const& o)const {
     // Simplify only the stupidest case.
-    if (denominator == o.denominator) return non_normalized_rational(numerator - numerator, denominator);
+    if (denominator == o.denominator) return non_normalized_rational(numerator - o.numerator, denominator);
     return non_normalized_rational(numerator * o.denominator - denominator * o.numerator, denominator * o.denominator);
   }
   void operator-=(non_normalized_rational const& o) {

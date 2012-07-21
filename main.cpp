@@ -323,7 +323,7 @@ void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data, v
   glLoadIdentity();
 
   // TODO convert these GLU calls to plain GL calls?
-  gluPerspective(80, (double(viewport_width) / viewport_height), 0.1*tile_width, 300*tile_width);
+  gluPerspective(80, (double(viewport_width) / viewport_height), 0.1*get_primitive_double(tile_width), 300.0*get_primitive_double(tile_width));
   gluLookAt(0, 0, 0,
             gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
             gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);
