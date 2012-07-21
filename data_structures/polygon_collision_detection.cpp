@@ -386,15 +386,22 @@ void convex_polyhedron::init_other_info_from_vertices() {
   std::list<line_building_info> lines;
   
   // Hack: Start by making a tetrahedron with the first four non-coplanar verts.
-  std::array<int, 4> first_four_noncoplanar_verts{{0,1,-1,-1}};
-  for (int i = 2; i < (int)vs.size(); ++i) {
-    if (!vectors_are_parallel(vs[i] - vs[0], vs[1] - vs[0])) {
+  std::array<int, 4> first_four_noncoplanar_verts{{0,-1,-1,-1}};
+  for (int i = 1; i < (int)vs.size(); ++i) {
+    if (vs[i] != vs[0]) {
+      first_four_noncoplanar_verts[1] = i;
+      break;
+    }
+  }
+  assert(first_four_noncoplanar_verts[1] != -1);
+  for (int i = first_four_noncoplanar_verts[1]+1; i < (int)vs.size(); ++i) {
+    if (!vectors_are_parallel(vs[i] - vs[0], vs[first_four_noncoplanar_verts[1]] - vs[0])) {
       first_four_noncoplanar_verts[2] = i;
       break;
     }
   }
   assert(first_four_noncoplanar_verts[2] != -1);
-  auto f3norm = plane_normal(vs[0], vs[1], vs[first_four_noncoplanar_verts[2]]);
+  auto f3norm = plane_normal(vs[0], vs[first_four_noncoplanar_verts[1]], vs[first_four_noncoplanar_verts[2]]);
   for (int i = first_four_noncoplanar_verts[2]+1; i < (int)vs.size(); ++i) {
     if ((vs[i] - vs[0]).dot<polygon_int_type>(f3norm) != 0) {
       first_four_noncoplanar_verts[3] = i;
@@ -428,7 +435,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
     for (auto const& f : faces) {
       assert(!f.second.verts.empty());
       polygon_int_type dotprod = (vs[i] - vs[*f.second.verts.begin()]).dot<polygon_int_type>(f.second.normal);
-      std::cerr << i << "!" << dotprod << "!\n";
+      //std::cerr << i << "!" << dotprod << "!\n";
       if (dotprod > 0) {
         exposed = true;
         break;
@@ -438,6 +445,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
       std::unordered_set<int> new_and_old_faces;
       std::unordered_set<int> old_faces;
       std::unordered_set<int> verts_of_potential_new_lines;
+      std::vector<int> verts_of_preexisting_lines;
       for (auto l = lines.begin(); l != lines.end(); ) {
         auto fit1 = faces.find(l->face_1);
         auto fit2 = faces.find(l->face_2);
@@ -449,7 +457,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
         assert(!f2.verts.empty());
         const polygon_int_type dotprod1 = (vs[i] - vs[*f1.verts.begin()]).dot<polygon_int_type>(f1.normal);
         const polygon_int_type dotprod2 = (vs[i] - vs[*f2.verts.begin()]).dot<polygon_int_type>(f2.normal);
-        std::cerr << dotprod1 << ", " << dotprod2 << "\n";
+        //std::cerr << dotprod1 << ", " << dotprod2 << "\n";
         // Both <=0: we're inside both, the line is unaffected
         // Both >0: we're outside both, the line will just be purged
         if ((dotprod1 == 0) && (dotprod2 == 0)) {
@@ -460,12 +468,14 @@ void convex_polyhedron::init_other_info_from_vertices() {
               if ((vs[l->vert_1](dim) < vs[l->vert_2](dim)) == (vs[l->vert_1](dim) < vs[i](dim))) {
                 f1.verts.erase(l->vert_2);
                 f2.verts.erase(l->vert_2);
+                verts_of_preexisting_lines.push_back(l->vert_2);
                 l->vert_2 = i;
                 assert(vs[l->vert_1] != vs[l->vert_2]);
               }
               else {
                 f1.verts.erase(l->vert_1);
                 f2.verts.erase(l->vert_1);
+                verts_of_preexisting_lines.push_back(l->vert_1);
                 l->vert_1 = i;
                 assert(vs[l->vert_1] != vs[l->vert_2]);
               }
@@ -520,13 +530,14 @@ void convex_polyhedron::init_other_info_from_vertices() {
         if (dotprod > 0) faces.erase(f++);
         else ++f;
       }
-      std::cerr << "EEEEEEEEE" << verts_of_potential_new_lines.size() << ", " << new_and_old_faces.size() << ", " << old_faces.size() << "\n";
+      for (auto pv : verts_of_preexisting_lines) verts_of_potential_new_lines.erase(pv);
+      //std::cerr << "EEEEEEEEE" << verts_of_potential_new_lines.size() << ", " << new_and_old_faces.size() << ", " << old_faces.size() << "\n";
       for (int lv : verts_of_potential_new_lines) {
         line_building_info l;
         int num_faces_including = 0;
         for (int fid : new_and_old_faces) {
           polygon_int_type dotprod = (vs[lv] - vs[*faces[fid].verts.begin()]).dot<polygon_int_type>(faces[fid].normal);
-          std::cerr<<dotprod<<"...\n";
+          //std::cerr<<dotprod<<"...\n";
           assert(dotprod <= 0);
           if (dotprod == 0) {
             if (num_faces_including == 0) l.face_1 = fid;
@@ -567,7 +578,8 @@ void convex_polyhedron::init_other_info_from_vertices() {
   }
   vertices_.erase(vertices_.begin() + next_vert_id, vertices_.end());
   for (auto const& l : lines) {
-    std::cerr << l.vert_1 << l.vert_2 << vertices_.size();
+    //std::cerr << l.vert_1 << l.vert_2 << vertices_.size();
+    //if (vertex_id_map.find(l.vert_1) != vertex_id_map.end() && vertex_id_map.find(l.vert_2) != vertex_id_map.end())
     edges_.push_back(std::make_pair(
        vertex_id_map.find(l.vert_1)->second,
        vertex_id_map.find(l.vert_2)->second));
