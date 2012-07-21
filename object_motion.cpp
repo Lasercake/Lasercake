@@ -467,7 +467,11 @@ void update_moving_objects_impl(
             
             // CRASH!!
             //std::cerr << oid1 << oid2;
-            assert (!o1pss->intersects(*o2pss));
+            // This assertion is wrong:
+            //assert (!o1pss->intersects(*o2pss));
+            // Because one object can follow another closely, with the one in front known to be
+            // not colliding with anything else until after the time the back one intersects
+            // where the front one was.
             update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
             ++inf1.invalidation_counter; // required in case update_object_to_time did nothing
             update_object_to_time(obj2, *o2pss, *o2ds, inf2, collision.time);
