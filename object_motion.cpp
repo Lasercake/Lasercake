@@ -239,7 +239,9 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
   else {
   //std::cerr  << "argh6";
     shape seire(*s1);
-    seire.translate(relative_delta_to_step_end);
+    seire.translate(relative_delta_to_step_begin);
+    assert(!seire.intersects(*s2));
+    seire.translate(movement_this_step);
     assert(!seire.intersects(*s2));
     return boost::none;
   }
