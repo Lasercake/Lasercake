@@ -209,6 +209,30 @@ public:
   // erase returns true iff something was erased.
   bool erase(loc_type leaf_loc);
 
+  monoid_type const& monoid()const { return monoid_; }
+  void update_monoid(monoid_type new_leaf_monoid) {
+    caller_correct_if(this->points_to_leaf(),
+        "patricia_trie: Only leaves can have their monoids explicitly set; "
+        "parent and empty node monoids are automatically computed.");
+    // If monoid_type had a -=, this could be faster.
+    if (!(monoid_ == new_leaf_monoid)) {
+      sub_nodes_type* siblings = siblings_;
+      node_type* parent = parent_;
+
+      monoid_ = std::move(new_leaf_monoid);
+      while(parent) {
+        monoid_type sum = monoid_type();
+        for (node_type& sibling : *siblings) {
+          sum = sum + sibling.monoid_;
+        }
+        if (sum == parent->monoid_) { break; }
+        parent->monoid_ = std::move(sum);
+
+        siblings = parent->siblings_;
+        parent = parent->parent_;
+      }
+    }
+  }
 
 private:
   node_type const* ascend_(loc_type const& leaf_loc)const {
@@ -390,29 +414,11 @@ template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
 inline bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_type leaf_loc) {
   node_type*const node = find_node(leaf_loc);
   if (T* leaf = node->leaf()) {
+    node->update_monoid(monoid_type());
     leaf_deleter()(leaf);
     node->ptr_ = nullptr;
     // also could keep immediate-children-counts explicitly in nodes...
     // TODO shorten tree where appropriate
-
-    if (!(node->monoid_ == monoid_type())) {
-      sub_nodes_type* siblings = node->siblings_;
-      node_type* parent = node->parent_;
-
-      node->monoid_ = monoid_type();
-      while(parent) {
-        // -= ?
-        monoid_type sum = monoid_type();
-        for (node_type& sibling : *siblings) {
-          sum = sum + sibling.monoid_;
-        }
-        if (sum == parent->monoid_) { break; }
-        parent->monoid_ = sum;
-
-        siblings = parent->siblings_;
-        parent = parent->parent_;
-      }
-    }
     return true;
   }
   else { return false; }
