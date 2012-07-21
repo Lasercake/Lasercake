@@ -231,6 +231,66 @@ bool vectors_are_parallel(vector3<polygon_int_type> const& v1, vector3<polygon_i
   return (v1(X) * v2(Y) == v2(X) * v1(Y)) && (v1(X) * v2(Z) == v2(X) * v1(Z)) && (v1(Y) * v2(Z) == v2(Y) * v1(Z));
 }
 
+template<typename VectorType, int ArraySize> class arrayvector {
+private:
+  std::array<typename VectorType::value_type, ArraySize> first_n_values_;
+  int size_;
+  VectorType* real_vector_;
+public:
+  arrayvector():size_(0),real_vector_(NULL){}
+  int size()const { return size_; }
+  typename VectorType::value_type& operator[](int idx) {
+    if (idx < ArraySize) {
+      return first_n_values_[idx];
+    }
+    else {
+      caller_correct_if(real_vector_, "out of bounds arrayvector access");
+      return (*real_vector_)[idx - ArraySize];
+    }
+  }
+  typename VectorType::value_type& back() {
+    return (*this)[size_ - 1];
+  }
+  void push_back(typename VectorType::value_type value) {
+    if (size_ < ArraySize) {
+      first_n_values_[size_] = value;
+    }
+    else {
+      if (!real_vector_) {
+        real_vector_ = new VectorType();
+        //std::cerr << "arrayvector size exceeded: " << ArraySize << "\n";
+      }
+      real_vector_->push_back(value);
+    }
+    ++size_;
+  }
+  void pop_back() {
+    if(size_ > ArraySize) {
+      real_vector_->pop_back();
+    }
+    --size_;
+  }
+  bool empty()const { return size_ == 0; }
+  ~arrayvector() {
+    if (real_vector_) delete real_vector_;
+  }
+  class iterator : public boost::iterator_facade<iterator, typename VectorType::value_type, boost::bidirectional_traversal_tag> {
+    public:
+      iterator() : av_(NULL),which_(0) {}
+      explicit iterator(arrayvector* av_, int which_) : av_(av_),which_(which_) {}
+    private:
+    friend class boost::iterator_core_access;
+      void increment() {++which_;}
+      void decrement() {--which_;}
+      bool equal(iterator const& other)const { return which_ == other.which_; }
+      typename VectorType::value_type& dereference()const { return (*av_)[which_]; }
+      arrayvector* av_;
+      int which_;
+  };
+  iterator begin() { return iterator(this, 0); }
+  iterator end() { return iterator(this, size_); }
+};
+
 void convex_polyhedron::init_other_info_from_vertices() {
   caller_correct_if(vertices_.size() <= 255, "You can't make a polyhedron with more than 255 points.");
   caller_correct_if(vertices_.size() >= 4, "You can't make a polyhedron with fewer than 4 points.");
@@ -241,7 +301,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
   // Complexity: Quadratic in the number of points.
   struct face_building_info {
     face_building_info(){}
-    std::vector<int> verts;
+    arrayvector<std::vector<int>, 8> verts;
     vector3<polygon_int_type> normal;
   };
   typedef std::list<face_building_info>::iterator face_reference_t;
@@ -307,7 +367,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
   
   for (int i = 0; i < (int)vs.size(); ++i) {
     bool exposed = false;
-    for (auto const& f : faces) {
+    for (auto& f : faces) {
       assert(!f.verts.empty());
       polygon_int_type dotprod = (vs[i] - vs[*f.verts.begin()]).dot<polygon_int_type>(f.normal);
       //std::cerr << i << "!" << dotprod << "!\n";
@@ -317,10 +377,10 @@ void convex_polyhedron::init_other_info_from_vertices() {
       }
     }
     if (exposed) {
-      std::vector<face_reference_t> new_and_old_faces;
-      std::vector<face_reference_t> old_faces;
-      std::vector<int> verts_of_potential_new_lines;
-      std::vector<int> verts_of_preexisting_lines;
+      arrayvector<std::vector<face_reference_t>, 16> new_and_old_faces;
+      arrayvector<std::vector<face_reference_t>, 8> old_faces;
+      arrayvector<std::vector<int>, 16> verts_of_potential_new_lines;
+      arrayvector<std::vector<int>, 16> verts_of_preexisting_lines;
       for (auto l = lines.begin(); l != lines.end(); ) {
         assert(l->face_1 != faces.end());
         assert(l->face_2 != faces.end());
@@ -480,7 +540,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
   }
   
   std::vector<bool> existences_of_points(vertices_.size(), false);
-  for (auto const& f : faces) {
+  for (auto& f : faces) {
     for (int v : f.verts) {
       existences_of_points[v] = true;
     }
@@ -502,7 +562,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
        vertex_id_map[l.vert_1],
        vertex_id_map[l.vert_2]));
   }
-  for (auto const& f : faces) {
+  for (auto& f : faces) {
     const int face_idx = face_info_.size();
     face_info_.push_back(f.verts.size());
     for (int vid : f.verts) {
