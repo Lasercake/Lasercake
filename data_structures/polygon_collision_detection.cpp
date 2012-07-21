@@ -783,6 +783,19 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     (1<<0x8) | (1<<0x9) | (1<<0xA) | (1<<0xB) | (1<<0xC) | (1<<0xD) | (1<<0xE) | (1<<0xF),
   }};
   
+  /// Haaaack
+  std::vector<vector3<polygon_int_type>> verts;
+  for (uint8_t i = 0; i < ph.vertices().size(); ++i) {
+    for (int combo = 0; combo < 16; ++combo) {
+      verts.push_back(ph.vertices()[i]+vectors_by_combo[combo]);
+    }
+  }
+  convex_polyhedron sweep_poly(verts);
+  compute_planes_info_for_intersection(sweep_poly, plane_collector);
+  for(auto v : sweep_poly.vertices()) vertex_collector.push_back(v);
+  
+  return;
+  
   std::unordered_multimap<uint8_t, vector3<polygon_int_type>> normals_by_point_idx;
   for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
     // relying on the fact that the first three vertices of each face are in the proper order.
