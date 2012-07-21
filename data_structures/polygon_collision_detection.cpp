@@ -557,11 +557,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     }
   }
   
-  // Three hacks: (1) We rely on the fact that the error is in the same direction in each dimension as v,
-  //    and so (2) the combos (errorx + errory + errorz) and (v) are always concealed, so we eliminate them here,
-  //    and (3) they wouldn't necessarily be eliminated anywhere else.
-  // All other invalid vectors get eliminated properly though.
-  std::vector<uint16_t> existences_of_translates(ph.vertices().size(), 0xffff & (~(1<<0x7)) & (~(1<<0x8)));
+  std::vector<uint16_t> existences_of_translates(ph.vertices().size(), 0xffff);
   for (uint8_t i = 0; i < ph.vertices().size(); ++i) {
     vector3<polygon_int_type> const& p = ph.vertices()[i];
     // There are sixteen possible vertices translated from P -
@@ -617,6 +613,14 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
       //}
     }*/
     
+    // Three hacks: (1) We rely on the fact that the error is in the same direction in each dimension as v,
+    //    and so (2) the combos (errorx + errory + errorz) and (v) are always concealed, so we eliminate them here,
+    //    and (3) they wouldn't necessarily be eliminated anywhere else.
+    // All other invalid vectors get eliminated properly though.
+    if ((v(X) != 0) && (v(Y) != 0) && (v(Z) != 0)) {
+      existences_of_translates[i] &= (~(1<<0x7)) & (~(1<<0x8));
+    }
+    
     // Eliminate all combos that include a zero vector.
     for (int dir = 0; dir < 4; ++dir) {
       if (dirs[dir] == vector3<polygon_int_type>(0,0,0)) existences_of_translates[i] &= ~combos_including_dir[dir];
@@ -626,8 +630,22 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     // I'm sure this could be optimized.
     std::array<int, 4> di1 = {{0,0,0,0}};
     std::array<int, 4> di2 = {{0,0,0,0}};
-    for(di1[0] = 0; di1[0] < 2; ++di1[0]) { for(di1[1] = 0; di1[1] < 2; ++di1[1]) { for(di1[2] = 0; di1[2] < 2; ++di1[2]) { for(di1[3] = 0; di1[3] < 2; ++di1[3]) {
-      for(di2[0] = 0; di2[0] < 2; ++di2[0]) { for(di2[1] = 0; di2[1] < 2; ++di2[1]) { for(di2[2] = 0; di2[2] < 2; ++di2[2]) { for(di2[3] = 0; di2[3] < 2; ++di2[3]) {
+    for(di1[0] = 0; di1[0] < 2; ++di1[0]) {
+      if (di1[0] && (dirs[0] == vector3<polygon_int_type>(0,0,0))) continue;
+      for(di1[1] = 0; di1[1] < 2; ++di1[1]) {
+        if (di1[1] && (dirs[1] == vector3<polygon_int_type>(0,0,0))) continue;
+        for(di1[2] = 0; di1[2] < 2; ++di1[2]) {
+          if (di1[2] && (dirs[2] == vector3<polygon_int_type>(0,0,0))) continue;
+          for(di1[3] = 0; di1[3] < 2; ++di1[3]) {
+            if (di1[3] && (dirs[3] == vector3<polygon_int_type>(0,0,0))) continue;
+      for(di2[0] = 0; di2[0] < 2; ++di2[0]) {
+      if (di2[0] && (dirs[0] == vector3<polygon_int_type>(0,0,0))) continue;
+        for(di2[1] = 0; di2[1] < 2; ++di2[1]) {
+        if (di2[1] && (dirs[1] == vector3<polygon_int_type>(0,0,0))) continue;
+          for(di2[2] = 0; di2[2] < 2; ++di2[2]) {
+          if (di2[2] && (dirs[2] == vector3<polygon_int_type>(0,0,0))) continue;
+            for(di2[3] = 0; di2[3] < 2; ++di2[3]) {
+            if (di2[3] && (dirs[3] == vector3<polygon_int_type>(0,0,0))) continue;
         vector3<polygon_int_type> diff_vector(0,0,0);
         for (int dir = 0; dir < 4; ++dir) {
           if (di2[dir]) diff_vector += dirs[dir];
