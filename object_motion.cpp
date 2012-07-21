@@ -189,22 +189,29 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
   }
   //std::cerr << "Argh2: " << which_step << ", " << inverse_step_size << ", " << s1_velocity << ", " << s2_velocity << ", " << relative_delta_to_step_begin << ", " << relative_delta_to_step_end << ", " << movement_this_step << " ERROR: " << max_error << "\n";
   bool intersects = false;
-  // Hack, TODO fix: Only polyhedra collide properly!
-  for (convex_polyhedron /*copy, not reference*/ p : s1->get_polyhedra()) {
-    p.translate(relative_delta_to_step_begin);
-    std::vector<vector3<polygon_int_type>> sweep_vertices;
-    polyhedron_planes_info_for_intersection sweep_planes;
-    compute_sweep_allowing_rounding_error(p, movement_this_step, local_error, sweep_vertices, sweep_planes);
-    for (convex_polyhedron const& p2 : s2->get_polyhedra()) {
-      if (!get_excluding_face(sweep_vertices, sweep_planes, p2)) {
-        intersects = true;
-        goto doublebreak;
+  bounding_box sweep_bounds = s1->bounds();
+  sweep_bounds.translate(relative_delta_to_step_begin);
+  bounding_box end_bounds(sweep_bounds);
+  end_bounds.translate(movement_this_step+local_error);
+  sweep_bounds.combine_with(end_bounds);
+  if (sweep_bounds.overlaps(s2->bounds())) {
+    // Hack, TODO fix: Only polyhedra collide properly!
+    for (convex_polyhedron /*copy, not reference*/ p : s1->get_polyhedra()) {
+      p.translate(relative_delta_to_step_begin);
+      std::vector<vector3<polygon_int_type>> sweep_vertices;
+      polyhedron_planes_info_for_intersection sweep_planes;
+      compute_sweep_allowing_rounding_error(p, movement_this_step, local_error, sweep_vertices, sweep_planes);
+      for (convex_polyhedron const& p2 : s2->get_polyhedra()) {
+        if (!get_excluding_face(sweep_vertices, sweep_planes, p2)) {
+          intersects = true;
+          goto doublebreak;
+        }
       }
-    }
-    for (bounding_box const& bb : s2->get_boxes()) {
-      if (!get_excluding_face(sweep_vertices, sweep_planes, bb)) {
-        intersects = true;
-        goto doublebreak;
+      for (bounding_box const& bb : s2->get_boxes()) {
+        if (!get_excluding_face(sweep_vertices, sweep_planes, bb)) {
+          intersects = true;
+          goto doublebreak;
+        }
       }
     }
   }
