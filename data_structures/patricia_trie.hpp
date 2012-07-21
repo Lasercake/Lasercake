@@ -179,6 +179,10 @@ public:
   sub_nodes_type const* sub_nodes()const { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr_) : nullptr; }
   T* leaf() { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
   T const* leaf()const { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
+  node_type* parent() { return parent_; }
+  node_type const* parent()const { return parent_; }
+  sub_nodes_type* siblings() { return siblings_; }
+  sub_nodes_type const* siblings()const { return siblings_; }
 
   bool contains(loc_type const& loc)const {
     if (!shift_value_is_safe_for_type<Coord>(box_.size_exponent_in_each_dimension_)) {
