@@ -35,10 +35,12 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   static void initialize_to_non_interior(
       worldblock* wb,
       tile& t,
+      worldblock_dimension_type idx,
       worldblock_dimension_type local_x, worldblock_dimension_type local_y, worldblock_dimension_type local_z
   ) {
     assert_if_ASSERT_EVERYTHING(t.is_interior());
-    assert_if_ASSERT_EVERYTHING(&t == &wb->tiles_[local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor]);
+    assert_if_ASSERT_EVERYTHING(idx == local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor);
+    assert_if_ASSERT_EVERYTHING(&t == &wb->tiles_[idx]);
     t.set_interiorness(false);
     wb->count_of_non_interior_tiles_here_ += 1;
     const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(local_x, local_y, local_z);
@@ -49,7 +51,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 
     const vector3<tile_coordinate>& gp = wb->global_position_;
     const vector3<tile_coordinate> coords(gp.x + local_x, gp.y + local_y, gp.z + local_z);
-    const tile_location loc = wb->get_loc_guaranteed_to_be_in_this_block(coords);
+    const tile_location loc(coords, idx, wb);
     wb->w_->tiles_exposed_to_collision_.insert(loc, tile_coords_to_tiles_collision_detector_bbox(coords));
     if(wb->count_of_non_interior_tiles_here_ == 1) {
       wb->w_->worldblocks_with_any_tiles_exposed_to_collision_.insert(wb, tile_bbox_to_tiles_collision_detector_bbox(wb->bounding_box()));
@@ -57,11 +59,10 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   }
   };
 
-  void worldblock::set_tile_non_interior(vector3<tile_coordinate> global_coords) {
+  void worldblock::set_tile_non_interior(vector3<tile_coordinate> global_coords, worldblock_dimension_type idx) {
     const worldblock_dimension_type x = get_primitive_int(global_coords.x) & (worldblock_dimension-1);
     const worldblock_dimension_type y = get_primitive_int(global_coords.y) & (worldblock_dimension-1);
     const worldblock_dimension_type z = get_primitive_int(global_coords.z) & (worldblock_dimension-1);
-    const worldblock_dimension_type idx = x*worldblock_x_factor + y*worldblock_y_factor + z*worldblock_z_factor;
     const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(x, y, z);
     const worldblock_dimension_type interleaved_high = interleaved >> 6;
     const worldblock_dimension_type interleaved_low = interleaved & ((1<<6)-1);
@@ -74,11 +75,10 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     count_of_non_interior_tiles_here_ += t.is_interior();
     t.set_interiorness(false);
   }
-  void worldblock::set_tile_interior(vector3<tile_coordinate> global_coords) {
+  void worldblock::set_tile_interior(vector3<tile_coordinate> global_coords, worldblock_dimension_type idx) {
     const worldblock_dimension_type x = get_primitive_int(global_coords.x) & (worldblock_dimension-1);
     const worldblock_dimension_type y = get_primitive_int(global_coords.y) & (worldblock_dimension-1);
     const worldblock_dimension_type z = get_primitive_int(global_coords.z) & (worldblock_dimension-1);
-    const worldblock_dimension_type idx = x*worldblock_x_factor + y*worldblock_y_factor + z*worldblock_z_factor;
     const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(x, y, z);
     const worldblock_dimension_type interleaved_high = interleaved >> 6;
     const worldblock_dimension_type interleaved_low = interleaved & ((1<<6)-1);
@@ -119,7 +119,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
                     if(non_interior_bitmap_small_scale_[large_scale_i] & (uint64_t(1) << small_scale_i)) { // !t.is_interior()) {
                       const vector3<tile_coordinate> locv(global_x, global_y, global_z); //TODO be modifying this vector all along?
                       if(entirely_valid || bounds.contains(locv)) {
-                        results.push_back(tile_location(locv, this));
+                        results.push_back(tile_location(locv, idx, this));
                       }
                     }
                     ++small_scale_i;
@@ -171,10 +171,10 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     tile& adj_tile = wb->tiles_[adj_idx];
     if(neighboring_tiles_with_these_contents_are_not_interior(t.contents(), adj_tile.contents())) {
       if(t.is_interior() && t.contents() != AIR) {
-        worldblock::helpers::initialize_to_non_interior(wb, t, x, y, z);
+        worldblock::helpers::initialize_to_non_interior(wb, t, idx, x, y, z);
       }
       if(adj_tile.is_interior() && adj_tile.contents() != AIR) {
-        worldblock::helpers::initialize_to_non_interior(wb, adj_tile,
+        worldblock::helpers::initialize_to_non_interior(wb, adj_tile, adj_idx,
                                     x + cdir_info<Dir>::x_delta,
                                     y + cdir_info<Dir>::y_delta,
                                     z + cdir_info<Dir>::z_delta);
@@ -194,7 +194,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
           tiles_[this_idx].contents(),
           neighbors_[Dir]->tiles_[that_idx].contents())
       ) {
-      worldblock::helpers::initialize_to_non_interior(this, tiles_[this_idx], this_x, this_y, this_z);
+      worldblock::helpers::initialize_to_non_interior(this, tiles_[this_idx], this_idx, this_x, this_y, this_z);
     }
   }
 
@@ -362,7 +362,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
         // This check is to make sure that if we start inside a giant ocean, we'll still
         // be able to find out what water-group we're inside of:
         if(tiles_[0].contents() == GROUPABLE_WATER) {
-          w_->initialize_tile_water_group_caches_(tile_location(global_position_, this));
+          w_->initialize_tile_water_group_caches_(tile_location(global_position_, 0, this));
         }
       }
       else {
@@ -376,7 +376,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
               // Checking contents() here: significant speed improvement.
               if (tiles_[idx].contents() == GROUPABLE_WATER && !tiles_[idx].is_interior()) {
                 const vector3<tile_coordinate> coords(x,y,z);
-                w_->initialize_tile_water_group_caches_(tile_location(coords, this));
+                w_->initialize_tile_water_group_caches_(tile_location(coords, idx, this));
               }
             }
           }
@@ -390,11 +390,6 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     return (*this);
   }
 
-  template<cardinal_direction Dir> tile_location worldblock::get_loc_across_boundary(vector3<tile_coordinate> const& new_coords, level_of_tile_realization_needed realineeded) {
-    worldblock* neighbor = &ensure_neighbor_realization<Dir>(realineeded);
-    return tile_location(new_coords, neighbor);
-  }
-
   void worldblock::realize_nonexistent_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded) {
     neighbors_[dir] =
         w_->ensure_realization_of_and_get_worldblock_(
@@ -402,23 +397,17 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
           realineeded
         );
   }
-
-
-  tile_location worldblock::get_loc_guaranteed_to_be_in_this_block(vector3<tile_coordinate> coords) {
-    return tile_location(coords, this);
-  }
-
 }
 
 
 tile_location tile_location::get_neighbor_by_variable(cardinal_direction dir, level_of_tile_realization_needed realineeded)const {
   switch(dir) {
-    case xminus: return wb_->get_neighboring_loc<xminus>(v_, realineeded);
-    case yminus: return wb_->get_neighboring_loc<yminus>(v_, realineeded);
-    case zminus: return wb_->get_neighboring_loc<zminus>(v_, realineeded);
-    case xplus: return wb_->get_neighboring_loc<xplus>(v_, realineeded);
-    case yplus: return wb_->get_neighboring_loc<yplus>(v_, realineeded);
-    case zplus: return wb_->get_neighboring_loc<zplus>(v_, realineeded);
+    case xminus: return this->get_neighbor<xminus>(realineeded);
+    case yminus: return this->get_neighbor<yminus>(realineeded);
+    case zminus: return this->get_neighbor<zminus>(realineeded);
+    case xplus: return this->get_neighbor<xplus>(realineeded);
+    case yplus: return this->get_neighbor<yplus>(realineeded);
+    case zplus: return this->get_neighbor<zplus>(realineeded);
     default: caller_error("calling get_neighbor_by_variable with an invalid direction");
   }
 }
@@ -434,7 +423,9 @@ vector3<tile_coordinate> coordinates_of_containing_worldblock(vector3<tile_coord
 } // end anonymous namespace
 
 tile_location world::make_tile_location(vector3<tile_coordinate> const& coords, level_of_tile_realization_needed realineeded) {
-  return ensure_realization_of_and_get_worldblock_(coordinates_of_containing_worldblock(coords), realineeded)->get_loc_guaranteed_to_be_in_this_block(coords);
+  worldblock* wb = ensure_realization_of_and_get_worldblock_(coordinates_of_containing_worldblock(coords), realineeded);
+  const worldblock_dimension_type idx = wb->get_idx(coords);
+  return tile_location(coords, idx, wb);
 }
 
 worldblock* world::ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded) {

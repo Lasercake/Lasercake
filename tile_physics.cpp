@@ -228,11 +228,11 @@ using namespace tile_physics_impl;
 // (TODO: also add something for the there_is_an_object_here_that_affects_the_tile_based_physics thing)
 namespace tile_physics_impl {
   tile& mutable_stuff_at(tile_location const& loc) {
-    return loc.wb_->get_tile(loc.v_);
+    return loc.wb_->tiles_[loc.idx_];
   }
   inline void set_tile_interiorness(tile_location const& loc, bool interior) {
-    if(interior) loc.wb_->set_tile_interior(loc.v_);
-    else loc.wb_->set_tile_non_interior(loc.v_);
+    if(interior) loc.wb_->set_tile_interior(loc.v_, loc.idx_);
+    else loc.wb_->set_tile_non_interior(loc.v_, loc.idx_);
   }
 }
 

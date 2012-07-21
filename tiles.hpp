@@ -222,6 +222,7 @@ class world;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
   class worldblock;
+  typedef int worldblock_dimension_type;
 }
 
 enum level_of_tile_realization_needed {
@@ -259,23 +260,24 @@ public:
     return os << l.v_;
   }
   friend inline size_t hash_value(tile_location const& l) { return std::hash<vector3<tile_coordinate>>()(l.coords()); }
-private:
-  // This constructor should only be used when you know exactly what worldblock it's in!!
-  tile_location(vector3<tile_coordinate> v, the_decomposition_of_the_world_into_blocks_impl::worldblock *wb):v_(v),wb_(wb){}
 
+  // This constructor should only be used when you know exactly what worldblock it's in!!
+  // i.e. the worldblock code.
+  tile_location(vector3<tile_coordinate> v,
+                the_decomposition_of_the_world_into_blocks_impl::worldblock_dimension_type idx,
+                the_decomposition_of_the_world_into_blocks_impl::worldblock *wb);
+
+private:
   // tile_physics.cpp is the only code permitted to modify tile contents
   friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
   friend void tile_physics_impl::set_tile_interiorness(tile_location const& loc, bool interior);
 
-  // worldblock creates tile_locations explicitly, and obviously knows
-  // what worldblock they're in.
-  friend class the_decomposition_of_the_world_into_blocks_impl::worldblock;
-
   vector3<tile_coordinate> v_;
+  the_decomposition_of_the_world_into_blocks_impl::worldblock_dimension_type idx_;
   the_decomposition_of_the_world_into_blocks_impl::worldblock *wb_; // invariant: nonnull
 };
 
-inline tile_location trivial_invalid_location() { return tile_location(vector3<tile_coordinate>(0,0,0), nullptr); }
+inline tile_location trivial_invalid_location() { return tile_location(vector3<tile_coordinate>(0,0,0), 0, nullptr); }
 
 namespace std {
   template<> struct hash<tile_location> {
