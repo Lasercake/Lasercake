@@ -137,7 +137,6 @@ class pow2_radix_patricia_trie_node {
 public:
   static const num_coordinates_type dimensions = Dims;
   static const size_t radix = size_t(1) << dimensions;
-  static const num_bits_type coordinate_bits = sizeof(Coord)*8; //hmm
   typedef pow2_radix_patricia_trie_node node_type;
   typedef std::array<node_type, radix> sub_nodes_type;
   typedef std::array<Coord, dimensions> loc_type;
@@ -182,7 +181,7 @@ public:
   T const* leaf()const { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
 
   bool contains(loc_type const& loc)const {
-    if (box_.size_exponent_in_each_dimension_ == coordinate_bits) {
+    if (!shift_value_is_safe_for_type<Coord>(box_.size_exponent_in_each_dimension_)) {
       // Avoid left-shifting by an invalidly large amount.
       return true;
     }
@@ -385,7 +384,6 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
 
         // assert is typically nothrow, and it's also okay
         // if it throws here.
-        assert(shared_size_exponent < coordinate_bits);//TODO rly?
         assert(shared_size_exponent > 0);
 
         // move node's contents to its new location
@@ -422,7 +420,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
 
         // Compute shared coords here in case some Coord ops can throw.
         loc_type shared_loc_min;
-        const Coord mask = (~Coord(0) << shared_size_exponent);
+        const Coord mask = safe_left_shift(~Coord(0), shared_size_exponent);
         for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
           shared_loc_min[dim] = node->box_.min_[dim] & mask;
         }
