@@ -154,10 +154,17 @@ void float_above_ground(vector3<fine_scalar>& velocity_, world& w, object_identi
 } /* end anonymous namespace */
 
 shape robot::get_initial_personal_space_shape()const {
-  return shape(convex_polyhedron(bounding_box::min_and_max(
+  /*return shape(convex_polyhedron(bounding_box::min_and_max(
     location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
     location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
-  )));
+  )));*/
+  std::vector<vector3<fine_scalar>> verts;
+  verts.push_back(location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10));
+  verts.push_back(location_ + vector3<fine_scalar>(tile_width * 3 / 10, -tile_width * 3 / 10, tile_width * 3 / 10));
+  verts.push_back(location_ + vector3<fine_scalar>(-tile_width * 3 / 10, -tile_width * 3 / 10, tile_width * 3 / 10));
+  verts.push_back(location_ + vector3<fine_scalar>(-tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10));
+  verts.push_back(location_ + vector3<fine_scalar>(0, 0, -tile_width * 3 / 10));
+  return shape(convex_polyhedron(verts));
 }
 
 shape robot::get_initial_detail_shape()const {
@@ -166,7 +173,7 @@ shape robot::get_initial_detail_shape()const {
 
 void robot::update(world& w, object_identifier my_id) {
   update_location(location_, w, my_id);
-  float_above_ground(velocity_, w, my_id);
+  //float_above_ground(velocity_, w, my_id);
     
   input_representation::input_news_t const& input_news = w.input_news();
   velocity_.x -= velocity_.x / 2;
