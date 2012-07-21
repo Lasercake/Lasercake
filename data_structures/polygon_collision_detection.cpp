@@ -359,10 +359,236 @@ faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> g
   return get_excluding_face(p.vertices(), ps1, vs2, ps2);
 }
 
+bool vectors_are_parallel(vector3<polygon_int_type> const& v1, vector3<polygon_int_type> const& v2) {
+  return (v1(X) * v2(Y) == v2(X) * v1(Y)) && (v1(X) * v2(Z) == v2(X) * v1(Z)) && (v1(Y) * v2(Z) == v2(Y) * v1(Z));
+}
+
 void convex_polyhedron::init_other_info_from_vertices() {
-  assert(vertices_.size() <= 255);
+  caller_correct_if(vertices_.size() <= 255, "You can't make a polyhedron with more than 255 points.");
+  caller_correct_if(vertices_.size() >= 4, "You can't make a polyhedron with fewer than 4 points.");
   std::vector<vector3<polygon_int_type>> const& vs = vertices_;
   
+  // Algorithm: For each point, expand the polyhedron to include that point.
+  // When you're done, you'll have the correct answer.
+  // Complexity: Quadratic in the number of points.
+  struct face_building_info {
+    face_building_info(){}
+    std::unordered_set<int> verts;
+    vector3<polygon_int_type> normal;
+  };
+  struct line_building_info {
+    int face_1;
+    int face_2;
+    int vert_1;
+    int vert_2;
+  };
+  std::unordered_map<int, face_building_info> faces;
+  std::list<line_building_info> lines;
+  
+  // Hack: Start by making a tetrahedron with the first four non-coplanar verts.
+  std::array<int, 4> first_four_noncoplanar_verts{{0,1,-1,-1}};
+  for (int i = 2; i < (int)vs.size(); ++i) {
+    if (!vectors_are_parallel(vs[i] - vs[0], vs[1] - vs[0])) {
+      first_four_noncoplanar_verts[2] = i;
+      break;
+    }
+  }
+  assert(first_four_noncoplanar_verts[2] != -1);
+  auto f3norm = plane_normal(vs[0], vs[1], vs[first_four_noncoplanar_verts[2]]);
+  for (int i = first_four_noncoplanar_verts[2]+1; i < (int)vs.size(); ++i) {
+    if ((vs[i] - vs[0]).dot<polygon_int_type>(f3norm) != 0) {
+      first_four_noncoplanar_verts[3] = i;
+      break;
+    }
+  }
+  assert(first_four_noncoplanar_verts[3] != -1);
+  
+  for(int q = 0; q < 4; ++q) {
+    face_building_info& f = faces[q];
+    const int i1 = first_four_noncoplanar_verts[q];
+    const int i2 = first_four_noncoplanar_verts[(q+1) % 4];
+    const int i3 = first_four_noncoplanar_verts[(q+2) % 4];
+    const int i4 = first_four_noncoplanar_verts[(q+3) % 4];
+    f.verts.insert(i2); f.verts.insert(i3); f.verts.insert(i4);
+    f.normal = plane_normal(vs[i2],vs[i3],vs[i4]);
+    if ((vs[i2] - vs[i1]).dot<polygon_int_type>(f.normal) < 0) f.normal = -f.normal;
+    for(int j = q + 1; j < 4; ++j) {
+      line_building_info l;
+      l.vert_1 = first_four_noncoplanar_verts[q];
+      l.vert_2 = first_four_noncoplanar_verts[j];
+      l.face_1 = ((q != 0) && (j != 0)) ? 0 : ((q != 1) && (j != 1)) ? 1 : 2;
+      l.face_2 = ((q != 3) && (j != 3)) ? 3 : ((q != 2) && (j != 2)) ? 2 : 1;
+      lines.push_back(l);
+      assert(vs[l.vert_1] != vs[l.vert_2]);
+    }
+  }
+  int next_face_id = 4;
+  for (int i = 0; i < (int)vs.size(); ++i) {
+    bool exposed = false;
+    for (auto const& f : faces) {
+      assert(!f.second.verts.empty());
+      polygon_int_type dotprod = (vs[i] - vs[*f.second.verts.begin()]).dot<polygon_int_type>(f.second.normal);
+      std::cerr << i << "!" << dotprod << "!\n";
+      if (dotprod > 0) {
+        exposed = true;
+        break;
+      }
+    }
+    if (exposed) {
+      std::unordered_set<int> new_and_old_faces;
+      std::unordered_set<int> old_faces;
+      std::unordered_set<int> verts_of_potential_new_lines;
+      for (auto l = lines.begin(); l != lines.end(); ) {
+        auto fit1 = faces.find(l->face_1);
+        auto fit2 = faces.find(l->face_2);
+        assert(fit1 != faces.end());
+        assert(fit2 != faces.end());
+        auto& f1 = fit1->second;
+        auto& f2 = fit2->second;
+        assert(!f1.verts.empty());
+        assert(!f2.verts.empty());
+        const polygon_int_type dotprod1 = (vs[i] - vs[*f1.verts.begin()]).dot<polygon_int_type>(f1.normal);
+        const polygon_int_type dotprod2 = (vs[i] - vs[*f2.verts.begin()]).dot<polygon_int_type>(f2.normal);
+        std::cerr << dotprod1 << ", " << dotprod2 << "\n";
+        // Both <=0: we're inside both, the line is unaffected
+        // Both >0: we're outside both, the line will just be purged
+        if ((dotprod1 == 0) && (dotprod2 == 0)) {
+          f1.verts.insert(i);
+          f2.verts.insert(i);
+          for (int dim = 0; dim < num_dimensions; ++dim) {
+            if (vs[l->vert_1](dim) != vs[l->vert_2](dim)) {
+              if ((vs[l->vert_1](dim) < vs[l->vert_2](dim)) == (vs[l->vert_1](dim) < vs[i](dim))) {
+                f1.verts.erase(l->vert_2);
+                f2.verts.erase(l->vert_2);
+                l->vert_2 = i;
+                assert(vs[l->vert_1] != vs[l->vert_2]);
+              }
+              else {
+                f1.verts.erase(l->vert_1);
+                f2.verts.erase(l->vert_1);
+                l->vert_1 = i;
+                assert(vs[l->vert_1] != vs[l->vert_2]);
+              }
+              break;
+            }
+          }
+          ++l;
+        }
+        else if ((dotprod1 > 0) != (dotprod2 > 0)) {
+          verts_of_potential_new_lines.insert(l->vert_1);
+          verts_of_potential_new_lines.insert(l->vert_2);
+          if (dotprod1 == 0) {
+            old_faces.insert(l->face_1);
+            new_and_old_faces.insert(l->face_1);
+            f1.verts.insert(i);
+            lines.erase(l++);
+          }
+          else if (dotprod2 == 0) {
+            old_faces.insert(l->face_2);
+            new_and_old_faces.insert(l->face_2);
+            f2.verts.insert(i);
+            lines.erase(l++);
+          }
+          else {
+            face_building_info new_face;
+            const int new_face_id = next_face_id++;
+            new_and_old_faces.insert(new_face_id);
+            if (dotprod1 > 0) l->face_1 = new_face_id;
+            else              l->face_2 = new_face_id;
+            new_face.verts.insert(i);
+            new_face.verts.insert(l->vert_1);
+            new_face.verts.insert(l->vert_2);
+            new_face.normal = plane_normal(vs[i], vs[l->vert_1], vs[l->vert_2]);
+            for (int q = 0; q < 4; ++q) {
+              const int idx = first_four_noncoplanar_verts[q];
+              if ((i != idx) && (l->vert_1 != idx) && (l->vert_2 != idx)) {
+                if ((vs[i] - vs[idx]).dot<polygon_int_type>(new_face.normal) < 0) {
+                  new_face.normal = -new_face.normal;
+                  break;
+                }
+              }
+            }
+            faces.insert(std::make_pair(new_face_id, new_face));
+            ++l;
+          }
+        }
+        else if ((dotprod1 > 0) && (dotprod2 > 0)) lines.erase(l++);
+        else ++l;
+      }
+      for (auto f = faces.begin(); f != faces.end(); ) {
+        polygon_int_type dotprod = (vs[i] - vs[*f->second.verts.begin()]).dot<polygon_int_type>(f->second.normal);
+        if (dotprod > 0) faces.erase(f++);
+        else ++f;
+      }
+      std::cerr << "EEEEEEEEE" << verts_of_potential_new_lines.size() << ", " << new_and_old_faces.size() << ", " << old_faces.size() << "\n";
+      for (int lv : verts_of_potential_new_lines) {
+        line_building_info l;
+        int num_faces_including = 0;
+        for (int fid : new_and_old_faces) {
+          polygon_int_type dotprod = (vs[lv] - vs[*faces[fid].verts.begin()]).dot<polygon_int_type>(faces[fid].normal);
+          std::cerr<<dotprod<<"...\n";
+          assert(dotprod <= 0);
+          if (dotprod == 0) {
+            if (num_faces_including == 0) l.face_1 = fid;
+            else                          l.face_2 = fid;
+            ++num_faces_including;
+            if (num_faces_including == 2) break;
+          }
+        }
+        if (num_faces_including == 2) {
+          l.vert_1 = i;
+          l.vert_2 = lv;
+          assert(vs[i] != vs[lv]);
+          lines.push_back(l);
+        }
+        else {
+          for (int fid : old_faces) {
+            faces[fid].verts.erase(lv);
+          }
+        }
+      }
+    }
+  }
+  
+  std::vector<bool> existences_of_points(vertices_.size(), false);
+  for (auto const& f : faces) {
+    for (int v : f.second.verts) {
+      existences_of_points[v] = true;
+    }
+  }
+  std::unordered_map<int,int> vertex_id_map;
+  int next_vert_id = 0;
+  for (int i = 0; i < (int)vertices_.size(); ++i) {
+    if (existences_of_points[i]) {
+      vertices_[next_vert_id] = vertices_[i];
+      vertex_id_map[i] = next_vert_id;
+      ++next_vert_id;
+    }
+  }
+  vertices_.erase(vertices_.begin() + next_vert_id, vertices_.end());
+  for (auto const& l : lines) {
+    std::cerr << l.vert_1 << l.vert_2 << vertices_.size();
+    edges_.push_back(std::make_pair(
+       vertex_id_map.find(l.vert_1)->second,
+       vertex_id_map.find(l.vert_2)->second));
+  }
+  for (auto const& f : faces) {
+    const int face_idx = face_info_.size();
+    face_info_.push_back(f.second.verts.size());
+    for (int vid : f.second.verts) {
+      face_info_.push_back(vertex_id_map.find(vid)->second);
+    }
+    // Hack: we rely on the fact that this makes the *first three* points have a reliable outwards
+    // normal vector. So sort them that way.
+    // Really we should sort ALL OF THEM that way
+    if (plane_normal(vertices_[face_info_[face_idx + 1]], vertices_[face_info_[face_idx + 2]], vertices_[face_info_[face_idx + 3]]).dot<polygon_int_type>(f.second.normal) < 0) {
+      const int temp = face_info_[face_idx + 2];
+      face_info_[face_idx + 2] = face_info_[face_idx + 3];
+      face_info_[face_idx + 3] = temp;
+    }
+  }
+
+#if 0  
   // lol quartic algorihtm TODO i can haz less stupid
   std::unordered_multimap<uint8_t, uint8_t> indexes_of_already_created_polygons_by_index_of_point;
   for (uint8_t i = 0; i < vs.size(); ++i) {
@@ -465,6 +691,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
       }
     }
   }
+#endif
 }
 convex_polyhedron::convex_polyhedron(std::vector<vector3<polygon_int_type>> const& vs):vertices_(vs) {
   init_other_info_from_vertices();
@@ -479,10 +706,6 @@ convex_polyhedron::convex_polyhedron(bounding_box const& bb) {
   vertices_.push_back(vector3<polygon_int_type>(bb.min(X),bb.max(Y),bb.max(Z)));
   vertices_.push_back(bb.max());
   init_other_info_from_vertices();
-}
-
-bool vectors_are_parallel(vector3<polygon_int_type> const& v1, vector3<polygon_int_type> const& v2) {
-  return (v1(X) * v2(Y) == v2(X) * v1(Y)) && (v1(X) * v2(Z) == v2(X) * v1(Z)) && (v1(Y) * v2(Z) == v2(Y) * v1(Z));
 }
 
 void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<polygon_int_type> const& v, vector3<polygon_int_type> max_error, std::vector<vector3<polygon_int_type>>& vertex_collector, polyhedron_planes_info_for_intersection& plane_collector) {
