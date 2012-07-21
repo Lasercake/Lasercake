@@ -377,9 +377,9 @@ void assert_about_overlaps(objects_map<mobile_object>::type & moving_objects,
         shape s2(personal_space_shapes.find(p2.first)->second);
         if (consider_updated_time) {
       const auto i1 = objects_info.find(p1.first);
-      const time_type ltu1 = (i1 == objects_info.end()) ? 0 : i1->second.last_time_updated;
+      const time_type ltu1 = (i1 == objects_info.end()) ? time_type(0) : i1->second.last_time_updated;
       const auto i2 = objects_info.find(p2.first);
-      const time_type ltu2 = (i2 == objects_info.end()) ? 0 : i2->second.last_time_updated;
+      const time_type ltu2 = (i2 == objects_info.end()) ? time_type(0) : i2->second.last_time_updated;
       if (ltu1 > ltu2) {
         s2.translate(movement_delta_from_start_to(p2.second->velocity(), ltu1 - ltu2));
       }
