@@ -1597,6 +1597,12 @@ optional_rational get_first_intersection(line_segment const& l, shape const& s) 
       result = *here;
     }
   }
+  for (convex_polyhedron const& p : s.get_polyhedra()) {
+    const optional_rational here = get_first_intersection(l, p);
+    if (here && (!result || *here < *result)) {
+      result = *here;
+    }
+  }
   for (bounding_box const& bb : s.get_boxes()) {
     const optional_rational here = get_first_intersection(l, bb);
     if (here && (!result || *here < *result)) {
