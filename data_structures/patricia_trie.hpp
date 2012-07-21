@@ -283,7 +283,10 @@ private:
   void* ptr_;
   node_type* parent_; // nullptr for root node
   sub_nodes_type* siblings_; // nullptr for root node
-  num_bits_type size_exponent_in_each_dimension_; // 0 for ptr-to-leaf node; CoordBits for root node
+
+  // 0 for ptr-to-leaf node, nonzero for ptr-to-sub-nodes nodes,
+  // doesn't matter for nullptr nodes:
+  num_bits_type size_exponent_in_each_dimension_;
   monoid_type monoid_;
   loc_type loc_min_; // after monoid for the sake of the move-constructor
 };
