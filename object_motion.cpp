@@ -144,9 +144,14 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
     if ((movement_this_step(X) <= 2) && (movement_this_step(X) >= -2) &&
         (movement_this_step(Y) <= 2) && (movement_this_step(Y) >= -2) &&
         (movement_this_step(Z) <= 2) && (movement_this_step(Z) >= -2)) {
-      time_type result((which_step == 0) ? 0 : (which_step - 1), inverse_step_size);
+      time_type result(which_step - 1, inverse_step_size);
   //std::cerr  << "argh4";
-      if ((result < s1_last_time_updated) || (result < s2_last_time_updated)) return boost::none;
+      if ((result < s1_last_time_updated) || (result < s2_last_time_updated)) {
+        // We collide in a tiny moment that straddles the beginning of the sought time period.
+        // Since we're supposed to assume they weren't initially colliding,
+        // and they can't collide in the PAST,
+        return std::max(s1_last_time_updated, s2_last_time_updated);
+      }
       else return result;
     }
     else {
