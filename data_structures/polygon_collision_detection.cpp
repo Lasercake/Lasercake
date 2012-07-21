@@ -850,20 +850,21 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
       
       // Special case: If v has exactly one zero-entry, make sure to handle the hexagonal planes that can be generated.
       uint8_t ignore_coplanar_v_bit = 0;
+      uint8_t non_coplanar_dimensions = 0;
       if (i < 3) {
         const int dim2 = (i+1) % num_dimensions;
         const int dim3 = (i+2) % num_dimensions;
         if (((v(dim2) == 0) && (line_vector(dim2) == 0)) || ((v(dim3) == 0) && (line_vector(dim3) == 0))) {
           ignore_coplanar_v_bit = (1 << 3);
+          non_coplanar_dimensions = ((line_vector(dim2) == 0) ? (1 << dim2) : 0) | ((line_vector(dim3) == 0) ? (1 << dim3) : 0);
         }
       }
       
       //std::cerr << i << "lol\n";
       for (int combo = 0; combo < 15; ++combo) { // (this is "for each combo with less than four components")
         if (
-                (!(combo & (1 << i)))
-             && (!(combo & parallel_dir_bit))
-             && (!(combo & ignore_coplanar_v_bit))
+                (!(combo & (1 << i))
+             && (!(combo & parallel_dir_bit)))
             ) { // i.e. "for each combo without those directions in it"
           std::array<vector3<polygon_int_type>, 2> moved_line_ends;
           std::array<bool, 2> ends_found = {{false, false}};
@@ -871,14 +872,16 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
             const auto v = j ? l.second : l.first;
             uint16_t combos_check1 =
               (1 << (combo)) |
-              (1 << (combo | parallel_dir_bit)) |
-              (1 << (combo | ignore_coplanar_v_bit)) |
-              (1 << (combo | ignore_coplanar_v_bit | parallel_dir_bit));
+              (1 << (combo | parallel_dir_bit));
+            if (!(combo & (ignore_coplanar_v_bit | non_coplanar_dimensions))) {
+              combos_check1 |= combos_check1 << ignore_coplanar_v_bit;
+            }
             uint16_t combos_check2 =
               (1 << (combo | (1 << i))) |
-              (1 << (combo | (1 << i) | parallel_dir_bit)) |
-              (1 << (combo | (1 << i) | ignore_coplanar_v_bit)) |
-              (1 << (combo | (1 << i) | ignore_coplanar_v_bit | parallel_dir_bit));
+              (1 << (combo | (1 << i) | parallel_dir_bit));
+            if (!(combo & (ignore_coplanar_v_bit | non_coplanar_dimensions))) {
+              combos_check2 |= combos_check2 << ignore_coplanar_v_bit;
+            }
             if (existences_of_translates[v] & combos_check1) {
               if (existences_of_translates[v] & combos_check2) {
                 ends_found[j] = true;
@@ -908,15 +911,26 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
                 }
               }
             }
-            plane_collector.base_points_and_outward_facing_normals.push_back(
-               std::make_pair(moved_line_ends[0], normal));
-            // I used these redundant things to help me visualize this earlier.
-            /*plane_collector.base_points_and_outward_facing_normals.push_back(
-               std::make_pair(moved_line_ends[1], normal));
-            plane_collector.base_points_and_outward_facing_normals.push_back(
-               std::make_pair(moved_line_ends[0] + dirs[i], normal));
-            plane_collector.base_points_and_outward_facing_normals.push_back(
-               std::make_pair(moved_line_ends[1] + dirs[i], normal));*/
+            // Quadratic hack: Eliminate cases where the plane is wroooong
+            // We only actually generate wrong planes when...
+            bool wroooong = false;
+            for (auto v : vertex_collector) {
+              if ((v - moved_line_ends[0]).dot<polygon_int_type>(normal) > 0) {
+                wroooong = true;
+                break;
+              }
+            }
+            if (!wroooong) {
+              plane_collector.base_points_and_outward_facing_normals.push_back(
+                 std::make_pair(moved_line_ends[0], normal));
+              // I used these redundant things to help me visualize this earlier.
+              /*plane_collector.base_points_and_outward_facing_normals.push_back(
+                 std::make_pair(moved_line_ends[1], normal));
+              plane_collector.base_points_and_outward_facing_normals.push_back(
+                 std::make_pair(moved_line_ends[0] + dirs[i], normal));
+              plane_collector.base_points_and_outward_facing_normals.push_back(
+                 std::make_pair(moved_line_ends[1] + dirs[i], normal));*/
+            }
           }
         }
       }
