@@ -80,8 +80,11 @@ public:
 // and throws an exception).
 //
 // 'insert' can throw errors from node_allocator.
+//   If it does, insert() had no side-effects.
 //
 // 'insert' and 'erase' can throw errors from 'monoid'.
+//   If they do, the tree's monoids may be incorrect
+//   but there are no other side-effects.
 //
 // The default-constructor can only throw errors from
 //   Coord's and monoid's default-constructors.
@@ -175,7 +178,7 @@ public:
   // also, it could have subtraction and then it would be a bit faster...hmm.
   // and how can we check whether it doesn't need any propagation...
   // == identity? is-a-boring-type(like nan)? adding-it-didn't-change-the-value-so-aboves-dont-need-changing, ah.
-  void insert(loc_type const& leaf_loc, T* leaf_ptr, monoid_type leaf_monoid = monoid_type());
+  void insert(loc_type leaf_loc, T* leaf_ptr, monoid_type leaf_monoid = monoid_type());
 
   node_type const* find_node(loc_type leaf_loc)const {
     node_type const* node = this->ascend_(leaf_loc);
@@ -287,13 +290,16 @@ private:
 
 
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
-inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type const& leaf_loc, T* leaf_ptr, monoid_type leaf_monoid) {
+inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc, T* leaf_ptr, monoid_type leaf_monoid) {
   // invariant: this 'node' variable changes but is never nullptr.
-  node_type* node;
+  node_type* node_to_initialize;
   try {
-    node = this->find_node(leaf_loc);
+    node_type*const node = this->find_node(leaf_loc);
     caller_error_if(node->points_to_leaf() && node->loc_min_ == leaf_loc, "Inserting a leaf in a location that's already in the tree");
-    if (!node->is_empty()) {
+    if (node->is_empty()) {
+      node_to_initialize = node;
+    }
+    else {
       // That child's location was too specific (wrong) for us.
       sub_nodes_type* intermediate_nodes = node_allocator().allocate(1);
       if (!intermediate_nodes) {
@@ -349,6 +355,23 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         new_location_for_node_original_contents->loc_min_ = node->loc_min_;
         new_location_for_node_original_contents->size_exponent_in_each_dimension_ = node->size_exponent_in_each_dimension_;
 
+        // Update monoids.  If they throw, insert() will still
+        // be a no-op except for monoid inconsistency
+        //
+        // is this impl a time waste? if starting at the root,
+        // and if not worrying about exceptions,
+        // we could have updated them on the way down,
+        // though the short-circuit wouldn't take effect then.
+        node_type* parent = node;
+        while(parent) {
+          // += ?
+          monoid_type sum = parent->monoid_ + leaf_monoid;
+          if (sum == parent->monoid_) { break; }
+          parent->monoid_ = std::move(sum);
+          parent = parent->parent_;
+        }
+        new_leaf_ptr_node->monoid_ = std::move(leaf_monoid);
+
         // Compute shared coords here in case some Coord ops can throw.
         loc_type shared_loc_min;
         const Coord mask = (~Coord(0) << shared_size_exponent);
@@ -380,33 +403,20 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
       //node->monoid remains the same (it will be updated later as one of the parents)
 
       // nothrow
-      node = new_leaf_ptr_node;
+      node_to_initialize = new_leaf_ptr_node;
     }
 
-    assert(node->ptr_ == nullptr);
-    node->size_exponent_in_each_dimension_ = 0;
-    node->loc_min_ = leaf_loc;
+    assert(node_to_initialize->ptr_ == nullptr);
+    node_to_initialize->loc_min_ = std::move(leaf_loc);
   }
   catch(...) {
     leaf_deleter()(leaf_ptr);
     throw;
   }
-  // nothrow
-  node->ptr_ = leaf_ptr;
-
-  // is this a time waste? if starting at the root,
-  // and if not worrying about exceptions,
-  // we could have updated them on the way down,
-  // though the short-circuit wouldn't take effect then.
-  node_type* parent = node->parent_;
-  while(parent) {
-    // += ?
-    monoid_type sum = parent->monoid_ + leaf_monoid;
-    if (sum == parent->monoid_) { break; }
-    parent->monoid_ = std::move(sum);
-    parent = parent->parent_;
-  }
-  node->monoid_ = std::move(leaf_monoid);
+  // nothrow; commits to deleting (using the deleter on) leaf_ptr
+  // in node's destructor.
+  node_to_initialize->size_exponent_in_each_dimension_ = 0;
+  node_to_initialize->ptr_ = leaf_ptr;
 }
 
 
