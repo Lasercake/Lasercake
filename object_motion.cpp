@@ -161,6 +161,7 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
   //std::cerr << "Argh1: " << s1_last_time_updated << ", " << s2_last_time_updated << ", " << which_step <<  ", " << inverse_step_size << "\n";
   time_type step_begin(which_step, inverse_step_size);
   time_type step_end(which_step+1, inverse_step_size);
+  //std::cerr << step_begin << step_end << "\n";
   if ((step_end < s1_last_time_updated) || (step_end < s2_last_time_updated)) return boost::none;
   
   // I'm not sure exactly what the step-ends should be; this is relatively conservative (because the rounding error will get them covered anyway).
@@ -177,14 +178,15 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
     - s2_delta_from_stored_location_to_step_end;
   
   vector3<fine_scalar> local_error = max_error;
-  /*for (int dim = 0; dim < num_dimensions; ++dim) {
+  const vector3<fine_scalar> movement_this_step = relative_delta_to_step_end - relative_delta_to_step_begin;
+  
+  for (int dim = 0; dim < num_dimensions; ++dim) {
     fine_scalar fail = 
       (std::abs(s1_delta_from_stored_location_to_step_begin(dim)) >= 1) +
       (std::abs(s2_delta_from_stored_location_to_step_begin(dim)) >= 1);
     relative_delta_to_step_begin[dim] -= sign(max_error(dim)) * fail;
-    local_error[dim] += sign(max_error(dim)) * fail;
-  }*/
-  const vector3<fine_scalar> movement_this_step = relative_delta_to_step_end - relative_delta_to_step_begin;
+    local_error[dim] += sign(max_error(dim)) * fail * 2;
+  }
   //std::cerr << "Argh2: " << which_step << ", " << inverse_step_size << ", " << s1_velocity << ", " << s2_velocity << ", " << relative_delta_to_step_begin << ", " << relative_delta_to_step_end << ", " << movement_this_step << " ERROR: " << max_error << "\n";
   bool intersects = false;
   // Hack, TODO fix: Only polyhedra collide properly!
@@ -209,7 +211,7 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
   doublebreak:
   // HACK: TODO FIX: Ignore results below the top level, because we're getting bad behavior when we don't.
   // Presumably this is the result of false-negatives in the sweep intersection code...
-  if ((inverse_step_size > 1) || /*(((time_type(0) < s1_last_time_updated) || (time_type(0) < s2_last_time_updated)) && (s1_velocity != s2_velocity)) ||*/ intersects) {
+  if (/*(inverse_step_size > 1) ||*/ /*(((time_type(0) < s1_last_time_updated) || (time_type(0) < s2_last_time_updated)) && (s1_velocity != s2_velocity)) ||*/ intersects) {
   //std::cerr  << "argh3";
    // assert((s1_velocity != s2_velocity) || s1->intersects(*s2));
     // Because of the rounding error for the two shapes,
@@ -500,12 +502,28 @@ void update_moving_objects_impl(
                 //std::cerr << collision.time;
                 update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
                 //std::cerr << "!!!" << inf1.last_time_updated << "\n";
-                ++inf1.invalidation_counter; // required in case update_object_to_time did nothing
                 // TODO FIX HACK: Assuming that mobile objects are a polyhedron and tiles a bbox
-                auto base_point_and_normal = *get_excluding_face(*(o1pss->get_polyhedra().begin()), *(t.get_boxes().begin()));
-                obj1->velocity_ -= (base_point_and_normal.second * obj1->velocity().dot<fine_scalar>(base_point_and_normal.second)) / base_point_and_normal.second.dot<fine_scalar>(base_point_and_normal.second);
-                // Hack: Avoid getting locked in a nonzero velocity due to rounding error, by squashing it
-                //if (obj1->velocity().magnitude_within_32_bits_is_less_than(5)) obj1->velocity_ = vector3<fine_scalar>(0,0,0);
+                const auto old_vel = obj1->velocity();
+                auto excl = get_excluding_face(*(o1pss->get_polyhedra().begin()), *(t.get_boxes().begin()));
+                assert(excl);
+                auto normal = excl->second;
+                auto vel_change = (normal * obj1->velocity().dot<fine_scalar>(normal));
+                if (vel_change != vector3<fine_scalar>(0,0,0)) {
+                  fine_scalar vel_change_denom = normal.dot<fine_scalar>(normal);
+                  // Hack: To avoid getting locked in a nonzero velocity due to rounding error,
+                  // make sure to round down your eventual velocity!
+                  //std::cerr << obj1->velocity();
+                  obj1->velocity_ = ((obj1->velocity() * vel_change_denom) - vel_change) / vel_change_denom;
+                  //std::cerr << vel_change << vel_change_denom << obj1->velocity() << "\n";
+                }
+                // Also push the objects away from each other a little if the surface isn't axis-aligned.
+                //if (((normal(X) != 0) + (normal(Y) != 0) + (normal(Z) != 0)) > 1) {
+                //  
+                //}
+                if (obj1->velocity() != old_vel) ++inf1.invalidation_counter;
+                else {
+                  std::cerr << "Warning: No velocity change on collision. This can potentially cause overlaps.\n";
+                }
                 
                 assert_about_overlaps(moving_objects, personal_space_shapes, objects_info);
               }
