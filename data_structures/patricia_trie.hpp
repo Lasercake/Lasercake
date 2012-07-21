@@ -106,38 +106,8 @@ public:
   typedef typename Traits::leaf_deleter leaf_deleter;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
 
-  pow2_radix_patricia_trie_node() : ptr(), parent(), siblings(), size_exponent_in_each_dimension(coordinate_bits), monoid(), loc_min() {}
-  void delete_ptr() {
-    if(sub_nodes_type* sub_nodes_ptr = sub_nodes()) {
-      sub_nodes_ptr->~sub_nodes_type();
-      node_allocator().deallocate(sub_nodes_ptr, 1);
-    }
-    if(T* leaf_ptr = leaf()) {
-      leaf_deleter()(leaf_ptr);
-    }
-    ptr = nullptr;
-  }
-  void move_initialize_from_except_userdata(pow2_radix_patricia_trie_node& other) BOOST_NOEXCEPT {
-    assert(ptr == nullptr);
-    ptr = other.ptr;
-    other.ptr = nullptr;
-    parent = other.parent;
-    siblings = other.siblings;
-    size_exponent_in_each_dimension = other.size_exponent_in_each_dimension;
-    if (siblings) {
-      siblings = static_cast<sub_nodes_type*>(this - (&other - &other.siblings[0]));
-      if(parent) {
-        assert(parent->ptr == other.siblings);
-        parent->ptr = siblings;
-      }
-    }
-    if (sub_nodes_type* children = this->sub_nodes()) {
-      for (node_type& child : *children) {
-        child.parent = this;
-      }
-    }
-  }
-  ~pow2_radix_patricia_trie_node() { delete_ptr(); }
+  pow2_radix_patricia_trie_node() : ptr_(), parent_(), siblings_(), size_exponent_in_each_dimension_(coordinate_bits), monoid_(), loc_min_() {}
+  ~pow2_radix_patricia_trie_node() { delete_ptr_(); }
 
   // TODO maybe implement copy-constructor that copies whole tree? or subtree?
   pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node const& other) = delete;
@@ -146,47 +116,34 @@ public:
   // monoid operations might conceivably throw, but destructors shouldn't
   // and Coord assignment shouldn't and primitive assignment can't.
   pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node&& other)
-          : ptr(nullptr), monoid(std::move(other.monoid)), loc_min(std::move(other.loc_min)) {
-    move_initialize_from_except_userdata(other);
+          : ptr_(nullptr), monoid_(std::move(other.monoid)), loc_min_(std::move(other.loc_min)) {
+    move_initialize_from_except_userdata_(other);
   }
   pow2_radix_patricia_trie_node& operator=(pow2_radix_patricia_trie_node&& other) {
-    monoid = std::move(other.monoid);
-    loc_min = std::move(other.loc_min);
-    delete_ptr();
-    move_initialize_from_except_userdata(other);
+    monoid_ = std::move(other.monoid_);
+    loc_min_ = std::move(other.loc_min_);
+    delete_ptr_();
+    move_initialize_from_except_userdata_(other);
   }
 
-  void* ptr;
-  node_type* parent; // nullptr for root node
-  sub_nodes_type* siblings; // nullptr for root node
-  num_bits_type size_exponent_in_each_dimension; // 0 for ptr-to-leaf node; CoordBits for root node
-  monoid_type monoid;
-  loc_type loc_min; // after monoid for the sake of the move-constructor
-  // TODO monoid...
-  //TODO:   tile tile_that_everything_here_is; //if count_of_non_interior_tiles_here_==0 (and is all uniform!?)
-  //  ah that monoids by if same, same, otherwise UNSPECIFIED.
-
-  //enum ptr_type { CHILD_IS_T, CHILD_IS_HIERARCHY_NODE };
-  //ptr_type which_ptr_type()const { return size_exponent_in_each_dimension == 0; }
-
   // It is possible for the root node to also be a ptr-to-leaf node.
-  bool is_root_node()const { return !parent; }
-  bool points_to_leaf()const { return ptr && size_exponent_in_each_dimension == 0; }
-  bool points_to_sub_nodes()const { return ptr && size_exponent_in_each_dimension != 0; }
-  bool is_empty()const { return !ptr; }
-  sub_nodes_type* sub_nodes() { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr) : nullptr; }
-  sub_nodes_type const* sub_nodes()const { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr) : nullptr; }
-  T* leaf() { return points_to_leaf() ? static_cast<T*>(ptr) : nullptr; }
-  T const* leaf()const { return points_to_leaf() ? static_cast<T*>(ptr) : nullptr; }
+  bool is_root_node()const { return !parent_; }
+  bool points_to_leaf()const { return ptr_ && size_exponent_in_each_dimension_ == 0; }
+  bool points_to_sub_nodes()const { return ptr_ && size_exponent_in_each_dimension_ != 0; }
+  bool is_empty()const { return !ptr_; }
+  sub_nodes_type* sub_nodes() { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr_) : nullptr; }
+  sub_nodes_type const* sub_nodes()const { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr_) : nullptr; }
+  T* leaf() { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
+  T const* leaf()const { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
 
   bool contains(loc_type const& loc)const {
-    if (size_exponent_in_each_dimension == coordinate_bits) {
+    if (size_exponent_in_each_dimension_ == coordinate_bits) {
       // Avoid left-shifting by an invalidly large amount.
       return true;
     }
-    const Coord mask = (~Coord(0) << size_exponent_in_each_dimension);
+    const Coord mask = (~Coord(0) << size_exponent_in_each_dimension_);
     for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
-      if ((loc_min[dim] & mask) != (loc[dim] & mask)) { return false; }
+      if ((loc_min_[dim] & mask) != (loc[dim] & mask)) { return false; }
     }
     return true;
   }
@@ -204,21 +161,10 @@ public:
     assert(contains(loc));
     sub_nodes_type const* sub_nodes_ptr = sub_nodes();
     assert(sub_nodes_ptr);
-    return child_matching(*sub_nodes_ptr, size_exponent_in_each_dimension, loc);
+    return child_matching(*sub_nodes_ptr, size_exponent_in_each_dimension_, loc);
   }
   node_type& child_matching(loc_type const& loc) {
     return const_cast<node_type&>(const_cast<const node_type*>(this)->child_matching(loc));
-  }
-
-  node_type const* ascend_(loc_type const& leaf_loc)const {
-    node_type const* node = this;
-    while(!node->contains(leaf_loc) && node->parent) {
-      node = node->parent;
-    }
-    return node;
-  }
-  node_type* ascend_(loc_type const& leaf_loc) {
-    return const_cast<node_type*>(const_cast<const node_type*>(this)->ascend_(leaf_loc));
   }
 
   // Insert can be called on any node in the tree;
@@ -262,8 +208,58 @@ public:
 
   // erase returns true iff something was erased.
   bool erase(loc_type leaf_loc);
+
+
+private:
+  node_type const* ascend_(loc_type const& leaf_loc)const {
+    node_type const* node = this;
+    while(!node->contains(leaf_loc) && node->parent_) {
+      node = node->parent_;
+    }
+    return node;
+  }
+  node_type* ascend_(loc_type const& leaf_loc) {
+    return const_cast<node_type*>(const_cast<const node_type*>(this)->ascend_(leaf_loc));
+  }
+
+  void delete_ptr_() {
+    if(sub_nodes_type* sub_nodes_ptr = sub_nodes()) {
+      sub_nodes_ptr->~sub_nodes_type();
+      node_allocator().deallocate(sub_nodes_ptr, 1);
+    }
+    if(T* leaf_ptr = leaf()) {
+      leaf_deleter()(leaf_ptr);
+    }
+    ptr_ = nullptr;
+  }
+  void move_initialize_from_except_userdata_(pow2_radix_patricia_trie_node& other) BOOST_NOEXCEPT {
+    assert(ptr_ == nullptr);
+    ptr_ = other.ptr_;
+    other.ptr_ = nullptr;
+    parent_ = other.parent_;
+    siblings_ = other.siblings_;
+    size_exponent_in_each_dimension_ = other.size_exponent_in_each_dimension_;
+    if (siblings_) {
+      siblings_ = static_cast<sub_nodes_type*>(this - (&other - &other.siblings_[0]));
+      if(parent_) {
+        assert(parent_->ptr == other.siblings_);
+        parent_->ptr = siblings_;
+      }
+    }
+    if (sub_nodes_type* children = this->sub_nodes()) {
+      for (node_type& child : *children) {
+        child.parent = this;
+      }
+    }
+  }
+
+  void* ptr_;
+  node_type* parent_; // nullptr for root node
+  sub_nodes_type* siblings_; // nullptr for root node
+  num_bits_type size_exponent_in_each_dimension_; // 0 for ptr-to-leaf node; CoordBits for root node
+  monoid_type monoid_;
+  loc_type loc_min_; // after monoid for the sake of the move-constructor
 };
-//weak_ptr<node_type> ?
 
 
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
@@ -272,7 +268,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
   node_type* node;
   try {
     node = this->find_node(leaf_loc);
-    caller_error_if(node->points_to_leaf() && node->loc_min == leaf_loc, "Inserting a leaf in a location that's already in the tree");
+    caller_error_if(node->points_to_leaf() && node->loc_min_ == leaf_loc, "Inserting a leaf in a location that's already in the tree");
     if (!node->is_empty()) {
       // That child's location was too specific (wrong) for us.
       sub_nodes_type* intermediate_nodes = node_allocator().allocate(1);
@@ -283,10 +279,10 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         // nothrow except monoids
         new (intermediate_nodes) sub_nodes_type();
         for (node_type& intermediate_node : *intermediate_nodes) {
-          intermediate_node.ptr = nullptr;
-          intermediate_node.size_exponent_in_each_dimension = 0;
-          intermediate_node.parent = node;
-          intermediate_node.siblings = intermediate_nodes;
+          intermediate_node.ptr_ = nullptr;
+          intermediate_node.size_exponent_in_each_dimension_ = 0;
+          intermediate_node.parent_ = node;
+          intermediate_node.siblings_ = intermediate_nodes;
         }
       }
       catch(...) {
@@ -303,7 +299,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
           const num_bits_type dim_shared_size_exponent =
                   num_bits_in_integer_that_are_not_leading_zeroes(
-                    to_unsigned_type(node->loc_min[dim] ^ leaf_loc[dim]));
+                    to_unsigned_type(node->loc_min_[dim] ^ leaf_loc[dim]));
           if(shared_size_exponent < dim_shared_size_exponent) {
             shared_size_exponent = dim_shared_size_exponent;
           }
@@ -316,7 +312,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
 
         // move node's contents to its new location
         new_location_for_node_original_contents =    // nothrow
-            &child_matching(*intermediate_nodes, shared_size_exponent, node->loc_min);
+            &child_matching(*intermediate_nodes, shared_size_exponent, node->loc_min_);
         new_leaf_ptr_node =    // nothrow
             &child_matching(*intermediate_nodes, shared_size_exponent, leaf_loc);
 
@@ -325,15 +321,15 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         // Monoid ops may throw. Do the copy before anything else so that if
         // it throws, we won't be in a partial state and have destructors
         // mess things up.
-        new_location_for_node_original_contents->monoid = node->monoid;
-        new_location_for_node_original_contents->loc_min = node->loc_min;
-        new_location_for_node_original_contents->size_exponent_in_each_dimension = node->size_exponent_in_each_dimension;
+        new_location_for_node_original_contents->monoid_ = node->monoid_;
+        new_location_for_node_original_contents->loc_min_ = node->loc_min_;
+        new_location_for_node_original_contents->size_exponent_in_each_dimension_ = node->size_exponent_in_each_dimension_;
 
         // Compute shared coords here in case some Coord ops can throw.
         loc_type shared_loc_min;
         const Coord mask = (~Coord(0) << shared_size_exponent);
         for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
-          shared_loc_min[dim] = node->loc_min[dim] & mask;
+          shared_loc_min[dim] = node->loc_min_[dim] & mask;
         }
         // If Coord move throws, we're in trouble, because we're moving
         // an array of them so some of node's coords could be overwritten
@@ -342,7 +338,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         //
         // Nevertheless do this inside the try/catch so we at least
         // don't leak memory if it throws.
-        node->loc_min = std::move(shared_loc_min);
+        node->loc_min_ = std::move(shared_loc_min);
       }
       catch(...) {
         intermediate_nodes->~sub_nodes_type();
@@ -352,9 +348,9 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
 
       // continue moving node's contents to its new location
       // nothrow
-      new_location_for_node_original_contents->ptr = node->ptr;
-      node->ptr = intermediate_nodes;
-      node->size_exponent_in_each_dimension = shared_size_exponent;
+      new_location_for_node_original_contents->ptr_ = node->ptr_;
+      node->ptr_ = intermediate_nodes;
+      node->size_exponent_in_each_dimension_ = shared_size_exponent;
       //node->parent remains the same
       //node->siblings remains the same
       //node->monoid remains the same (it will be updated later as one of the parents)
@@ -363,30 +359,30 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
       node = new_leaf_ptr_node;
     }
 
-    assert(node->ptr == nullptr);
-    node->size_exponent_in_each_dimension = 0;
-    node->loc_min = leaf_loc;
+    assert(node->ptr_ == nullptr);
+    node->size_exponent_in_each_dimension_ = 0;
+    node->loc_min_ = leaf_loc;
   }
   catch(...) {
     leaf_deleter()(leaf_ptr);
     throw;
   }
   // nothrow
-  node->ptr = leaf_ptr;
+  node->ptr_ = leaf_ptr;
 
   // is this a time waste? if starting at the root,
   // and if not worrying about exceptions,
   // we could have updated them on the way down,
   // though the short-circuit wouldn't take effect then.
-  node_type* parent = node->parent;
+  node_type* parent = node->parent_;
   while(parent) {
     // += ?
-    monoid_type sum = parent->monoid + leaf_monoid;
-    if (sum == parent->monoid) { break; }
-    parent->monoid = std::move(sum);
-    parent = parent->parent;
+    monoid_type sum = parent->monoid_ + leaf_monoid;
+    if (sum == parent->monoid_) { break; }
+    parent->monoid_ = std::move(sum);
+    parent = parent->parent_;
   }
-  node->monoid = std::move(leaf_monoid);
+  node->monoid_ = std::move(leaf_monoid);
 }
 
 
@@ -395,26 +391,26 @@ inline bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_typ
   node_type*const node = find_node(leaf_loc);
   if (T* leaf = node->leaf()) {
     leaf_deleter()(leaf);
-    node->ptr = nullptr;
+    node->ptr_ = nullptr;
     // also could keep immediate-children-counts explicitly in nodes...
     // TODO shorten tree where appropriate
 
-    if (!(node->monoid == monoid_type())) {
-      sub_nodes_type* siblings = node->siblings;
-      node_type* parent = node->parent;
+    if (!(node->monoid_ == monoid_type())) {
+      sub_nodes_type* siblings = node->siblings_;
+      node_type* parent = node->parent_;
 
-      node->monoid = monoid_type();
+      node->monoid_ = monoid_type();
       while(parent) {
         // -= ?
         monoid_type sum = monoid_type();
         for (node_type& sibling : *siblings) {
-          sum = sum + sibling.monoid;
+          sum = sum + sibling.monoid_;
         }
-        if (sum == parent->monoid) { break; }
-        parent->monoid = sum;
+        if (sum == parent->monoid_) { break; }
+        parent->monoid_ = sum;
 
-        siblings = parent->siblings;
-        parent = parent->parent;
+        siblings = parent->siblings_;
+        parent = parent->parent_;
       }
     }
     return true;
