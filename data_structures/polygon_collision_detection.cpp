@@ -814,12 +814,28 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     for (int i = 0; i < 4; ++i) {
       if (i == parallel_dir) continue;
       
+      // In certain cases, some bogus planes would pass through the other checks. Rule out here ones that are obscured even by the polyhedron moving along the line itself.
+      bool clear_to_create = false;
+      const auto range = normals_by_point_idx.equal_range(l.first);
+      for (auto pair : boost::make_iterator_range(range.first, range.second)) {
+        auto normal = pair.second;
+        const auto range2 = normals_by_point_idx.equal_range(l.second);
+        for (auto pair2 : boost::make_iterator_range(range2.first, range2.second)) {
+          if (pair2.second == normal) {
+            if (dirs[i].dot<polygon_int_type>(normal) < 0) {
+              clear_to_create = true;
+            }
+          }
+        }
+      }
+      if (!clear_to_create) continue;
+      
       // Special case: If v has exactly one zero-entry, make sure to handle the hexagonal planes that can be generated.
       uint8_t ignore_coplanar_v_bit = 0;
       if (i < 3) {
         const int dim2 = (i+1) % num_dimensions;
         const int dim3 = (i+2) % num_dimensions;
-        if ((v(dim2) == 0) || (v(dim3) == 0)) {
+        if (((v(dim2) == 0) && (line_vector(dim2) == 0)) || ((v(dim3) == 0) && (line_vector(dim3) == 0))) {
           ignore_coplanar_v_bit = (1 << 3);
         }
       }
@@ -877,12 +893,12 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
             plane_collector.base_points_and_outward_facing_normals.push_back(
                std::make_pair(moved_line_ends[0], normal));
             // I used these redundant things to help me visualize this earlier.
-            plane_collector.base_points_and_outward_facing_normals.push_back(
+            /*plane_collector.base_points_and_outward_facing_normals.push_back(
                std::make_pair(moved_line_ends[1], normal));
             plane_collector.base_points_and_outward_facing_normals.push_back(
                std::make_pair(moved_line_ends[0] + dirs[i], normal));
             plane_collector.base_points_and_outward_facing_normals.push_back(
-               std::make_pair(moved_line_ends[1] + dirs[i], normal));
+               std::make_pair(moved_line_ends[1] + dirs[i], normal));*/
           }
         }
       }
