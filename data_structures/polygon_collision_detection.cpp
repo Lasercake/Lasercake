@@ -241,16 +241,17 @@ void convex_polyhedron::init_other_info_from_vertices() {
   // Complexity: Quadratic in the number of points.
   struct face_building_info {
     face_building_info(){}
-    std::unordered_set<int> verts;
+    std::vector<int> verts;
     vector3<polygon_int_type> normal;
   };
+  typedef std::list<face_building_info>::iterator face_reference_t;
   struct line_building_info {
-    int face_1;
-    int face_2;
+    face_reference_t face_1;
+    face_reference_t face_2;
     int vert_1;
     int vert_2;
   };
-  std::unordered_map<int, face_building_info> faces;
+  std::list<face_building_info> faces;
   std::list<line_building_info> lines;
   
   // Hack: Start by making a tetrahedron with the first four non-coplanar verts.
@@ -278,31 +279,37 @@ void convex_polyhedron::init_other_info_from_vertices() {
   }
   assert(first_four_noncoplanar_verts[3] != -1);
   
+  
+  std::array<face_reference_t, 4> first_four_faces;
   for(int q = 0; q < 4; ++q) {
-    face_building_info& f = faces[q];
+    faces.push_front(face_building_info());
+    first_four_faces[q] = faces.begin();
+    face_building_info& f = faces.front();
     const int i1 = first_four_noncoplanar_verts[q];
     const int i2 = first_four_noncoplanar_verts[(q+1) % 4];
     const int i3 = first_four_noncoplanar_verts[(q+2) % 4];
     const int i4 = first_four_noncoplanar_verts[(q+3) % 4];
-    f.verts.insert(i2); f.verts.insert(i3); f.verts.insert(i4);
+    f.verts.push_back(i2); f.verts.push_back(i3); f.verts.push_back(i4);
     f.normal = plane_normal(vs[i2],vs[i3],vs[i4]);
     if ((vs[i2] - vs[i1]).dot<polygon_int_type>(f.normal) < 0) f.normal = -f.normal;
+  }
+  for(int q = 0; q < 4; ++q) {
     for(int j = q + 1; j < 4; ++j) {
       line_building_info l;
       l.vert_1 = first_four_noncoplanar_verts[q];
       l.vert_2 = first_four_noncoplanar_verts[j];
-      l.face_1 = ((q != 0) && (j != 0)) ? 0 : ((q != 1) && (j != 1)) ? 1 : 2;
-      l.face_2 = ((q != 3) && (j != 3)) ? 3 : ((q != 2) && (j != 2)) ? 2 : 1;
+      l.face_1 = first_four_faces[((q != 0) && (j != 0)) ? 0 : ((q != 1) && (j != 1)) ? 1 : 2];
+      l.face_2 = first_four_faces[((q != 3) && (j != 3)) ? 3 : ((q != 2) && (j != 2)) ? 2 : 1];
       lines.push_back(l);
-      assert(vs[l.vert_1] != vs[l.vert_2]);
+      assert_if_ASSERT_EVERYTHING(vs[l.vert_1] != vs[l.vert_2]);
     }
   }
-  int next_face_id = 4;
+  
   for (int i = 0; i < (int)vs.size(); ++i) {
     bool exposed = false;
     for (auto const& f : faces) {
-      assert(!f.second.verts.empty());
-      polygon_int_type dotprod = (vs[i] - vs[*f.second.verts.begin()]).dot<polygon_int_type>(f.second.normal);
+      assert(!f.verts.empty());
+      polygon_int_type dotprod = (vs[i] - vs[*f.verts.begin()]).dot<polygon_int_type>(f.normal);
       //std::cerr << i << "!" << dotprod << "!\n";
       if (dotprod > 0) {
         exposed = true;
@@ -310,17 +317,15 @@ void convex_polyhedron::init_other_info_from_vertices() {
       }
     }
     if (exposed) {
-      std::unordered_set<int> new_and_old_faces;
-      std::unordered_set<int> old_faces;
-      std::unordered_set<int> verts_of_potential_new_lines;
+      std::vector<face_reference_t> new_and_old_faces;
+      std::vector<face_reference_t> old_faces;
+      std::vector<int> verts_of_potential_new_lines;
       std::vector<int> verts_of_preexisting_lines;
       for (auto l = lines.begin(); l != lines.end(); ) {
-        auto fit1 = faces.find(l->face_1);
-        auto fit2 = faces.find(l->face_2);
-        assert(fit1 != faces.end());
-        assert(fit2 != faces.end());
-        auto& f1 = fit1->second;
-        auto& f2 = fit2->second;
+        assert(l->face_1 != faces.end());
+        assert(l->face_2 != faces.end());
+        auto& f1 = *l->face_1;
+        auto& f2 = *l->face_2;
         assert(!f1.verts.empty());
         assert(!f2.verts.empty());
         const polygon_int_type dotprod1 = (vs[i] - vs[*f1.verts.begin()]).dot<polygon_int_type>(f1.normal);
@@ -329,20 +334,17 @@ void convex_polyhedron::init_other_info_from_vertices() {
         // Both <=0: we're inside both, the line is unaffected
         // Both >0: we're outside both, the line will just be purged
         if ((dotprod1 == 0) && (dotprod2 == 0)) {
-          f1.verts.insert(i);
-          f2.verts.insert(i);
+          int deleted_vert = -1;
           for (int dim = 0; dim < num_dimensions; ++dim) {
             if (vs[l->vert_1](dim) != vs[l->vert_2](dim)) {
               if ((vs[l->vert_1](dim) < vs[l->vert_2](dim)) == (vs[l->vert_1](dim) < vs[i](dim))) {
-                f1.verts.erase(l->vert_2);
-                f2.verts.erase(l->vert_2);
+                deleted_vert = l->vert_2;
                 verts_of_preexisting_lines.push_back(l->vert_2);
                 l->vert_2 = i;
                 assert(vs[l->vert_1] != vs[l->vert_2]);
               }
               else {
-                f1.verts.erase(l->vert_1);
-                f2.verts.erase(l->vert_1);
+                deleted_vert = l->vert_1;
                 verts_of_preexisting_lines.push_back(l->vert_1);
                 l->vert_1 = i;
                 assert(vs[l->vert_1] != vs[l->vert_2]);
@@ -350,32 +352,51 @@ void convex_polyhedron::init_other_info_from_vertices() {
               break;
             }
           }
+          assert(deleted_vert != -1);
+          for (auto& eraser : f1.verts) {
+            if (eraser == deleted_vert) {
+              eraser = f1.verts[f1.verts.size() - 2];
+              f1.verts[f1.verts.size() - 2] = f1.verts.back();
+              f1.verts.pop_back();
+              break; // it's unique
+            }
+          }
+          for (auto& eraser : f2.verts) {
+            if (eraser == deleted_vert) {
+              eraser = f2.verts[f2.verts.size() - 2];
+              f2.verts[f2.verts.size() - 2] = f2.verts.back();
+              f2.verts.pop_back();
+              break; // it's unique
+            }
+          }
+          if (f1.verts.back() != i) f1.verts.push_back(i);
+          if (f2.verts.back() != i) f2.verts.push_back(i);
           ++l;
         }
         else if ((dotprod1 > 0) != (dotprod2 > 0)) {
-          verts_of_potential_new_lines.insert(l->vert_1);
-          verts_of_potential_new_lines.insert(l->vert_2);
+          verts_of_potential_new_lines.push_back(l->vert_1);
+          verts_of_potential_new_lines.push_back(l->vert_2);
           if (dotprod1 == 0) {
-            old_faces.insert(l->face_1);
-            new_and_old_faces.insert(l->face_1);
-            f1.verts.insert(i);
+            old_faces.push_back(l->face_1);
+            new_and_old_faces.push_back(l->face_1);
+            if (f1.verts.back() != i) f1.verts.push_back(i);
             lines.erase(l++);
           }
           else if (dotprod2 == 0) {
-            old_faces.insert(l->face_2);
-            new_and_old_faces.insert(l->face_2);
-            f2.verts.insert(i);
+            old_faces.push_back(l->face_2);
+            new_and_old_faces.push_back(l->face_2);
+            if (f2.verts.back() != i) f2.verts.push_back(i);
             lines.erase(l++);
           }
           else {
-            face_building_info new_face;
-            const int new_face_id = next_face_id++;
-            new_and_old_faces.insert(new_face_id);
-            if (dotprod1 > 0) l->face_1 = new_face_id;
-            else              l->face_2 = new_face_id;
-            new_face.verts.insert(i);
-            new_face.verts.insert(l->vert_1);
-            new_face.verts.insert(l->vert_2);
+            faces.push_front(face_building_info());
+            face_building_info& new_face = faces.front();
+            new_and_old_faces.push_back(faces.begin());
+            if (dotprod1 > 0) l->face_1 = faces.begin();
+            else              l->face_2 = faces.begin();
+            new_face.verts.push_back(i);
+            new_face.verts.push_back(l->vert_1);
+            new_face.verts.push_back(l->vert_2);
             new_face.normal = plane_normal(vs[i], vs[l->vert_1], vs[l->vert_2]);
             for (int q = 0; q < 4; ++q) {
               const int idx = first_four_noncoplanar_verts[q];
@@ -386,7 +407,6 @@ void convex_polyhedron::init_other_info_from_vertices() {
                 }
               }
             }
-            faces.insert(std::make_pair(new_face_id, new_face));
             ++l;
           }
         }
@@ -394,24 +414,48 @@ void convex_polyhedron::init_other_info_from_vertices() {
         else ++l;
       }
       for (auto f = faces.begin(); f != faces.end(); ) {
-        polygon_int_type dotprod = (vs[i] - vs[*f->second.verts.begin()]).dot<polygon_int_type>(f->second.normal);
+        polygon_int_type dotprod = (vs[i] - vs[*f->verts.begin()]).dot<polygon_int_type>(f->normal);
         if (dotprod > 0) faces.erase(f++);
         else ++f;
       }
-      for (auto pv : verts_of_preexisting_lines) verts_of_potential_new_lines.erase(pv);
+      for (int lv = 0; lv < (int)verts_of_potential_new_lines.size(); ) {
+        bool eliminate = false;
+        for (auto pv : verts_of_preexisting_lines) {
+          if (pv == verts_of_potential_new_lines[lv]) {
+            eliminate = true;
+            break;
+          }
+        }
+        if (eliminate) {
+          verts_of_potential_new_lines[lv] = verts_of_potential_new_lines.back();
+          verts_of_potential_new_lines.pop_back();
+        }
+        else {
+          verts_of_preexisting_lines.push_back(verts_of_potential_new_lines[lv]);
+          ++lv;
+        }
+      }
       //std::cerr << "EEEEEEEEE" << verts_of_potential_new_lines.size() << ", " << new_and_old_faces.size() << ", " << old_faces.size() << "\n";
       for (int lv : verts_of_potential_new_lines) {
         line_building_info l;
         int num_faces_including = 0;
-        for (int fid : new_and_old_faces) {
-          polygon_int_type dotprod = (vs[lv] - vs[*faces[fid].verts.begin()]).dot<polygon_int_type>(faces[fid].normal);
-          //std::cerr<<dotprod<<"...\n";
-          assert(dotprod <= 0);
-          if (dotprod == 0) {
-            if (num_faces_including == 0) l.face_1 = fid;
-            else                          l.face_2 = fid;
-            ++num_faces_including;
-            if (num_faces_including == 2) break;
+        l.face_1 = faces.end();
+        for (auto fr : new_and_old_faces) {
+          if (fr != l.face_1) {
+            const polygon_int_type dotprod = (vs[lv] - vs[*fr->verts.begin()]).dot<polygon_int_type>(fr->normal);
+            //std::cerr<<dotprod<<"...\n";
+            assert(dotprod <= 0);
+            if (dotprod == 0) {
+              if (num_faces_including == 0) {
+                l.face_1 = fr;
+              }
+              else {
+                l.face_2 = fr;
+                assert(l.face_2 != l.face_1);
+              }
+              ++num_faces_including;
+              if (num_faces_including == 2) break;
+            }
           }
         }
         if (num_faces_including == 2) {
@@ -421,8 +465,14 @@ void convex_polyhedron::init_other_info_from_vertices() {
           lines.push_back(l);
         }
         else {
-          for (int fid : old_faces) {
-            faces[fid].verts.erase(lv);
+          for (auto fr : old_faces) {
+            for (auto& eraser : fr->verts) {
+              if (eraser == lv) {
+                eraser = fr->verts.back();
+                fr->verts.pop_back();
+                break; // it's unique
+              }
+            }
           }
         }
       }
@@ -431,11 +481,11 @@ void convex_polyhedron::init_other_info_from_vertices() {
   
   std::vector<bool> existences_of_points(vertices_.size(), false);
   for (auto const& f : faces) {
-    for (int v : f.second.verts) {
+    for (int v : f.verts) {
       existences_of_points[v] = true;
     }
   }
-  std::unordered_map<int,int> vertex_id_map;
+  std::vector<int> vertex_id_map(vertices_.size());
   int next_vert_id = 0;
   for (int i = 0; i < (int)vertices_.size(); ++i) {
     if (existences_of_points[i]) {
@@ -449,19 +499,19 @@ void convex_polyhedron::init_other_info_from_vertices() {
     //std::cerr << l.vert_1 << l.vert_2 << vertices_.size();
     //if (vertex_id_map.find(l.vert_1) != vertex_id_map.end() && vertex_id_map.find(l.vert_2) != vertex_id_map.end())
     edges_.push_back(std::make_pair(
-       vertex_id_map.find(l.vert_1)->second,
-       vertex_id_map.find(l.vert_2)->second));
+       vertex_id_map[l.vert_1],
+       vertex_id_map[l.vert_2]));
   }
   for (auto const& f : faces) {
     const int face_idx = face_info_.size();
-    face_info_.push_back(f.second.verts.size());
-    for (int vid : f.second.verts) {
-      face_info_.push_back(vertex_id_map.find(vid)->second);
+    face_info_.push_back(f.verts.size());
+    for (int vid : f.verts) {
+      face_info_.push_back(vertex_id_map[vid]);
     }
     // Hack: we rely on the fact that this makes the *first three* points have a reliable outwards
     // normal vector. So sort them that way.
     // Really we should sort ALL OF THEM that way
-    if (plane_normal(vertices_[face_info_[face_idx + 1]], vertices_[face_info_[face_idx + 2]], vertices_[face_info_[face_idx + 3]]).dot<polygon_int_type>(f.second.normal) < 0) {
+    if (plane_normal(vertices_[face_info_[face_idx + 1]], vertices_[face_info_[face_idx + 2]], vertices_[face_info_[face_idx + 3]]).dot<polygon_int_type>(f.normal) < 0) {
       const int temp = face_info_[face_idx + 2];
       face_info_[face_idx + 2] = face_info_[face_idx + 3];
       face_info_[face_idx + 3] = temp;
