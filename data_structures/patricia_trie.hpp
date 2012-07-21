@@ -427,8 +427,9 @@ inline bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_typ
     node->update_monoid(monoid_type());
     leaf_deleter()(leaf);
     node->ptr_ = nullptr;
-    // also could keep immediate-children-counts explicitly in nodes...
     // TODO shorten tree where appropriate
+    // (Could keep immediate-children-counts explicitly in nodes
+    // to make that a little faster; probably fine either way.)
     return true;
   }
   else { return false; }
