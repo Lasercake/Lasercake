@@ -331,6 +331,18 @@ private:
     return const_cast<node_type*>(const_cast<const node_type*>(this)->ascend_(leaf_loc));
   }
 
+  void initialize_monoid_(monoid_type new_leaf_monoid) {
+    node_type* parent = this->parent_;
+    while(parent) {
+      // += ?
+      monoid_type sum = parent->monoid_ + new_leaf_monoid;
+      if (sum == parent->monoid_) { break; }
+      parent->monoid_ = std::move(sum);
+      parent = parent->parent_;
+    }
+    this->monoid_ = std::move(new_leaf_monoid);
+  }
+
   void delete_ptr_() {
     if(sub_nodes_type* sub_nodes_ptr = sub_nodes()) {
       sub_nodes_ptr->~sub_nodes_type();
@@ -386,6 +398,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
     caller_error_if(node->points_to_leaf() && node->box_.min_ == leaf_loc, "Inserting a leaf in a location that's already in the tree");
     if (node->is_empty()) {
       node_to_initialize = node;
+      node_to_initialize->initialize_monoid_(std::move(leaf_monoid));
     }
     else {
       // That child's location was too specific (wrong) for us.
@@ -447,15 +460,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         // and if not worrying about exceptions,
         // we could have updated them on the way down,
         // though the short-circuit wouldn't take effect then.
-        node_type* parent = node;
-        while(parent) {
-          // += ?
-          monoid_type sum = parent->monoid_ + leaf_monoid;
-          if (sum == parent->monoid_) { break; }
-          parent->monoid_ = std::move(sum);
-          parent = parent->parent_;
-        }
-        new_leaf_ptr_node->monoid_ = std::move(leaf_monoid);
+        new_leaf_ptr_node->initialize_monoid_(std::move(leaf_monoid));
 
         // Compute shared coords here in case some Coord ops can throw.
         loc_type shared_loc_min;
