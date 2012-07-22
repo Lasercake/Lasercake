@@ -251,6 +251,9 @@ public:
   typename VectorType::value_type& back() {
     return (*this)[size_ - 1];
   }
+  typename VectorType::value_type& front() {
+    return first_n_values_[0];
+  }
   void push_back(typename VectorType::value_type value) {
     if (size_ < ArraySize) {
       first_n_values_[size_] = value;
@@ -366,10 +369,22 @@ void convex_polyhedron::init_other_info_from_vertices() {
   }
   
   for (int i = 0; i < (int)vs.size(); ++i) {
+    // These four would be eliminated anyway, but we skip them for speed.
+    if ((i == first_four_noncoplanar_verts[0]) ||
+        (i == first_four_noncoplanar_verts[1]) ||
+        (i == first_four_noncoplanar_verts[2]) ||
+        (i == first_four_noncoplanar_verts[3])) continue;
+    /*std::cerr << "==================  Step info:\n";
+    std::cerr << "Verts: " << vs.size() << "\n";
+    std::cerr << "Lines: " << lines.size() << "\n";
+    std::cerr << "Faces: " << faces.size() << "\n";
+    for (auto& f : faces) {
+      std::cerr << "Face of size " << f.verts.size() << "\n";
+    }*/
     bool exposed = false;
     for (auto& f : faces) {
       assert(!f.verts.empty());
-      polygon_int_type dotprod = (vs[i] - vs[*f.verts.begin()]).dot<polygon_int_type>(f.normal);
+      polygon_int_type dotprod = (vs[i] - vs[f.verts.front()]).dot<polygon_int_type>(f.normal);
       //std::cerr << i << "!" << dotprod << "!\n";
       if (dotprod > 0) {
         exposed = true;
@@ -388,8 +403,8 @@ void convex_polyhedron::init_other_info_from_vertices() {
         auto& f2 = *l->face_2;
         assert(!f1.verts.empty());
         assert(!f2.verts.empty());
-        const polygon_int_type dotprod1 = (vs[i] - vs[*f1.verts.begin()]).dot<polygon_int_type>(f1.normal);
-        const polygon_int_type dotprod2 = (vs[i] - vs[*f2.verts.begin()]).dot<polygon_int_type>(f2.normal);
+        const polygon_int_type dotprod1 = (vs[i] - vs[f1.verts.front()]).dot<polygon_int_type>(f1.normal);
+        const polygon_int_type dotprod2 = (vs[i] - vs[f2.verts.front()]).dot<polygon_int_type>(f2.normal);
         //std::cerr << dotprod1 << ", " << dotprod2 << "\n";
         // Both <=0: we're inside both, the line is unaffected
         // Both >0: we're outside both, the line will just be purged
@@ -413,6 +428,9 @@ void convex_polyhedron::init_other_info_from_vertices() {
             }
           }
           assert(deleted_vert != -1);
+          
+          // Go through and erase, but make sure we leave f1.verts.back() constant,
+          // because we're counting on inserting at the end to avoid inserting duplicates.
           for (auto& eraser : f1.verts) {
             if (eraser == deleted_vert) {
               eraser = f1.verts[f1.verts.size() - 2];
@@ -473,6 +491,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
         else if ((dotprod1 > 0) && (dotprod2 > 0)) lines.erase(l++);
         else ++l;
       }
+      
       for (auto f = faces.begin(); f != faces.end(); ) {
         polygon_int_type dotprod = (vs[i] - vs[*f->verts.begin()]).dot<polygon_int_type>(f->normal);
         if (dotprod > 0) faces.erase(f++);
@@ -495,7 +514,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
           ++lv;
         }
       }
-      //std::cerr << "EEEEEEEEE" << verts_of_potential_new_lines.size() << ", " << new_and_old_faces.size() << ", " << old_faces.size() << "\n";
+      //std::cerr << "EEEEEEEEE " << verts_of_potential_new_lines.size() << ", " << new_and_old_faces.size() << ", " << old_faces.size() << "\n";
       for (int lv : verts_of_potential_new_lines) {
         line_building_info l;
         int num_faces_including = 0;
@@ -603,7 +622,6 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     v
   }};
   // Collapse parallel dirs.
-  // This is mostly unnecessary, but needed for the plane-generated-by-line code.
   for (int dim = 0; dim < num_dimensions; ++dim) {
     if ((v((dim+1) % num_dimensions) == 0) && (v((dim+2) % num_dimensions) == 0)) {
       dirs[3][dim] += dirs[dim](dim);
@@ -611,6 +629,12 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
       //std::cerr << "eliminating parallel " << dir << "\n";
     }
   }
+  std::array<bool, 4> dir_existences = {{
+    dirs[0] != vector3<polygon_int_type>(0,0,0),
+    dirs[1] != vector3<polygon_int_type>(0,0,0),
+    dirs[2] != vector3<polygon_int_type>(0,0,0),
+    dirs[3] != vector3<polygon_int_type>(0,0,0)
+  }};
   
   // In order from "fewest to most components" to make things more efficient in one place.
   // Each bit (1 << n) represents whether the nth direction vector was used.
@@ -622,24 +646,24 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     0xF
   }};*/
   const std::array<vector3<polygon_int_type>, 16> vectors_by_combo = {{
-    vector3<polygon_int_type>(0,0,0),
-    dirs[0],
-    dirs[1],
-    dirs[0] + dirs[1],
-    dirs[2],
-    dirs[0] + dirs[2],
-    dirs[1] + dirs[2],
-    dirs[0] + dirs[1] + dirs[2],
-    dirs[3],
-    dirs[0] + dirs[3],
-    dirs[1] + dirs[3],
-    dirs[0] + dirs[1] + dirs[3],
-    dirs[2] + dirs[3],
-    dirs[0] + dirs[2] + dirs[3],
-    dirs[1] + dirs[2] + dirs[3],
-    dirs[0] + dirs[1] + dirs[2] + dirs[3]
+    /*0x0*/ vector3<polygon_int_type>(0,0,0),
+    /*0x1*/ dirs[0],
+    /*0x2*/           dirs[1],
+    /*0x3*/ dirs[0] + dirs[1],
+    /*0x4*/                     dirs[2],
+    /*0x5*/ dirs[0]           + dirs[2],
+    /*0x6*/           dirs[1] + dirs[2],
+    /*0x7*/ dirs[0] + dirs[1] + dirs[2],
+    /*0x8*/                               dirs[3],
+    /*0x9*/ dirs[0]                     + dirs[3],
+    /*0xA*/           dirs[1]           + dirs[3],
+    /*0xB*/ dirs[0] + dirs[1]           + dirs[3],
+    /*0xC*/                     dirs[2] + dirs[3],
+    /*0xD*/ dirs[0]           + dirs[2] + dirs[3],
+    /*0xE*/           dirs[1] + dirs[2] + dirs[3],
+    /*0xF*/ dirs[0] + dirs[1] + dirs[2] + dirs[3]
   }};
-  static const std::array<uint16_t, 3> B_and_not_v_combos = {{
+  /*static const std::array<uint16_t, 3> B_and_not_v_combos = {{
     (1<<0x1) | (1<<0x3) | (1<<0x5) | (1<<0x7),
     (1<<0x2) | (1<<0x3) | (1<<0x6) | (1<<0x7),
     (1<<0x4) | (1<<0x5) | (1<<0x6) | (1<<0x7),
@@ -648,7 +672,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     (1<<0x8) | (1<<0xA) | (1<<0xC) | (1<<0xE),
     (1<<0x8) | (1<<0x9) | (1<<0xC) | (1<<0xD),
     (1<<0x8) | (1<<0x9) | (1<<0xA) | (1<<0xB),
-  }};
+  }};*/
   static const std::array<uint16_t, 4> combos_including_dir = {{
     (1<<0x1) | (1<<0x3) | (1<<0x5) | (1<<0x7) | (1<<0x9) | (1<<0xB) | (1<<0xD) | (1<<0xF),
     (1<<0x2) | (1<<0x3) | (1<<0x6) | (1<<0x7) | (1<<0xA) | (1<<0xB) | (1<<0xE) | (1<<0xF),
@@ -656,17 +680,64 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     (1<<0x8) | (1<<0x9) | (1<<0xA) | (1<<0xB) | (1<<0xC) | (1<<0xD) | (1<<0xE) | (1<<0xF),
   }};
   
-  /// Haaaack
-  std::vector<vector3<polygon_int_type>> verts;
-  for (uint8_t i = 0; i < ph.vertices().size(); ++i) {
-    for (int combo = 0; combo < 16; ++combo) {
-      verts.push_back(ph.vertices()[i]+vectors_by_combo[combo]);
+  // Eliminate whatever vertices we can eliminate with complete confidence;
+  // We'll leave some incorrect (i.e. strictly interior) vertices around,
+  //   but the polyhedron generation will catch them.
+  std::vector<arrayvector<std::vector<vector3<polygon_int_type>>, 8>> normals_by_point_idx(ph.vertices().size());
+  for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
+    for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
+      normals_by_point_idx[ph.face_info()[i + j + 1]].push_back(
+        // relying on the fact that the first three vertices of each face are in the proper order.
+        plane_normal(ph.vertices()[ph.face_info()[i + 1]], ph.vertices()[ph.face_info()[i + 2]], ph.vertices()[ph.face_info()[i + 3]]));
     }
   }
+  
+  std::vector<vector3<polygon_int_type>> verts;
+  for (uint8_t vert_idx = 0; vert_idx < ph.vertices().size(); ++vert_idx) {
+    uint16_t existences_of_translates = 0xffff;
+    for (int dir = 0; dir < 4; ++dir) {
+      if (dir_existences[dir]) {
+        bool p_plus_vector_is_shadowed = true;
+        bool p_minus_vector_is_shadowed = true;
+        for (auto const& normal : normals_by_point_idx[vert_idx]) {
+          const polygon_int_type dotprod = dirs[dir].dot<polygon_int_type>(normal);
+          if (dotprod > 0) {
+            p_plus_vector_is_shadowed = false;
+            if (!p_minus_vector_is_shadowed) break;
+          }
+          if (dotprod < 0) {
+            p_minus_vector_is_shadowed = false;
+            if (!p_plus_vector_is_shadowed) break;
+          }
+        }
+        assert(!(p_plus_vector_is_shadowed && p_minus_vector_is_shadowed));
+        
+        if (p_plus_vector_is_shadowed) {
+          existences_of_translates &= ~combos_including_dir[dir];
+        }
+        if (p_minus_vector_is_shadowed) {
+          existences_of_translates &= combos_including_dir[dir];
+        }
+      }
+      else {
+        existences_of_translates &= ~combos_including_dir[dir];
+      }
+    }
+    
+    for (int combo = 0; combo < 16; ++combo) {
+      if (existences_of_translates & (1 << combo)) {
+        verts.push_back(ph.vertices()[vert_idx]+vectors_by_combo[combo]);
+      }
+    }
+  }
+  
+  /// Haaaack: Create a polyhedron just to compute its info.
+  // In the future this function should just return the polyhedron.
   convex_polyhedron sweep_poly(verts);
   compute_planes_info_for_intersection(sweep_poly, plane_collector);
   for(auto v : sweep_poly.vertices()) vertex_collector.push_back(v);
-  
+ 
+#if 0
   return;
   
   std::unordered_multimap<uint8_t, vector3<polygon_int_type>> normals_by_point_idx;
@@ -1077,6 +1148,7 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
         normal
       ));
   }
+#endif
 }
 
 
