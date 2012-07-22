@@ -87,8 +87,27 @@ public:
   power_of_two_bounding_cube& operator=(power_of_two_bounding_cube&& other) = default;
 
   num_bits_type size_exponent_in_each_dimension()const { return size_exponent_in_each_dimension_; }
-  loc_type const& min()const { return min_; }
-  // TODO offer more methods
+
+  Coord min(num_coordinates_type dim)const { return min_[dim]; }
+  Coord size_minus_one(num_coordinates_type)const { return ~(safe_left_shift(~Coord(0), size_exponent_in_each_dimension_)); }
+  Coord size(num_coordinates_type)const { return safe_left_shift(Coord(1), size_exponent_in_each_dimension_); }
+  Coord max(num_coordinates_type dim)const { return min_[dim] + size_minus_one(dim); }
+  loc_type min()const { return min_; }
+  loc_type max()const {
+    loc_type result;
+    for(num_coordinates_type dim = 0; dim != Dims; ++dim) { result[dim] = max(dim); }
+    return result;
+  }
+  loc_type size_minus_one()const {
+    loc_type result;
+    for(num_coordinates_type dim = 0; dim != Dims; ++dim) { result[dim] = size_minus_one(dim); }
+    return result;
+  }
+  loc_type size()const {
+    loc_type result;
+    for(num_coordinates_type dim = 0; dim != Dims; ++dim) { result[dim] = size(dim); }
+    return result;
+  }
   
 private:
   // Friend patricia_trie so that it can be more paranoid about
