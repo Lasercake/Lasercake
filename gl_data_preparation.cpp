@@ -157,9 +157,9 @@ tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_b
 // When you're on two tiles, can this be correct? Is it a problem if it isn't? I think it's alright.
 // (Comparing to converting b to fine units and calling tile_manhattan_distance_to_bounding_box_rounding_down.)
 tile_coordinate tile_manhattan_distance_to_tile_bounding_box(tile_bounding_box b, vector3<tile_coordinate> const& v) {
-  const fine_scalar xdist = (v(X) < b.min.x) ? (b.min.x - v(X)) : (v(X) > b.min.x+(b.size.x-1)) ? (v(X) - (b.min.x+(b.size.x-1))) : 0;
-  const fine_scalar ydist = (v(Y) < b.min.y) ? (b.min.y - v(Y)) : (v(Y) > b.min.y+(b.size.y-1)) ? (v(Y) - (b.min.y+(b.size.y-1))) : 0;
-  const fine_scalar zdist = (v(Z) < b.min.z) ? (b.min.z - v(Z)) : (v(Z) > b.min.z+(b.size.z-1)) ? (v(Z) - (b.min.z+(b.size.z-1))) : 0;
+  const fine_scalar xdist = (v(X) < b.min(X)) ? (b.min(X) - v(X)) : (v(X) > b.max(X)) ? (v(X) - b.max(X)) : 0;
+  const fine_scalar ydist = (v(Y) < b.min(Y)) ? (b.min(Y) - v(Y)) : (v(Y) > b.max(Y)) ? (v(Y) - b.max(Y)) : 0;
+  const fine_scalar zdist = (v(Z) < b.min(Z)) ? (b.min(Z) - v(Z)) : (v(Z) > b.max(Z)) ? (v(Z) - b.max(Z)) : 0;
   return xdist + ydist + zdist;
 }
 

@@ -443,16 +443,16 @@ worldblock* world::ensure_realization_of_and_get_worldblock_(vector3<tile_coordi
 void world::ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded) {
   const worldblock_dimension_type wd = worldblock_dimension;
   for (tile_coordinate
-       x =  space.min.x                            / wd;
-       x < (space.min.x + space.size.x + (wd - 1)) / wd;
+       x =  space.min(X)                             / wd;
+       x < (space.min(X) + space.size(X) + (wd - 1)) / wd;
        ++x) {
     for (tile_coordinate
-         y =  space.min.y                            / wd;
-         y < (space.min.y + space.size.y + (wd - 1)) / wd;
+         y =  space.min(Y)                             / wd;
+         y < (space.min(Y) + space.size(Y) + (wd - 1)) / wd;
          ++y) {
       for (tile_coordinate
-           z =  space.min.z                            / wd;
-           z < (space.min.z + space.size.z + (wd - 1)) / wd;
+           z =  space.min(Z)                             / wd;
+           z < (space.min(Z) + space.size(Z) + (wd - 1)) / wd;
            ++z) {
         const vector3<tile_coordinate> worldblock_position(x*wd, y*wd, z*wd);
         ensure_realization_of_and_get_worldblock_(worldblock_position, realineeded);

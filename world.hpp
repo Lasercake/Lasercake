@@ -173,14 +173,14 @@ typedef bbox_collision_detector<tile_location, 32, 3> tiles_collision_detector;
 inline tiles_collision_detector::bounding_box tile_bbox_to_tiles_collision_detector_bbox(tile_bounding_box bbox) {
   typedef tiles_collision_detector::bounding_box bbox_type;
   const bbox_type::coordinate_array loc = {{
-    bbox_type::coordinate_type(get_primitive_int(bbox.min.x)),
-    bbox_type::coordinate_type(get_primitive_int(bbox.min.y)),
-    bbox_type::coordinate_type(get_primitive_int(bbox.min.z))
+    bbox_type::coordinate_type(get_primitive_int(bbox.min(X))),
+    bbox_type::coordinate_type(get_primitive_int(bbox.min(Y))),
+    bbox_type::coordinate_type(get_primitive_int(bbox.min(Z)))
   }};
   const bbox_type::coordinate_array size_minus_one = {{
-    bbox_type::coordinate_type(get_primitive_int(bbox.size.x)) - 1,
-    bbox_type::coordinate_type(get_primitive_int(bbox.size.y)) - 1,
-    bbox_type::coordinate_type(get_primitive_int(bbox.size.z)) - 1
+    bbox_type::coordinate_type(get_primitive_int(bbox.size(X))) - 1,
+    bbox_type::coordinate_type(get_primitive_int(bbox.size(Y))) - 1,
+    bbox_type::coordinate_type(get_primitive_int(bbox.size(Z))) - 1
   }};
   return bbox_type::min_and_size_minus_one(loc, size_minus_one);
 }
