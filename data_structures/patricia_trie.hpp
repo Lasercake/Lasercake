@@ -112,7 +112,9 @@ public:
   }
 
   friend inline std::ostream& operator<<(std::ostream& os, power_of_two_bounding_cube const& bb) {
-    return os << '[' << bb.min() << " @ " << bb.size_exponent_in_each_dimension() << ']';
+    os << '[';
+    for(num_coordinates_type dim = 0; dim != Dims; ++dim) { os << bb.min(dim) << ", "; }
+    return os << " @ " << bb.size_exponent_in_each_dimension() << ']';
   }
 
 private:
@@ -302,6 +304,7 @@ public:
       sub_nodes_type* siblings = siblings_;
       node_type* parent = parent_;
 
+      //monoid_type old_monoid = std::move(monoid_);
       monoid_ = std::move(new_leaf_monoid);
       while(parent) {
         monoid_type sum = monoid_type();
@@ -310,6 +313,8 @@ public:
         }
         if (sum == parent->monoid_) { break; }
         parent->monoid_ = std::move(sum);
+        //parent->monoid_ -= old_monoid;
+        //parent->monoid_ += monoid_;
 
         siblings = parent->siblings_;
         parent = parent->parent_;
@@ -319,6 +324,35 @@ public:
 
   power_of_two_bounding_cube_type const& bounding_box()const { return box_; }
 
+
+  void debug_check_this()const {
+    if(is_empty()) assert(monoid_ == monoid());
+    if(sub_nodes_type const* direct_children = sub_nodes()) {
+      monoid_type sum = monoid_type();
+      for (node_type const& direct_child : *direct_children) {
+        sum = sum + direct_child.monoid_;
+      }
+      assert(sum == monoid_);
+    }
+  }
+  void debug_check_recursive(node_type const* parent = nullptr)const {
+    assert(parent_ == parent);
+    if(sub_nodes_type const* direct_children = sub_nodes()) {
+      for (node_type const& direct_child : *direct_children) {
+        direct_child.debug_check_recursive(this);
+      }
+    }
+    debug_check_this();
+  }
+
+  void debug_print(size_t depth = 0)const {
+    std::cerr << std::string(depth*2, ' ') << monoid_ << ' ' << std::hex << box_ << ' ' << size_t(this) << " < " << size_t(parent_) << std::dec << '\n';
+    if(sub_nodes_type const* direct_children = sub_nodes()) {
+      for (node_type const& direct_child : *direct_children) {
+        direct_child.debug_print(depth + 1);
+      }
+    }
+  }
 private:
   node_type const* ascend_(loc_type const& leaf_loc)const {
     node_type const* node = this;
@@ -333,13 +367,16 @@ private:
 
   void initialize_monoid_(monoid_type new_leaf_monoid) {
     node_type* parent = this->parent_;
+    //std::cerr << '@' << '(' << new_leaf_monoid << ')';
     while(parent) {
       // += ?
       monoid_type sum = parent->monoid_ + new_leaf_monoid;
+      //std::cerr << '#' << '(' << parent->monoid_ << ',' << sum << ')';
       if (sum == parent->monoid_) { break; }
       parent->monoid_ = std::move(sum);
       parent = parent->parent_;
     }
+    //std::cerr << '\n';
     this->monoid_ = std::move(new_leaf_monoid);
   }
 
@@ -399,6 +436,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
     if (node->is_empty()) {
       node_to_initialize = node;
       node_to_initialize->initialize_monoid_(std::move(leaf_monoid));
+      //std::cerr << "Type 1 " << std::hex << size_t(node_to_initialize) << std::dec << "\n";
     }
     else {
       // That child's location was too specific (wrong) for us.
@@ -412,6 +450,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         for (node_type& intermediate_node : *intermediate_nodes) {
           intermediate_node.parent_ = node;
           intermediate_node.siblings_ = intermediate_nodes;
+          assert(intermediate_node.box_.size_exponent_in_each_dimension_ == 0);
         }
       }
       catch(...) {
@@ -437,6 +476,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         // assert is typically nothrow, and it's also okay
         // if it throws here.
         assert(shared_size_exponent > 0);
+        //std::cerr << "~~" << shared_size_exponent << std::endl;
 
         // move node's contents to its new location
         new_location_for_node_original_contents =    // nothrow
@@ -460,6 +500,8 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         // and if not worrying about exceptions,
         // we could have updated them on the way down,
         // though the short-circuit wouldn't take effect then.
+        assert(new_leaf_ptr_node->parent_);
+        assert(new_leaf_ptr_node->parent_ == node);
         new_leaf_ptr_node->initialize_monoid_(std::move(leaf_monoid));
 
         // Compute shared coords here in case some Coord ops can throw.
@@ -494,6 +536,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
 
       // nothrow
       node_to_initialize = new_leaf_ptr_node;
+      //std::cerr << "Type 2 " << std::hex << size_t(node_to_initialize) << std::dec << "\n";
     }
 
     assert(node_to_initialize->ptr_ == nullptr);
