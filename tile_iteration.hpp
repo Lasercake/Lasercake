@@ -58,15 +58,15 @@ to get the actual idx. i think that is most reasonable. and xyz will be pre-xore
 // For your convenience:
 inline bool overlaps(tile_bounding_box const& a, power_of_two_bounding_cube<3, tile_coordinate> const& b) {
   return
-       a.min(X) < (b.min(X)+b.size(X)) && b.min(X) < (a.min(X)+a.size(X))
-    && a.min(Y) < (b.min(Y)+b.size(Y)) && b.min(Y) < (a.min(Y)+a.size(Y))
-    && a.min(Z) < (b.min(Z)+b.size(Z)) && b.min(Z) < (a.min(Z)+a.size(Z));
+       a.min(X) <= b.max(X) && b.min(X) <= a.max(X)
+    && a.min(Y) <= b.max(Y) && b.min(Y) <= a.max(Y)
+    && a.min(Z) <= b.max(Z) && b.min(Z) <= a.max(Z);
 }
 inline bool subsumes(tile_bounding_box const& a, power_of_two_bounding_cube<3, tile_coordinate> const& b) {
   return
-       a.min(X) <= b.min(X) && (b.min(X)+b.size(X)) <= (a.min(X)+a.size(X))
-    && a.min(Y) <= b.min(Y) && (b.min(Y)+b.size(Y)) <= (a.min(Y)+a.size(Y))
-    && a.min(Z) <= b.min(Z) && (b.min(Z)+b.size(Z)) <= (a.min(Z)+a.size(Z));
+       a.min(X) <= b.min(X) && b.max(X) <= a.max(X)
+    && a.min(Y) <= b.min(Y) && b.max(Y) <= a.max(Y)
+    && a.min(Z) <= b.min(Z) && b.max(Z) <= a.max(Z);
 }
 
 inline tile_bounding_box cube_bbox_to_tile_bounding_box(power_of_two_bounding_cube<3, tile_coordinate> const& b) {
