@@ -451,9 +451,9 @@ void view_on_the_world::prepare_gl_data(
             continue;
           }
           vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, suckable_tile.coords());
-          gl_collection& coll = gl_collections_by_distance[
+          gl_collection& coll = gl_collections_by_distance.at(
             get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
-          ];
+          );
           push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
         }
       }
@@ -464,9 +464,9 @@ void view_on_the_world::prepare_gl_data(
             continue;
           }
           vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, pushable_tile.coords());
-          gl_collection& coll = gl_collections_by_distance[
+          gl_collection& coll = gl_collections_by_distance.at(
             get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
-          ];
+          );
           push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
         }
       }
@@ -487,9 +487,9 @@ void view_on_the_world::prepare_gl_data(
       if(manhattan_distance_to_bounding_box(segment_bbox, view_loc) > config.view_radius) {
         continue;
       }
-      gl_collection& coll = gl_collections_by_distance[
+      gl_collection& coll = gl_collections_by_distance.at(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(segment_bbox, view_loc))
-      ];
+      );
       const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
       const float apparent_laser_height = get_primitive_float(tile_height) / 2;
       push_quad(coll,
@@ -506,9 +506,9 @@ void view_on_the_world::prepare_gl_data(
     vector<object_identifier> objects_to_draw;
     w.objects_exposed_to_collision().get_objects_overlapping(objects_to_draw, fine_view_bounds);
     for (object_identifier const& id : objects_to_draw) {
-      gl_collection& coll = gl_collections_by_distance[
+      gl_collection& coll = gl_collections_by_distance.at(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
-      ];
+      );
       if ((view_type != ROBOT) || (id != robot_id)) {
         shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
         const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
@@ -596,9 +596,9 @@ void view_on_the_world::prepare_gl_data(
     w.get_tiles_exposed_to_collision_within(tiles_to_draw, tile_view_bounds);
 
     for (tile_location const& loc : tiles_to_draw) {
-      gl_collection& coll = gl_collections_by_distance[
+      gl_collection& coll = gl_collections_by_distance.at(
         get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))
-      ];
+      );
       tile const& t = loc.stuff_at();
 
       prepare_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
