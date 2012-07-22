@@ -279,8 +279,8 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
   }
   
   vector<tile_location> tiles_this_could_collide_with;
-  w.tiles_exposed_to_collision().get_objects_overlapping(tiles_this_could_collide_with,
-    tile_bbox_to_tiles_collision_detector_bbox(get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(sweep_bounds)));
+  w.get_tiles_exposed_to_collision_within(tiles_this_could_collide_with,
+      get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(sweep_bounds));
   for (auto const& loc : tiles_this_could_collide_with) {
       //std::cerr << "Considering " << id << ", " << loc << "\n";
     shape t = tile_shape(loc.coords());
