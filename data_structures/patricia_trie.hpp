@@ -528,6 +528,11 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
       // continue moving node's contents to its new location
       // nothrow
       new_location_for_node_original_contents->ptr_ = node->ptr_;
+      if(sub_nodes_type* original_sub_nodes = new_location_for_node_original_contents->sub_nodes()) {
+        for (node_type& sub_node : *original_sub_nodes) {
+          sub_node.parent_ = new_location_for_node_original_contents;
+        }
+      }
       node->ptr_ = intermediate_nodes;
       node->box_.size_exponent_in_each_dimension_ = shared_size_exponent;
       //node->parent remains the same
