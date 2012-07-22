@@ -23,6 +23,7 @@
 #define LASERCAKE_PATRICIA_TRIE_HPP__
 
 #include "numbers.hpp"
+#include "bounds_checked_int.hpp"
 
 
 typedef int32_t num_bits_type;
@@ -198,7 +199,7 @@ public:
   static node_type const& child_matching(sub_nodes_type const& sub_nodes, num_bits_type size_exponent_in_each_dimension, loc_type const& loc) {
     size_t idx = 0;
     for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
-      idx |= ((loc[dim] >> (size_exponent_in_each_dimension - 1) & 1) << ((Dims - 1) - dim));
+      idx |= ((get_primitive_int(loc[dim]) >> (size_exponent_in_each_dimension - 1) & 1) << ((Dims - 1) - dim));
     }
     return sub_nodes[idx];
   }
