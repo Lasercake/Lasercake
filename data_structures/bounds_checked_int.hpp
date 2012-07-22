@@ -76,7 +76,9 @@ namespace bounds_checked_int_impl {
     // Such shifts do not work as you'd mathematically expect on some CPUs' bare metal,
     // and bounds_checked_int is meant to be used in a correctly removable way so we cannot
     // emulate them.  (Also, it would make bounds checking more work.)
-    caller_error_if(shift >= ShiftAmountType(std::numeric_limits<Int>::digits), "bounds_checked_int invalid too-large shift");
+    const auto too_high_shift_amount =
+      std::numeric_limits<Int>::digits + std::numeric_limits<Int>::is_signed;
+    caller_error_if(shift >= ShiftAmountType(too_high_shift_amount), "bounds_checked_int invalid too-large shift");
     caller_error_if(shift < ShiftAmountType(0), "bounds_checked_int invalid negative-amount shift");
   }
   #pragma GCC diagnostic pop
