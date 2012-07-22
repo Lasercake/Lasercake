@@ -69,8 +69,6 @@
 #include "world.hpp"
 #include "specific_worlds.hpp"
 #include "specific_object_types.hpp"
-#include "worldgen.hpp" //only so that world_building_gun is a complete type for
-  // http://stackoverflow.com/questions/10730682/does-stdfunctions-copy-constructor-require-the-template-types-argument-types
 
 #include "tests/test_main.hpp"
 
@@ -191,8 +189,8 @@ object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lase
       world_center_fine_coords + vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80)
     );
     w.ensure_realization_of_space(initial_area, FULL_REALIZATION);
-    w.tiles_exposed_to_collision().get_objects_overlapping(tiles_near_start,
-        tile_bbox_to_tiles_collision_detector_bbox(get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(initial_area)));
+    w.get_tiles_exposed_to_collision_within(tiles_near_start,
+        get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(initial_area));
     for (tile_location loc : tiles_near_start) {
       if (loc.stuff_at().contents() == GROUPABLE_WATER) {
         w.replace_substance(loc, GROUPABLE_WATER, UNGROUPABLE_WATER);
@@ -211,15 +209,15 @@ std::string get_world_ztree_debug_info(world const& w) {
   std::stringstream world_ztree_debug_info;
   // hack to print this debug info occasionally
   if(w.game_time_elapsed() % (time_units_per_second * 5) < (time_units_per_second / 15)) {
-    world_ztree_debug_info << "tiles:";
-    w.tiles_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
+    //world_ztree_debug_info << "tiles:";
+    //w.tiles_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
     world_ztree_debug_info << "objects:";
     w.objects_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
   }
   else {
     // zobj = ztree objects
-    world_ztree_debug_info << "t:" << w.tiles_exposed_to_collision().size()
-      << " o:" << w.objects_exposed_to_collision().size() << " zobj; ";
+    world_ztree_debug_info //<< "t:" << w.tiles_exposed_to_collision().size()
+      << "o:" << w.objects_exposed_to_collision().size() << " zobj; ";
   }
   return world_ztree_debug_info.str();
 }
@@ -420,6 +418,7 @@ int main(int argc, char *argv[])
   catch(std::runtime_error&) {
     std::cerr << "Can't find your default locale; not setting locale" << std::endl;
   }
+  std::cerr << std::boolalpha;
 
   config_struct config;
 

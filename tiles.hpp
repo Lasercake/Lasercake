@@ -27,6 +27,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <ostream>
 
 #include "utils.hpp"
 #include "world_constants.hpp"
@@ -71,29 +72,36 @@ typedef lasercake_int<int32_t>::type tile_coordinate;
 typedef lasercake_int<int32_t>::type tile_coordinate_signed_type;
 
 struct tile_bounding_box {
-  vector3<tile_coordinate> min;
-  vector3<tile_coordinate> size;
+  vector3<tile_coordinate> min_;
+  vector3<tile_coordinate> size_;
   tile_bounding_box(){}
-  tile_bounding_box(vector3<tile_coordinate> coords):min(coords),size(1,1,1){}
-  tile_bounding_box(vector3<tile_coordinate> min, vector3<tile_coordinate> size):min(min),size(size){}
-  vector3<tile_coordinate> max()const { return min + (size - vector3<tile_coordinate>(1,1,1)); }
+  tile_bounding_box(vector3<tile_coordinate> coords):min_(coords),size_(1,1,1){}
+  tile_bounding_box(vector3<tile_coordinate> min, vector3<tile_coordinate> size):min_(min),size_(size){}
+  vector3<tile_coordinate> min()const { return min_; }
+  vector3<tile_coordinate> size()const { return size_; }
+  vector3<tile_coordinate> max()const { return min_ + (size_ - vector3<tile_coordinate>(1,1,1)); }
+  vector3<tile_coordinate> size_minus_one()const { return size_ - vector3<tile_coordinate>(1,1,1); }
+  tile_coordinate min(which_dimension_type dim)const { return min_(dim); }
+  tile_coordinate size(which_dimension_type dim)const { return size_(dim); }
+  tile_coordinate max(which_dimension_type dim)const { return min_(dim) + (size_(dim) - 1); }
+  tile_coordinate size_minus_one(which_dimension_type dim)const { return size_(dim) - 1; }
 
   bool contains(vector3<tile_coordinate> v) {
-    return (v.x >= min.x && v.x <= min.x + (size.x - 1) &&
-            v.y >= min.y && v.y <= min.y + (size.y - 1) &&
-            v.z >= min.z && v.z <= min.z + (size.z - 1));
+    return (v.x >= min_.x && v.x <= min_.x + (size_.x - 1) &&
+            v.y >= min_.y && v.y <= min_.y + (size_.y - 1) &&
+            v.z >= min_.z && v.z <= min_.z + (size_.z - 1));
   }
   bool overlaps(tile_bounding_box const& o)const {
     return
-         min.x < (o.min.x+o.size.x) && o.min.x < (min.x+size.x)
-      && min.y < (o.min.y+o.size.y) && o.min.y < (min.y+size.y)
-      && min.z < (o.min.z+o.size.z) && o.min.z < (min.z+size.z);
+         min(X) < (o.min(X)+o.size(X)) && o.min(X) < (min(X)+size(X))
+      && min(Y) < (o.min(Y)+o.size(Y)) && o.min(Y) < (min(Y)+size(Y))
+      && min(Z) < (o.min(Z)+o.size(Z)) && o.min(Z) < (min(Z)+size(Z));
   }
   bool subsumes(tile_bounding_box const& o)const {
     return
-         min.x <= o.min.x && (o.min.x+o.size.x) <= (min.x+size.x)
-      && min.y <= o.min.y && (o.min.y+o.size.y) <= (min.y+size.y)
-      && min.z <= o.min.z && (o.min.z+o.size.z) <= (min.z+size.z);
+         min(X) <= o.min(X) && (o.min(X)+o.size(X)) <= (min(X)+size(X))
+      && min(Y) <= o.min(Y) && (o.min(Y)+o.size(Y)) <= (min(Y)+size(Y))
+      && min(Z) <= o.min(Z) && (o.min(Z)+o.size(Z)) <= (min(Z)+size(Z));
   }
 
   class iterator : public boost::iterator_facade<iterator, vector3<tile_coordinate>, boost::forward_traversal_tag, vector3<tile_coordinate>>
@@ -103,11 +111,11 @@ struct tile_bounding_box {
       bool equal(iterator other)const { return data_ == other.data_; }
       void increment() {
         data_.first.x += 1;
-        if (data_.first.x >= data_.second->min.x + data_.second->size.x) {
-          data_.first.x = data_.second->min.x;
+        if (data_.first.x >= data_.second->min(X) + data_.second->size(X)) {
+          data_.first.x = data_.second->min(X);
           data_.first.y += 1;
-          if (data_.first.y >= data_.second->min.y + data_.second->size.y) {
-            data_.first.y = data_.second->min.y;
+          if (data_.first.y >= data_.second->min(Y) + data_.second->size(Y)) {
+            data_.first.y = data_.second->min(Y);
             data_.first.z += 1;
           }
         }
@@ -131,10 +139,13 @@ struct tile_bounding_box {
   typedef std::size_t size_type;
   typedef std::ptrdiff_t difference_type;
 
-  iterator begin()const{ return iterator(make_pair(min, this)); }
-  iterator end()const{ return iterator(make_pair(min + vector3<tile_coordinate>(0, 0, size.z), this)); }
+  iterator begin()const{ return iterator(make_pair(min(), this)); }
+  iterator end()const{ return iterator(make_pair(min() + vector3<tile_coordinate>(0, 0, size(Z)), this)); }
 };
 
+inline std::ostream& operator<<(std::ostream& os, tile_bounding_box const& bb) {
+  return os << '[' << bb.min() << ", " << bb.max() << ']';
+}
 
 
 
@@ -222,6 +233,7 @@ class world;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
   class worldblock;
+  typedef int worldblock_dimension_type;
 }
 
 enum level_of_tile_realization_needed {
@@ -259,23 +271,26 @@ public:
     return os << l.v_;
   }
   friend inline size_t hash_value(tile_location const& l) { return std::hash<vector3<tile_coordinate>>()(l.coords()); }
-private:
-  // This constructor should only be used when you know exactly what worldblock it's in!!
-  tile_location(vector3<tile_coordinate> v, the_decomposition_of_the_world_into_blocks_impl::worldblock *wb):v_(v),wb_(wb){}
 
+  // This constructor should only be used when you know exactly what worldblock it's in!!
+  // i.e. the worldblock code.
+  tile_location(vector3<tile_coordinate> v,
+                the_decomposition_of_the_world_into_blocks_impl::worldblock_dimension_type idx,
+                the_decomposition_of_the_world_into_blocks_impl::worldblock *wb);
+
+private:
   // tile_physics.cpp is the only code permitted to modify tile contents
   friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
   friend void tile_physics_impl::set_tile_interiorness(tile_location const& loc, bool interior);
 
-  // worldblock creates tile_locations explicitly, and obviously knows
-  // what worldblock they're in.
-  friend class the_decomposition_of_the_world_into_blocks_impl::worldblock;
+  tile_location() : v_(0,0,0), idx_(0), wb_(nullptr) {}
 
   vector3<tile_coordinate> v_;
-  the_decomposition_of_the_world_into_blocks_impl::worldblock *wb_; // invariant: nonnull
+  the_decomposition_of_the_world_into_blocks_impl::worldblock_dimension_type idx_;
+  the_decomposition_of_the_world_into_blocks_impl::worldblock* wb_; // invariant: nonnull
 };
 
-inline tile_location trivial_invalid_location() { return tile_location(vector3<tile_coordinate>(0,0,0), nullptr); }
+inline tile_location trivial_invalid_location() { return tile_location(); }
 
 namespace std {
   template<> struct hash<tile_location> {
@@ -508,24 +523,23 @@ inline bounding_box fine_bounding_box_of_tile(vector3<tile_coordinate> v) {
 inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
   if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
     return bounding_box::min_and_max(
-      lower_bound_in_fine_units(bb.min),
-      lower_bound_in_fine_units(bb.min + bb.size) - vector3<fine_scalar>(1,1,1)
+      lower_bound_in_fine_units(bb.min()),
+      lower_bound_in_fine_units(bb.min() + bb.size()) - vector3<fine_scalar>(1,1,1)
     );
   }
   else {
     return bounding_box::min_and_max(
-      lower_bound_in_fine_units(bb.min),
-      lower_bound_in_fine_units(bb.min + bb.size)
+      lower_bound_in_fine_units(bb.min()),
+      lower_bound_in_fine_units(bb.min() + bb.size())
     );
   }
 }
 
 inline tile_bounding_box get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(bounding_box const& bb) {
-  tile_bounding_box result;
-  result.min                         = get_min_containing_tile_coordinates(bb.min());
+  const vector3<tile_coordinate> min = get_min_containing_tile_coordinates(bb.min());
   const vector3<tile_coordinate> max = get_max_containing_tile_coordinates(bb.max());
-  result.size = max - result.min + vector3<tile_coordinate>(1,1,1);
-  return result;
+  const vector3<tile_coordinate> size = max - min + vector3<tile_coordinate>(1,1,1);
+  return tile_bounding_box(min, size);
 }
 
 

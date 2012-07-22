@@ -19,13 +19,13 @@
 
 */
 
-#include <boost/scope_exit.hpp>
-
 #include "gl_data_preparation.hpp"
 #include "world.hpp"
 
 #include "specific_object_types.hpp"
 #include "tile_physics.hpp" // to access internals for debugging-displaying...
+
+#include "tile_iteration.hpp"
 
 using namespace gl_data_preparation;
 
@@ -157,9 +157,9 @@ tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_b
 // When you're on two tiles, can this be correct? Is it a problem if it isn't? I think it's alright.
 // (Comparing to converting b to fine units and calling tile_manhattan_distance_to_bounding_box_rounding_down.)
 tile_coordinate tile_manhattan_distance_to_tile_bounding_box(tile_bounding_box b, vector3<tile_coordinate> const& v) {
-  const fine_scalar xdist = (v(X) < b.min.x) ? (b.min.x - v(X)) : (v(X) > b.min.x+(b.size.x-1)) ? (v(X) - (b.min.x+(b.size.x-1))) : 0;
-  const fine_scalar ydist = (v(Y) < b.min.y) ? (b.min.y - v(Y)) : (v(Y) > b.min.y+(b.size.y-1)) ? (v(Y) - (b.min.y+(b.size.y-1))) : 0;
-  const fine_scalar zdist = (v(Z) < b.min.z) ? (b.min.z - v(Z)) : (v(Z) > b.min.z+(b.size.z-1)) ? (v(Z) - (b.min.z+(b.size.z-1))) : 0;
+  const fine_scalar xdist = (v(X) < b.min(X)) ? (b.min(X) - v(X)) : (v(X) > b.max(X)) ? (v(X) - b.max(X)) : 0;
+  const fine_scalar ydist = (v(Y) < b.min(Y)) ? (b.min(Y) - v(Y)) : (v(Y) > b.max(Y)) ? (v(Y) - b.max(Y)) : 0;
+  const fine_scalar zdist = (v(Z) < b.min(Z)) ? (b.min(Z) - v(Z)) : (v(Z) > b.max(Z)) ? (v(Z) - b.max(Z)) : 0;
   return xdist + ydist + zdist;
 }
 
@@ -358,6 +358,62 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
 }
 
 
+struct bbox_tile_prep_visitor {
+  tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
+    if(!overlaps(bounds_, bbox)) return false;
+    if(subsumes(bounds_, bbox)) return true;
+    return indeterminate;
+  }
+  bool collidable_tile(tile_location const& loc) {
+    gl_collection& coll = gl_collections_by_distance.at(
+      get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))
+    );
+    prepare_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
+
+    if (view.drawing_debug_stuff && is_fluid(loc.stuff_at().contents())) {
+      vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
+      if (tile_physics_impl::active_fluid_tile_info const* fluid =
+            find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
+        push_line(coll,
+                  locv + cast_vector3_to_float(tile_size)/2,
+                  locv + cast_vector3_to_float(tile_size)/2 + cast_vector3_to_float(fluid->velocity),
+                  color(0x00ff0077));
+
+        for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
+          const sub_tile_distance prog = fluid->progress[dir];
+          if (prog > 0) {
+            vector3<GLfloat> directed_prog =
+              (vector3<GLfloat>(cardinal_direction_vectors[dir]) * get_primitive_double(prog)) /
+              get_primitive_double(tile_physics_impl::progress_necessary(dir));
+
+            push_line(coll,
+                        vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
+                        vertex(
+                          locv.x + 0.51 + directed_prog.x,
+                          locv.y + 0.5 + directed_prog.y,
+                          locv.z + 0.1 + directed_prog.z),
+                        color(0x0000ff77));
+          }
+        }
+      }
+      else {
+        push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.1), color(0x00000077));
+      }
+    }
+
+    return true;
+  }
+  octant_number octant()const { return 7; }
+
+  gl_collectionplex& gl_collections_by_distance;
+  vector3<double> view_loc_double;
+  vector3<tile_coordinate> view_tile_loc_rounded_down;
+  tile_bounding_box bounds_;
+  view_on_the_world& view;
+  world& w;
+};
+
+
 void view_on_the_world::prepare_gl_data(
   world /*TODO const*/& w,
   gl_data_preparation_config config,
@@ -451,9 +507,9 @@ void view_on_the_world::prepare_gl_data(
             continue;
           }
           vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, suckable_tile.coords());
-          gl_collection& coll = gl_collections_by_distance[
+          gl_collection& coll = gl_collections_by_distance.at(
             get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
-          ];
+          );
           push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff00ff77));
         }
       }
@@ -464,9 +520,9 @@ void view_on_the_world::prepare_gl_data(
             continue;
           }
           vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, pushable_tile.coords());
-          gl_collection& coll = gl_collections_by_distance[
+          gl_collection& coll = gl_collections_by_distance.at(
             get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
-          ];
+          );
           push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
         }
       }
@@ -487,9 +543,9 @@ void view_on_the_world::prepare_gl_data(
       if(manhattan_distance_to_bounding_box(segment_bbox, view_loc) > config.view_radius) {
         continue;
       }
-      gl_collection& coll = gl_collections_by_distance[
+      gl_collection& coll = gl_collections_by_distance.at(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(segment_bbox, view_loc))
-      ];
+      );
       const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
       const float apparent_laser_height = get_primitive_float(tile_height) / 2;
       push_quad(coll,
@@ -506,9 +562,9 @@ void view_on_the_world::prepare_gl_data(
     vector<object_identifier> objects_to_draw;
     w.objects_exposed_to_collision().get_objects_overlapping(objects_to_draw, fine_view_bounds);
     for (object_identifier const& id : objects_to_draw) {
-      gl_collection& coll = gl_collections_by_distance[
+      gl_collection& coll = gl_collections_by_distance.at(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
-      ];
+      );
       if ((view_type != ROBOT) || (id != robot_id)) {
         shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
         const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
@@ -585,56 +641,9 @@ void view_on_the_world::prepare_gl_data(
   }
 
   if (this->drawing_regular_stuff) {
-    // 'static' so that we don't do large memory allocations/copying every frame.
-    // TODO it might be better to iterate directly rather than store in a temp
-    // vector and then iterate that vector.
-    static vector<tile_location> tiles_to_draw;
-    BOOST_SCOPE_EXIT((&tiles_to_draw)) {
-      tiles_to_draw.clear();
-    } BOOST_SCOPE_EXIT_END
-
-    w.get_tiles_exposed_to_collision_within(tiles_to_draw, tile_view_bounds);
-
-    for (tile_location const& loc : tiles_to_draw) {
-      gl_collection& coll = gl_collections_by_distance[
-        get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))
-      ];
-      tile const& t = loc.stuff_at();
-
-      prepare_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
-
-      vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
-
-      if (this->drawing_debug_stuff && is_fluid(t.contents())) {
-        if (tile_physics_impl::active_fluid_tile_info const* fluid =
-              find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
-          push_line(coll,
-                    locv + cast_vector3_to_float(tile_size)/2,
-                    locv + cast_vector3_to_float(tile_size)/2 + cast_vector3_to_float(fluid->velocity),
-                    color(0x00ff0077));
-
-          for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
-            const sub_tile_distance prog = fluid->progress[dir];
-            if (prog > 0) {
-              vector3<GLfloat> directed_prog =
-                (vector3<GLfloat>(cardinal_direction_vectors[dir]) * get_primitive_double(prog)) /
-                get_primitive_double(tile_physics_impl::progress_necessary(dir));
-
-              push_line(coll,
-                          vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
-                          vertex(
-                            locv.x + 0.51 + directed_prog.x,
-                            locv.y + 0.5 + directed_prog.y,
-                            locv.z + 0.1 + directed_prog.z),
-                          color(0x0000ff77));
-            }
-          }
-        }
-        else {
-          push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.1), color(0x00000077));
-        }
-      }
-    }
+    w.visit_collidable_tiles(bbox_tile_prep_visitor{
+      gl_collections_by_distance, view_loc_double, view_tile_loc_rounded_down, tile_view_bounds, *this, w
+    });
   }
 
   gl_data.facing = cast_vector3_to_float(view_towards - view_loc);

@@ -95,6 +95,14 @@ public:
   vector3(ScalarType x, ScalarType y, ScalarType z):x(x),y(y),z(z){}
   template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
     x(other.x),y(other.y),z(other.z){}
+
+  // implicit conversions to/from array:
+  BOOST_FORCEINLINE operator std::array<ScalarType, 3>()const {
+    std::array<ScalarType, 3> result = {{ x, y, z }};
+    return result;
+  }
+  BOOST_FORCEINLINE vector3(std::array<ScalarType, 3> const& arr)
+    : x(arr[0]), y(arr[1]), z(arr[2]) {}
   
   BOOST_FORCEINLINE ScalarType& operator[](which_dimension_type index) {
     switch(index) {
@@ -162,6 +170,19 @@ public:
   vector3& operator>>=(int shift) {
     x >>= shift; y >>= shift; z >>= shift; return *this;
   }
+  vector3 operator^(ScalarType other)const {
+    return vector3(x ^ other, y ^ other, z ^ other);
+  }
+  vector3 operator|(ScalarType other)const {
+    return vector3(x | other, y | other, z | other);
+  }
+  vector3 operator&(ScalarType other)const {
+    return vector3(x & other, y & other, z & other);
+  }
+  vector3 operator~()const {
+    return vector3(~x, ~y, ~z);
+  }
+
   vector3 operator+()const { return *this; } // unary plus
   vector3 operator-()const { // unary minus
     return vector3(-x, -y, -z);
@@ -340,6 +361,20 @@ public:
 private:
   internal_array data;
 };
+
+typedef int8_t octant_number;
+#define LASERCAKE_MAKE_OCTANT(xpositive, ypositive, zpositive) \
+  (octant_number((bool((xpositive))<<2) + (bool((ypositive))<<1) + (bool((zpositive)))))
+#define LASERCAKE_OCTANT_X_POSITIVE(octant) (bool((octant) & (1<<2)))
+#define LASERCAKE_OCTANT_Y_POSITIVE(octant) (bool((octant) & (1<<1)))
+#define LASERCAKE_OCTANT_Z_POSITIVE(octant) (bool((octant) & (1<<0)))
+// When a component of the vector is 0, vector_octant() returns an
+// arbitrary result for that dimension.
+template<typename ScalarType>
+inline octant_number vector_octant(vector3<ScalarType> const& v) {
+  return LASERCAKE_MAKE_OCTANT(v[X] >= 0, v[Y] >= 0, v[Z] >= 0);
+}
+
 
 
 // Use a define so that it can be a constant expression on all compilers.

@@ -96,18 +96,69 @@ inline int32_t ilog2(uint32_t argument) {
   return shift;
 #endif
 }
+
+
+// I wish this machinery for shift_value_is_safe_for_type<>()
+// didn't have to be so complicated.
+template<typename Int, Int Min, Int Max> class bounds_checked_int;
+template<typename Target, typename AnyInt>
+Target get_primitive(AnyInt a);
+
+template<typename ShiftedType, bool HasNumericLimits>
+struct shift_value_is_safe_impl_2;
+template<typename ShiftedType>
+struct shift_value_is_safe_impl_2<ShiftedType, true> {
+  template<typename ShiftValueType>
+  static bool impl(ShiftValueType const& shift_value) {
+    const auto too_high_shift_amount =
+      std::numeric_limits<ShiftedType>::digits + std::numeric_limits<ShiftedType>::is_signed;
+    return shift_value >= ShiftValueType(0)
+        && shift_value < ShiftValueType(too_high_shift_amount);
+  };
+};
+template<typename ShiftedType>
+struct shift_value_is_safe_impl_2<ShiftedType, false> {
+  template<typename ShiftValueType>
+  static bool impl(ShiftValueType const&) {
+    return true;
+  }
+};
+template<typename ShiftedType>
+struct shift_value_is_safe_impl_1
+  : shift_value_is_safe_impl_2<ShiftedType, std::numeric_limits<ShiftedType>::is_specialized> {};
+template<typename BaseInt, BaseInt Min, BaseInt Max>
+struct shift_value_is_safe_impl_1< bounds_checked_int<BaseInt, Min, Max> >
+  : shift_value_is_safe_impl_2<BaseInt, std::numeric_limits<BaseInt>::is_specialized> {};
+
+template<typename ShiftedType, typename ShiftValueType>
+inline bool shift_value_is_safe_for_type(ShiftValueType const& shift_value) {
+  return shift_value_is_safe_impl_1<ShiftedType>::impl(shift_value);
+}
+
+template<typename ShiftedType, typename ShiftValueType>
+inline ShiftedType safe_left_shift(ShiftedType const& a, ShiftValueType const& shift) {
+  if (shift_value_is_safe_for_type<ShiftedType>(shift)) {
+    return a << shift;
+  }
+  else {
+    return 0;
+  }
+}
+
+
+
 template<typename Int>
 inline int32_t ilog2(Int argument) {
   static_assert(sizeof(Int) <= 64, "not implemented");
-  if(std::numeric_limits<Int>::is_signed) caller_error_if(argument <= 0, "logarithm is only defined on positive numbers");
-  if(sizeof(Int) <= 32) return ilog2(uint32_t(argument));
-  else return ilog2(uint64_t(argument));
+  if(std::numeric_limits<Int>::is_signed) caller_error_if(argument <= Int(0), "logarithm is only defined on positive numbers");
+  if(sizeof(Int) <= 32) return ilog2(get_primitive<uint32_t>(argument));
+  else return ilog2(get_primitive<uint64_t>(argument));
 }
 
 template<typename Int>
 inline int32_t num_bits_in_integer_that_are_not_leading_zeroes(Int i) {
   static_assert(!std::numeric_limits<Int>::is_signed, "Don't confuse yourself by calling this on a signed type.");
-  if(i == 0) return 0;
+  if(i == Int(0)) return 0;
   else return ilog2(i) + 1;
 }
 

@@ -22,52 +22,79 @@
 #include "specific_object_types.hpp"
 
 #include "data_structures/bbox_collision_detector_iteration.hpp"
+#include "tile_iteration.hpp"
 #include "tile_physics.hpp"
 
 namespace /* anonymous */ {
 
 typedef polygon_rational_type rational;
 
-struct beam_first_contact_finder {
-  beam_first_contact_finder(world const& w, line_segment beam, object_or_tile_identifier ignore):w_(w),beam_(beam) {ignores_.insert(ignore);}
-  typedef rational cost_type;
-  typedef optional_rational result_type;
+namespace laserbeam {
   static const uint64_t too_large = (1ULL << 32) - 1;
-  bool bbox_is_too_large(world_collision_detector::bounding_box const& bbox) const {
+  inline bool bbox_is_too_large(world_collision_detector::bounding_box const& bbox) {
     return (bbox.size_minus_one(X) >= too_large || bbox.size_minus_one(Y) >= too_large || bbox.size_minus_one(Z) >= too_large);
   }
-  bool bbox_is_too_large(tiles_collision_detector::bounding_box const& bbox) const {
-    return (bbox.size_minus_one(X) >= (too_large/get_primitive_int(tile_width))
-         || bbox.size_minus_one(Y) >= (too_large/get_primitive_int(tile_width))
-         || bbox.size_minus_one(Z) >= (too_large/get_primitive_int(tile_height)));
+  inline bool bbox_is_too_large(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
+    return (bbox.size_minus_one(X) >= tile_coordinate(too_large/get_primitive_int(tile_width))
+         || bbox.size_minus_one(Y) >= tile_coordinate(too_large/get_primitive_int(tile_width))
+         || bbox.size_minus_one(Z) >= tile_coordinate(too_large/get_primitive_int(tile_height)));
   }
-  result_type min_cost(tiles_collision_detector::bounding_box const& bbox) const {
-    // hack - avoid overflow - don't try to filter out too-large regions
-    if(bbox_is_too_large(bbox)) return rational(0);
-    return get_first_intersection(beam_, convert_to_fine_units(tiles_collision_detector_bbox_to_tile_bounding_box(bbox)));
-  }
-  result_type min_cost(world_collision_detector::bounding_box const& bbox) const {
-    // hack - avoid overflow - don't try to filter out too-large regions
-    if(bbox_is_too_large(bbox)) return rational(0);
-    return get_first_intersection(beam_, bbox);
-  }
-  result_type cost(object_identifier id, world_collision_detector::bounding_box const& bbox) const {
-    // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
-    if(bbox_is_too_large(bbox)) return result_type();
-    if(ignores_.find(id) != ignores_.end()) return result_type();
-    return get_first_intersection(beam_, w_.get_detail_shape_of_object_or_tile(id));
-  }
-  result_type cost(tile_location id, tiles_collision_detector::bounding_box const& bbox) const {
-    // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
-    if(bbox_is_too_large(bbox)) return result_type();
-    if(ignores_.find(id) != ignores_.end()) return result_type();
-    return get_first_intersection(beam_, fine_bounding_box_of_tile(id.coords()));
-  }
-private:
-  world const& w_;
-  line_segment beam_;
-  unordered_set<object_or_tile_identifier> ignores_;
-};
+  struct beam_first_contact_finder {
+    beam_first_contact_finder(world const& w, line_segment beam, object_or_tile_identifier ignore):w_(w),beam_(beam) {ignores_.insert(ignore);}
+    typedef rational cost_type;
+    typedef optional_rational result_type;
+    result_type min_cost(world_collision_detector::bounding_box const& bbox) const {
+      // hack - avoid overflow - don't try to filter out too-large regions
+      if(bbox_is_too_large(bbox)) return rational(0);
+      return get_first_intersection(beam_, bbox);
+    }
+    result_type cost(object_identifier id, world_collision_detector::bounding_box const& bbox) const {
+      // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
+      if(bbox_is_too_large(bbox)) return result_type();
+      if(ignores_.find(id) != ignores_.end()) return result_type();
+      return get_first_intersection(beam_, w_.get_detail_shape_of_object_or_tile(id));
+    }
+  private:
+    world const& w_;
+    line_segment beam_;
+    unordered_set<object_or_tile_identifier> ignores_;
+  };
+
+  struct beam_first_contact_finder_tile {
+    beam_first_contact_finder_tile(octant_number octant, line_segment beam)
+      : octant_(octant), beam_(beam), latest_distance_(0), found_tile_() {}
+
+    tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
+      // hack - avoid overflow - don't try to filter out too-large regions
+      if(bbox_is_too_large(bbox)) {
+        return indeterminate;
+      }
+      const tile_bounding_box tile_bbox = cube_bbox_to_tile_bounding_box(bbox);
+      const optional_rational new_distance =
+        get_first_intersection(beam_, convert_to_fine_units(tile_bbox));
+      if(new_distance) {
+        assert_if_ASSERT_EVERYTHING(*new_distance >= latest_distance_);
+        latest_distance_ = *new_distance;
+        return indeterminate;
+      }
+      else {
+        return false;
+      }
+    }
+
+    bool collidable_tile(tile_location const& loc) {
+      found_tile_ = loc;
+      return false;
+    }
+
+    octant_number octant()const { return octant_; }
+
+    octant_number octant_;
+    line_segment beam_;
+    rational latest_distance_;
+    boost::optional<tile_location> found_tile_;
+  };
+}
 
 // Returns object_or_tile_identifier() if nothing was hit.
 // Has no side_effects unless add_laser_sfx==true.
@@ -79,15 +106,16 @@ object_or_tile_identifier laser_find(
     bool add_laser_sfx
 ) {
   const line_segment beam(source, source + beam_vector);
-  const beam_first_contact_finder finder(w, beam, dont_hit_this);
-  auto hit_tile =  w.tiles_exposed_to_collision().find_least(finder);
+  const laserbeam::beam_first_contact_finder finder(w, beam, dont_hit_this);
+  laserbeam::beam_first_contact_finder_tile finder_tile(vector_octant(beam_vector), beam);
+  w.visit_collidable_tiles(finder_tile);
   auto hit_object =  w.objects_exposed_to_collision().find_least(finder);
   const rational farther_away_than_possible_intercept_point = rational(2); //the valid max is 1
   rational best_intercept_point = farther_away_than_possible_intercept_point;
   object_or_tile_identifier hit_thing;
-  if(hit_tile) {
-    hit_thing = hit_tile->object;
-    best_intercept_point = hit_tile->cost;
+  if(finder_tile.found_tile_) {
+    hit_thing = *finder_tile.found_tile_;
+    best_intercept_point = finder_tile.latest_distance_;
   }
   if(hit_object && hit_object->cost <= best_intercept_point) {
     hit_thing = hit_object->object;
