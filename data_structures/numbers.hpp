@@ -101,6 +101,8 @@ inline int32_t ilog2(uint32_t argument) {
 // I wish this machinery for shift_value_is_safe_for_type<>()
 // didn't have to be so complicated.
 template<typename Int, Int Min, Int Max> class bounds_checked_int;
+template<typename Target, typename AnyInt>
+Target get_primitive(AnyInt a);
 
 template<typename ShiftedType, bool HasNumericLimits>
 struct shift_value_is_safe_impl_2;
@@ -148,15 +150,15 @@ inline ShiftedType safe_left_shift(ShiftedType const& a, ShiftValueType const& s
 template<typename Int>
 inline int32_t ilog2(Int argument) {
   static_assert(sizeof(Int) <= 64, "not implemented");
-  if(std::numeric_limits<Int>::is_signed) caller_error_if(argument <= 0, "logarithm is only defined on positive numbers");
-  if(sizeof(Int) <= 32) return ilog2(uint32_t(argument));
-  else return ilog2(uint64_t(argument));
+  if(std::numeric_limits<Int>::is_signed) caller_error_if(argument <= Int(0), "logarithm is only defined on positive numbers");
+  if(sizeof(Int) <= 32) return ilog2(get_primitive<uint32_t>(argument));
+  else return ilog2(get_primitive<uint64_t>(argument));
 }
 
 template<typename Int>
 inline int32_t num_bits_in_integer_that_are_not_leading_zeroes(Int i) {
   static_assert(!std::numeric_limits<Int>::is_signed, "Don't confuse yourself by calling this on a signed type.");
-  if(i == 0) return 0;
+  if(i == Int(0)) return 0;
   else return ilog2(i) + 1;
 }
 
