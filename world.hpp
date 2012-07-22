@@ -49,6 +49,7 @@
 #include "utils.hpp"
 #include "data_structures/polygon_collision_detection.hpp"
 #include "data_structures/bbox_collision_detector.hpp"
+#include "data_structures/patricia_trie.hpp"
 #include "tiles.hpp"
 #include "input_representation.hpp"
 #include "world_constants.hpp"
@@ -231,7 +232,6 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     tile_location global_position_loc() {
       return tile_location(global_position_, 0, this);
     }
-    void get_non_interior_tiles(std::vector<tile_location>& results, tile_bounding_box bounds);
 
     worldblock& ensure_realization(level_of_tile_realization_needed realineeded) {
       // This function gets called to do nothing a LOT more than it gets called to actually do something;
@@ -294,6 +294,13 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       uint64_t tile_data_uint64_array[worldblock_volume/8];
     };
   };
+
+  struct worldblock_trie_traits : default_pow2_radix_patricia_trie_traits {
+    typedef noop_deleter leaf_deleter;
+    typedef size_t monoid;
+  };
+  // tile_coordinates here are right-shifted by worldblock_dimension_exp
+  typedef pow2_radix_patricia_trie_node<3, tile_coordinate, worldblock, worldblock_trie_traits> worldblock_trie;
 
   // Not the optimal structure, but we've already implemented it:
   typedef bbox_collision_detector<worldblock*, 32, 3> worldblocks_collision_detector;
@@ -452,6 +459,8 @@ public:
   // (TODO improve ensure_realization_of_space).
   void get_tiles_exposed_to_collision_within(std::vector<tile_location>& results, tile_bounding_box bounds);
 
+  // Include tile_iteration.hpp to use this:
+  template<typename Visitor> void visit_collidable_tiles(Visitor&& visitor);
 private:
   friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
@@ -476,6 +485,7 @@ private:
   objects_collision_detector objects_exposed_to_collision_;
   tiles_collision_detector tiles_exposed_to_collision_;
   the_decomposition_of_the_world_into_blocks_impl::worldblocks_collision_detector worldblocks_with_any_tiles_exposed_to_collision_;
+  the_decomposition_of_the_world_into_blocks_impl::worldblock_trie worldblock_trie_;
 
   laser_sfxes_type laser_sfxes_;
   
@@ -503,6 +513,7 @@ inline tile_location::tile_location(
   the_decomposition_of_the_world_into_blocks_impl::worldblock *wb
 ) : v_(v), idx_(idx), wb_(wb) {
   assert_if_ASSERT_EVERYTHING(wb);
+  assert_if_ASSERT_EVERYTHING(wb->bounding_box().contains(v));
   assert_if_ASSERT_EVERYTHING(idx == wb->get_idx(v));
 }
 namespace the_decomposition_of_the_world_into_blocks_impl {

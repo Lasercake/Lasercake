@@ -27,6 +27,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <ostream>
 
 #include "utils.hpp"
 #include "world_constants.hpp"
@@ -140,6 +141,9 @@ struct tile_bounding_box {
   iterator end()const{ return iterator(make_pair(min() + vector3<tile_coordinate>(0, 0, size(Z)), this)); }
 };
 
+inline std::ostream& operator<<(std::ostream& os, tile_bounding_box const& bb) {
+  return os << '[' << bb.min() << ", " << bb.max() << ']';
+}
 
 
 
@@ -277,12 +281,14 @@ private:
   friend tile& tile_physics_impl::mutable_stuff_at(tile_location const& loc);
   friend void tile_physics_impl::set_tile_interiorness(tile_location const& loc, bool interior);
 
+  tile_location() : v_(0,0,0), idx_(0), wb_(nullptr) {}
+
   vector3<tile_coordinate> v_;
   the_decomposition_of_the_world_into_blocks_impl::worldblock_dimension_type idx_;
-  the_decomposition_of_the_world_into_blocks_impl::worldblock *wb_; // invariant: nonnull
+  the_decomposition_of_the_world_into_blocks_impl::worldblock* wb_; // invariant: nonnull
 };
 
-inline tile_location trivial_invalid_location() { return tile_location(vector3<tile_coordinate>(0,0,0), 0, nullptr); }
+inline tile_location trivial_invalid_location() { return tile_location(); }
 
 namespace std {
   template<> struct hash<tile_location> {
