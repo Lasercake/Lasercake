@@ -183,6 +183,9 @@ void robot::update(world& w, object_identifier my_id) {
     velocity_.x = facing_.x * tile_width * velocity_scale_factor / 8 / xymag;
     velocity_.y = facing_.y * tile_width * velocity_scale_factor / 8 / xymag;
   }
+  if (input_news.is_currently_pressed("0")) {
+    velocity_.z = tile_width * velocity_scale_factor / 8;
+  }
   if (input_news.is_currently_pressed("right")) {
     fine_scalar new_facing_x = facing_.x + facing_.y / 20;
     fine_scalar new_facing_y = facing_.y - facing_.x / 20;
@@ -235,8 +238,39 @@ void robot::update(world& w, object_identifier my_id) {
   }
   if (input_news.is_currently_pressed("b")) {
     const vector3<fine_scalar> offset(-facing_.y / 4, facing_.x / 4, 0);
-    fire_standard_laser(w, my_id, location_ + offset, facing_);
-    fire_standard_laser(w, my_id, location_ - offset, facing_);
+    const vector3<fine_scalar> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
+    {
+      const object_or_tile_identifier hit_thing = laser_find(w, my_id, location_ + offset, beam_vector, true);
+      if(tile_location const* locp = hit_thing.get_tile_location()) {
+        if (locp->stuff_at().contents() == ROCK) {
+          w.replace_substance(*locp, ROCK, RUBBLE);
+        }
+      }
+      if(object_identifier const* oidp = hit_thing.get_object_identifier()) {
+        if (shared_ptr<object>* obj = w.get_object(*oidp)) {
+          if (shared_ptr<mobile_object> mobj = boost::dynamic_pointer_cast<mobile_object>(*obj)) {
+            mobj->velocity_ -= facing_ * velocity_scale_factor / 20;
+          }
+        }
+      }
+    }
+    {
+      const object_or_tile_identifier hit_thing = laser_find(w, my_id, location_ - offset, beam_vector, true);
+      if(tile_location const* locp = hit_thing.get_tile_location()) {
+        if (locp->stuff_at().contents() == ROCK) {
+          w.replace_substance(*locp, ROCK, RUBBLE);
+        }
+      }
+      if(object_identifier const* oidp = hit_thing.get_object_identifier()) {
+        if (shared_ptr<object>* obj = w.get_object(*oidp)) {
+          if (shared_ptr<mobile_object> mobj = boost::dynamic_pointer_cast<mobile_object>(*obj)) {
+            mobj->velocity_ -= facing_ * velocity_scale_factor;
+          }
+        }
+      }
+    }
+    //fire_standard_laser(w, my_id, location_ + offset, facing_);
+    //fire_standard_laser(w, my_id, location_ - offset, facing_);
   }
   if (input_news.num_times_pressed("m")) {
     const shared_ptr<autorobot> aur (new autorobot(location_ + facing_ * 2, facing_));
