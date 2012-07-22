@@ -777,9 +777,8 @@ void replace_substance_impl(
    state_t& state,
    tile_location const& loc,
    tile_contents old_substance_type,
-   tile_contents new_substance_type,
-   tiles_collision_detector& tiles_exposed_to_collision)
-{
+   tile_contents new_substance_type
+) {
   // For short:
   groupable_water_volume_calipers_t& groupable_water_volume_calipers = state.groupable_water_volume_calipers;
   active_fluids_t& active_fluids = state.active_fluids;
@@ -957,10 +956,7 @@ void replace_substance_impl(
         // Between us and them is a 'different types' interface, so neither us nor them is interior:
         we_are_now_interior = false;
         if (adj_loc.stuff_at().is_interior() && adj_loc.stuff_at().contents() != AIR) {
-          // No longer interior! Unless you're air, add to the collision detection struct.
-          assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.exists(adj_loc));
           set_tile_interiorness(adj_loc, false);
-          tiles_exposed_to_collision.insert(adj_loc, tile_coords_to_tiles_collision_detector_bbox(adj_loc.coords()));
         }
       }
       else {
@@ -979,9 +975,6 @@ void replace_substance_impl(
           }
           if (they_should_be_interior) {
             set_tile_interiorness(adj_loc, true);
-            // Now interior: remove us from the collision detection.
-            assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.exists(adj_loc));
-            tiles_exposed_to_collision.erase(adj_loc);
           }
         }
       }
@@ -990,13 +983,9 @@ void replace_substance_impl(
     bool should_have_been_collidable = (!loc.stuff_at().is_interior() && old_substance_type != AIR);
     if (should_be_collidable && !should_have_been_collidable) {
       set_tile_interiorness(loc, false);
-      assert_if_ASSERT_EVERYTHING(!tiles_exposed_to_collision.exists(loc));
-      tiles_exposed_to_collision.insert(loc, tile_coords_to_tiles_collision_detector_bbox(loc.coords()));
     }
     if (!should_be_collidable && should_have_been_collidable) {
       set_tile_interiorness(loc, true);
-      assert_if_ASSERT_EVERYTHING(tiles_exposed_to_collision.exists(loc));
-      tiles_exposed_to_collision.erase(loc);
     }
   }
   
@@ -1750,7 +1739,7 @@ void world::initialize_tile_water_group_caches_(tile_location const& loc) {
 void world::replace_substance(tile_location const& loc,
         tile_contents old_substance_type, tile_contents new_substance_type) {
   state_t& state = get_state(*this);
-  replace_substance_impl(state, loc, old_substance_type, new_substance_type, tiles_exposed_to_collision_);
+  replace_substance_impl(state, loc, old_substance_type, new_substance_type);
 }
 
 void world::update_fluids() {

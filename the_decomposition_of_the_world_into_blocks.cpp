@@ -22,7 +22,6 @@
 #include "world.hpp"
 #include "worldgen.hpp"
 
-#include "data_structures/bbox_collision_detector_iteration.hpp"
 #include "tile_iteration.hpp"
 
 using namespace the_decomposition_of_the_world_into_blocks_impl;
@@ -49,12 +48,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     wb->non_interior_bitmap_small_scale_[interleaved_high] |= uint64_t(1) << interleaved_low;
     wb->non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
 
-    const vector3<tile_coordinate>& gp = wb->global_position_;
-    const vector3<tile_coordinate> coords(gp.x + local_x, gp.y + local_y, gp.z + local_z);
-    const tile_location loc(coords, idx, wb);
-    wb->w_->tiles_exposed_to_collision_.insert(loc, tile_coords_to_tiles_collision_detector_bbox(coords));
     if(wb->count_of_non_interior_tiles_here_ == 1) {
-      wb->w_->worldblocks_with_any_tiles_exposed_to_collision_.insert(wb, tile_bbox_to_tiles_collision_detector_bbox(wb->bounding_box()));
       wb->w_->worldblock_trie_.insert(wb->global_position_ >> worldblock_dimension_exp, wb, 1);
       if(assert_everything) {
         wb->w_->worldblock_trie_.debug_check_recursive();
@@ -74,7 +68,6 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
     tile& t = tiles_[idx];
     if(count_of_non_interior_tiles_here_ == 0) {
-      w_->worldblocks_with_any_tiles_exposed_to_collision_.insert(this, tile_bbox_to_tiles_collision_detector_bbox(this->bounding_box()));
       w_->worldblock_trie_.insert(global_position_ >> worldblock_dimension_exp, this, 1);
       if(assert_everything) {
         w_->worldblock_trie_.debug_check_recursive();
@@ -94,7 +87,6 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     non_interior_bitmap_large_scale_ &= ~(uint64_t(!non_interior_bitmap_small_scale_[interleaved_high]) << interleaved_high);
     tile& t = tiles_[idx];
     if(!t.is_interior() && count_of_non_interior_tiles_here_ == 1) {
-      w_->worldblocks_with_any_tiles_exposed_to_collision_.erase(this);
       w_->worldblock_trie_.erase(global_position_ >> worldblock_dimension_exp);
       if(assert_everything) {
         w_->worldblock_trie_.debug_check_recursive();
