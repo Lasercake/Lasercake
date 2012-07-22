@@ -254,6 +254,15 @@ public:
   T* find_leaf(loc_type leaf_loc) {
     return const_cast<T*>(const_cast<const node_type*>(this)->find_leaf(leaf_loc));
   }
+  node_type const* find_root()const {
+    node_type const* node = this;
+    while(node->parent_) { node = node->parent_; }
+    return node;
+  }
+  node_type* find_root() {
+    return const_cast<node_type*>(const_cast<const node_type*>(this)->find_root());
+  }
+
 
   // erase returns true iff something was erased.
   bool erase(loc_type leaf_loc);
