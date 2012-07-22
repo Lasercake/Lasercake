@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_PATRICIA_TRIE_HPP__
 #define LASERCAKE_PATRICIA_TRIE_HPP__
 
+#include <ostream>
+
 #include "numbers.hpp"
 #include "bounds_checked_int.hpp"
 
@@ -108,7 +110,11 @@ public:
     for(num_coordinates_type dim = 0; dim != Dims; ++dim) { result[dim] = size(dim); }
     return result;
   }
-  
+
+  friend inline std::ostream& operator<<(std::ostream& os, power_of_two_bounding_cube const& bb) {
+    return os << '[' << bb.min() << " @ " << bb.size_exponent_in_each_dimension() << ']';
+  }
+
 private:
   // Friend patricia_trie so that it can be more paranoid about
   // exception-safety, specifically the order in which the data members
