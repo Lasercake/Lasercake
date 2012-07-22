@@ -69,6 +69,10 @@ inline bool subsumes(tile_bounding_box const& a, power_of_two_bounding_cube<3, t
     && a.min(Z) <= b.min(Z) && (b.min(Z)+b.size(Z)) <= (a.min(Z)+a.size(Z));
 }
 
+inline tile_bounding_box cube_bbox_to_tile_bounding_box(power_of_two_bounding_cube<3, tile_coordinate> const& b) {
+  return tile_bounding_box(b.min(), b.size());
+}
+
 template<typename Visitor>
 void world::visit_collidable_tiles(Visitor&& visitor) {
   using namespace the_decomposition_of_the_world_into_blocks_impl;

@@ -80,9 +80,11 @@ struct tile_bounding_box {
   vector3<tile_coordinate> min()const { return min_; }
   vector3<tile_coordinate> size()const { return size_; }
   vector3<tile_coordinate> max()const { return min_ + (size_ - vector3<tile_coordinate>(1,1,1)); }
+  vector3<tile_coordinate> size_minus_one()const { return size_ - vector3<tile_coordinate>(1,1,1); }
   tile_coordinate min(which_dimension_type dim)const { return min_(dim); }
   tile_coordinate size(which_dimension_type dim)const { return size_(dim); }
   tile_coordinate max(which_dimension_type dim)const { return min_(dim) + (size_(dim) - 1); }
+  tile_coordinate size_minus_one(which_dimension_type dim)const { return size_(dim) - 1; }
 
   bool contains(vector3<tile_coordinate> v) {
     return (v.x >= min_.x && v.x <= min_.x + (size_.x - 1) &&
