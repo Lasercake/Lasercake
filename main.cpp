@@ -420,6 +420,7 @@ int main(int argc, char *argv[])
   catch(std::runtime_error&) {
     std::cerr << "Can't find your default locale; not setting locale" << std::endl;
   }
+  std::cerr << std::boolalpha;
 
   config_struct config;
 
