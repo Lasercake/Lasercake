@@ -69,15 +69,14 @@ vector3<fine_scalar> movement_delta_intermediate(vector3<fine_scalar> const& vel
   return movement_delta_from_start_to(velocity, max) - movement_delta_from_start_to(velocity, min);
 }
 
-bool sweep_vs_shape (std::vector<vector3<polygon_int_type>> sweep_vertices, 
-      polyhedron_planes_info_for_intersection sweep_planes, shape const* s2) {
+bool sweep_vs_shape (convex_polyhedron const& sweep, shape const* s2) {
     for (convex_polyhedron const& p2 : s2->get_polyhedra()) {
-      if (!get_excluding_face(sweep_vertices, sweep_planes, p2)) {
+      if (!find_excluding_planes(sweep, p2)) {
         return true;
       }
     }
     for (bounding_box const& bb : s2->get_boxes()) {
-      if (!get_excluding_face(sweep_vertices, sweep_planes, bb)) {
+      if (!find_excluding_planes(sweep, convex_polyhedron(bb))) {
         return true;
       }
     }
@@ -131,10 +130,8 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
     // Hack, TODO fix: Only polyhedra collide properly!
     for (convex_polyhedron /*copy, not reference*/ p : s1->get_polyhedra()) {
       p.translate(relative_delta_to_step_begin);
-      std::vector<vector3<polygon_int_type>> sweep_vertices;
-      polyhedron_planes_info_for_intersection sweep_planes;
-      compute_sweep_allowing_rounding_error(p, movement_this_step, local_error, sweep_vertices, sweep_planes);
-      if (sweep_vs_shape(sweep_vertices, sweep_planes, s2)) {
+      convex_polyhedron sweep(p, movement_this_step, local_error);
+      if (sweep_vs_shape(sweep, s2)) {
         intersects = true;
         break;
       }
@@ -193,7 +190,14 @@ inline optional_time get_first_moment_of_intersection(shape const* s1, shape con
   for (int dim = 0; dim < num_dimensions; ++dim) {
     // obeys the rule 0.5 = time * (abs(velocity) / velocity_scale_factor)
     // thus time = 0.5 * (velocity_scale_factor / abs(velocity))
-    reciprocal_last_moments_before_rounding[dim] = time_type(2 * std::max(std::abs(s1_velocity(dim)), std::abs(s2_velocity(dim))), velocity_scale_factor);
+    
+    if (s1_velocity(dim) == s2_velocity(dim)) {
+      // If they're going at the same rate in the same direction, they never round relative to each other.
+      reciprocal_last_moments_before_rounding[dim] = time_type(0, 1);
+    }
+    else {
+      reciprocal_last_moments_before_rounding[dim] = time_type(2 * std::max(std::abs(s1_velocity(dim)), std::abs(s2_velocity(dim))), velocity_scale_factor);
+    }
   }
   
   // Sort them in ascending order BY TIME
@@ -213,25 +217,23 @@ inline optional_time get_first_moment_of_intersection(shape const* s1, shape con
   bool intersects = false;
   // Hack, TODO fix: Only polyhedra collide properly!
   for (convex_polyhedron /*copy, not reference*/ p : s1->get_polyhedra()) {
-    std::cerr << "...\n";
+    //std::cerr << "...\n";
     vector3<fine_scalar> delta_to_last_step_end(0,0,0);
     for (int i = 0; i < num_dimensions + 1; ++i) {
-      int dim = dimension_rounding_order[i];
       time_type end_time(1);
       if (i < num_dimensions) {
+        int dim = dimension_rounding_order[i];
         auto recip_time = reciprocal_last_moments_before_rounding(dim);
         if (recip_time.numerator != 0) {
           end_time = recip_time.reciprocal();
         }
       }
       const vector3<fine_scalar> delta_to_this_step_end = movement_delta_from_start_to(s1_velocity - s2_velocity, end_time);
-      std::cerr << delta_to_this_step_end << dim << s1_velocity << s2_velocity << end_time << "\n";
+      //std::cerr << delta_to_this_step_end << dim << s1_velocity << s2_velocity << end_time << "\n";
       if (delta_to_this_step_end != delta_to_last_step_end) {
         const vector3<fine_scalar> this_step_delta = delta_to_this_step_end - delta_to_last_step_end;
-        std::vector<vector3<polygon_int_type>> sweep_vertices;
-        polyhedron_planes_info_for_intersection sweep_planes;
-        compute_sweep_allowing_rounding_error(p, this_step_delta, vector3<fine_scalar>(sign(delta_to_this_step_end(X)),sign(delta_to_this_step_end(Y)),sign(delta_to_this_step_end(Z))), sweep_vertices, sweep_planes);
-        if (sweep_vs_shape(sweep_vertices, sweep_planes, s2)) {
+        convex_polyhedron sweep(p, this_step_delta, vector3<fine_scalar>(sign(delta_to_this_step_end(X)),sign(delta_to_this_step_end(Y)),sign(delta_to_this_step_end(Z))));
+        if (sweep_vs_shape(sweep, s2)) {
           intersects = true;
           break;
         }
@@ -403,6 +405,31 @@ void assert_about_overlaps(objects_map<mobile_object>::type & moving_objects,
   }
 }
 
+size_t pick_random_preferring_axis_aligned(std::vector<plane_as_base_point_and_normal> const& planes, large_fast_noncrypto_rng& rng) {
+  int num_axis_aligned_found = 0;
+  for (auto const& p : planes) {
+    if ((p.normal(X) != 0) + (p.normal(Y) != 0) + (p.normal(Z) != 0) < 2) {
+      ++num_axis_aligned_found;
+    }
+  }
+  if (num_axis_aligned_found == 0) {
+    const boost::random::uniform_int_distribution<size_t> random_index(0, planes.size()-1);
+    return random_index(rng);
+  }
+  else {
+    const boost::random::uniform_int_distribution<size_t> random_index(0, num_axis_aligned_found-1);
+    int which = random_index(rng);
+    for (size_t i = 0; i < planes.size(); ++i) {
+      auto const& p = planes[i];
+      if ((p.normal(X) != 0) + (p.normal(Y) != 0) + (p.normal(Z) != 0) < 2) {
+        if (which == 0) return i;
+        --which;
+      }
+    }
+  }
+  assert(false);
+}
+
 void update_moving_objects_impl(
    world                            & w,
    objects_map<mobile_object>::type & moving_objects,
@@ -505,9 +532,11 @@ void update_moving_objects_impl(
                 //std::cerr << "!!!" << inf1.last_time_updated << "\n";
                 // TODO FIX HACK: Assuming that mobile objects are a polyhedron and tiles a bbox
                 const auto old_vel = obj1->velocity();
-                auto excl = get_excluding_face(*(o1pss->get_polyhedra().begin()), *(t.get_boxes().begin()));
-                assert(excl);
-                auto normal = excl->second;
+                std::vector<plane_as_base_point_and_normal> excluding_planes;
+                find_excluding_planes(*(o1pss->get_polyhedra().begin()), convex_polyhedron(*(t.get_boxes().begin())), &excluding_planes);
+                assert(!excluding_planes.empty());
+                size_t which_plane = pick_random_preferring_axis_aligned(excluding_planes, w.get_rng());
+                auto normal = excluding_planes[which_plane].normal;
                 auto vel_change = (normal * obj1->velocity().dot<fine_scalar>(normal));
                 if (vel_change != vector3<fine_scalar>(0,0,0)) {
                   fine_scalar vel_change_denom = normal.dot<fine_scalar>(normal);
@@ -552,11 +581,15 @@ void update_moving_objects_impl(
             assert_about_overlaps(moving_objects, personal_space_shapes,objects_info);
             
             // TODO FIX HACK: Assuming that mobile objects are one polyhedron
-            auto base_point_and_normal = *get_excluding_face(*(o1pss->get_polyhedra().begin()), *(o2pss->get_polyhedra().begin()));
+            std::vector<plane_as_base_point_and_normal> excluding_planes;
+            find_excluding_planes(*(o1pss->get_polyhedra().begin()), convex_polyhedron(*(o2pss->get_polyhedra().begin())), &excluding_planes);
+            assert(!excluding_planes.empty());
+            size_t which_plane = pick_random_preferring_axis_aligned(excluding_planes, w.get_rng());
+            auto normal = excluding_planes[which_plane].normal;
             // Hack: To avoid getting locked in a nonzero velocity due to rounding error,
             // make sure to round down your eventual velocity!
-            auto veldiff_num = (base_point_and_normal.second * (obj1->velocity() - obj2->velocity()).dot<fine_scalar>(base_point_and_normal.second)) * 2;
-            auto veldiff_denom = base_point_and_normal.second.dot<fine_scalar>(base_point_and_normal.second) * 3;
+            auto veldiff_num = (normal * (obj1->velocity() - obj2->velocity()).dot<fine_scalar>(normal)) * 2;
+            auto veldiff_denom = normal.dot<fine_scalar>(normal) * 3;
             obj1->velocity_ = ((obj1->velocity_ * veldiff_denom) - veldiff_num) / veldiff_denom;
             obj2->velocity_ = ((obj2->velocity_ * veldiff_denom) + veldiff_num) / veldiff_denom;
             

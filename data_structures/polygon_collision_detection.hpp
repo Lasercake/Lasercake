@@ -189,18 +189,34 @@ private:
 
 struct convex_polyhedron {
 public:
-  // constructors are currently quartic in the number of vertices; use sparingly
+  struct edge {
+    edge(uint8_t vert_1, uint8_t vert_2, uint8_t face_1, uint8_t face_2):vert_1(vert_1),vert_2(vert_2),face_1(face_1),face_2(face_2){}
+    uint8_t vert_1;
+    uint8_t vert_2;
+    // these are "which numbered face", NOT "which index into face_info_"
+    uint8_t face_1;
+    uint8_t face_2;
+  };
+  
+  // constructors are currently quadratic in the number of vertices
   convex_polyhedron(std::vector<vector3<polygon_int_type>> const& vs);
   convex_polyhedron(bounding_box const& bb);
+  // construct as a sweep
+  // Note that the signs of the max_error vector coordinates MUST be equal to the signs of v coordinates, or 0.
+  convex_polyhedron(convex_polyhedron const& start_shape, vector3<polygon_int_type> displacement, vector3<polygon_int_type> max_error);
+  
   std::vector<vector3<polygon_int_type>> const& vertices()const { return vertices_; }
-  std::vector<std::pair<uint8_t, uint8_t>> const& edges()const { return edges_; }
+  std::vector<edge> const& edges()const { return edges_; }
   std::vector<uint8_t> const& face_info()const { return face_info_; }
+  uint8_t const& num_faces()const { return num_faces_; }
   void translate(vector3<polygon_int_type> t);
   bounding_box bounds()const;
+  
 private:
   void init_other_info_from_vertices();
+  uint8_t num_faces_;
   std::vector<vector3<polygon_int_type>> vertices_;
-  std::vector<std::pair<uint8_t, uint8_t>> edges_;
+  std::vector<edge> edges_;
   std::vector<uint8_t> face_info_;
 };
 
@@ -247,15 +263,23 @@ struct polyhedron_planes_info_for_intersection {
   std::vector<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> base_points_and_outward_facing_normals;
 };
 
-// Note that the signs of the max_error vector coordinates MUST be equal to the signs of v coordinates, or 0.
-void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<polygon_int_type> const& v, vector3<polygon_int_type> max_error, std::vector<vector3<polygon_int_type>>& vertex_collector, polyhedron_planes_info_for_intersection& plane_collector);
+struct plane_as_base_point_and_normal {
+  vector3<polygon_int_type> base_point;
+  vector3<polygon_int_type> normal;
+  
+  plane_as_base_point_and_normal(vector3<polygon_int_type> base_point, vector3<polygon_int_type> normal):base_point(base_point),normal(normal){}
+};
 
+//void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<polygon_int_type> const& v, vector3<polygon_int_type> max_error, std::vector<vector3<polygon_int_type>>& vertex_collector, polyhedron_planes_info_for_intersection& plane_collector);
+
+bool find_excluding_planes(convex_polyhedron const& p1, convex_polyhedron const& p2, std::vector<plane_as_base_point_and_normal>* planes_collector_1 = NULL, std::vector<plane_as_base_point_and_normal>* planes_collector_2 = NULL);
+/*
 faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, convex_polyhedron const& other);
 faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, bounding_box const& other);
 // TODO: Make std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>> into a struct with named members
 faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps1, std::vector<vector3<polygon_int_type>> const& vs2, polyhedron_planes_info_for_intersection ps2);
 faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(convex_polyhedron const& p1, convex_polyhedron const& p2);
-faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(convex_polyhedron const& p, bounding_box const& bb);
+faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(convex_polyhedron const& p, bounding_box const& bb);*/
 
 /*bool intersects(line_segment l, convex_polygon const& p);
 bool intersects(convex_polygon const& p1, convex_polygon const& p2);
