@@ -141,6 +141,7 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
     // Because of the rounding error for the two shapes,
     // we may never get below a delta like (2,2,2).
     // Therefore, just stop at that minimum.
+    //if (movement_this_step.magnitude_within_32_bits_is_less_than(tile_width / 30)) {
     if ((movement_this_step(X) <= 2) && (movement_this_step(X) >= -2) &&
         (movement_this_step(Y) <= 2) && (movement_this_step(Y) >= -2) &&
         (movement_this_step(Z) <= 2) && (movement_this_step(Z) >= -2)) {

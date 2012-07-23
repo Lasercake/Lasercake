@@ -1647,6 +1647,10 @@ void update_fluids_impl(state_t& state) {
     
     bool can_deactivate = false;
     if (fluid.is_in_inactive_state()) {
+      if (t.contents() == UNGROUPABLE_WATER) {
+        // Water has to 'settle' into groupability before deactivating
+        goto fake_continue;
+      }
       // Be a little paranoid about making sure fluids obeys all the proper conditions of inactivity
       for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
         if (dir == zminus) {
@@ -1686,7 +1690,6 @@ void update_fluids_impl(state_t& state) {
     fake_continue:
     if (can_deactivate) {
       const tile_location loc_preserved = loc;
-      assert_if_ASSERT_EVERYTHING(t.contents() != UNGROUPABLE_WATER); // we assume that any inactive water must be groupable
       bool is_groupable_water = t.contents() == GROUPABLE_WATER;
       active_fluids.erase(i++);
       
