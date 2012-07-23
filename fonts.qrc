@@ -1,0 +1,8 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+  <file>resources/VC_Granger_ch8plus.ttf</file>
+  <file>resources/VC_Gryffindor.ttf</file>
+  <file>resources/VC_Luna.ttf</file>
+  <file>resources/VC_Slytherin.ttf</file>
+</qresource>
+</RCC>

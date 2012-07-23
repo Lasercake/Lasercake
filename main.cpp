@@ -31,6 +31,7 @@
 #include <QtGui/QApplication>
 #include <QtCore/QMetaEnum>
 #include <QtCore/QLocale>
+#include <QtGui/QFontDatabase>
 
 #if defined(__APPLE__) || defined(__MACOSX__)
 #include "OpenGL/gl.h"
@@ -280,7 +281,12 @@ namespace /*anonymous*/ {
 
 typedef int viewport_dimension; // Qt uses 'int' for sizes.
 
-void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data, viewport_dimension viewport_width, viewport_dimension viewport_height) {
+void output_gl_data_to_OpenGL(
+    gl_data_preparation::gl_all_data const& gl_data,
+    viewport_dimension viewport_width,
+    viewport_dimension viewport_height,
+    LasercakeGLWidget& gl_widget
+) {
   using namespace gl_data_preparation;
   #define BUFFER_OFFSET(i) ((void*)(i))
   const GLuint INVALID_BUFFER_ID = 0;
@@ -304,6 +310,11 @@ void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data, v
   static std::vector<size_t> by_distance_VBO_sizes;
   typedef std::array<vertex_with_color, 4> rect_type;
   if(!gl_inited) {
+    QFontDatabase::addApplicationFont(":/resources/VC_Granger_ch8plus.ttf");
+    QFontDatabase::addApplicationFont(":/resources/VC_Luna.ttf");
+    QFontDatabase::addApplicationFont(":/resources/VC_Slytherin.ttf");
+    QFontDatabase::addApplicationFont(":/resources/VC_Gryffindor.ttf");
+
     glGenBuffers(1, &rect_VBO_name);
     glBindBuffer(GL_ARRAY_BUFFER, rect_VBO_name);
     glBufferData(GL_ARRAY_BUFFER, sizeof(rect_type), nullptr, GL_STREAM_DRAW);
@@ -392,6 +403,23 @@ void output_gl_data_to_OpenGL(gl_data_preparation::gl_all_data const& gl_data, v
   glInterleavedArrays(GL_C4UB_V3F, 0, BUFFER_OFFSET(0));
   glDrawArrays(GL_QUADS, 0, 4);
   glBindBuffer(GL_ARRAY_BUFFER, INVALID_BUFFER_ID);
+
+  {
+    QPainter painter(&gl_widget);
+    painter.setRenderHint(QPainter::Antialiasing);
+    const QString text = QString::fromUtf8(gl_data.hud_text.text.c_str());
+    painter.setOpacity(gl_data.hud_text.c.a / 255.0);
+    painter.setPen(QColor(gl_data.hud_text.c.r, gl_data.hud_text.c.g, gl_data.hud_text.c.b));
+    painter.setFont(QFont(gl_data.hud_text.font_name.c_str(), gl_data.hud_text.point_size));
+    painter.drawText(
+      gl_data.hud_text.horizontal_margin_in_pixels,
+      gl_data.hud_text.vertical_margin_in_pixels,
+      viewport_width - 2*gl_data.hud_text.horizontal_margin_in_pixels,
+      viewport_height - 2*gl_data.hud_text.vertical_margin_in_pixels,
+      Qt::AlignBottom | Qt::AlignHCenter | Qt::TextWordWrap,
+      text);
+    painter.end();
+  }
 
   #undef BUFFER_OFFSET
 }
@@ -507,7 +535,7 @@ microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widge
   // etc [mine seems to do both somewhat].)
   const microseconds_t microseconds_before_gl = get_monotonic_microseconds();
   glViewport(0, 0, viewport_size.width(), viewport_size.height());
-  output_gl_data_to_OpenGL(*gl_data_ptr, viewport_size.width(), viewport_size.height());
+  output_gl_data_to_OpenGL(*gl_data_ptr, viewport_size.width(), viewport_size.height(), gl_widget);
   //TODO measure the microseconds ~here~ in the different configurations. e.g. should the before/after here be split across threads?
   //gl_data_ptr.reset(); // but if the deletion does happen now, it'll be in this thread, now, delaying swapBuffers etc :(
   // but it's a good time and CPU(cache) to delete the data on...
@@ -532,6 +560,7 @@ LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* paren
   //TODO do we want to request/check anything about the GL context?
   setWindowTitle("Lasercake");
   setAutoBufferSwap(false);
+  setAutoFillBackground(false);
   gl_thread_data_.reset(new gl_thread_data_t);
   gl_thread_data_->current_data.reset(new gl_data_t());
   gl_thread_data_->viewport_size = size();
