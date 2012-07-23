@@ -62,10 +62,24 @@ struct tuple_hash_impl<0, Types...> {
   }
 };
 
+// A bit of a hack & potential inefficiency by hash_combining this
+// zero hash unnecessarily...
+template<typename T>
+struct unhashed {
+  template<typename...Args>
+  unhashed(Args&&... args) : t(std::forward<Args>(args)...) {}
+  T t;
+  operator T()const { return t; }
+  T operator->()const { return t; }
+  bool operator==(unhashed const&)const { return true; }
+  bool operator!=(unhashed const&)const { return false; }
+  friend inline size_t hash_value(unhashed const&) { return 0; }
+};
+
 } /*end anonymous namespace*/
 
 namespace std {
-  template<class...Types>
+  template<typename...Types>
   struct hash<std::tuple<Types...>> {
     size_t operator()(std::tuple<Types...> const& tup)const {
       size_t result = 0;
@@ -74,6 +88,15 @@ namespace std {
         Types...
       >::impl(result, tup);
       return result;
+    }
+  };
+}
+
+namespace std {
+  template<typename T>
+  struct hash<unhashed<T>> {
+    size_t operator()(unhashed<T> const&)const {
+      return 0;
     }
   };
 }
@@ -123,6 +146,11 @@ typedef boost::random::ranlux3 memo_rng;
 // This doesn't get all the bits of the arguments into the rng seed init,
 // but it seems to work fine.  Also it may be redundant hashing work with
 // memoized that the compiler may or may not figure out...
+//
+// TODO this is also *wrong* because the std does not guarantee a particular
+// hash implementation, nor that an implementation return the same result
+// on every run of the program (the latter might be false for security reasons
+// [a mild defense against computational-complexity attacks]).
 template<typename...HashableArguments>
 inline memo_rng make_rng(HashableArguments&&... args) {
   typedef std::tuple<HashableArguments...> arguments_tuple_type;
@@ -132,49 +160,36 @@ inline memo_rng make_rng(HashableArguments&&... args) {
 
 
 class simple_hills {
-public:
-  tile_contents operator()(coords l) {
-    const coord height = get_height(make_pair(l.x, l.y));
-    return
-      (l.z < height) ? ROCK : AIR;
-  }
-private:
-  unordered_map<std::pair<coord, coord>, int> hills_map_;
-  unordered_map<std::pair<coord, coord>, coord> height_map_;
-  // RNG default-initialized for now
-  // (so, deterministic except for worldblock realization order)
-  large_fast_noncrypto_rng rng_;
-
   static const int max_simple_hill_width = 20;
-
-  int get_hill(pair<coord, coord> loc) {
-    const auto iter = hills_map_.find(loc);
-    if (iter == hills_map_.end()) {
-      const boost::random::uniform_int_distribution<int> random_in_256(0,255);
-      const boost::random::uniform_int_distribution<int> random_hill_height(1,max_simple_hill_width);
-      int hill = (random_in_256(rng_) != 0 ? 0 : random_hill_height(rng_));
-      hills_map_.insert(make_pair(loc, hill));
-      return hill;
-    }
-    else return iter->second;
+public:
+  void operator()(world_column_builder& b, coord x, coord y, coord, coord)const {
+    b.specify_lowest(ROCK);
+    b.specify(height_memo_(this, x, y), AIR);
   }
 
-  coord get_height(pair<coord, coord> loc) {
-    const auto iter = height_map_.find(loc);
-    if (iter == height_map_.end()) {
+  struct get_height {
+    coord operator()(unhashed<simple_hills const*> that, coord x, coord y)const {
       coord height = world_center_tile_coord - 100;
-      const coord x = loc.first;
-      const coord y = loc.second;
       for (coord x2 = x - max_simple_hill_width; x2 <= x + max_simple_hill_width; ++x2) {
         for (coord y2 = y - max_simple_hill_width; y2 <= y + max_simple_hill_width; ++y2) {
-          height += std::max(0, get_hill(make_pair(x2, y2)) - get_primitive<int>(i64sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y))));
+          height += std::max(0, that->hills_memo_(x2, y2) - get_primitive<int>(i64sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y))));
         }
       }
-      height_map_.insert(make_pair(loc, height));
       return height;
     }
-    else return iter->second;
-  }
+  };
+  struct get_hill {
+    int operator()(coord x, coord y)const {
+      memo_rng rng_here = make_rng(x, y);
+      const boost::random::uniform_int_distribution<int> random_in_256(0,255);
+      const boost::random::uniform_int_distribution<int> random_hill_height(1,max_simple_hill_width);
+      int hill = (random_in_256(rng_here) != 0 ? 0 : random_hill_height(rng_here));
+      return hill;
+    }
+  };
+private:
+  memoized<get_hill, int (coord, coord)> hills_memo_;
+  memoized<get_height, coord (unhashed<simple_hills const*>, coord, coord)> height_memo_;
 };
 
 class spiky {
@@ -353,7 +368,7 @@ worldgen_function_t make_world_building_func(std::string scenario) {
     });
   }
   if (scenario == "simple_hills") {
-    return worldgen_from_tilespec(with_state<simple_hills>());
+    return worldgen_from_column_spec(simple_hills());
   }
   if (scenario == "spiky") {
     return worldgen_from_tilespec(with_state<spiky>());
