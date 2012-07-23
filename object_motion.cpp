@@ -33,7 +33,7 @@ vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& ve
   // This is the simplest way to play nicely with the polyhedron sweep code.
   // It has the downside that it makes everything move, on average, 0.5 fine scalar units faster than it should
   // in each dimension of its movement. 
-  return vector3<fine_scalar>(
+  /*return vector3<fine_scalar>(
     sign(velocity.x) * (
       ((std::abs(velocity.x) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
       / (                                             end_time.denominator * velocity_scale_factor)
@@ -46,9 +46,9 @@ vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& ve
       ((std::abs(velocity.z) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
       / (                                             end_time.denominator * velocity_scale_factor)
     )
-  );
+  );*/
+  
   // Round to nearest:
-  /*
   return vector3<fine_scalar>(
     divide_rounding_towards_zero(
       ((2 * velocity.x * end_time.numerator) + (end_time.denominator * velocity_scale_factor)),
@@ -62,11 +62,27 @@ vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& ve
       ((2 * velocity.z * end_time.numerator) + (end_time.denominator * velocity_scale_factor)),
       ( 2 *                                     end_time.denominator * velocity_scale_factor )
     )
-  );*/
+  );
 }
 
 vector3<fine_scalar> movement_delta_intermediate(vector3<fine_scalar> const& velocity, time_type min, time_type max) {
   return movement_delta_from_start_to(velocity, max) - movement_delta_from_start_to(velocity, min);
+}
+
+bool sweep_vs_shape (std::vector<vector3<polygon_int_type>> sweep_vertices, 
+      polyhedron_planes_info_for_intersection sweep_planes, shape const* s2) {
+    for (convex_polyhedron const& p2 : s2->get_polyhedra()) {
+      if (!get_excluding_face(sweep_vertices, sweep_planes, p2)) {
+        return true;
+      }
+    }
+    for (bounding_box const& bb : s2->get_boxes()) {
+      if (!get_excluding_face(sweep_vertices, sweep_planes, bb)) {
+        return true;
+      }
+    }
+        return false;
+
 }
 
 // You can round up by up to 1.
@@ -118,21 +134,13 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
       std::vector<vector3<polygon_int_type>> sweep_vertices;
       polyhedron_planes_info_for_intersection sweep_planes;
       compute_sweep_allowing_rounding_error(p, movement_this_step, local_error, sweep_vertices, sweep_planes);
-      for (convex_polyhedron const& p2 : s2->get_polyhedra()) {
-        if (!get_excluding_face(sweep_vertices, sweep_planes, p2)) {
-          intersects = true;
-          goto doublebreak;
-        }
-      }
-      for (bounding_box const& bb : s2->get_boxes()) {
-        if (!get_excluding_face(sweep_vertices, sweep_planes, bb)) {
-          intersects = true;
-          goto doublebreak;
-        }
+      if (sweep_vs_shape(sweep_vertices, sweep_planes, s2)) {
+        intersects = true;
+        break;
       }
     }
   }
-  doublebreak:
+  
   // HACK: TODO FIX: Ignore results below the top level, because we're getting bad behavior when we don't.
   // Presumably this is the result of false-negatives in the sweep intersection code...
   if (/*(inverse_step_size > 1) ||*/ /*(((time_type(0) < s1_last_time_updated) || (time_type(0) < s2_last_time_updated)) && (s1_velocity != s2_velocity)) ||*/ intersects) {
@@ -180,15 +188,78 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
 }
 
 inline optional_time get_first_moment_of_intersection(shape const* s1, shape const* s2, vector3<fine_scalar> s1_velocity, vector3<fine_scalar> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
+  vector3<time_type> reciprocal_last_moments_before_rounding;
+  std::array<int, num_dimensions> dimension_rounding_order = {{X,Y,Z}};
+  for (int dim = 0; dim < num_dimensions; ++dim) {
+    // obeys the rule 0.5 = time * (abs(velocity) / velocity_scale_factor)
+    // thus time = 0.5 * (velocity_scale_factor / abs(velocity))
+    reciprocal_last_moments_before_rounding[dim] = time_type(2 * std::max(std::abs(s1_velocity(dim)), std::abs(s2_velocity(dim))), velocity_scale_factor);
+  }
+  
+  // Sort them in ascending order BY TIME
+  // i.e. descending order by reciprocal time
+  // (i can haz cleaner code?)
+  if (reciprocal_last_moments_before_rounding(X) < reciprocal_last_moments_before_rounding(Y)) {
+    dimension_rounding_order[0] = Y; dimension_rounding_order[1] = X; }
+  if (reciprocal_last_moments_before_rounding(dimension_rounding_order[1]) < reciprocal_last_moments_before_rounding(dimension_rounding_order[2])) {
+    const auto temp = dimension_rounding_order[1];
+    dimension_rounding_order[1] = dimension_rounding_order[2];
+    dimension_rounding_order[2] = temp; }
+  if (reciprocal_last_moments_before_rounding(dimension_rounding_order[0]) < reciprocal_last_moments_before_rounding(dimension_rounding_order[1])) {
+    const auto temp = dimension_rounding_order[0];
+    dimension_rounding_order[0] = dimension_rounding_order[1];
+    dimension_rounding_order[1] = temp; }
+
+  bool intersects = false;
+  // Hack, TODO fix: Only polyhedra collide properly!
+  for (convex_polyhedron /*copy, not reference*/ p : s1->get_polyhedra()) {
+    std::cerr << "...\n";
+    vector3<fine_scalar> delta_to_last_step_end(0,0,0);
+    for (int i = 0; i < num_dimensions + 1; ++i) {
+      int dim = dimension_rounding_order[i];
+      time_type end_time(1);
+      if (i < num_dimensions) {
+        auto recip_time = reciprocal_last_moments_before_rounding(dim);
+        if (recip_time.numerator != 0) {
+          end_time = recip_time.reciprocal();
+        }
+      }
+      const vector3<fine_scalar> delta_to_this_step_end = movement_delta_from_start_to(s1_velocity - s2_velocity, end_time);
+      std::cerr << delta_to_this_step_end << dim << s1_velocity << s2_velocity << end_time << "\n";
+      if (delta_to_this_step_end != delta_to_last_step_end) {
+        const vector3<fine_scalar> this_step_delta = delta_to_this_step_end - delta_to_last_step_end;
+        std::vector<vector3<polygon_int_type>> sweep_vertices;
+        polyhedron_planes_info_for_intersection sweep_planes;
+        compute_sweep_allowing_rounding_error(p, this_step_delta, vector3<fine_scalar>(sign(delta_to_this_step_end(X)),sign(delta_to_this_step_end(Y)),sign(delta_to_this_step_end(Z))), sweep_vertices, sweep_planes);
+        if (sweep_vs_shape(sweep_vertices, sweep_planes, s2)) {
+          intersects = true;
+          break;
+        }
+        delta_to_last_step_end = delta_to_this_step_end;
+        p.translate(this_step_delta);
+      }
+    }
+  }
+  
+  if (intersects) {
+  
   //assert(!s1->intersects(*s2));
   //assert(false);
-  return get_first_moment_of_intersection_(s1, s2, s1_velocity, s2_velocity, s1_last_time_updated, s2_last_time_updated,
+    if (auto result = get_first_moment_of_intersection_(s1, s2, s1_velocity, s2_velocity, s1_last_time_updated, s2_last_time_updated,
     vector3<fine_scalar>(
       sign(s1_velocity(X) - s2_velocity(X)) * max_error_dist,
       sign(s1_velocity(Y) - s2_velocity(Y)) * max_error_dist,
       sign(s1_velocity(Z) - s2_velocity(Z)) * max_error_dist
     ),
-    0, 1);
+    0, 1)) {
+      return result;
+    }
+    else {
+      std::cerr << "Warning: Detecting no collisions when it seems like there should be one!";
+      //assert(false);
+    }
+  }
+  return boost::none;
 }
 
 struct collision_info {
