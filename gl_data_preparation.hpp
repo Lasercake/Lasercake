@@ -149,9 +149,21 @@ struct gl_collection {
 //by everything else that's closer).
 typedef std::vector<gl_collection> gl_collectionplex;
 
+struct heads_up_display_text {
+  // text may contain newlines, and will also
+  // be soft-wrapped to fit on the screen.
+  std::string text;
+  color c;
+  std::string font_name;
+  int point_size;
+  int horizontal_margin_in_pixels;
+  int vertical_margin_in_pixels;
+};
+
 struct gl_all_data {
   gl_collectionplex stuff_to_draw_as_gl_collections_by_distance;
   color tint_everything_with_this_color;
+  heads_up_display_text hud_text;
   vector3<GLfloat> facing;
   vector3<GLfloat> facing_up;
 };

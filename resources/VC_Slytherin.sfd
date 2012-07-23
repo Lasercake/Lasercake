@@ -1,0 +1,2982 @@
+SplineFontDB: 3.0
+FontName: Slytherin
+FullName: Slytherin
+FamilyName: Slytherin
+Weight: Medium
+Copyright: Created by Eli Dupree,,, with FontForge 2.0 (http://fontforge.sf.net)
+UComments: "2012-6-18: Created." 
+Version: 001.000
+ItalicAngle: 0
+UnderlinePosition: -100
+UnderlineWidth: 50
+Ascent: 800
+Descent: 200
+LayerCount: 2
+Layer: 0 0 "Back"  1
+Layer: 1 0 "Fore"  0
+XUID: [1021 911 31376480 12562284]
+FSType: 0
+OS2Version: 0
+OS2_WeightWidthSlopeOnly: 0
+OS2_UseTypoMetrics: 1
+CreationTime: 1339992510
+ModificationTime: 1339995534
+OS2TypoAscent: 0
+OS2TypoAOffset: 1
+OS2TypoDescent: 0
+OS2TypoDOffset: 1
+OS2TypoLinegap: 90
+OS2WinAscent: 0
+OS2WinAOffset: 1
+OS2WinDescent: 0
+OS2WinDOffset: 1
+HheadAscent: 0
+HheadAOffset: 1
+HheadDescent: 0
+HheadDOffset: 1
+Lookup: 258 0 0 "normal kerning"  {"normal kerning-1" [30,6,2] } []
+MarkAttachClasses: 1
+DEI: 91125
+Encoding: ISO8859-1
+UnicodeInterp: none
+NameList: Adobe Glyph List
+DisplaySize: -24
+AntiAlias: 1
+FitToEm: 1
+WidthSeparation: 30
+WinInfo: 0 28 14
+BeginPrivate: 0
+EndPrivate
+BeginChars: 256 57
+
+StartChar: quotesingle
+Encoding: 39 39 0
+Width: 136
+VWidth: 0
+Flags: HWO
+LayerCount: 2
+Fore
+SplineSet
+64 410 m 0
+ 59 409 55 408 51 408 c 0
+ 39 408 33 412 27 420 c 0
+ 21 429 17 446 17 467 c 0
+ 17 490 21 516 28 540 c 0
+ 33 557 36 567 36 573 c 0
+ 36 579 33 581 28 584 c 0
+ 20 588 16 601 16 614 c 0
+ 16 629 21 645 31 650 c 0
+ 42 656 53 659 63 659 c 0
+ 97 659 122 627 122 587 c 0
+ 122 571 118 555 110 538 c 0
+ 103 525 96 493 94 468 c 0
+ 94 466 94 463 94 460 c 0
+ 94 455 94 449 94 444 c 0
+ 94 436 94 428 90 421 c 0
+ 86 413 73 412 64 410 c 0
+EndSplineSet
+Kerns2: 0 -15 "normal kerning-1"  3 -76 "normal kerning-1"  54 -80 "normal kerning-1"  55 -81 "normal kerning-1"  53 -69 "normal kerning-1"  52 -134 "normal kerning-1"  48 -49 "normal kerning-1"  49 -85 "normal kerning-1"  46 -48 "normal kerning-1"  47 -83 "normal kerning-1"  44 -61 "normal kerning-1"  42 -87 "normal kerning-1"  43 -29 "normal kerning-1"  41 -8 "normal kerning-1"  38 -58 "normal kerning-1"  39 -65 "normal kerning-1"  37 -37 "normal kerning-1"  35 -95 "normal kerning-1"  33 -51 "normal kerning-1"  31 -122 "normal kerning-1"  28 -62 "normal kerning-1"  29 -82 "normal kerning-1"  26 -96 "normal kerning-1"  27 -94 "normal kerning-1"  24 -61 "normal kerning-1"  25 -110 "normal kerning-1"  22 -202 "normal kerning-1"  23 -87 "normal kerning-1"  20 -49 "normal kerning-1"  21 -136 "normal kerning-1"  18 -76 "normal kerning-1"  19 -58 "normal kerning-1"  17 -53 "normal kerning-1"  14 -94 "normal kerning-1"  15 -61 "normal kerning-1"  12 -235 "normal kerning-1"  13 -82 "normal kerning-1"  10 -239 "normal kerning-1"  11 -109 "normal kerning-1"  9 -48 "normal kerning-1"  6 -94 "normal kerning-1"  7 -93 "normal kerning-1"  4 -178 "normal kerning-1" 
+EndChar
+
+StartChar: comma
+Encoding: 44 44 1
+Width: 150
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+13 -82 m 0
+ 12 -76 12 -71 12 -66 c 0
+ 12 -55 14 -45 18 -35 c 0
+ 24 -22 35 -14 45 -5 c 0
+ 57 6 56 22 57 37 c 0
+ 58 68 72 83 94 83 c 0
+ 96 83 l 0
+ 110 83 123 75 129 62 c 0
+ 134 50 135 38 135 25 c 0
+ 135 17 135 8 134 0 c 0
+ 133 -17 129 -35 117 -49 c 0
+ 105 -63 89 -76 83 -95 c 0
+ 81 -103 78 -108 71 -112 c 0
+ 66 -115 59 -117 53 -117 c 0
+ 47 -117 42 -116 37 -114 c 0
+ 26 -110 16 -98 13 -82 c 0
+EndSplineSet
+Kerns2: 56 -141 "normal kerning-1"  1 -24 "normal kerning-1"  51 -70 "normal kerning-1"  53 -135 "normal kerning-1"  50 -9 "normal kerning-1"  48 -16 "normal kerning-1"  49 -140 "normal kerning-1"  46 -70 "normal kerning-1"  47 -211 "normal kerning-1"  45 -21 "normal kerning-1"  44 -83 "normal kerning-1"  42 -97 "normal kerning-1"  43 -224 "normal kerning-1"  40 -14 "normal kerning-1"  41 -26 "normal kerning-1"  38 -14 "normal kerning-1"  39 -9 "normal kerning-1"  36 -73 "normal kerning-1"  37 -109 "normal kerning-1"  34 -34 "normal kerning-1"  35 -12 "normal kerning-1"  32 -47 "normal kerning-1"  33 -67 "normal kerning-1"  30 -13 "normal kerning-1"  28 -15 "normal kerning-1"  26 -24 "normal kerning-1"  24 -16 "normal kerning-1"  22 -76 "normal kerning-1"  23 -97 "normal kerning-1"  20 -10 "normal kerning-1"  18 -22 "normal kerning-1"  16 -56 "normal kerning-1"  17 -84 "normal kerning-1"  14 -109 "normal kerning-1"  12 -30 "normal kerning-1"  10 -37 "normal kerning-1"  11 -19 "normal kerning-1"  8 -36 "normal kerning-1"  9 -36 "normal kerning-1"  6 -13 "normal kerning-1"  7 -28 "normal kerning-1"  5 -28 "normal kerning-1" 
+EndChar
+
+StartChar: period
+Encoding: 46 46 2
+Width: 120
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+22 0 m 0
+ 17 5 15 14 15 24 c 0
+ 15 43 23 68 35 79 c 0
+ 44 88 60 93 73 93 c 0
+ 75 93 76 93 78 93 c 0
+ 97 90 102 82 105 56 c 0
+ 105 53 105 50 105 47 c 0
+ 105 31 102 15 96 8 c 0
+ 88 -1 66 -7 48 -7 c 0
+ 37 -7 27 -5 22 0 c 0
+EndSplineSet
+Kerns2: 56 -145 "normal kerning-1"  2 -7 "normal kerning-1"  1 -44 "normal kerning-1"  51 -42 "normal kerning-1"  53 -136 "normal kerning-1"  50 -7 "normal kerning-1"  48 -12 "normal kerning-1"  49 -137 "normal kerning-1"  46 -65 "normal kerning-1"  47 -209 "normal kerning-1"  45 -13 "normal kerning-1"  44 -73 "normal kerning-1"  42 -91 "normal kerning-1"  43 -228 "normal kerning-1"  40 -7 "normal kerning-1"  41 -20 "normal kerning-1"  38 -9 "normal kerning-1"  39 -8 "normal kerning-1"  36 -44 "normal kerning-1"  37 -98 "normal kerning-1"  34 -20 "normal kerning-1"  35 -8 "normal kerning-1"  32 -38 "normal kerning-1"  33 -56 "normal kerning-1"  30 -9 "normal kerning-1"  28 -11 "normal kerning-1"  26 -18 "normal kerning-1"  24 -13 "normal kerning-1"  22 -149 "normal kerning-1"  23 -88 "normal kerning-1"  18 -17 "normal kerning-1"  16 -35 "normal kerning-1"  17 -71 "normal kerning-1"  14 -109 "normal kerning-1"  12 -20 "normal kerning-1"  10 -28 "normal kerning-1"  11 -20 "normal kerning-1"  8 -28 "normal kerning-1"  9 -28 "normal kerning-1"  6 -10 "normal kerning-1"  7 -31 "normal kerning-1"  5 -20 "normal kerning-1" 
+EndChar
+
+StartChar: exclam
+Encoding: 33 33 3
+Width: 161
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+33 155 m 0
+ 33 178 30 203 30 235 c 0
+ 30 279 35 334 56 410 c 0
+ 77 488 85 550 85 613 c 0
+ 85 642 83 671 80 702 c 0
+ 80 706 80 710 80 714 c 0
+ 80 734 88 743 113 745 c 0
+ 114 745 115 745 116 745 c 0
+ 148 745 150 712 150 681 c 0
+ 150 677 150 673 150 669 c 0
+ 150 664 150 660 150 656 c 0
+ 150 646 151 631 151 615 c 0
+ 151 563 147 484 129 406 c 0
+ 111 327 94 276 94 210 c 0
+ 94 204 94 199 94 193 c 0
+ 95 182 95 172 95 164 c 0
+ 95 145 91 135 66 133 c 0
+ 65 133 63 133 62 133 c 0
+ 43 133 33 146 33 155 c 0
+18 0 m 0
+ 13 5 11 14 11 24 c 0
+ 11 43 18 68 30 79 c 0
+ 39 88 56 93 69 93 c 0
+ 71 93 71 93 73 93 c 0
+ 92 90 97 82 100 56 c 0
+ 100 53 101 50 101 47 c 0
+ 101 31 97 15 91 8 c 0
+ 83 -1 62 -7 44 -7 c 0
+ 33 -7 23 -5 18 0 c 0
+EndSplineSet
+Kerns2: 56 -10 "normal kerning-1"  2 -56 "normal kerning-1"  3 -60 "normal kerning-1"  1 -91 "normal kerning-1"  54 -50 "normal kerning-1"  55 -61 "normal kerning-1"  51 -49 "normal kerning-1"  53 -21 "normal kerning-1"  50 -52 "normal kerning-1"  52 -63 "normal kerning-1"  48 -44 "normal kerning-1"  49 -30 "normal kerning-1"  46 -50 "normal kerning-1"  47 -14 "normal kerning-1"  45 -49 "normal kerning-1"  44 -17 "normal kerning-1"  42 -60 "normal kerning-1"  40 -64 "normal kerning-1"  41 -7 "normal kerning-1"  38 -45 "normal kerning-1"  39 -22 "normal kerning-1"  36 -61 "normal kerning-1"  37 -30 "normal kerning-1"  34 -48 "normal kerning-1"  35 -64 "normal kerning-1"  32 -65 "normal kerning-1"  33 -41 "normal kerning-1"  30 -43 "normal kerning-1"  31 -59 "normal kerning-1"  28 -46 "normal kerning-1"  29 -60 "normal kerning-1"  26 -62 "normal kerning-1"  27 -43 "normal kerning-1"  24 -45 "normal kerning-1"  25 -63 "normal kerning-1"  22 -186 "normal kerning-1"  23 -31 "normal kerning-1"  20 -48 "normal kerning-1"  21 -32 "normal kerning-1"  18 -57 "normal kerning-1"  19 -17 "normal kerning-1"  16 -59 "normal kerning-1"  17 -41 "normal kerning-1"  14 -70 "normal kerning-1"  15 -20 "normal kerning-1"  12 -66 "normal kerning-1"  13 -20 "normal kerning-1"  10 -74 "normal kerning-1"  11 -24 "normal kerning-1"  8 -56 "normal kerning-1"  9 -45 "normal kerning-1"  6 -56 "normal kerning-1"  7 -20 "normal kerning-1"  5 -65 "normal kerning-1"  4 -95 "normal kerning-1" 
+EndChar
+
+StartChar: A
+Encoding: 65 65 4
+Width: 537
+VWidth: 0
+Flags: HWO
+LayerCount: 2
+Fore
+SplineSet
+183 751 m 1
+ 261 751 l 1
+ 339 751 l 1
+ 336 715 l 2
+ 336 713 336 710 336 708 c 0
+ 336 686 343 664 359 637 c 0
+ 398 570 424 503 424 416 c 0
+ 424 399 423 381 421 362 c 0
+ 418 339 417 318 417 299 c 0
+ 417 269 420 243 428 215 c 0
+ 455 118 481 75 504 69 c 0
+ 518 65 523 56 523 32 c 2
+ 523 0 l 1
+ 451 0 l 1
+ 379 0 l 1
+ 379 33 l 1
+ 380 51 384 67 389 67 c 0
+ 395 67 395 72 390 83 c 0
+ 380 103 348 200 340 249 c 0
+ 335 280 312 284 280 289 c 0
+ 254 293 224 296 201 296 c 0
+ 183 296 169 295 166 292 c 0
+ 163 289 144 255 134 217 c 0
+ 123 177 117 142 117 116 c 0
+ 117 90 123 73 138 69 c 0
+ 151 66 156 56 156 32 c 2
+ 156 0 l 1
+ 89 0 l 1
+ 12 0 l 1
+ 12 33 l 1
+ 12 35 11 36 11 38 c 0
+ 11 54 16 67 20 67 c 0
+ 25 67 40 69 43 120 c 0
+ 48 213 75 303 149 452 c 0
+ 201 556 212 595 212 656 c 0
+ 212 660 211 664 211 668 c 0
+ 211 677 205 685 197 685 c 0
+ 187 685 183 695 183 718 c 2
+ 183 751 l 1
+283 589 m 0
+ 280 589 278 582 276 570 c 0
+ 263 505 231 457 218 423 c 2
+ 199 377 l 1
+ 209 379 216 380 232 380 c 0
+ 236 380 240 381 243 381 c 0
+ 268 381 281 378 297 375 c 0
+ 306 373 312 372 317 372 c 0
+ 334 372 339 382 345 416 c 0
+ 346 424 347 431 347 439 c 0
+ 347 490 320 541 295 575 c 0
+ 289 584 285 589 283 589 c 0
+EndSplineSet
+Kerns2: 0 -123 "normal kerning-1"  56 -195 "normal kerning-1"  3 -17 "normal kerning-1"  1 -44 "normal kerning-1"  54 -10 "normal kerning-1"  55 -13 "normal kerning-1"  51 -69 "normal kerning-1"  53 -197 "normal kerning-1"  50 -25 "normal kerning-1"  52 -13 "normal kerning-1"  48 -38 "normal kerning-1"  49 -172 "normal kerning-1"  46 -100 "normal kerning-1"  47 -211 "normal kerning-1"  45 -46 "normal kerning-1"  44 -112 "normal kerning-1"  42 -138 "normal kerning-1"  43 -261 "normal kerning-1"  40 -37 "normal kerning-1"  41 -70 "normal kerning-1"  38 -36 "normal kerning-1"  39 -38 "normal kerning-1"  36 -72 "normal kerning-1"  37 -109 "normal kerning-1"  34 -46 "normal kerning-1"  35 -43 "normal kerning-1"  32 -68 "normal kerning-1"  33 -92 "normal kerning-1"  30 -32 "normal kerning-1"  31 -16 "normal kerning-1"  28 -37 "normal kerning-1"  29 -16 "normal kerning-1"  26 -64 "normal kerning-1"  27 -17 "normal kerning-1"  24 -52 "normal kerning-1"  25 -16 "normal kerning-1"  22 -206 "normal kerning-1"  23 -123 "normal kerning-1"  20 -34 "normal kerning-1"  21 -15 "normal kerning-1"  18 -59 "normal kerning-1"  19 -20 "normal kerning-1"  16 -66 "normal kerning-1"  17 -99 "normal kerning-1"  14 -160 "normal kerning-1"  15 -17 "normal kerning-1"  12 -56 "normal kerning-1"  13 -17 "normal kerning-1"  10 -76 "normal kerning-1"  11 -57 "normal kerning-1"  8 -60 "normal kerning-1"  9 -74 "normal kerning-1"  6 -45 "normal kerning-1"  7 -76 "normal kerning-1"  5 -53 "normal kerning-1"  4 -15 "normal kerning-1" 
+EndChar
+
+StartChar: a
+Encoding: 97 97 5
+Width: 403
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+204 400 m 0
+ 236 400 282 389 303 353 c 0
+ 316 330 324 310 324 248 c 0
+ 324 236 324 221 323 205 c 0
+ 321 149 303 142 303 111 c 0
+ 303 92 317 77 336 77 c 0
+ 346 77 356 98 369 98 c 0
+ 372 98 374 97 377 95 c 0
+ 388 88 389 65 389 54 c 0
+ 389 50 389 47 389 47 c 1
+ 389 46 389 45 389 44 c 0
+ 389 18 364 0 341 0 c 0
+ 317 0 318 6 274 32 c 0
+ 271 34 267 35 263 35 c 0
+ 256 35 247 32 234 25 c 0
+ 214 15 200 0 163 0 c 0
+ 112 0 76 16 57 30 c 0
+ 40 43 11 70 11 153 c 0
+ 11 257 57 344 133 382 c 0
+ 157 394 181 400 203 400 c 0
+ 204 400 l 0
+181 326 m 0
+ 160 321 143 320 109 276 c 0
+ 78 235 74 194 74 141 c 0
+ 74 98 102 76 138 76 c 0
+ 159 76 183 83 205 98 c 0
+ 245 125 258 186 258 235 c 0
+ 258 258 255 280 250 293 c 0
+ 240 320 218 328 198 328 c 0
+ 192 328 186 327 181 326 c 0
+EndSplineSet
+Kerns2: 56 -196 "normal kerning-1"  2 -6 "normal kerning-1"  3 -15 "normal kerning-1"  1 -47 "normal kerning-1"  54 -13 "normal kerning-1"  55 -14 "normal kerning-1"  51 -55 "normal kerning-1"  53 -188 "normal kerning-1"  50 -18 "normal kerning-1"  52 -12 "normal kerning-1"  48 -25 "normal kerning-1"  49 -146 "normal kerning-1"  46 -89 "normal kerning-1"  47 -203 "normal kerning-1"  45 -26 "normal kerning-1"  44 -80 "normal kerning-1"  42 -118 "normal kerning-1"  43 -285 "normal kerning-1"  40 -17 "normal kerning-1"  41 -36 "normal kerning-1"  38 -21 "normal kerning-1"  39 -22 "normal kerning-1"  36 -58 "normal kerning-1"  37 -81 "normal kerning-1"  34 -35 "normal kerning-1"  35 -19 "normal kerning-1"  32 -54 "normal kerning-1"  33 -63 "normal kerning-1"  30 -22 "normal kerning-1"  31 -15 "normal kerning-1"  28 -25 "normal kerning-1"  29 -13 "normal kerning-1"  26 -33 "normal kerning-1"  27 -14 "normal kerning-1"  24 -26 "normal kerning-1"  25 -13 "normal kerning-1"  22 -186 "normal kerning-1"  23 -91 "normal kerning-1"  20 -16 "normal kerning-1"  21 -18 "normal kerning-1"  18 -33 "normal kerning-1"  19 -16 "normal kerning-1"  16 -50 "normal kerning-1"  17 -70 "normal kerning-1"  14 -132 "normal kerning-1"  15 -12 "normal kerning-1"  12 -33 "normal kerning-1"  13 -15 "normal kerning-1"  10 -44 "normal kerning-1"  11 -44 "normal kerning-1"  8 -44 "normal kerning-1"  9 -44 "normal kerning-1"  6 -23 "normal kerning-1"  7 -59 "normal kerning-1"  5 -34 "normal kerning-1"  4 -13 "normal kerning-1" 
+EndChar
+
+StartChar: b
+Encoding: 98 98 6
+Width: 359
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+89 776 m 0
+ 90 776 l 0
+ 127 776 142 758 163 696 c 0
+ 174 664 180 629 180 592 c 0
+ 180 542 169 488 146 432 c 0
+ 136 408 134 401 134 400 c 0
+ 134 399 139 400 142 400 c 0
+ 149 400 161 400 168 400 c 0
+ 240 400 296 369 328 299 c 0
+ 342 268 345 248 345 181 c 0
+ 345 140 338 107 304 52 c 0
+ 291 31 252 0 192 0 c 0
+ 136 0 108 23 101 23 c 0
+ 100 23 100 22 100 21 c 0
+ 100 0 89 0 67 0 c 0
+ 36 0 34 7 26 35 c 0
+ 18 65 11 108 11 200 c 0
+ 11 307 37 350 78 459 c 0
+ 87 482 102 524 109 555 c 0
+ 111 566 113 579 113 593 c 0
+ 113 633 101 682 61 710 c 0
+ 50 718 44 720 44 735 c 0
+ 44 738 45 741 45 745 c 0
+ 47 773 47 774 81 776 c 0
+ 84 776 87 776 89 776 c 0
+169 322 m 0
+ 168 322 l 0
+ 140 322 109 306 95 278 c 0
+ 84 256 79 233 79 210 c 0
+ 79 178 88 147 104 117 c 0
+ 120 86 157 70 189 70 c 0
+ 200 70 210 72 219 76 c 0
+ 246 88 253 105 265 127 c 0
+ 275 146 280 168 280 191 c 0
+ 280 217 274 242 265 262 c 0
+ 247 304 209 321 169 322 c 0
+EndSplineSet
+Kerns2: 0 -181 "normal kerning-1"  56 -198 "normal kerning-1"  2 -50 "normal kerning-1"  3 -35 "normal kerning-1"  1 -91 "normal kerning-1"  54 -45 "normal kerning-1"  55 -63 "normal kerning-1"  53 -190 "normal kerning-1"  50 -47 "normal kerning-1"  52 -64 "normal kerning-1"  48 -21 "normal kerning-1"  49 -122 "normal kerning-1"  46 -58 "normal kerning-1"  47 -177 "normal kerning-1"  45 -13 "normal kerning-1"  44 -32 "normal kerning-1"  42 -92 "normal kerning-1"  43 -252 "normal kerning-1"  40 -24 "normal kerning-1"  41 -36 "normal kerning-1"  38 -9 "normal kerning-1"  39 -10 "normal kerning-1"  37 -23 "normal kerning-1"  35 -11 "normal kerning-1"  33 -9 "normal kerning-1"  31 -37 "normal kerning-1"  28 -7 "normal kerning-1"  29 -27 "normal kerning-1"  26 -8 "normal kerning-1"  27 -39 "normal kerning-1"  24 -9 "normal kerning-1"  25 -36 "normal kerning-1"  22 -165 "normal kerning-1"  23 -12 "normal kerning-1"  20 -16 "normal kerning-1"  21 -140 "normal kerning-1"  18 -8 "normal kerning-1"  19 -9 "normal kerning-1"  17 -10 "normal kerning-1"  14 -124 "normal kerning-1"  15 -27 "normal kerning-1"  12 -7 "normal kerning-1"  13 -36 "normal kerning-1"  10 -6 "normal kerning-1"  11 -69 "normal kerning-1"  9 -8 "normal kerning-1"  6 -7 "normal kerning-1"  7 -75 "normal kerning-1"  5 -6 "normal kerning-1"  4 -55 "normal kerning-1" 
+EndChar
+
+StartChar: B
+Encoding: 66 66 7
+Width: 455
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+258 433 m 0
+ 326 467 367 521 367 568 c 0
+ 367 583 363 597 354 609 c 0
+ 334 637 267 664 204 670 c 0
+ 186 672 174 672 166 672 c 0
+ 155 672 151 671 151 667 c 0
+ 151 665 152 663 153 660 c 0
+ 165 630 173 562 173 506 c 0
+ 173 492 172 479 171 467 c 2
+ 165 404 l 1
+ 194 410 l 2
+ 210 413 239 423 258 433 c 0
+244 108 m 0
+ 261 125 287 148 287 195 c 0
+ 287 282 250 313 183 323 c 0
+ 175 324 168 325 163 325 c 0
+ 150 325 148 318 141 296 c 0
+ 130 260 125 213 125 171 c 0
+ 125 119 133 77 154 77 c 0
+ 187 77 224 88 244 108 c 0
+48 0 m 0
+ 42 3 37 18 37 34 c 0
+ 37 56 40 63 52 63 c 0
+ 63 63 67 73 67 89 c 0
+ 67 111 60 146 59 181 c 0
+ 59 186 59 191 59 196 c 0
+ 59 246 67 287 85 363 c 0
+ 98 418 105 467 105 511 c 0
+ 105 556 97 595 83 627 c 0
+ 69 659 64 664 39 664 c 0
+ 13 664 11 665 11 693 c 0
+ 11 721 12 722 50 728 c 0
+ 64 730 99 732 139 732 c 0
+ 159 732 180 732 200 731 c 0
+ 293 728 326 719 352 708 c 0
+ 400 688 441 644 441 568 c 0
+ 441 519 424 483 416 468 c 0
+ 402 442 358 400 322 378 c 0
+ 308 370 301 365 301 357 c 0
+ 301 352 304 345 313 336 c 0
+ 338 308 355 266 355 198 c 0
+ 355 132 327 90 306 68 c 0
+ 263 23 221 5 137 0 c 0
+ 115 -1 94 -2 78 -2 c 0
+ 62 -2 51 -1 48 0 c 0
+EndSplineSet
+Kerns2: 0 -13 "normal kerning-1"  56 -12 "normal kerning-1"  2 -164 "normal kerning-1"  3 -96 "normal kerning-1"  1 -207 "normal kerning-1"  54 -145 "normal kerning-1"  55 -111 "normal kerning-1"  51 -106 "normal kerning-1"  53 -91 "normal kerning-1"  50 -144 "normal kerning-1"  52 -134 "normal kerning-1"  48 -114 "normal kerning-1"  49 -108 "normal kerning-1"  46 -137 "normal kerning-1"  47 -90 "normal kerning-1"  45 -112 "normal kerning-1"  44 -74 "normal kerning-1"  42 -141 "normal kerning-1"  43 -48 "normal kerning-1"  40 -126 "normal kerning-1"  41 -12 "normal kerning-1"  38 -108 "normal kerning-1"  39 -79 "normal kerning-1"  36 -111 "normal kerning-1"  37 -54 "normal kerning-1"  34 -105 "normal kerning-1"  35 -105 "normal kerning-1"  32 -113 "normal kerning-1"  33 -71 "normal kerning-1"  30 -105 "normal kerning-1"  31 -121 "normal kerning-1"  28 -106 "normal kerning-1"  29 -99 "normal kerning-1"  26 -104 "normal kerning-1"  27 -102 "normal kerning-1"  24 -79 "normal kerning-1"  25 -116 "normal kerning-1"  22 -232 "normal kerning-1"  23 -92 "normal kerning-1"  20 -74 "normal kerning-1"  21 -121 "normal kerning-1"  18 -92 "normal kerning-1"  19 -71 "normal kerning-1"  16 -110 "normal kerning-1"  17 -73 "normal kerning-1"  14 -133 "normal kerning-1"  15 -73 "normal kerning-1"  12 -115 "normal kerning-1"  13 -89 "normal kerning-1"  10 -132 "normal kerning-1"  11 -114 "normal kerning-1"  8 -107 "normal kerning-1"  9 -67 "normal kerning-1"  6 -102 "normal kerning-1"  7 -97 "normal kerning-1"  5 -113 "normal kerning-1"  4 -160 "normal kerning-1" 
+EndChar
+
+StartChar: c
+Encoding: 99 99 8
+Width: 293
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+79 20 m 0
+ 38 42 11 92 11 188 c 0
+ 11 199 11 210 12 222 c 0
+ 18 322 30 340 74 378 c 0
+ 98 399 136 400 172 400 c 0
+ 249 400 229 352 262 335 c 0
+ 271 331 278 315 278 301 c 0
+ 278 286 270 272 245 272 c 0
+ 244 272 l 0
+ 227 272 211 280 198 305 c 0
+ 191 318 183 328 162 328 c 0
+ 159 328 156 328 153 328 c 0
+ 128 325 96 298 86 257 c 0
+ 81 239 79 216 79 193 c 0
+ 79 155 84 117 96 100 c 0
+ 109 81 149 67 174 67 c 0
+ 184 67 192 69 195 73 c 0
+ 203 84 212 120 242 120 c 0
+ 243 120 l 0
+ 269 120 279 106 279 91 c 0
+ 279 78 271 64 260 57 c 0
+ 238 44 254 0 186 0 c 0
+ 153 0 111 3 79 20 c 0
+EndSplineSet
+Kerns2: 56 -207 "normal kerning-1"  2 -26 "normal kerning-1"  3 -31 "normal kerning-1"  1 -67 "normal kerning-1"  54 -17 "normal kerning-1"  55 -42 "normal kerning-1"  51 -17 "normal kerning-1"  53 -190 "normal kerning-1"  50 -26 "normal kerning-1"  52 -40 "normal kerning-1"  48 -20 "normal kerning-1"  49 -114 "normal kerning-1"  46 -52 "normal kerning-1"  47 -175 "normal kerning-1"  45 -14 "normal kerning-1"  44 -41 "normal kerning-1"  42 -90 "normal kerning-1"  43 -290 "normal kerning-1"  40 -11 "normal kerning-1"  41 -30 "normal kerning-1"  38 -13 "normal kerning-1"  39 -17 "normal kerning-1"  36 -31 "normal kerning-1"  37 -13 "normal kerning-1"  34 -13 "normal kerning-1"  35 -14 "normal kerning-1"  32 -35 "normal kerning-1"  33 -14 "normal kerning-1"  30 -14 "normal kerning-1"  31 -39 "normal kerning-1"  28 -15 "normal kerning-1"  29 -25 "normal kerning-1"  26 -19 "normal kerning-1"  27 -36 "normal kerning-1"  24 -17 "normal kerning-1"  25 -31 "normal kerning-1"  22 -181 "normal kerning-1"  23 -117 "normal kerning-1"  20 -13 "normal kerning-1"  21 -74 "normal kerning-1"  18 -20 "normal kerning-1"  19 -15 "normal kerning-1"  16 -27 "normal kerning-1"  17 -16 "normal kerning-1"  14 -78 "normal kerning-1"  15 -23 "normal kerning-1"  12 -19 "normal kerning-1"  13 -33 "normal kerning-1"  10 -21 "normal kerning-1"  11 -59 "normal kerning-1"  8 -19 "normal kerning-1"  9 -21 "normal kerning-1"  6 -14 "normal kerning-1"  7 -70 "normal kerning-1"  5 -21 "normal kerning-1"  4 -36 "normal kerning-1" 
+EndChar
+
+StartChar: C
+Encoding: 67 67 9
+Width: 476
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+107 0 m 0
+ 68 8 32 52 21 105 c 0
+ 15 135 11 159 11 187 c 0
+ 11 223 17 265 29 337 c 0
+ 39 398 48 482 48 524 c 0
+ 48 613 70 668 117 702 c 0
+ 143 720 158 723 236 723 c 0
+ 337 723 404 701 425 661 c 0
+ 431 649 442 635 449 631 c 0
+ 456 627 462 609 462 591 c 2
+ 462 559 l 1
+ 396 559 l 1
+ 330 559 l 1
+ 330 595 l 2
+ 330 611 337 616 343 620 c 0
+ 345 621 345 623 345 625 c 0
+ 345 632 336 643 305 650 c 0
+ 287 654 269 657 252 657 c 0
+ 216 657 185 647 166 629 c 0
+ 127 593 114 549 114 462 c 0
+ 114 419 108 352 100 311 c 0
+ 91 264 86 227 86 196 c 0
+ 86 165 91 140 100 121 c 0
+ 119 80 169 64 217 64 c 0
+ 238 64 258 67 275 73 c 0
+ 305 83 334 107 334 124 c 1
+ 334 124 310 124 310 145 c 2
+ 309 192 l 1
+ 371 192 l 1
+ 434 192 l 1
+ 434 159 l 2
+ 434 141 430 126 425 126 c 0
+ 423 126 421 126 419 126 c 0
+ 406 126 413 121 395 84 c 0
+ 370 34 305 -2 208 -2 c 0
+ 203 -2 197 -2 192 -2 c 0
+ 154 -2 117 -2 107 0 c 0
+EndSplineSet
+Kerns2: 0 -11 "normal kerning-1"  56 -12 "normal kerning-1"  2 -102 "normal kerning-1"  3 -91 "normal kerning-1"  1 -145 "normal kerning-1"  54 -104 "normal kerning-1"  55 -88 "normal kerning-1"  51 -58 "normal kerning-1"  53 -93 "normal kerning-1"  50 -97 "normal kerning-1"  52 -103 "normal kerning-1"  48 -65 "normal kerning-1"  49 -120 "normal kerning-1"  46 -129 "normal kerning-1"  47 -98 "normal kerning-1"  45 -53 "normal kerning-1"  44 -72 "normal kerning-1"  42 -164 "normal kerning-1"  43 -49 "normal kerning-1"  40 -84 "normal kerning-1"  41 -15 "normal kerning-1"  38 -51 "normal kerning-1"  39 -58 "normal kerning-1"  36 -53 "normal kerning-1"  37 -85 "normal kerning-1"  34 -53 "normal kerning-1"  35 -64 "normal kerning-1"  32 -52 "normal kerning-1"  33 -73 "normal kerning-1"  30 -49 "normal kerning-1"  31 -91 "normal kerning-1"  28 -50 "normal kerning-1"  29 -79 "normal kerning-1"  26 -64 "normal kerning-1"  27 -83 "normal kerning-1"  24 -58 "normal kerning-1"  25 -88 "normal kerning-1"  22 -257 "normal kerning-1"  23 -82 "normal kerning-1"  20 -60 "normal kerning-1"  21 -124 "normal kerning-1"  18 -65 "normal kerning-1"  19 -59 "normal kerning-1"  16 -50 "normal kerning-1"  17 -71 "normal kerning-1"  14 -165 "normal kerning-1"  15 -63 "normal kerning-1"  12 -49 "normal kerning-1"  13 -78 "normal kerning-1"  10 -66 "normal kerning-1"  11 -108 "normal kerning-1"  8 -50 "normal kerning-1"  9 -56 "normal kerning-1"  6 -65 "normal kerning-1"  7 -96 "normal kerning-1"  5 -48 "normal kerning-1"  4 -116 "normal kerning-1" 
+EndChar
+
+StartChar: d
+Encoding: 100 100 10
+Width: 349
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+257 780 m 0
+ 284 780 288 776 303 750 c 0
+ 323 714 335 660 335 610 c 0
+ 335 601 335 593 334 584 c 0
+ 332 557 318 489 303 432 c 0
+ 285 361 275 303 275 253 c 0
+ 275 214 281 179 292 146 c 0
+ 301 120 312 95 316 90 c 0
+ 320 85 323 63 324 41 c 2
+ 325 1 l 1
+ 289 0 l 2
+ 270 0 251 31 245 31 c 0
+ 244 31 l 0
+ 224 14 189 5 154 5 c 0
+ 119 5 84 14 66 30 c 0
+ 34 58 13 93 11 183 c 0
+ 11 187 11 192 11 196 c 0
+ 11 303 42 367 94 394 c 0
+ 107 401 136 405 165 405 c 0
+ 181 405 214 405 214 405 c 1
+ 226 445 l 2
+ 232 467 244 513 252 547 c 0
+ 259 578 263 594 263 609 c 0
+ 263 622 261 634 256 652 c 0
+ 250 676 239 702 233 712 c 0
+ 228 720 224 736 224 749 c 0
+ 224 751 224 753 224 755 c 0
+ 226 779 229 780 257 780 c 0
+156 331 m 0
+ 155 331 l 0
+ 139 331 121 323 110 308 c 0
+ 90 280 79 221 79 184 c 0
+ 79 120 117 84 157 84 c 0
+ 176 84 195 92 211 109 c 0
+ 220 118 223 129 223 140 c 0
+ 223 165 208 196 208 236 c 2
+ 208 236 206 251 206 274 c 0
+ 206 286 207 299 208 314 c 1
+ 191 323 175 331 156 331 c 0
+EndSplineSet
+Kerns2: 0 -11 "normal kerning-1"  56 -18 "normal kerning-1"  2 -15 "normal kerning-1"  3 -40 "normal kerning-1"  1 -53 "normal kerning-1"  54 -27 "normal kerning-1"  55 -35 "normal kerning-1"  51 -50 "normal kerning-1"  53 -39 "normal kerning-1"  50 -34 "normal kerning-1"  52 -37 "normal kerning-1"  48 -37 "normal kerning-1"  49 -49 "normal kerning-1"  46 -69 "normal kerning-1"  47 -34 "normal kerning-1"  45 -37 "normal kerning-1"  44 -36 "normal kerning-1"  42 -86 "normal kerning-1"  43 -16 "normal kerning-1"  40 -35 "normal kerning-1"  41 -16 "normal kerning-1"  38 -33 "normal kerning-1"  39 -31 "normal kerning-1"  36 -54 "normal kerning-1"  37 -47 "normal kerning-1"  34 -40 "normal kerning-1"  35 -44 "normal kerning-1"  32 -53 "normal kerning-1"  33 -53 "normal kerning-1"  30 -32 "normal kerning-1"  31 -39 "normal kerning-1"  28 -35 "normal kerning-1"  29 -36 "normal kerning-1"  26 -52 "normal kerning-1"  27 -34 "normal kerning-1"  24 -42 "normal kerning-1"  25 -38 "normal kerning-1"  22 -180 "normal kerning-1"  23 -44 "normal kerning-1"  20 -33 "normal kerning-1"  21 -30 "normal kerning-1"  18 -50 "normal kerning-1"  19 -26 "normal kerning-1"  16 -49 "normal kerning-1"  17 -51 "normal kerning-1"  14 -94 "normal kerning-1"  15 -24 "normal kerning-1"  12 -43 "normal kerning-1"  13 -27 "normal kerning-1"  10 -60 "normal kerning-1"  11 -42 "normal kerning-1"  8 -46 "normal kerning-1"  9 -47 "normal kerning-1"  6 -45 "normal kerning-1"  7 -39 "normal kerning-1"  5 -43 "normal kerning-1"  4 -40 "normal kerning-1" 
+EndChar
+
+StartChar: D
+Encoding: 68 68 11
+Width: 458
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+159 754 m 0
+ 197 754 237 752 272 745 c 0
+ 339 732 377 718 404 686 c 0
+ 435 649 444 621 444 557 c 0
+ 444 502 440 485 407 391 c 0
+ 364 268 368 283 353 192 c 0
+ 338 104 331 82 307 56 c 0
+ 273 18 189 -6 112 -6 c 0
+ 90 -6 70 -4 50 0 c 0
+ 30 4 28 7 28 33 c 0
+ 28 59 30 63 47 65 c 0
+ 59 66 63 66 63 74 c 0
+ 63 79 62 86 59 97 c 0
+ 56 110 55 132 55 157 c 0
+ 55 219 63 302 76 344 c 0
+ 105 441 113 483 114 558 c 0
+ 114 564 114 570 114 575 c 0
+ 114 658 103 672 51 675 c 0
+ 14 677 14 677 12 703 c 0
+ 12 705 11 708 11 710 c 0
+ 11 722 14 732 19 736 c 0
+ 38 751 90 754 150 754 c 0
+ 153 754 156 754 159 754 c 0
+176 680 m 0
+ 170 680 170 676 173 669 c 0
+ 179 655 182 602 182 550 c 0
+ 182 514 180 479 177 456 c 0
+ 172 426 159 368 148 326 c 0
+ 137 284 125 233 123 212 c 0
+ 122 205 121 198 121 190 c 0
+ 121 147 131 88 142 75 c 0
+ 145 71 151 69 159 69 c 0
+ 174 69 196 76 222 90 c 0
+ 257 108 269 126 278 175 c 0
+ 299 298 308 334 325 380 c 0
+ 352 451 379 543 379 563 c 0
+ 379 588 353 634 329 651 c 0
+ 309 665 270 676 195 678 c 1
+ 186 679 181 680 177 680 c 0
+ 176 680 l 0
+EndSplineSet
+Kerns2: 0 -10 "normal kerning-1"  56 -12 "normal kerning-1"  2 -158 "normal kerning-1"  3 -83 "normal kerning-1"  1 -200 "normal kerning-1"  54 -86 "normal kerning-1"  55 -106 "normal kerning-1"  51 -79 "normal kerning-1"  53 -83 "normal kerning-1"  50 -86 "normal kerning-1"  52 -127 "normal kerning-1"  48 -72 "normal kerning-1"  49 -94 "normal kerning-1"  46 -75 "normal kerning-1"  47 -78 "normal kerning-1"  45 -80 "normal kerning-1"  44 -62 "normal kerning-1"  42 -84 "normal kerning-1"  43 -41 "normal kerning-1"  40 -101 "normal kerning-1"  41 -10 "normal kerning-1"  38 -74 "normal kerning-1"  39 -68 "normal kerning-1"  36 -97 "normal kerning-1"  37 -38 "normal kerning-1"  34 -80 "normal kerning-1"  35 -94 "normal kerning-1"  32 -105 "normal kerning-1"  33 -54 "normal kerning-1"  30 -74 "normal kerning-1"  31 -110 "normal kerning-1"  28 -76 "normal kerning-1"  29 -86 "normal kerning-1"  26 -92 "normal kerning-1"  27 -90 "normal kerning-1"  24 -69 "normal kerning-1"  25 -103 "normal kerning-1"  22 -216 "normal kerning-1"  23 -83 "normal kerning-1"  20 -62 "normal kerning-1"  21 -106 "normal kerning-1"  18 -80 "normal kerning-1"  19 -58 "normal kerning-1"  16 -95 "normal kerning-1"  17 -57 "normal kerning-1"  14 -92 "normal kerning-1"  15 -63 "normal kerning-1"  12 -107 "normal kerning-1"  13 -77 "normal kerning-1"  10 -114 "normal kerning-1"  11 -99 "normal kerning-1"  8 -91 "normal kerning-1"  9 -57 "normal kerning-1"  6 -87 "normal kerning-1"  7 -85 "normal kerning-1"  5 -106 "normal kerning-1"  4 -149 "normal kerning-1" 
+EndChar
+
+StartChar: e
+Encoding: 101 101 12
+Width: 374
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+234 407 m 0
+ 297 406 353 360 360 290 c 0
+ 360 285 360 282 360 277 c 0
+ 360 239 344 203 322 184 c 0
+ 305 169 285 153 241 153 c 0
+ 237 153 232 154 228 154 c 0
+ 190 156 164 175 141 175 c 0
+ 139 175 138 175 136 175 c 0
+ 106 171 83 167 83 150 c 0
+ 83 116 142 68 187 68 c 0
+ 204 68 220 77 230 87 c 0
+ 240 98 269 105 306 105 c 0
+ 325 105 332 90 332 74 c 0
+ 332 56 323 36 312 36 c 0
+ 237 36 270 0 179 0 c 0
+ 178 0 179 0 178 0 c 0
+ 132 0 107 4 86 15 c 0
+ 70 23 46 43 33 59 c 0
+ 17 79 11 104 11 135 c 0
+ 11 143 11 153 12 162 c 0
+ 17 221 26 262 51 308 c 0
+ 75 352 119 382 155 397 c 0
+ 171 403 201 407 231 407 c 0
+ 232 407 233 407 234 407 c 0
+229 339 m 0
+ 176 338 99 304 90 231 c 1
+ 112 237 128 239 145 239 c 0
+ 154 239 163 238 174 238 c 0
+ 214 236 223 223 243 223 c 0
+ 251 223 262 225 276 231 c 0
+ 291 237 297 251 297 267 c 0
+ 297 283 291 301 279 315 c 0
+ 264 333 242 339 230 339 c 0
+ 229 339 l 0
+EndSplineSet
+Kerns2: 0 -128 "normal kerning-1"  56 -193 "normal kerning-1"  2 -47 "normal kerning-1"  3 -31 "normal kerning-1"  1 -91 "normal kerning-1"  54 -27 "normal kerning-1"  55 -69 "normal kerning-1"  51 -8 "normal kerning-1"  53 -186 "normal kerning-1"  50 -54 "normal kerning-1"  52 -71 "normal kerning-1"  48 -34 "normal kerning-1"  49 -99 "normal kerning-1"  46 -51 "normal kerning-1"  47 -155 "normal kerning-1"  45 -29 "normal kerning-1"  44 -29 "normal kerning-1"  42 -85 "normal kerning-1"  43 -276 "normal kerning-1"  40 -25 "normal kerning-1"  41 -65 "normal kerning-1"  38 -26 "normal kerning-1"  39 -18 "normal kerning-1"  36 -18 "normal kerning-1"  37 -9 "normal kerning-1"  34 -8 "normal kerning-1"  35 -27 "normal kerning-1"  32 -23 "normal kerning-1"  33 -7 "normal kerning-1"  30 -19 "normal kerning-1"  31 -46 "normal kerning-1"  28 -21 "normal kerning-1"  29 -33 "normal kerning-1"  26 -21 "normal kerning-1"  27 -46 "normal kerning-1"  24 -21 "normal kerning-1"  25 -42 "normal kerning-1"  22 -167 "normal kerning-1"  23 -20 "normal kerning-1"  20 -36 "normal kerning-1"  21 -113 "normal kerning-1"  18 -16 "normal kerning-1"  19 -9 "normal kerning-1"  16 -19 "normal kerning-1"  17 -7 "normal kerning-1"  14 -69 "normal kerning-1"  15 -29 "normal kerning-1"  12 -30 "normal kerning-1"  13 -36 "normal kerning-1"  10 -14 "normal kerning-1"  11 -64 "normal kerning-1"  8 -13 "normal kerning-1"  9 -16 "normal kerning-1"  6 -13 "normal kerning-1"  7 -70 "normal kerning-1"  5 -29 "normal kerning-1"  4 -60 "normal kerning-1" 
+EndChar
+
+StartChar: E
+Encoding: 69 69 13
+Width: 496
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+232 2 m 0
+ 210 9 195 12 172 12 c 0
+ 148 12 115 8 55 0 c 2
+ 11 -6 l 1
+ 11 28 l 2
+ 11 53 15 64 27 67 c 0
+ 33 68 35 77 35 91 c 0
+ 35 112 31 145 31 185 c 0
+ 31 187 31 188 31 190 c 0
+ 32 273 39 316 66 409 c 0
+ 85 475 94 512 94 544 c 0
+ 94 566 90 587 83 614 c 0
+ 72 656 68 660 41 663 c 0
+ 14 666 11 669 11 698 c 0
+ 11 720 16 732 29 739 c 0
+ 41 745 73 748 111 748 c 0
+ 161 748 222 743 261 733 c 0
+ 290 726 308 723 325 723 c 0
+ 339 723 353 726 372 730 c 0
+ 394 735 420 738 436 738 c 0
+ 439 738 442 738 444 738 c 0
+ 466 735 467 731 470 677 c 2
+ 473 619 l 1
+ 440 619 l 2
+ 413 619 408 626 406 641 c 0
+ 405 649 405 652 400 652 c 0
+ 392 652 374 644 330 644 c 0
+ 329 644 l 0
+ 257 644 227 652 164 660 c 0
+ 162 660 161 661 159 661 c 0
+ 150 661 147 657 147 649 c 0
+ 147 643 149 634 152 623 c 0
+ 158 603 161 563 161 523 c 0
+ 161 484 159 446 153 427 c 0
+ 150 418 148 411 148 406 c 0
+ 148 397 154 394 168 391 c 0
+ 173 390 178 390 184 390 c 0
+ 215 390 256 405 256 420 c 0
+ 256 429 267 433 289 433 c 2
+ 321 433 l 1
+ 321 368 l 1
+ 321 303 l 1
+ 289 303 l 2
+ 271 303 256 307 256 312 c 0
+ 256 318 227 321 197 321 c 0
+ 164 321 128 318 124 311 c 0
+ 113 294 103 234 103 186 c 0
+ 103 164 105 145 110 132 c 0
+ 126 92 134 92 189 86 c 0
+ 219 83 263 75 286 69 c 0
+ 300 65 314 64 329 64 c 0
+ 373 64 416 79 416 100 c 0
+ 416 114 423 117 449 117 c 2
+ 482 117 l 1
+ 482 72 l 2
+ 482 27 481 26 442 10 c 0
+ 410 -3 364 -10 321 -10 c 0
+ 288 -10 257 -6 232 2 c 0
+EndSplineSet
+Kerns2: 0 -27 "normal kerning-1"  56 -96 "normal kerning-1"  2 -9 "normal kerning-1"  3 -22 "normal kerning-1"  1 -51 "normal kerning-1"  54 -11 "normal kerning-1"  55 -20 "normal kerning-1"  51 -40 "normal kerning-1"  53 -43 "normal kerning-1"  50 -12 "normal kerning-1"  52 -19 "normal kerning-1"  48 -13 "normal kerning-1"  49 -55 "normal kerning-1"  46 -89 "normal kerning-1"  47 -34 "normal kerning-1"  45 -8 "normal kerning-1"  44 -36 "normal kerning-1"  42 -143 "normal kerning-1"  43 -23 "normal kerning-1"  41 -27 "normal kerning-1"  38 -6 "normal kerning-1"  39 -15 "normal kerning-1"  36 -40 "normal kerning-1"  37 -125 "normal kerning-1"  34 -20 "normal kerning-1"  35 -13 "normal kerning-1"  32 -34 "normal kerning-1"  33 -77 "normal kerning-1"  30 -8 "normal kerning-1"  31 -21 "normal kerning-1"  28 -10 "normal kerning-1"  29 -15 "normal kerning-1"  26 -24 "normal kerning-1"  27 -18 "normal kerning-1"  24 -19 "normal kerning-1"  25 -18 "normal kerning-1"  22 -228 "normal kerning-1"  23 -50 "normal kerning-1"  21 -25 "normal kerning-1"  18 -27 "normal kerning-1"  19 -15 "normal kerning-1"  16 -27 "normal kerning-1"  17 -83 "normal kerning-1"  14 -158 "normal kerning-1"  15 -12 "normal kerning-1"  12 -11 "normal kerning-1"  13 -16 "normal kerning-1"  10 -33 "normal kerning-1"  11 -33 "normal kerning-1"  8 -22 "normal kerning-1"  9 -37 "normal kerning-1"  6 -18 "normal kerning-1"  7 -35 "normal kerning-1"  5 -13 "normal kerning-1"  4 -17 "normal kerning-1" 
+EndChar
+
+StartChar: f
+Encoding: 102 102 14
+Width: 388
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+11 372 m 0
+ 15 400 44 416 91 420 c 0
+ 116 422 124 421 124 427 c 0
+ 124 428 124 431 123 433 c 0
+ 115 454 105 548 105 597 c 0
+ 105 605 105 613 106 618 c 0
+ 112 669 139 713 181 740 c 0
+ 201 753 218 756 270 756 c 0
+ 349 756 374 745 374 705 c 0
+ 374 702 374 700 374 697 c 0
+ 372 667 371 665 345 663 c 0
+ 342 663 339 663 337 663 c 0
+ 323 663 313 667 308 673 c 0
+ 302 681 288 684 274 684 c 0
+ 257 684 238 679 224 669 c 0
+ 192 646 178 615 178 569 c 0
+ 178 566 178 564 178 561 c 0
+ 180 518 197 430 205 422 c 0
+ 206 421 210 420 215 420 c 0
+ 222 420 232 421 239 423 c 0
+ 251 426 268 435 284 437 c 0
+ 287 437 290 437 293 437 c 0
+ 306 437 317 432 319 414 c 0
+ 319 412 319 410 319 408 c 0
+ 319 392 308 380 277 363 c 0
+ 257 353 229 344 222 344 c 0
+ 214 344 211 342 211 330 c 0
+ 211 324 212 314 213 301 c 0
+ 214 294 214 286 214 276 c 0
+ 214 247 211 207 205 163 c 0
+ 198 111 190 53 187 34 c 0
+ 182 0 183 0 153 0 c 0
+ 146 0 138 -3 131 -3 c 0
+ 128 -3 124 -2 122 0 c 0
+ 119 3 118 5 118 7 c 0
+ 118 10 120 16 120 31 c 0
+ 120 34 120 37 120 41 c 0
+ 120 44 120 47 120 50 c 0
+ 120 75 123 117 129 150 c 0
+ 135 188 141 243 141 275 c 0
+ 141 331 138 335 123 344 c 0
+ 115 349 104 350 94 350 c 0
+ 89 350 85 350 81 349 c 0
+ 70 347 56 341 46 340 c 0
+ 45 340 43 340 42 340 c 0
+ 27 340 11 346 11 366 c 0
+ 11 368 11 370 11 372 c 0
+EndSplineSet
+Kerns2: 0 -133 "normal kerning-1"  56 -164 "normal kerning-1"  2 -193 "normal kerning-1"  3 -129 "normal kerning-1"  1 -229 "normal kerning-1"  54 -151 "normal kerning-1"  55 -104 "normal kerning-1"  51 -149 "normal kerning-1"  53 -16 "normal kerning-1"  50 -139 "normal kerning-1"  52 -78 "normal kerning-1"  48 -124 "normal kerning-1"  49 -22 "normal kerning-1"  46 -128 "normal kerning-1"  47 -12 "normal kerning-1"  45 -141 "normal kerning-1"  44 -15 "normal kerning-1"  42 -140 "normal kerning-1"  43 -16 "normal kerning-1"  40 -176 "normal kerning-1"  41 -104 "normal kerning-1"  38 -130 "normal kerning-1"  39 -18 "normal kerning-1"  36 -173 "normal kerning-1"  37 -128 "normal kerning-1"  34 -148 "normal kerning-1"  35 -127 "normal kerning-1"  32 -182 "normal kerning-1"  33 -137 "normal kerning-1"  30 -134 "normal kerning-1"  31 -76 "normal kerning-1"  28 -133 "normal kerning-1"  29 -134 "normal kerning-1"  26 -117 "normal kerning-1"  27 -50 "normal kerning-1"  24 -78 "normal kerning-1"  25 -98 "normal kerning-1"  22 -303 "normal kerning-1"  23 -48 "normal kerning-1"  20 -161 "normal kerning-1"  21 -38 "normal kerning-1"  18 -123 "normal kerning-1"  19 -15 "normal kerning-1"  16 -166 "normal kerning-1"  17 -144 "normal kerning-1"  14 -154 "normal kerning-1"  15 -25 "normal kerning-1"  12 -182 "normal kerning-1"  13 -16 "normal kerning-1"  10 -195 "normal kerning-1"  11 -17 "normal kerning-1"  8 -167 "normal kerning-1"  9 -138 "normal kerning-1"  6 -105 "normal kerning-1"  7 -16 "normal kerning-1"  5 -182 "normal kerning-1"  4 -211 "normal kerning-1" 
+EndChar
+
+StartChar: F
+Encoding: 70 70 15
+Width: 486
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+11 33 m 1
+ 11 51 14 66 18 66 c 0
+ 22 66 26 118 26 181 c 0
+ 27 285 30 306 58 390 c 0
+ 78 451 85 482 85 513 c 0
+ 85 521 85 528 84 536 c 0
+ 78 596 52 649 27 649 c 0
+ 16 649 12 653 12 669 c 0
+ 12 673 12 678 13 684 c 0
+ 17 726 30 731 157 740 c 0
+ 178 741 196 743 211 743 c 0
+ 244 743 265 739 292 730 c 0
+ 315 722 330 719 343 719 c 0
+ 352 719 360 721 370 724 c 0
+ 386 730 416 734 436 734 c 0
+ 471 734 472 733 472 703 c 0
+ 472 673 470 670 417 654 c 0
+ 392 646 367 643 342 643 c 0
+ 309 643 276 650 236 664 c 0
+ 221 669 199 672 182 672 c 0
+ 177 672 172 672 168 671 c 0
+ 147 668 139 667 139 657 c 0
+ 139 652 142 644 145 632 c 0
+ 152 608 156 550 156 498 c 0
+ 156 461 154 427 150 412 c 0
+ 148 404 146 399 146 396 c 0
+ 146 393 147 391 151 391 c 0
+ 155 391 162 393 173 396 c 0
+ 190 401 226 405 253 405 c 2
+ 303 405 l 1
+ 303 374 l 2
+ 303 344 302 343 242 332 c 0
+ 208 326 167 320 149 320 c 0
+ 118 320 116 318 105 272 c 0
+ 98 242 94 210 94 179 c 0
+ 94 118 107 66 129 66 c 0
+ 138 66 143 55 143 33 c 2
+ 143 0 l 1
+ 77 0 l 1
+ 11 0 l 1
+ 11 33 l 1
+EndSplineSet
+Kerns2: 0 -177 "normal kerning-1"  56 -161 "normal kerning-1"  2 -343 "normal kerning-1"  3 -157 "normal kerning-1"  1 -377 "normal kerning-1"  54 -284 "normal kerning-1"  55 -97 "normal kerning-1"  51 -288 "normal kerning-1"  53 -12 "normal kerning-1"  50 -286 "normal kerning-1"  52 -71 "normal kerning-1"  48 -271 "normal kerning-1"  49 -17 "normal kerning-1"  46 -280 "normal kerning-1"  47 -10 "normal kerning-1"  45 -282 "normal kerning-1"  44 -11 "normal kerning-1"  42 -333 "normal kerning-1"  43 -14 "normal kerning-1"  40 -315 "normal kerning-1"  41 -106 "normal kerning-1"  38 -273 "normal kerning-1"  39 -13 "normal kerning-1"  36 -320 "normal kerning-1"  37 -235 "normal kerning-1"  34 -287 "normal kerning-1"  35 -152 "normal kerning-1"  32 -341 "normal kerning-1"  33 -241 "normal kerning-1"  30 -275 "normal kerning-1"  31 -71 "normal kerning-1"  28 -276 "normal kerning-1"  29 -159 "normal kerning-1"  26 -134 "normal kerning-1"  27 -43 "normal kerning-1"  24 -81 "normal kerning-1"  25 -99 "normal kerning-1"  22 -450 "normal kerning-1"  23 -43 "normal kerning-1"  20 -304 "normal kerning-1"  21 -34 "normal kerning-1"  18 -154 "normal kerning-1"  19 -10 "normal kerning-1"  16 -319 "normal kerning-1"  17 -271 "normal kerning-1"  14 -233 "normal kerning-1"  15 -21 "normal kerning-1"  12 -337 "normal kerning-1"  13 -11 "normal kerning-1"  10 -322 "normal kerning-1"  11 -12 "normal kerning-1"  8 -312 "normal kerning-1"  9 -196 "normal kerning-1"  6 -124 "normal kerning-1"  7 -12 "normal kerning-1"  5 -339 "normal kerning-1"  4 -310 "normal kerning-1" 
+EndChar
+
+StartChar: g
+Encoding: 103 103 16
+Width: 377
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+194 404 m 0
+ 195 404 l 0
+ 220 404 244 400 258 393 c 0
+ 276 383 279 383 283 393 c 0
+ 286 400 292 403 308 403 c 0
+ 312 403 316 402 321 402 c 0
+ 354 400 360 400 362 376 c 0
+ 362 373 363 370 363 368 c 0
+ 363 355 359 346 350 338 c 0
+ 333 322 322 305 313 244 c 0
+ 311 232 311 219 311 207 c 0
+ 311 177 316 146 325 106 c 1
+ 337 60 345 6 349 -14 c 0
+ 351 -25 353 -36 353 -48 c 0
+ 353 -76 346 -107 329 -137 c 0
+ 312 -168 269 -200 194 -200 c 0
+ 101 -200 21 -161 21 -113 c 0
+ 21 -104 23 -96 29 -87 c 0
+ 36 -76 44 -72 54 -72 c 0
+ 69 -72 88 -82 109 -95 c 0
+ 124 -104 167 -125 192 -125 c 0
+ 193 -125 193 -125 194 -125 c 0
+ 221 -124 244 -116 267 -86 c 0
+ 278 -72 282 -53 282 -35 c 0
+ 282 -9 272 15 261 15 c 0
+ 260 15 259 14 258 14 c 0
+ 252 12 227 6 203 2 c 0
+ 190 0 178 -1 166 -1 c 0
+ 105 -1 59 28 31 84 c 0
+ 14 118 11 134 11 187 c 0
+ 11 285 49 360 115 390 c 0
+ 135 399 165 404 194 404 c 0
+192 334 m 0
+ 191 334 l 0
+ 152 334 108 296 87 234 c 0
+ 82 218 79 202 79 186 c 0
+ 79 142 99 101 134 83 c 0
+ 150 75 162 70 174 70 c 0
+ 186 70 199 74 218 83 c 2
+ 248 97 l 1
+ 241 145 l 2
+ 239 161 237 176 237 192 c 0
+ 237 209 239 227 242 246 c 0
+ 245 266 246 279 246 288 c 0
+ 246 300 244 305 238 312 c 0
+ 225 327 209 334 192 334 c 0
+EndSplineSet
+Kerns2: 56 -191 "normal kerning-1"  2 -26 "normal kerning-1"  3 -35 "normal kerning-1"  1 -19 "normal kerning-1"  54 -16 "normal kerning-1"  55 -42 "normal kerning-1"  51 -36 "normal kerning-1"  53 -179 "normal kerning-1"  50 -19 "normal kerning-1"  52 -45 "normal kerning-1"  48 -17 "normal kerning-1"  49 -107 "normal kerning-1"  46 -16 "normal kerning-1"  47 -160 "normal kerning-1"  45 -24 "normal kerning-1"  44 -50 "normal kerning-1"  42 -22 "normal kerning-1"  43 -269 "normal kerning-1"  40 -43 "normal kerning-1"  41 -61 "normal kerning-1"  38 -22 "normal kerning-1"  39 -36 "normal kerning-1"  36 -58 "normal kerning-1"  37 -13 "normal kerning-1"  34 -35 "normal kerning-1"  35 -42 "normal kerning-1"  32 -56 "normal kerning-1"  33 -22 "normal kerning-1"  30 -17 "normal kerning-1"  31 -44 "normal kerning-1"  28 -27 "normal kerning-1"  29 -38 "normal kerning-1"  26 -44 "normal kerning-1"  27 -43 "normal kerning-1"  24 -39 "normal kerning-1"  25 -40 "normal kerning-1"  22 -50 "normal kerning-1"  23 -82 "normal kerning-1"  20 -38 "normal kerning-1"  21 -40 "normal kerning-1"  18 -39 "normal kerning-1"  19 -27 "normal kerning-1"  16 -44 "normal kerning-1"  17 -26 "normal kerning-1"  14 -14 "normal kerning-1"  15 -35 "normal kerning-1"  12 -52 "normal kerning-1"  13 -37 "normal kerning-1"  10 -46 "normal kerning-1"  11 -63 "normal kerning-1"  8 -44 "normal kerning-1"  9 -37 "normal kerning-1"  6 -36 "normal kerning-1"  7 -71 "normal kerning-1"  5 -51 "normal kerning-1"  4 -45 "normal kerning-1" 
+EndChar
+
+StartChar: G
+Encoding: 71 71 17
+Width: 544
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+133 25 m 0
+ 75 52 41 103 21 161 c 0
+ 14 182 11 212 11 247 c 0
+ 11 374 54 567 116 630 c 0
+ 173 689 222 708 315 708 c 0
+ 316 708 l 0
+ 412 708 448 691 485 631 c 0
+ 497 611 513 594 519 594 c 0
+ 526 594 530 581 530 562 c 2
+ 530 530 l 1
+ 461 530 l 1
+ 392 530 l 1
+ 395 567 l 2
+ 396 574 396 580 396 585 c 0
+ 396 603 391 610 373 623 c 0
+ 365 629 347 630 329 630 c 0
+ 315 630 300 629 293 628 c 0
+ 262 624 207 604 173 569 c 0
+ 127 521 84 338 84 249 c 0
+ 84 237 85 226 87 218 c 0
+ 99 163 116 144 139 120 c 0
+ 170 89 213 74 246 74 c 0
+ 247 74 249 74 250 74 c 0
+ 330 77 380 130 406 208 c 0
+ 415 235 420 253 420 266 c 0
+ 420 292 399 294 357 294 c 0
+ 305 294 303 293 303 271 c 0
+ 303 251 299 248 271 248 c 2
+ 239 248 l 1
+ 239 303 l 1
+ 239 357 l 1
+ 385 357 l 1
+ 530 357 l 1
+ 530 325 l 2
+ 530 318 530 313 530 308 c 0
+ 530 293 528 286 513 286 c 0
+ 500 286 491 283 491 279 c 0
+ 491 275 487 249 481 217 c 0
+ 463 115 391 29 326 12 c 0
+ 293 4 265 0 239 0 c 0
+ 198 0 165 10 133 25 c 0
+EndSplineSet
+Kerns2: 0 -18 "normal kerning-1"  56 -11 "normal kerning-1"  2 -146 "normal kerning-1"  3 -55 "normal kerning-1"  1 -189 "normal kerning-1"  54 -8 "normal kerning-1"  55 -118 "normal kerning-1"  51 -14 "normal kerning-1"  53 -118 "normal kerning-1"  50 -63 "normal kerning-1"  52 -132 "normal kerning-1"  48 -31 "normal kerning-1"  49 -107 "normal kerning-1"  46 -35 "normal kerning-1"  47 -125 "normal kerning-1"  45 -28 "normal kerning-1"  44 -48 "normal kerning-1"  42 -126 "normal kerning-1"  43 -121 "normal kerning-1"  40 -33 "normal kerning-1"  41 -13 "normal kerning-1"  38 -29 "normal kerning-1"  39 -43 "normal kerning-1"  36 -39 "normal kerning-1"  37 -11 "normal kerning-1"  34 -15 "normal kerning-1"  35 -61 "normal kerning-1"  32 -53 "normal kerning-1"  33 -15 "normal kerning-1"  30 -21 "normal kerning-1"  31 -88 "normal kerning-1"  28 -28 "normal kerning-1"  29 -63 "normal kerning-1"  26 -51 "normal kerning-1"  27 -82 "normal kerning-1"  24 -46 "normal kerning-1"  25 -77 "normal kerning-1"  22 -199 "normal kerning-1"  23 -94 "normal kerning-1"  20 -57 "normal kerning-1"  21 -174 "normal kerning-1"  18 -43 "normal kerning-1"  19 -24 "normal kerning-1"  16 -43 "normal kerning-1"  17 -18 "normal kerning-1"  14 -48 "normal kerning-1"  15 -54 "normal kerning-1"  12 -58 "normal kerning-1"  13 -64 "normal kerning-1"  10 -41 "normal kerning-1"  11 -98 "normal kerning-1"  8 -30 "normal kerning-1"  9 -35 "normal kerning-1"  6 -38 "normal kerning-1"  7 -96 "normal kerning-1"  5 -58 "normal kerning-1"  4 -116 "normal kerning-1" 
+EndChar
+
+StartChar: h
+Encoding: 104 104 18
+Width: 359
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+258 143 m 0
+ 260 176 271 218 271 254 c 0
+ 271 284 263 312 236 325 c 0
+ 225 330 214 332 203 332 c 0
+ 178 332 153 320 127 296 c 0
+ 100 271 86 241 86 182 c 0
+ 86 165 88 145 90 123 c 0
+ 94 84 100 53 100 31 c 0
+ 100 12 95 0 78 0 c 0
+ 47 0 19 34 12 175 c 0
+ 12 182 11 188 11 194 c 0
+ 11 254 26 298 36 343 c 0
+ 61 452 88 536 88 619 c 0
+ 88 645 85 671 79 698 c 1
+ 72 726 68 746 68 759 c 0
+ 68 780 77 786 98 788 c 0
+ 100 788 103 788 105 788 c 0
+ 118 788 129 785 133 780 c 0
+ 147 762 168 673 168 581 c 0
+ 168 578 168 576 168 573 c 0
+ 167 497 136 456 132 388 c 1
+ 146 391 173 400 209 400 c 0
+ 266 400 279 397 300 382 c 0
+ 331 360 345 330 345 275 c 0
+ 345 244 341 205 332 156 c 0
+ 327 129 324 111 324 97 c 0
+ 324 88 325 82 328 76 c 0
+ 333 66 345 55 345 33 c 0
+ 345 17 333 2 307 0 c 1
+ 264 5 255 34 255 76 c 0
+ 255 96 257 118 258 143 c 0
+EndSplineSet
+Kerns2: 0 -192 "normal kerning-1"  56 -189 "normal kerning-1"  2 -6 "normal kerning-1"  3 -17 "normal kerning-1"  1 -47 "normal kerning-1"  54 -11 "normal kerning-1"  55 -21 "normal kerning-1"  53 -181 "normal kerning-1"  50 -25 "normal kerning-1"  52 -20 "normal kerning-1"  48 -20 "normal kerning-1"  49 -113 "normal kerning-1"  46 -44 "normal kerning-1"  47 -168 "normal kerning-1"  45 -17 "normal kerning-1"  44 -31 "normal kerning-1"  42 -81 "normal kerning-1"  43 -249 "normal kerning-1"  40 -18 "normal kerning-1"  41 -42 "normal kerning-1"  38 -14 "normal kerning-1"  39 -13 "normal kerning-1"  36 -11 "normal kerning-1"  37 -12 "normal kerning-1"  35 -16 "normal kerning-1"  32 -12 "normal kerning-1"  33 -7 "normal kerning-1"  30 -9 "normal kerning-1"  31 -19 "normal kerning-1"  28 -11 "normal kerning-1"  29 -16 "normal kerning-1"  26 -15 "normal kerning-1"  27 -19 "normal kerning-1"  24 -15 "normal kerning-1"  25 -18 "normal kerning-1"  22 -157 "normal kerning-1"  23 -17 "normal kerning-1"  20 -19 "normal kerning-1"  21 -25 "normal kerning-1"  18 -13 "normal kerning-1"  19 -6 "normal kerning-1"  16 -10 "normal kerning-1"  17 -8 "normal kerning-1"  14 -76 "normal kerning-1"  15 -15 "normal kerning-1"  12 -16 "normal kerning-1"  13 -18 "normal kerning-1"  10 -11 "normal kerning-1"  11 -48 "normal kerning-1"  8 -8 "normal kerning-1"  9 -13 "normal kerning-1"  6 -10 "normal kerning-1"  7 -59 "normal kerning-1"  5 -14 "normal kerning-1"  4 -21 "normal kerning-1" 
+EndChar
+
+StartChar: H
+Encoding: 72 72 19
+Width: 493
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+12 734 m 1
+ 152 734 l 1
+ 152 701 l 2
+ 152 677 148 669 137 669 c 0
+ 131 669 128 664 128 655 c 0
+ 128 646 131 634 136 620 c 0
+ 141 606 143 580 143 551 c 0
+ 143 522 141 491 136 468 c 2
+ 126 421 l 1
+ 126 421 154 429 171 431 c 0
+ 177 432 184 432 192 432 c 0
+ 211 432 236 429 263 417 c 0
+ 285 407 317 401 341 401 c 0
+ 358 401 372 405 375 412 c 0
+ 386 438 395 482 395 532 c 0
+ 395 561 393 591 386 622 c 0
+ 378 659 379 669 365 669 c 0
+ 351 669 347 675 347 701 c 2
+ 347 734 l 1
+ 413 734 l 1
+ 479 734 l 1
+ 479 702 l 2
+ 479 685 476 668 471 667 c 0
+ 463 666 460 656 460 640 c 0
+ 460 627 462 609 464 590 c 0
+ 466 576 467 562 467 546 c 0
+ 467 468 447 370 419 289 c 0
+ 409 261 402 222 402 201 c 0
+ 402 155 441 65 462 65 c 0
+ 471 65 477 57 477 39 c 0
+ 477 37 477 35 477 33 c 1
+ 477 0 l 1
+ 339 0 l 1
+ 340 61 l 1
+ 340 61 365 57 361 72 c 0
+ 350 114 328 174 328 223 c 0
+ 328 234 329 245 332 255 c 2
+ 353 330 l 1
+ 333 328 l 2
+ 326 327 320 327 315 327 c 0
+ 281 327 271 338 243 351 c 0
+ 224 360 208 363 192 363 c 0
+ 165 363 141 351 119 337 c 0
+ 95 321 80 284 80 240 c 0
+ 80 231 81 222 82 212 c 0
+ 90 155 124 65 141 65 c 0
+ 149 65 154 54 154 33 c 2
+ 154 0 l 1
+ 83 0 l 1
+ 12 0 l 1
+ 12 32 l 2
+ 12 49 17 65 22 67 c 0
+ 26 68 28 74 28 84 c 0
+ 28 94 26 107 23 121 c 0
+ 16 152 11 191 11 233 c 0
+ 11 276 15 321 27 363 c 0
+ 48 437 68 504 68 559 c 0
+ 68 568 67 577 66 586 c 0
+ 60 631 52 665 28 665 c 0
+ 27 665 27 665 26 665 c 0
+ 25 665 25 665 24 665 c 0
+ 17 665 11 670 11 690 c 0
+ 11 691 11 692 11 694 c 2
+ 12 734 l 1
+EndSplineSet
+Kerns2: 0 -21 "normal kerning-1"  56 -38 "normal kerning-1"  3 -25 "normal kerning-1"  1 -46 "normal kerning-1"  54 -14 "normal kerning-1"  55 -20 "normal kerning-1"  51 -56 "normal kerning-1"  53 -20 "normal kerning-1"  50 -26 "normal kerning-1"  52 -20 "normal kerning-1"  48 -34 "normal kerning-1"  49 -27 "normal kerning-1"  46 -61 "normal kerning-1"  47 -18 "normal kerning-1"  45 -41 "normal kerning-1"  44 -22 "normal kerning-1"  42 -75 "normal kerning-1"  43 -16 "normal kerning-1"  40 -36 "normal kerning-1"  41 -26 "normal kerning-1"  38 -33 "normal kerning-1"  39 -18 "normal kerning-1"  36 -66 "normal kerning-1"  37 -44 "normal kerning-1"  34 -43 "normal kerning-1"  35 -44 "normal kerning-1"  32 -66 "normal kerning-1"  33 -53 "normal kerning-1"  30 -31 "normal kerning-1"  31 -22 "normal kerning-1"  28 -35 "normal kerning-1"  29 -23 "normal kerning-1"  26 -56 "normal kerning-1"  27 -20 "normal kerning-1"  24 -41 "normal kerning-1"  25 -23 "normal kerning-1"  22 -184 "normal kerning-1"  23 -47 "normal kerning-1"  20 -32 "normal kerning-1"  21 -16 "normal kerning-1"  18 -52 "normal kerning-1"  19 -12 "normal kerning-1"  16 -60 "normal kerning-1"  17 -58 "normal kerning-1"  14 -84 "normal kerning-1"  15 -15 "normal kerning-1"  12 -55 "normal kerning-1"  13 -11 "normal kerning-1"  10 -71 "normal kerning-1"  11 -19 "normal kerning-1"  8 -55 "normal kerning-1"  9 -53 "normal kerning-1"  6 -43 "normal kerning-1"  7 -21 "normal kerning-1"  5 -52 "normal kerning-1"  4 -21 "normal kerning-1" 
+EndChar
+
+StartChar: i
+Encoding: 105 105 20
+Width: 132
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+28 30 m 0
+ 16 49 11 72 11 97 c 0
+ 11 106 12 116 13 125 c 0
+ 18 167 16 161 32 228 c 0
+ 44 280 51 305 51 323 c 0
+ 51 333 49 342 45 351 c 0
+ 40 363 37 367 37 377 c 0
+ 37 390 38 400 68 400 c 0
+ 100 400 116 391 118 342 c 0
+ 118 336 118 331 118 326 c 0
+ 118 299 114 283 97 215 c 0
+ 85 167 78 135 78 112 c 0
+ 78 96 81 86 88 76 c 0
+ 95 66 106 54 108 38 c 0
+ 108 35 109 32 109 29 c 0
+ 109 9 99 0 76 0 c 0
+ 51 0 44 4 28 30 c 0
+50 460 m 0
+ 47 463 38 475 38 493 c 0
+ 38 525 50 541 78 541 c 0
+ 83 541 88 541 93 540 c 0
+ 107 538 117 529 117 498 c 0
+ 117 481 106 470 101 464 c 0
+ 96 458 82 454 70 454 c 0
+ 61 454 54 456 50 460 c 0
+EndSplineSet
+Kerns2: 0 -8 "normal kerning-1"  56 -69 "normal kerning-1"  2 -16 "normal kerning-1"  3 -25 "normal kerning-1"  1 -56 "normal kerning-1"  54 -8 "normal kerning-1"  55 -34 "normal kerning-1"  51 -11 "normal kerning-1"  53 -146 "normal kerning-1"  50 -21 "normal kerning-1"  52 -34 "normal kerning-1"  48 -17 "normal kerning-1"  49 -90 "normal kerning-1"  46 -20 "normal kerning-1"  47 -136 "normal kerning-1"  45 -20 "normal kerning-1"  44 -33 "normal kerning-1"  42 -33 "normal kerning-1"  43 -261 "normal kerning-1"  40 -25 "normal kerning-1"  41 -18 "normal kerning-1"  38 -18 "normal kerning-1"  39 -22 "normal kerning-1"  36 -25 "normal kerning-1"  37 -7 "normal kerning-1"  34 -12 "normal kerning-1"  35 -29 "normal kerning-1"  32 -30 "normal kerning-1"  33 -10 "normal kerning-1"  30 -13 "normal kerning-1"  31 -31 "normal kerning-1"  28 -18 "normal kerning-1"  29 -26 "normal kerning-1"  26 -27 "normal kerning-1"  27 -31 "normal kerning-1"  24 -25 "normal kerning-1"  25 -30 "normal kerning-1"  22 -160 "normal kerning-1"  23 -41 "normal kerning-1"  20 -29 "normal kerning-1"  21 -37 "normal kerning-1"  18 -23 "normal kerning-1"  19 -12 "normal kerning-1"  16 -25 "normal kerning-1"  17 -12 "normal kerning-1"  14 -23 "normal kerning-1"  15 -24 "normal kerning-1"  12 -33 "normal kerning-1"  13 -28 "normal kerning-1"  10 -23 "normal kerning-1"  11 -53 "normal kerning-1"  8 -20 "normal kerning-1"  9 -21 "normal kerning-1"  6 -20 "normal kerning-1"  7 -61 "normal kerning-1"  5 -32 "normal kerning-1"  4 -34 "normal kerning-1" 
+EndChar
+
+StartChar: I
+Encoding: 73 73 21
+Width: 575
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+296 -14 m 0
+ 255 6 228 14 200 14 c 0
+ 179 14 158 9 129 0 c 0
+ 96 -11 57 -20 41 -20 c 0
+ 14 -20 11 -17 11 13 c 0
+ 11 42 15 46 52 61 c 0
+ 75 70 117 79 146 82 c 2
+ 199 87 l 1
+ 199 87 180 140 177 184 c 0
+ 177 187 177 192 177 195 c 0
+ 177 251 204 309 230 370 c 0
+ 247 409 262 458 266 478 c 0
+ 267 485 268 493 268 502 c 0
+ 268 548 254 617 237 643 c 0
+ 225 662 199 671 170 671 c 0
+ 153 671 135 668 117 661 c 0
+ 96 653 66 646 50 646 c 0
+ 24 646 21 649 21 679 c 0
+ 21 708 25 714 57 727 c 0
+ 91 741 127 748 165 748 c 0
+ 202 748 241 742 281 728 c 0
+ 326 712 358 704 386 704 c 0
+ 413 704 437 712 463 727 c 0
+ 486 740 518 750 534 750 c 0
+ 555 750 560 750 560 733 c 0
+ 560 728 560 722 559 715 c 0
+ 556 684 551 676 514 656 c 0
+ 484 640 465 632 417 629 c 0
+ 410 629 402 628 392 628 c 0
+ 372 628 347 630 328 637 c 1
+ 328 637 348 551 348 512 c 0
+ 348 438 326 383 307 332 c 0
+ 287 277 273 248 270 221 c 0
+ 268 209 267 199 267 187 c 0
+ 267 169 270 150 281 126 c 0
+ 299 86 309 75 354 53 c 0
+ 383 39 409 32 431 32 c 0
+ 446 32 459 36 470 42 c 0
+ 494 55 505 56 525 56 c 0
+ 527 56 529 56 531 56 c 0
+ 560 56 561 53 561 23 c 0
+ 561 -22 512 -44 436 -44 c 0
+ 432 -44 428 -44 424 -44 c 0
+ 360 -42 334 -32 296 -14 c 0
+EndSplineSet
+Kerns2: 0 -145 "normal kerning-1"  56 -155 "normal kerning-1"  3 -16 "normal kerning-1"  1 -36 "normal kerning-1"  54 -7 "normal kerning-1"  55 -12 "normal kerning-1"  51 -129 "normal kerning-1"  53 -14 "normal kerning-1"  50 -24 "normal kerning-1"  52 -13 "normal kerning-1"  48 -42 "normal kerning-1"  49 -17 "normal kerning-1"  46 -152 "normal kerning-1"  47 -23 "normal kerning-1"  45 -63 "normal kerning-1"  44 -24 "normal kerning-1"  42 -222 "normal kerning-1"  43 -28 "normal kerning-1"  40 -48 "normal kerning-1"  41 -75 "normal kerning-1"  38 -40 "normal kerning-1"  39 -12 "normal kerning-1"  36 -137 "normal kerning-1"  37 -198 "normal kerning-1"  34 -57 "normal kerning-1"  35 -50 "normal kerning-1"  32 -117 "normal kerning-1"  33 -171 "normal kerning-1"  30 -34 "normal kerning-1"  31 -14 "normal kerning-1"  28 -41 "normal kerning-1"  29 -14 "normal kerning-1"  26 -76 "normal kerning-1"  27 -14 "normal kerning-1"  24 -46 "normal kerning-1"  25 -14 "normal kerning-1"  22 -265 "normal kerning-1"  23 -62 "normal kerning-1"  20 -37 "normal kerning-1"  21 -12 "normal kerning-1"  18 -72 "normal kerning-1"  19 -8 "normal kerning-1"  16 -120 "normal kerning-1"  17 -199 "normal kerning-1"  14 -191 "normal kerning-1"  15 -10 "normal kerning-1"  12 -91 "normal kerning-1"  13 -7 "normal kerning-1"  10 -135 "normal kerning-1"  11 -17 "normal kerning-1"  8 -97 "normal kerning-1"  9 -111 "normal kerning-1"  6 -47 "normal kerning-1"  7 -22 "normal kerning-1"  5 -80 "normal kerning-1"  4 -13 "normal kerning-1" 
+EndChar
+
+StartChar: j
+Encoding: 106 106 22
+Width: 288
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+46 -179 m 0
+ 28 -163 20 -146 16 -113 c 2
+ 11 -68 l 1
+ 43 -68 l 2
+ 69 -68 79 -73 92 -96 c 0
+ 102 -114 116 -125 129 -125 c 0
+ 161 -125 176 -112 176 -72 c 0
+ 176 -50 171 -19 163 23 c 0
+ 151 83 146 147 146 204 c 0
+ 146 256 151 302 161 332 c 0
+ 182 394 190 402 227 402 c 0
+ 257 402 258 400 258 371 c 0
+ 258 354 254 336 250 331 c 0
+ 236 316 211 232 211 201 c 0
+ 211 185 220 128 230 75 c 0
+ 242 11 249 -39 249 -80 c 0
+ 249 -103 247 -124 243 -143 c 0
+ 235 -181 205 -200 123 -200 c 0
+ 83 -200 65 -196 46 -179 c 0
+197 468 m 0
+ 194 475 191 492 191 509 c 0
+ 191 535 206 544 232 544 c 0
+ 264 544 270 541 273 522 c 0
+ 274 518 274 513 274 508 c 0
+ 274 497 272 485 270 477 c 0
+ 265 459 259 455 232 455 c 0
+ 212 455 200 460 197 468 c 0
+EndSplineSet
+Kerns2: 0 -7 "normal kerning-1"  56 -74 "normal kerning-1"  2 -41 "normal kerning-1"  3 -52 "normal kerning-1"  1 -35 "normal kerning-1"  54 -35 "normal kerning-1"  55 -67 "normal kerning-1"  51 -50 "normal kerning-1"  53 -156 "normal kerning-1"  50 -41 "normal kerning-1"  52 -72 "normal kerning-1"  48 -38 "normal kerning-1"  49 -109 "normal kerning-1"  46 -42 "normal kerning-1"  47 -152 "normal kerning-1"  45 -41 "normal kerning-1"  44 -60 "normal kerning-1"  42 -58 "normal kerning-1"  43 -283 "normal kerning-1"  40 -54 "normal kerning-1"  41 -15 "normal kerning-1"  38 -39 "normal kerning-1"  39 -50 "normal kerning-1"  36 -68 "normal kerning-1"  37 -26 "normal kerning-1"  34 -45 "normal kerning-1"  35 -56 "normal kerning-1"  32 -65 "normal kerning-1"  33 -35 "normal kerning-1"  30 -35 "normal kerning-1"  31 -65 "normal kerning-1"  28 -41 "normal kerning-1"  29 -54 "normal kerning-1"  26 -57 "normal kerning-1"  27 -63 "normal kerning-1"  24 -50 "normal kerning-1"  25 -60 "normal kerning-1"  22 -69 "normal kerning-1"  23 -102 "normal kerning-1"  20 -44 "normal kerning-1"  21 -74 "normal kerning-1"  18 -51 "normal kerning-1"  19 -41 "normal kerning-1"  16 -55 "normal kerning-1"  17 -40 "normal kerning-1"  14 -51 "normal kerning-1"  15 -52 "normal kerning-1"  12 -62 "normal kerning-1"  13 -55 "normal kerning-1"  10 -59 "normal kerning-1"  11 -80 "normal kerning-1"  8 -54 "normal kerning-1"  9 -45 "normal kerning-1"  6 -50 "normal kerning-1"  7 -86 "normal kerning-1"  5 -62 "normal kerning-1"  4 -69 "normal kerning-1" 
+EndChar
+
+StartChar: J
+Encoding: 74 74 23
+Width: 533
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+150 12 m 0
+ 118 28 79 64 61 129 c 0
+ 49 171 41 184 28 184 c 0
+ 15 184 11 191 11 217 c 2
+ 11 250 l 1
+ 86 250 l 1
+ 161 250 l 1
+ 161 217 l 2
+ 161 191 158 184 143 184 c 0
+ 134 184 129 184 129 178 c 0
+ 129 173 133 165 139 149 c 0
+ 147 130 161 106 172 97 c 0
+ 184 86 194 81 203 81 c 0
+ 219 81 233 100 252 140 c 0
+ 273 186 278 199 278 272 c 0
+ 278 288 277 307 277 330 c 0
+ 275 452 259 628 245 650 c 0
+ 239 659 216 666 186 666 c 0
+ 166 666 143 663 121 655 c 0
+ 94 645 60 636 45 636 c 0
+ 26 636 21 638 21 654 c 0
+ 21 659 21 664 22 671 c 0
+ 25 703 28 707 67 722 c 0
+ 96 733 146 739 198 739 c 0
+ 246 739 296 735 334 725 c 0
+ 361 718 377 714 389 714 c 0
+ 401 714 410 718 423 725 c 0
+ 439 733 467 740 485 740 c 0
+ 517 740 519 729 519 700 c 0
+ 519 662 445 641 398 641 c 0
+ 392 641 388 641 383 642 c 0
+ 363 645 348 648 338 648 c 0
+ 328 648 323 644 323 635 c 0
+ 323 632 324 628 325 623 c 0
+ 334 582 349 387 349 287 c 0
+ 349 141 308 36 262 11 c 0
+ 246 2 227 -1 210 -1 c 0
+ 206 -1 201 0 197 0 c 0
+ 176 2 159 7 150 12 c 0
+EndSplineSet
+Kerns2: 0 -143 "normal kerning-1"  56 -161 "normal kerning-1"  2 -233 "normal kerning-1"  3 -147 "normal kerning-1"  1 -271 "normal kerning-1"  54 -219 "normal kerning-1"  55 -106 "normal kerning-1"  51 -189 "normal kerning-1"  53 -16 "normal kerning-1"  50 -222 "normal kerning-1"  52 -79 "normal kerning-1"  48 -194 "normal kerning-1"  49 -21 "normal kerning-1"  46 -216 "normal kerning-1"  47 -15 "normal kerning-1"  45 -192 "normal kerning-1"  44 -18 "normal kerning-1"  42 -254 "normal kerning-1"  43 -19 "normal kerning-1"  40 -206 "normal kerning-1"  41 -111 "normal kerning-1"  38 -188 "normal kerning-1"  39 -18 "normal kerning-1"  36 -198 "normal kerning-1"  37 -184 "normal kerning-1"  34 -186 "normal kerning-1"  35 -141 "normal kerning-1"  32 -203 "normal kerning-1"  33 -185 "normal kerning-1"  30 -186 "normal kerning-1"  31 -78 "normal kerning-1"  28 -187 "normal kerning-1"  29 -150 "normal kerning-1"  26 -129 "normal kerning-1"  27 -54 "normal kerning-1"  24 -85 "normal kerning-1"  25 -104 "normal kerning-1"  22 -331 "normal kerning-1"  23 -54 "normal kerning-1"  20 -200 "normal kerning-1"  21 -42 "normal kerning-1"  18 -141 "normal kerning-1"  19 -17 "normal kerning-1"  16 -198 "normal kerning-1"  17 -196 "normal kerning-1"  14 -214 "normal kerning-1"  15 -30 "normal kerning-1"  12 -204 "normal kerning-1"  13 -18 "normal kerning-1"  10 -223 "normal kerning-1"  11 -17 "normal kerning-1"  8 -192 "normal kerning-1"  9 -166 "normal kerning-1"  6 -118 "normal kerning-1"  7 -18 "normal kerning-1"  5 -202 "normal kerning-1"  4 -237 "normal kerning-1" 
+EndChar
+
+StartChar: k
+Encoding: 107 107 24
+Width: 343
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+65 536 m 0
+ 66 549 67 561 67 573 c 0
+ 67 638 54 691 40 714 c 0
+ 35 723 32 733 32 742 c 0
+ 32 760 43 776 65 776 c 0
+ 99 776 109 764 125 702 c 0
+ 138 652 145 602 145 551 c 0
+ 145 511 140 469 133 425 c 0
+ 125 377 117 333 98 276 c 1
+ 98 276 101 274 107 274 c 0
+ 115 274 129 277 150 292 c 0
+ 236 354 233 398 283 400 c 0
+ 286 400 289 400 292 400 c 0
+ 313 400 329 397 329 379 c 0
+ 329 374 327 369 325 362 c 0
+ 309 314 216 239 191 220 c 0
+ 146 187 121 179 121 179 c 1
+ 121 179 158 130 206 104 c 0
+ 287 61 326 82 326 31 c 0
+ 326 10 323 0 287 0 c 0
+ 201 0 166 40 98 97 c 1
+ 98 97 106 52 106 37 c 0
+ 106 14 95 0 76 0 c 0
+ 40 0 40 6 34 23 c 0
+ 17 74 11 118 11 159 c 0
+ 11 264 52 356 65 536 c 0
+EndSplineSet
+Kerns2: 0 -195 "normal kerning-1"  56 -218 "normal kerning-1"  2 -8 "normal kerning-1"  3 -25 "normal kerning-1"  1 -50 "normal kerning-1"  54 -10 "normal kerning-1"  55 -24 "normal kerning-1"  51 -36 "normal kerning-1"  53 -209 "normal kerning-1"  50 -12 "normal kerning-1"  52 -23 "normal kerning-1"  48 -13 "normal kerning-1"  49 -146 "normal kerning-1"  46 -14 "normal kerning-1"  47 -197 "normal kerning-1"  45 -24 "normal kerning-1"  44 -75 "normal kerning-1"  42 -21 "normal kerning-1"  43 -279 "normal kerning-1"  40 -41 "normal kerning-1"  41 -86 "normal kerning-1"  38 -20 "normal kerning-1"  39 -41 "normal kerning-1"  36 -70 "normal kerning-1"  37 -19 "normal kerning-1"  34 -33 "normal kerning-1"  35 -50 "normal kerning-1"  32 -81 "normal kerning-1"  33 -31 "normal kerning-1"  30 -15 "normal kerning-1"  31 -27 "normal kerning-1"  28 -24 "normal kerning-1"  29 -25 "normal kerning-1"  26 -65 "normal kerning-1"  27 -26 "normal kerning-1"  24 -52 "normal kerning-1"  25 -25 "normal kerning-1"  22 -203 "normal kerning-1"  23 -178 "normal kerning-1"  20 -36 "normal kerning-1"  21 -26 "normal kerning-1"  18 -55 "normal kerning-1"  19 -23 "normal kerning-1"  16 -57 "normal kerning-1"  17 -39 "normal kerning-1"  14 -23 "normal kerning-1"  15 -25 "normal kerning-1"  12 -70 "normal kerning-1"  13 -26 "normal kerning-1"  10 -74 "normal kerning-1"  11 -63 "normal kerning-1"  8 -58 "normal kerning-1"  9 -55 "normal kerning-1"  6 -46 "normal kerning-1"  7 -80 "normal kerning-1"  5 -67 "normal kerning-1"  4 -25 "normal kerning-1" 
+EndChar
+
+StartChar: K
+Encoding: 75 75 25
+Width: 594
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+11 33 m 2
+ 11 51 16 66 21 66 c 0
+ 27 66 30 100 30 149 c 0
+ 30 220 44 274 68 350 c 0
+ 82 394 127 508 127 585 c 0
+ 127 609 122 629 111 643 c 0
+ 99 657 78 665 68 665 c 0
+ 53 665 49 671 49 697 c 0
+ 49 728 51 729 92 735 c 0
+ 104 737 120 738 135 738 c 0
+ 150 738 165 737 177 735 c 0
+ 218 729 220 728 220 697 c 0
+ 220 679 216 665 212 665 c 0
+ 208 665 211 626 208 581 c 0
+ 205 536 190 490 186 478 c 2
+ 179 456 l 1
+ 210 474 l 2
+ 246 495 287 540 351 632 c 0
+ 405 710 447 734 524 734 c 2
+ 576 735 l 1
+ 579 700 l 2
+ 580 693 580 687 580 682 c 0
+ 580 666 575 665 552 665 c 0
+ 506 665 461 639 432 596 c 0
+ 372 509 320 446 285 421 c 2
+ 248 395 l 1
+ 278 374 l 2
+ 316 347 340 293 348 213 c 0
+ 352 173 361 142 373 127 c 0
+ 392 103 471 75 518 75 c 0
+ 540 75 543 71 543 42 c 2
+ 543 9 l 1
+ 488 9 l 2
+ 411 9 341 31 312 65 c 0
+ 294 86 287 109 282 157 c 0
+ 273 243 247 294 198 323 c 0
+ 180 334 163 340 156 340 c 0
+ 154 340 153 340 152 339 c 0
+ 140 326 99 211 99 154 c 0
+ 99 98 124 66 146 66 c 0
+ 159 66 163 58 163 33 c 2
+ 163 0 l 1
+ 87 0 l 1
+ 11 0 l 1
+ 11 33 l 2
+EndSplineSet
+Kerns2: 0 -159 "normal kerning-1"  56 -147 "normal kerning-1"  2 -43 "normal kerning-1"  3 -85 "normal kerning-1"  1 -82 "normal kerning-1"  54 -71 "normal kerning-1"  55 -68 "normal kerning-1"  51 -144 "normal kerning-1"  53 -15 "normal kerning-1"  50 -81 "normal kerning-1"  52 -57 "normal kerning-1"  48 -95 "normal kerning-1"  49 -21 "normal kerning-1"  46 -177 "normal kerning-1"  47 -11 "normal kerning-1"  45 -104 "normal kerning-1"  44 -14 "normal kerning-1"  42 -234 "normal kerning-1"  43 -14 "normal kerning-1"  40 -94 "normal kerning-1"  41 -87 "normal kerning-1"  38 -92 "normal kerning-1"  39 -17 "normal kerning-1"  36 -148 "normal kerning-1"  37 -193 "normal kerning-1"  34 -106 "normal kerning-1"  35 -95 "normal kerning-1"  32 -140 "normal kerning-1"  33 -174 "normal kerning-1"  30 -88 "normal kerning-1"  31 -58 "normal kerning-1"  28 -94 "normal kerning-1"  29 -83 "normal kerning-1"  26 -100 "normal kerning-1"  27 -41 "normal kerning-1"  24 -69 "normal kerning-1"  25 -68 "normal kerning-1"  22 -294 "normal kerning-1"  23 -46 "normal kerning-1"  20 -94 "normal kerning-1"  21 -33 "normal kerning-1"  18 -106 "normal kerning-1"  19 -14 "normal kerning-1"  16 -137 "normal kerning-1"  17 -195 "normal kerning-1"  14 -205 "normal kerning-1"  15 -22 "normal kerning-1"  12 -119 "normal kerning-1"  13 -14 "normal kerning-1"  10 -161 "normal kerning-1"  11 -17 "normal kerning-1"  8 -126 "normal kerning-1"  9 -132 "normal kerning-1"  6 -86 "normal kerning-1"  7 -15 "normal kerning-1"  5 -115 "normal kerning-1"  4 -96 "normal kerning-1" 
+EndChar
+
+StartChar: l
+Encoding: 108 108 26
+Width: 197
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+57 15 m 0
+ 27 48 11 93 11 168 c 0
+ 11 220 20 261 30 296 c 1
+ 44 368 99 436 106 526 c 1
+ 107 533 107 540 107 547 c 0
+ 107 593 93 649 79 671 c 0
+ 73 681 63 700 63 718 c 0
+ 63 751 72 767 105 768 c 0
+ 106 768 l 0
+ 131 768 137 752 151 722 c 0
+ 172 676 183 632 183 562 c 0
+ 183 551 183 539 182 526 c 0
+ 178 438 117 355 99 285 c 0
+ 90 250 84 220 84 191 c 0
+ 84 155 93 122 115 83 c 0
+ 126 64 132 54 132 37 c 0
+ 132 24 130 2 104 0 c 0
+ 100 0 96 0 93 0 c 0
+ 76 0 67 4 57 15 c 0
+EndSplineSet
+Kerns2: 0 -9 "normal kerning-1"  56 -13 "normal kerning-1"  2 -60 "normal kerning-1"  3 -74 "normal kerning-1"  1 -98 "normal kerning-1"  54 -73 "normal kerning-1"  55 -78 "normal kerning-1"  51 -82 "normal kerning-1"  53 -59 "normal kerning-1"  50 -74 "normal kerning-1"  52 -87 "normal kerning-1"  48 -69 "normal kerning-1"  49 -71 "normal kerning-1"  46 -80 "normal kerning-1"  47 -50 "normal kerning-1"  45 -76 "normal kerning-1"  44 -48 "normal kerning-1"  42 -88 "normal kerning-1"  43 -26 "normal kerning-1"  40 -87 "normal kerning-1"  41 -10 "normal kerning-1"  38 -70 "normal kerning-1"  39 -53 "normal kerning-1"  36 -95 "normal kerning-1"  37 -40 "normal kerning-1"  34 -77 "normal kerning-1"  35 -84 "normal kerning-1"  32 -99 "normal kerning-1"  33 -56 "normal kerning-1"  30 -70 "normal kerning-1"  31 -84 "normal kerning-1"  28 -72 "normal kerning-1"  29 -75 "normal kerning-1"  26 -85 "normal kerning-1"  27 -68 "normal kerning-1"  24 -63 "normal kerning-1"  25 -83 "normal kerning-1"  22 -207 "normal kerning-1"  23 -61 "normal kerning-1"  20 -58 "normal kerning-1"  21 -63 "normal kerning-1"  18 -76 "normal kerning-1"  19 -45 "normal kerning-1"  16 -91 "normal kerning-1"  17 -58 "normal kerning-1"  14 -96 "normal kerning-1"  15 -45 "normal kerning-1"  12 -95 "normal kerning-1"  13 -53 "normal kerning-1"  10 -111 "normal kerning-1"  11 -66 "normal kerning-1"  8 -88 "normal kerning-1"  9 -57 "normal kerning-1"  6 -79 "normal kerning-1"  7 -57 "normal kerning-1"  5 -94 "normal kerning-1"  4 -111 "normal kerning-1" 
+EndChar
+
+StartChar: L
+Encoding: 76 76 27
+Width: 537
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+519 50 m 2
+ 512 28 l 2
+ 508 16 502 3 498 -2 c 0
+ 493 -8 477 -11 458 -11 c 0
+ 436 -11 411 -7 394 0 c 0
+ 376 7 357 11 338 11 c 0
+ 319 11 299 7 282 0 c 0
+ 256 -11 208 -16 160 -16 c 0
+ 123 -16 87 -13 61 -6 c 2
+ 11 7 l 1
+ 11 35 l 2
+ 11 59 14 64 26 66 c 0
+ 35 67 38 69 38 77 c 0
+ 38 82 37 90 35 102 c 0
+ 32 116 30 131 30 147 c 0
+ 30 203 48 278 90 410 c 0
+ 103 450 107 490 107 525 c 0
+ 107 567 101 603 96 621 c 0
+ 90 646 87 649 58 656 c 0
+ 31 662 25 665 25 682 c 0
+ 25 685 25 688 25 692 c 1
+ 25 720 l 1
+ 75 726 l 2
+ 102 729 143 732 165 733 c 2
+ 204 734 l 1
+ 204 706 l 2
+ 204 682 201 678 186 674 c 0
+ 175 671 169 672 169 651 c 0
+ 169 638 171 617 176 581 c 0
+ 178 567 180 553 180 539 c 0
+ 180 479 162 409 125 274 c 0
+ 111 224 104 183 104 149 c 0
+ 104 111 113 81 134 58 c 0
+ 140 52 150 49 164 49 c 0
+ 184 49 214 55 252 68 c 0
+ 278 77 307 81 335 81 c 0
+ 358 81 381 78 403 72 c 2
+ 439 63 l 1
+ 439 92 l 2
+ 439 120 440 121 463 123 c 0
+ 465 123 466 123 468 123 c 0
+ 480 123 490 120 495 118 c 0
+ 510 111 523 97 523 74 c 0
+ 523 67 522 59 519 50 c 2
+EndSplineSet
+Kerns2: 0 -356 "normal kerning-1"  56 -277 "normal kerning-1"  2 -12 "normal kerning-1"  3 -20 "normal kerning-1"  1 -49 "normal kerning-1"  54 -13 "normal kerning-1"  55 -20 "normal kerning-1"  51 -48 "normal kerning-1"  53 -256 "normal kerning-1"  50 -14 "normal kerning-1"  52 -19 "normal kerning-1"  48 -17 "normal kerning-1"  49 -243 "normal kerning-1"  46 -93 "normal kerning-1"  47 -333 "normal kerning-1"  45 -14 "normal kerning-1"  44 -119 "normal kerning-1"  42 -153 "normal kerning-1"  43 -373 "normal kerning-1"  40 -8 "normal kerning-1"  41 -36 "normal kerning-1"  38 -11 "normal kerning-1"  39 -21 "normal kerning-1"  36 -49 "normal kerning-1"  37 -160 "normal kerning-1"  34 -26 "normal kerning-1"  35 -16 "normal kerning-1"  32 -42 "normal kerning-1"  33 -87 "normal kerning-1"  30 -13 "normal kerning-1"  31 -22 "normal kerning-1"  28 -15 "normal kerning-1"  29 -16 "normal kerning-1"  26 -29 "normal kerning-1"  27 -20 "normal kerning-1"  24 -24 "normal kerning-1"  25 -17 "normal kerning-1"  22 -232 "normal kerning-1"  23 -146 "normal kerning-1"  20 -9 "normal kerning-1"  21 -32 "normal kerning-1"  18 -31 "normal kerning-1"  19 -20 "normal kerning-1"  16 -37 "normal kerning-1"  17 -111 "normal kerning-1"  14 -208 "normal kerning-1"  15 -15 "normal kerning-1"  12 -19 "normal kerning-1"  13 -20 "normal kerning-1"  10 -41 "normal kerning-1"  11 -53 "normal kerning-1"  8 -31 "normal kerning-1"  9 -44 "normal kerning-1"  6 -20 "normal kerning-1"  7 -73 "normal kerning-1"  5 -21 "normal kerning-1"  4 -18 "normal kerning-1" 
+EndChar
+
+StartChar: m
+Encoding: 109 109 28
+Width: 588
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+237 103 m 0
+ 237 114 236 125 236 136 c 0
+ 236 163 237 188 241 201 c 0
+ 244 211 245 223 245 234 c 0
+ 245 265 236 298 225 314 c 0
+ 219 322 209 327 196 327 c 0
+ 183 327 167 322 148 313 c 0
+ 121 300 116 294 100 246 c 0
+ 89 215 86 197 86 174 c 0
+ 86 164 87 154 88 141 c 0
+ 91 112 99 66 100 47 c 0
+ 100 43 100 40 100 37 c 0
+ 100 11 95 2 70 0 c 0
+ 68 0 68 0 66 0 c 0
+ 36 0 27 26 16 92 c 0
+ 13 110 11 125 11 142 c 0
+ 11 160 13 180 17 205 c 0
+ 22 240 26 300 26 338 c 0
+ 26 353 20 370 20 385 c 0
+ 20 393 22 399 27 405 c 0
+ 30 408 33 409 37 409 c 0
+ 43 409 49 407 55 407 c 0
+ 59 407 62 408 65 408 c 0
+ 79 408 86 404 91 394 c 0
+ 95 386 97 383 103 383 c 0
+ 108 383 115 386 129 391 c 0
+ 145 398 164 401 188 401 c 0
+ 195 401 202 400 210 400 c 0
+ 256 397 262 394 283 370 c 0
+ 291 361 296 347 307 344 c 0
+ 309 344 310 343 312 343 c 0
+ 327 343 341 359 356 365 c 0
+ 389 379 427 386 461 386 c 0
+ 505 386 543 375 557 353 c 0
+ 563 343 570 318 572 298 c 0
+ 573 290 574 285 574 278 c 0
+ 574 254 565 229 534 146 c 0
+ 529 134 528 122 528 110 c 0
+ 528 87 537 68 555 65 c 0
+ 568 63 570 58 570 33 c 0
+ 570 28 l 0
+ 570 3 569 2 539 0 c 0
+ 535 0 530 0 526 0 c 0
+ 495 0 478 10 464 38 c 0
+ 458 51 454 71 454 95 c 0
+ 454 136 464 186 480 222 c 0
+ 493 250 499 269 499 282 c 0
+ 499 291 495 297 489 302 c 0
+ 481 308 472 312 459 312 c 0
+ 444 312 425 307 402 299 c 0
+ 351 281 339 256 317 183 c 0
+ 310 158 306 137 306 120 c 0
+ 306 94 314 78 329 74 c 0
+ 341 71 350 67 350 45 c 0
+ 350 43 350 41 350 39 c 0
+ 348 7 334 0 307 0 c 0
+ 306 0 l 0
+ 243 0 238 76 237 103 c 0
+EndSplineSet
+Kerns2: 0 -516 "normal kerning-1"  56 -174 "normal kerning-1"  2 -8 "normal kerning-1"  3 -15 "normal kerning-1"  1 -49 "normal kerning-1"  54 -13 "normal kerning-1"  55 -19 "normal kerning-1"  51 -9 "normal kerning-1"  53 -168 "normal kerning-1"  50 -30 "normal kerning-1"  52 -18 "normal kerning-1"  48 -26 "normal kerning-1"  49 -96 "normal kerning-1"  46 -48 "normal kerning-1"  47 -152 "normal kerning-1"  45 -25 "normal kerning-1"  44 -29 "normal kerning-1"  42 -83 "normal kerning-1"  43 -257 "normal kerning-1"  40 -21 "normal kerning-1"  41 -45 "normal kerning-1"  38 -21 "normal kerning-1"  39 -15 "normal kerning-1"  36 -19 "normal kerning-1"  37 -10 "normal kerning-1"  34 -9 "normal kerning-1"  35 -21 "normal kerning-1"  32 -23 "normal kerning-1"  33 -8 "normal kerning-1"  30 -16 "normal kerning-1"  31 -18 "normal kerning-1"  28 -18 "normal kerning-1"  29 -16 "normal kerning-1"  26 -19 "normal kerning-1"  27 -18 "normal kerning-1"  24 -18 "normal kerning-1"  25 -17 "normal kerning-1"  22 -155 "normal kerning-1"  23 -24 "normal kerning-1"  20 -25 "normal kerning-1"  21 -19 "normal kerning-1"  18 -16 "normal kerning-1"  19 -6 "normal kerning-1"  16 -19 "normal kerning-1"  17 -8 "normal kerning-1"  14 -63 "normal kerning-1"  15 -14 "normal kerning-1"  12 -27 "normal kerning-1"  13 -17 "normal kerning-1"  10 -15 "normal kerning-1"  11 -42 "normal kerning-1"  8 -14 "normal kerning-1"  9 -16 "normal kerning-1"  6 -12 "normal kerning-1"  7 -52 "normal kerning-1"  5 -26 "normal kerning-1"  4 -19 "normal kerning-1" 
+EndChar
+
+StartChar: M
+Encoding: 77 77 29
+Width: 726
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+577 31 m 2
+ 577 48 581 62 586 62 c 0
+ 592 62 592 70 586 85 c 0
+ 581 98 578 119 578 143 c 0
+ 578 181 585 228 595 271 c 0
+ 601 295 603 320 603 343 c 0
+ 603 391 593 434 579 465 c 1
+ 560 524 l 1
+ 558 461 l 2
+ 556 414 533 354 480 287 c 0
+ 423 215 402 146 402 104 c 0
+ 402 78 411 62 422 62 c 0
+ 428 62 432 48 432 31 c 2
+ 432 0 l 1
+ 355 0 l 1
+ 279 0 l 1
+ 280 32 l 2
+ 280 37 279 42 279 46 c 0
+ 279 55 281 61 292 61 c 0
+ 300 61 303 71 303 84 c 0
+ 303 101 297 125 288 141 c 0
+ 258 193 238 264 236 312 c 0
+ 233 380 217 431 193 481 c 0
+ 180 507 169 519 169 519 c 1
+ 153 467 147 410 134 363 c 0
+ 102 250 90 202 90 159 c 0
+ 90 141 92 125 95 105 c 0
+ 100 77 107 62 115 62 c 0
+ 124 62 128 52 128 31 c 2
+ 128 0 l 1
+ 70 0 l 1
+ 11 0 l 1
+ 11 31 l 2
+ 11 48 14 62 18 62 c 0
+ 22 62 25 107 26 162 c 0
+ 27 260 31 284 79 450 c 0
+ 86 475 94 525 95 560 c 0
+ 95 569 95 576 95 583 c 0
+ 95 616 92 627 81 635 c 0
+ 72 642 65 659 65 675 c 2
+ 65 703 l 1
+ 143 703 l 1
+ 221 703 l 1
+ 216 661 l 2
+ 215 651 214 643 214 636 c 0
+ 214 616 220 600 244 558 c 0
+ 292 474 309 363 311 296 c 0
+ 313 235 340 188 349 162 c 1
+ 353 195 360 215 373 244 c 0
+ 383 267 404 307 428 342 c 0
+ 482 419 486 453 492 530 c 0
+ 493 538 493 546 493 554 c 0
+ 493 604 480 637 467 637 c 0
+ 463 637 459 652 459 669 c 2
+ 459 700 l 1
+ 527 700 l 1
+ 594 700 l 1
+ 594 669 l 2
+ 594 652 591 637 587 637 c 0
+ 587 636 l 0
+ 587 631 612 592 631 542 c 0
+ 655 479 675 383 675 316 c 0
+ 675 296 673 280 669 267 c 0
+ 654 218 647 190 647 167 c 0
+ 647 148 652 132 662 110 c 0
+ 675 82 690 62 698 62 c 0
+ 708 62 712 53 712 31 c 2
+ 712 0 l 1
+ 645 0 l 1
+ 577 0 l 1
+ 577 31 l 2
+EndSplineSet
+Kerns2: 0 -76 "normal kerning-1"  56 -154 "normal kerning-1"  3 -19 "normal kerning-1"  1 -45 "normal kerning-1"  54 -12 "normal kerning-1"  55 -15 "normal kerning-1"  51 -48 "normal kerning-1"  53 -168 "normal kerning-1"  50 -26 "normal kerning-1"  52 -15 "normal kerning-1"  48 -34 "normal kerning-1"  49 -133 "normal kerning-1"  46 -66 "normal kerning-1"  47 -166 "normal kerning-1"  45 -39 "normal kerning-1"  44 -78 "normal kerning-1"  42 -92 "normal kerning-1"  43 -214 "normal kerning-1"  40 -35 "normal kerning-1"  41 -61 "normal kerning-1"  38 -32 "normal kerning-1"  39 -35 "normal kerning-1"  36 -56 "normal kerning-1"  37 -59 "normal kerning-1"  34 -38 "normal kerning-1"  35 -40 "normal kerning-1"  32 -57 "normal kerning-1"  33 -57 "normal kerning-1"  30 -29 "normal kerning-1"  31 -18 "normal kerning-1"  28 -33 "normal kerning-1"  29 -18 "normal kerning-1"  26 -54 "normal kerning-1"  27 -19 "normal kerning-1"  24 -45 "normal kerning-1"  25 -18 "normal kerning-1"  22 -184 "normal kerning-1"  23 -104 "normal kerning-1"  20 -33 "normal kerning-1"  21 -16 "normal kerning-1"  18 -50 "normal kerning-1"  19 -21 "normal kerning-1"  16 -52 "normal kerning-1"  17 -61 "normal kerning-1"  14 -99 "normal kerning-1"  15 -18 "normal kerning-1"  12 -49 "normal kerning-1"  13 -19 "normal kerning-1"  10 -58 "normal kerning-1"  11 -55 "normal kerning-1"  8 -48 "normal kerning-1"  9 -57 "normal kerning-1"  6 -40 "normal kerning-1"  7 -71 "normal kerning-1"  5 -48 "normal kerning-1"  4 -16 "normal kerning-1" 
+EndChar
+
+StartChar: n
+Encoding: 110 110 30
+Width: 355
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+28 27 m 0
+ 19 50 11 101 11 155 c 0
+ 11 184 13 214 19 240 c 0
+ 27 276 32 292 32 303 c 0
+ 32 313 28 319 22 330 c 0
+ 16 342 12 359 12 371 c 0
+ 12 393 17 398 42 400 c 0
+ 46 400 49 400 52 400 c 0
+ 67 400 74 396 83 384 c 0
+ 90 374 95 370 102 370 c 0
+ 106 370 112 371 120 375 c 0
+ 145 385 181 391 214 391 c 0
+ 231 391 248 389 261 386 c 0
+ 279 381 297 367 311 354 c 0
+ 334 332 341 313 341 280 c 0
+ 341 249 331 228 308 181 c 0
+ 292 150 285 126 285 107 c 0
+ 285 91 291 78 302 66 c 0
+ 308 59 312 47 312 34 c 0
+ 312 32 311 30 311 28 c 0
+ 309 6 306 2 285 0 c 0
+ 281 0 277 -1 274 -1 c 0
+ 246 -1 240 14 227 55 c 0
+ 221 75 217 94 217 114 c 0
+ 217 149 228 184 250 226 c 0
+ 264 252 272 267 272 278 c 0
+ 272 285 268 292 261 299 c 0
+ 248 311 226 316 202 316 c 0
+ 169 316 133 305 115 281 c 0
+ 93 251 82 198 82 148 c 0
+ 82 115 86 82 95 58 c 0
+ 97 51 99 43 99 36 c 0
+ 99 17 90 0 69 0 c 0
+ 44 0 35 10 28 27 c 0
+EndSplineSet
+Kerns2: 56 -185 "normal kerning-1"  2 -37 "normal kerning-1"  3 -30 "normal kerning-1"  1 -74 "normal kerning-1"  54 -28 "normal kerning-1"  55 -57 "normal kerning-1"  51 -9 "normal kerning-1"  53 -178 "normal kerning-1"  50 -58 "normal kerning-1"  52 -58 "normal kerning-1"  48 -37 "normal kerning-1"  49 -99 "normal kerning-1"  46 -55 "normal kerning-1"  47 -155 "normal kerning-1"  45 -31 "normal kerning-1"  44 -30 "normal kerning-1"  42 -93 "normal kerning-1"  43 -265 "normal kerning-1"  40 -27 "normal kerning-1"  41 -63 "normal kerning-1"  38 -28 "normal kerning-1"  39 -19 "normal kerning-1"  36 -20 "normal kerning-1"  37 -10 "normal kerning-1"  34 -10 "normal kerning-1"  35 -28 "normal kerning-1"  32 -24 "normal kerning-1"  33 -8 "normal kerning-1"  30 -21 "normal kerning-1"  31 -42 "normal kerning-1"  28 -22 "normal kerning-1"  29 -32 "normal kerning-1"  26 -22 "normal kerning-1"  27 -42 "normal kerning-1"  24 -22 "normal kerning-1"  25 -39 "normal kerning-1"  22 -163 "normal kerning-1"  23 -24 "normal kerning-1"  20 -37 "normal kerning-1"  21 -71 "normal kerning-1"  18 -18 "normal kerning-1"  19 -10 "normal kerning-1"  16 -21 "normal kerning-1"  17 -8 "normal kerning-1"  14 -81 "normal kerning-1"  15 -29 "normal kerning-1"  12 -32 "normal kerning-1"  13 -34 "normal kerning-1"  10 -16 "normal kerning-1"  11 -60 "normal kerning-1"  8 -15 "normal kerning-1"  9 -17 "normal kerning-1"  6 -15 "normal kerning-1"  7 -66 "normal kerning-1"  5 -31 "normal kerning-1"  4 -52 "normal kerning-1" 
+EndChar
+
+StartChar: N
+Encoding: 78 78 31
+Width: 637
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+343 0 m 0
+ 341 4 340 18 341 31 c 0
+ 341 33 341 34 341 36 c 0
+ 341 48 338 60 332 67 c 0
+ 314 87 293 137 285 167 c 0
+ 281 182 268 245 264 319 c 0
+ 257 461 255 507 222 567 c 0
+ 216 577 199 600 199 600 c 1
+ 199 600 201 570 201 545 c 0
+ 201 538 201 531 201 526 c 0
+ 196 448 187 415 136 291 c 0
+ 102 208 96 191 96 155 c 0
+ 96 126 104 106 110 93 c 0
+ 120 73 132 63 146 61 c 0
+ 161 59 163 55 163 31 c 2
+ 163 3 l 1
+ 87 3 l 1
+ 11 3 l 1
+ 11 31 l 2
+ 11 55 13 59 27 61 c 0
+ 40 63 43 66 39 78 c 0
+ 36 86 32 116 30 144 c 0
+ 30 151 29 158 29 165 c 0
+ 29 214 42 260 70 322 c 0
+ 114 417 135 492 135 550 c 0
+ 135 615 121 660 101 663 c 0
+ 93 664 81 668 73 671 c 0
+ 65 674 54 679 47 681 c 0
+ 39 684 35 692 35 709 c 0
+ 35 740 49 747 108 747 c 0
+ 120 747 135 748 150 748 c 0
+ 183 748 215 746 218 729 c 0
+ 219 726 219 723 219 720 c 0
+ 219 712 217 704 217 697 c 0
+ 217 690 219 685 224 681 c 0
+ 250 661 289 614 307 557 c 0
+ 324 502 318 477 328 339 c 0
+ 337 222 342 186 365 153 c 2
+ 383 127 l 1
+ 383 127 388 161 389 184 c 0
+ 393 248 397 306 430 377 c 0
+ 442 402 480 471 489 510 c 0
+ 495 537 498 576 498 611 c 0
+ 498 636 497 658 493 671 c 0
+ 489 684 482 689 464 692 c 0
+ 441 695 440 697 440 723 c 2
+ 440 751 l 1
+ 521 757 l 2
+ 548 759 574 760 592 760 c 0
+ 603 760 611 760 613 759 c 0
+ 620 756 623 750 623 738 c 0
+ 623 735 622 732 622 728 c 0
+ 620 703 620 702 591 700 c 2
+ 561 698 l 1
+ 561 610 l 1
+ 561 603 562 597 562 591 c 0
+ 562 505 542 425 503 355 c 0
+ 473 300 453 217 453 147 c 0
+ 453 138 453 129 454 120 c 2
+ 459 63 l 1
+ 488 61 l 2
+ 516 59 516 58 516 31 c 2
+ 516 3 l 1
+ 482 -1 l 2
+ 457 -4 425 -6 399 -6 c 0
+ 369 -6 346 -4 343 0 c 0
+EndSplineSet
+Kerns2: 0 -73 "normal kerning-1"  56 -118 "normal kerning-1"  2 -123 "normal kerning-1"  3 -125 "normal kerning-1"  1 -158 "normal kerning-1"  54 -148 "normal kerning-1"  55 -125 "normal kerning-1"  51 -153 "normal kerning-1"  53 -18 "normal kerning-1"  50 -153 "normal kerning-1"  52 -96 "normal kerning-1"  48 -142 "normal kerning-1"  49 -19 "normal kerning-1"  46 -160 "normal kerning-1"  47 -49 "normal kerning-1"  45 -147 "normal kerning-1"  44 -47 "normal kerning-1"  42 -176 "normal kerning-1"  43 -53 "normal kerning-1"  40 -160 "normal kerning-1"  41 -92 "normal kerning-1"  38 -141 "normal kerning-1"  39 -26 "normal kerning-1"  36 -166 "normal kerning-1"  37 -120 "normal kerning-1"  34 -146 "normal kerning-1"  35 -125 "normal kerning-1"  32 -171 "normal kerning-1"  33 -129 "normal kerning-1"  30 -139 "normal kerning-1"  31 -91 "normal kerning-1"  28 -141 "normal kerning-1"  29 -137 "normal kerning-1"  26 -118 "normal kerning-1"  27 -84 "normal kerning-1"  24 -75 "normal kerning-1"  25 -114 "normal kerning-1"  22 -275 "normal kerning-1"  23 -106 "normal kerning-1"  20 -133 "normal kerning-1"  21 -84 "normal kerning-1"  18 -118 "normal kerning-1"  19 -36 "normal kerning-1"  16 -164 "normal kerning-1"  17 -134 "normal kerning-1"  14 -167 "normal kerning-1"  15 -58 "normal kerning-1"  12 -169 "normal kerning-1"  13 -39 "normal kerning-1"  10 -187 "normal kerning-1"  11 -32 "normal kerning-1"  8 -158 "normal kerning-1"  9 -125 "normal kerning-1"  6 -98 "normal kerning-1"  7 -50 "normal kerning-1"  5 -167 "normal kerning-1"  4 -183 "normal kerning-1" 
+EndChar
+
+StartChar: o
+Encoding: 111 111 32
+Width: 374
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+204 400 m 0
+ 251 400 289 376 321 337 c 0
+ 343 310 359 259 359 209 c 0
+ 359 208 l 0
+ 359 150 334 79 293 44 c 0
+ 246 4 218 0 159 0 c 0
+ 92 0 65 33 42 70 c 0
+ 27 94 11 146 11 188 c 0
+ 11 190 11 192 11 194 c 0
+ 14 284 56 332 124 377 c 0
+ 148 393 176 400 204 400 c 0
+206 322 m 0
+ 203 322 199 323 196 323 c 0
+ 140 323 90 257 82 226 c 0
+ 79 214 77 203 77 191 c 0
+ 77 165 84 139 96 120 c 0
+ 117 86 153 69 171 69 c 0
+ 235 69 266 108 281 172 c 0
+ 285 187 286 202 286 214 c 0
+ 286 245 276 268 267 284 c 0
+ 255 305 237 318 206 322 c 0
+EndSplineSet
+Kerns2: 56 -188 "normal kerning-1"  2 -66 "normal kerning-1"  3 -30 "normal kerning-1"  1 -109 "normal kerning-1"  54 -52 "normal kerning-1"  55 -60 "normal kerning-1"  51 -7 "normal kerning-1"  53 -177 "normal kerning-1"  50 -60 "normal kerning-1"  52 -61 "normal kerning-1"  48 -27 "normal kerning-1"  49 -101 "normal kerning-1"  46 -63 "normal kerning-1"  47 -159 "normal kerning-1"  45 -19 "normal kerning-1"  44 -27 "normal kerning-1"  42 -92 "normal kerning-1"  43 -267 "normal kerning-1"  40 -30 "normal kerning-1"  41 -32 "normal kerning-1"  38 -14 "normal kerning-1"  39 -10 "normal kerning-1"  36 -8 "normal kerning-1"  37 -18 "normal kerning-1"  34 -6 "normal kerning-1"  35 -11 "normal kerning-1"  32 -8 "normal kerning-1"  33 -7 "normal kerning-1"  30 -9 "normal kerning-1"  31 -33 "normal kerning-1"  28 -11 "normal kerning-1"  29 -26 "normal kerning-1"  26 -8 "normal kerning-1"  27 -36 "normal kerning-1"  24 -9 "normal kerning-1"  25 -33 "normal kerning-1"  22 -159 "normal kerning-1"  23 -8 "normal kerning-1"  20 -20 "normal kerning-1"  21 -136 "normal kerning-1"  18 -7 "normal kerning-1"  19 -7 "normal kerning-1"  16 -7 "normal kerning-1"  17 -8 "normal kerning-1"  14 -106 "normal kerning-1"  15 -24 "normal kerning-1"  12 -12 "normal kerning-1"  13 -31 "normal kerning-1"  10 -6 "normal kerning-1"  11 -59 "normal kerning-1"  8 -6 "normal kerning-1"  9 -7 "normal kerning-1"  6 -6 "normal kerning-1"  7 -65 "normal kerning-1"  5 -10 "normal kerning-1"  4 -52 "normal kerning-1" 
+EndChar
+
+StartChar: O
+Encoding: 79 79 33
+Width: 609
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+328 613 m 0
+ 348 625 357 632 357 639 c 0
+ 357 644 352 650 342 657 c 0
+ 331 665 316 669 300 669 c 0
+ 279 669 257 662 241 649 c 2
+ 215 629 l 1
+ 236 612 l 2
+ 249 601 263 595 277 595 c 0
+ 292 595 309 601 328 613 c 0
+347 85 m 0
+ 417 121 435 164 454 310 c 0
+ 457 330 458 350 458 370 c 0
+ 458 424 449 480 433 540 c 2
+ 424 575 l 1
+ 391 552 l 2
+ 360 531 317 521 275 521 c 0
+ 237 521 200 530 177 548 c 2
+ 154 566 l 1
+ 135 521 l 2
+ 97 431 80 333 80 258 c 0
+ 80 247 80 237 81 228 c 0
+ 86 155 128 93 182 79 c 0
+ 204 73 234 69 264 69 c 0
+ 293 69 323 73 347 85 c 0
+175 0 m 0
+ 115 8 87 27 50 82 c 0
+ 22 124 11 168 11 251 c 0
+ 11 274 12 300 14 330 c 0
+ 26 541 112 704 229 736 c 0
+ 247 741 269 743 292 743 c 0
+ 335 743 378 735 399 722 c 0
+ 410 715 417 711 424 711 c 0
+ 431 711 440 714 453 721 c 0
+ 470 730 491 734 519 734 c 0
+ 524 734 530 734 536 734 c 2
+ 589 731 l 1
+ 592 696 l 1
+ 595 660 l 1
+ 555 660 l 2
+ 511 660 495 658 495 632 c 0
+ 495 618 500 596 508 563 c 0
+ 520 515 526 452 526 388 c 0
+ 526 277 509 161 477 102 c 0
+ 447 47 398 4 296 -3 c 0
+ 277 -4 260 -5 246 -5 c 0
+ 215 -5 193 -2 175 0 c 0
+EndSplineSet
+Kerns2: 0 -80 "normal kerning-1"  56 -123 "normal kerning-1"  2 -169 "normal kerning-1"  3 -105 "normal kerning-1"  1 -211 "normal kerning-1"  54 -112 "normal kerning-1"  55 -97 "normal kerning-1"  51 -89 "normal kerning-1"  53 -27 "normal kerning-1"  50 -120 "normal kerning-1"  52 -85 "normal kerning-1"  48 -96 "normal kerning-1"  49 -37 "normal kerning-1"  46 -108 "normal kerning-1"  47 -17 "normal kerning-1"  45 -95 "normal kerning-1"  44 -23 "normal kerning-1"  42 -137 "normal kerning-1"  43 -14 "normal kerning-1"  40 -109 "normal kerning-1"  41 -79 "normal kerning-1"  38 -92 "normal kerning-1"  39 -30 "normal kerning-1"  36 -100 "normal kerning-1"  37 -92 "normal kerning-1"  34 -89 "normal kerning-1"  35 -103 "normal kerning-1"  32 -106 "normal kerning-1"  33 -95 "normal kerning-1"  30 -89 "normal kerning-1"  31 -81 "normal kerning-1"  28 -91 "normal kerning-1"  29 -104 "normal kerning-1"  26 -97 "normal kerning-1"  27 -55 "normal kerning-1"  24 -76 "normal kerning-1"  25 -93 "normal kerning-1"  22 -237 "normal kerning-1"  23 -45 "normal kerning-1"  20 -105 "normal kerning-1"  21 -39 "normal kerning-1"  18 -97 "normal kerning-1"  19 -23 "normal kerning-1"  16 -100 "normal kerning-1"  17 -98 "normal kerning-1"  14 -138 "normal kerning-1"  15 -27 "normal kerning-1"  12 -109 "normal kerning-1"  13 -25 "normal kerning-1"  10 -119 "normal kerning-1"  11 -29 "normal kerning-1"  8 -96 "normal kerning-1"  9 -97 "normal kerning-1"  6 -92 "normal kerning-1"  7 -24 "normal kerning-1"  5 -108 "normal kerning-1"  4 -161 "normal kerning-1" 
+EndChar
+
+StartChar: p
+Encoding: 112 112 34
+Width: 311
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+111 374 m 0
+ 125 377 140 379 154 379 c 0
+ 188 379 222 368 248 340 c 0
+ 273 313 286 273 292 232 c 0
+ 294 216 296 199 296 182 c 0
+ 296 146 290 109 276 77 c 0
+ 259 40 230 0 171 0 c 2
+ 119 0 l 1
+ 128 -65 l 2
+ 129 -70 129 -77 129 -84 c 0
+ 129 -128 113 -197 55 -200 c 0
+ 49 -200 43 -200 39 -200 c 0
+ 25 -200 21 -199 18 -196 c 0
+ 13 -191 11 -182 11 -172 c 0
+ 11 -157 17 -140 26 -136 c 0
+ 53 -125 62 -100 62 -71 c 0
+ 62 -27 40 26 30 59 c 0
+ 19 94 11 165 11 233 c 0
+ 11 319 24 400 61 400 c 0
+ 108 400 78 372 99 372 c 0
+ 102 372 106 373 111 374 c 0
+195 280 m 0
+ 183 296 162 304 141 304 c 0
+ 118 304 96 294 88 276 c 0
+ 80 257 77 236 77 215 c 0
+ 77 165 94 116 108 99 c 0
+ 121 83 140 71 159 71 c 0
+ 174 71 187 78 197 96 c 0
+ 213 125 221 159 221 191 c 0
+ 221 225 212 257 195 280 c 0
+EndSplineSet
+Kerns2: 56 -184 "normal kerning-1"  2 -44 "normal kerning-1"  3 -29 "normal kerning-1"  1 -110 "normal kerning-1"  54 -39 "normal kerning-1"  55 -49 "normal kerning-1"  51 -10 "normal kerning-1"  53 -172 "normal kerning-1"  50 -44 "normal kerning-1"  52 -48 "normal kerning-1"  48 -21 "normal kerning-1"  49 -102 "normal kerning-1"  46 -60 "normal kerning-1"  47 -160 "normal kerning-1"  45 -13 "normal kerning-1"  44 -27 "normal kerning-1"  42 -92 "normal kerning-1"  43 -263 "normal kerning-1"  40 -23 "normal kerning-1"  41 -24 "normal kerning-1"  38 -9 "normal kerning-1"  39 -8 "normal kerning-1"  36 -9 "normal kerning-1"  37 -21 "normal kerning-1"  34 -9 "normal kerning-1"  35 -8 "normal kerning-1"  32 -7 "normal kerning-1"  33 -8 "normal kerning-1"  30 -6 "normal kerning-1"  31 -29 "normal kerning-1"  28 -8 "normal kerning-1"  29 -22 "normal kerning-1"  26 -6 "normal kerning-1"  27 -31 "normal kerning-1"  24 -7 "normal kerning-1"  25 -28 "normal kerning-1"  22 -167 "normal kerning-1"  23 -11 "normal kerning-1"  20 -14 "normal kerning-1"  21 -104 "normal kerning-1"  18 -6 "normal kerning-1"  19 -8 "normal kerning-1"  16 -8 "normal kerning-1"  17 -9 "normal kerning-1"  14 -97 "normal kerning-1"  15 -21 "normal kerning-1"  12 -8 "normal kerning-1"  13 -29 "normal kerning-1"  10 -6 "normal kerning-1"  11 -55 "normal kerning-1"  8 -6 "normal kerning-1"  9 -7 "normal kerning-1"  7 -61 "normal kerning-1"  5 -7 "normal kerning-1"  4 -42 "normal kerning-1" 
+EndChar
+
+StartChar: P
+Encoding: 80 80 35
+Width: 461
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+323 372 m 0
+ 354 390 364 412 373 461 c 0
+ 376 479 379 500 379 521 c 0
+ 379 540 376 558 372 576 c 0
+ 356 639 328 665 271 665 c 0
+ 265 665 259 665 252 664 c 0
+ 154 656 187 612 169 531 c 0
+ 161 495 158 469 158 449 c 0
+ 158 411 169 394 186 375 c 0
+ 197 363 224 355 253 355 c 0
+ 277 355 302 360 323 372 c 0
+31 21 m 0
+ 24 34 11 73 11 130 c 0
+ 11 134 11 137 11 141 c 0
+ 13 221 23 251 61 372 c 0
+ 90 465 105 539 105 592 c 0
+ 105 626 100 651 88 668 c 0
+ 79 681 71 705 71 722 c 0
+ 71 751 73 753 104 753 c 0
+ 124 753 140 748 143 740 c 0
+ 146 732 150 724 161 724 c 0
+ 165 724 170 725 176 728 c 0
+ 201 739 230 744 257 744 c 0
+ 300 744 341 732 368 715 c 0
+ 417 683 447 610 447 513 c 0
+ 447 505 446 496 446 487 c 0
+ 443 425 432 389 403 343 c 0
+ 374 297 312 278 242 278 c 0
+ 241 278 239 278 238 278 c 0
+ 189 279 170 290 146 308 c 0
+ 139 313 134 317 130 317 c 0
+ 121 317 115 302 100 251 c 0
+ 89 211 83 173 83 143 c 0
+ 83 112 89 90 98 87 c 0
+ 104 85 109 65 109 42 c 0
+ 109 1 108 0 76 0 c 0
+ 52 0 40 5 31 21 c 0
+EndSplineSet
+Kerns2: 0 -9 "normal kerning-1"  56 -16 "normal kerning-1"  2 -347 "normal kerning-1"  3 -77 "normal kerning-1"  1 -383 "normal kerning-1"  54 -59 "normal kerning-1"  55 -121 "normal kerning-1"  51 -74 "normal kerning-1"  53 -67 "normal kerning-1"  50 -48 "normal kerning-1"  52 -135 "normal kerning-1"  48 -41 "normal kerning-1"  49 -71 "normal kerning-1"  46 -39 "normal kerning-1"  47 -64 "normal kerning-1"  45 -61 "normal kerning-1"  44 -51 "normal kerning-1"  42 -44 "normal kerning-1"  43 -53 "normal kerning-1"  40 -116 "normal kerning-1"  41 -8 "normal kerning-1"  38 -51 "normal kerning-1"  39 -58 "normal kerning-1"  36 -129 "normal kerning-1"  37 -23 "normal kerning-1"  34 -77 "normal kerning-1"  35 -99 "normal kerning-1"  32 -171 "normal kerning-1"  33 -39 "normal kerning-1"  30 -53 "normal kerning-1"  31 -115 "normal kerning-1"  28 -57 "normal kerning-1"  29 -84 "normal kerning-1"  26 -97 "normal kerning-1"  27 -86 "normal kerning-1"  24 -64 "normal kerning-1"  25 -107 "normal kerning-1"  22 -246 "normal kerning-1"  23 -103 "normal kerning-1"  20 -50 "normal kerning-1"  21 -110 "normal kerning-1"  18 -76 "normal kerning-1"  19 -47 "normal kerning-1"  16 -110 "normal kerning-1"  17 -46 "normal kerning-1"  14 -63 "normal kerning-1"  15 -62 "normal kerning-1"  12 -171 "normal kerning-1"  13 -64 "normal kerning-1"  10 -150 "normal kerning-1"  11 -76 "normal kerning-1"  8 -118 "normal kerning-1"  9 -50 "normal kerning-1"  6 -86 "normal kerning-1"  7 -71 "normal kerning-1"  5 -176 "normal kerning-1"  4 -181 "normal kerning-1" 
+EndChar
+
+StartChar: q
+Encoding: 113 113 36
+Width: 450
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+175 400 m 0
+ 205 400 227 395 247 385 c 0
+ 260 378 266 374 270 374 c 0
+ 274 374 274 378 278 385 c 0
+ 283 394 294 400 334 400 c 0
+ 358 400 365 400 365 386 c 0
+ 365 381 364 374 363 365 c 0
+ 361 346 350 306 339 278 c 0
+ 311 202 297 84 297 -1 c 0
+ 297 -35 299 -64 304 -83 c 0
+ 310 -107 324 -121 343 -121 c 0
+ 353 -121 363 -117 375 -109 c 1
+ 436 -109 l 1
+ 436 -109 435 -133 433 -142 c 0
+ 430 -160 421 -177 411 -184 c 0
+ 401 -191 385 -200 343 -200 c 0
+ 303 -200 270 -184 255 -159 c 0
+ 241 -137 228 -103 227 -61 c 2
+ 226 6 l 1
+ 226 6 193 0 164 0 c 0
+ 79 0 11 87 11 195 c 0
+ 11 206 12 217 14 229 c 0
+ 24 307 43 356 86 382 c 0
+ 106 394 140 400 174 400 c 0
+ 175 400 l 0
+200 316 m 0
+ 191 321 181 323 173 323 c 0
+ 161 323 150 319 140 313 c 0
+ 105 293 96 274 88 225 c 0
+ 86 215 85 205 85 195 c 0
+ 85 156 98 117 129 98 c 0
+ 149 86 162 81 175 81 c 0
+ 185 81 196 84 209 90 c 0
+ 229 99 233 110 242 186 c 0
+ 246 216 248 237 248 253 c 0
+ 248 287 237 297 200 316 c 0
+EndSplineSet
+Kerns2: 56 -273 "normal kerning-1"  2 -144 "normal kerning-1"  3 -121 "normal kerning-1"  1 -64 "normal kerning-1"  54 -120 "normal kerning-1"  55 -164 "normal kerning-1"  51 -76 "normal kerning-1"  53 -261 "normal kerning-1"  50 -127 "normal kerning-1"  52 -170 "normal kerning-1"  48 -111 "normal kerning-1"  49 -182 "normal kerning-1"  46 -122 "normal kerning-1"  47 -235 "normal kerning-1"  45 -110 "normal kerning-1"  44 -125 "normal kerning-1"  42 -146 "normal kerning-1"  43 -350 "normal kerning-1"  40 -125 "normal kerning-1"  41 -161 "normal kerning-1"  38 -108 "normal kerning-1"  39 -114 "normal kerning-1"  36 -139 "normal kerning-1"  37 -105 "normal kerning-1"  34 -38 "normal kerning-1"  35 -121 "normal kerning-1"  32 -131 "normal kerning-1"  33 -104 "normal kerning-1"  30 -104 "normal kerning-1"  31 -139 "normal kerning-1"  28 -108 "normal kerning-1"  29 -124 "normal kerning-1"  26 -118 "normal kerning-1"  27 -138 "normal kerning-1"  24 -115 "normal kerning-1"  25 -132 "normal kerning-1"  22 -29 "normal kerning-1"  23 -172 "normal kerning-1"  20 -122 "normal kerning-1"  21 -214 "normal kerning-1"  18 -114 "normal kerning-1"  19 -106 "normal kerning-1"  16 -49 "normal kerning-1"  17 -106 "normal kerning-1"  14 -141 "normal kerning-1"  15 -120 "normal kerning-1"  12 -131 "normal kerning-1"  13 -126 "normal kerning-1"  10 -118 "normal kerning-1"  11 -152 "normal kerning-1"  8 -117 "normal kerning-1"  9 -112 "normal kerning-1"  6 -112 "normal kerning-1"  7 -157 "normal kerning-1"  5 -131 "normal kerning-1"  4 -152 "normal kerning-1" 
+EndChar
+
+StartChar: Q
+Encoding: 81 81 37
+Width: 627
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+371 185 m 0
+ 398 171 418 160 424 153 c 1
+ 458 218 467 294 469 364 c 0
+ 469 368 469 372 469 376 c 0
+ 469 463 444 540 406 592 c 0
+ 378 630 331 655 280 655 c 0
+ 254 655 227 648 202 634 c 0
+ 128 592 88 498 81 347 c 0
+ 81 340 80 333 80 326 c 0
+ 80 246 102 191 132 148 c 2
+ 157 113 l 1
+ 160 147 l 2
+ 165 195 207 209 253 209 c 0
+ 303 209 357 192 371 185 c 0
+326 79 m 0
+ 344 87 359 95 359 98 c 0
+ 359 107 314 132 289 135 c 0
+ 285 135 281 136 278 136 c 0
+ 266 136 260 133 252 127 c 0
+ 245 122 240 113 240 104 c 0
+ 240 99 241 94 244 89 c 0
+ 252 74 262 66 278 66 c 0
+ 290 66 306 70 326 79 c 0
+208 -1 m 0
+ 155 15 96 52 67 108 c 0
+ 27 185 11 235 11 345 c 0
+ 11 459 31 535 67 602 c 0
+ 109 681 198 734 286 734 c 0
+ 288 734 288 734 290 734 c 0
+ 381 732 431 689 460 646 c 0
+ 504 582 533 496 535 364 c 0
+ 535 360 535 355 535 351 c 0
+ 535 239 511 186 486 106 c 0
+ 485 102 484 98 484 95 c 0
+ 484 87 489 82 499 76 c 0
+ 505 73 511 70 515 70 c 0
+ 522 70 527 75 535 84 c 0
+ 545 96 563 103 582 103 c 0
+ 611 103 613 101 613 70 c 0
+ 613 17 588 0 514 0 c 0
+ 513 0 513 0 512 0 c 0
+ 474 0 442 6 432 13 c 0
+ 426 18 421 20 413 20 c 0
+ 403 20 389 16 366 8 c 0
+ 335 -3 299 -8 267 -8 c 0
+ 245 -8 224 -6 208 -1 c 0
+EndSplineSet
+Kerns2: 0 -105 "normal kerning-1"  56 -183 "normal kerning-1"  2 -10 "normal kerning-1"  3 -29 "normal kerning-1"  1 -52 "normal kerning-1"  54 -17 "normal kerning-1"  55 -26 "normal kerning-1"  51 -57 "normal kerning-1"  53 -193 "normal kerning-1"  50 -19 "normal kerning-1"  52 -25 "normal kerning-1"  48 -24 "normal kerning-1"  49 -164 "normal kerning-1"  46 -87 "normal kerning-1"  47 -202 "normal kerning-1"  45 -23 "normal kerning-1"  44 -103 "normal kerning-1"  42 -124 "normal kerning-1"  43 -259 "normal kerning-1"  40 -14 "normal kerning-1"  41 -49 "normal kerning-1"  38 -19 "normal kerning-1"  39 -32 "normal kerning-1"  36 -61 "normal kerning-1"  37 -98 "normal kerning-1"  34 -35 "normal kerning-1"  35 -26 "normal kerning-1"  32 -55 "normal kerning-1"  33 -82 "normal kerning-1"  30 -20 "normal kerning-1"  31 -30 "normal kerning-1"  28 -24 "normal kerning-1"  29 -24 "normal kerning-1"  26 -43 "normal kerning-1"  27 -27 "normal kerning-1"  24 -36 "normal kerning-1"  25 -25 "normal kerning-1"  22 -204 "normal kerning-1"  23 -134 "normal kerning-1"  20 -17 "normal kerning-1"  21 -41 "normal kerning-1"  18 -44 "normal kerning-1"  19 -29 "normal kerning-1"  16 -50 "normal kerning-1"  17 -91 "normal kerning-1"  14 -143 "normal kerning-1"  15 -23 "normal kerning-1"  12 -30 "normal kerning-1"  13 -29 "normal kerning-1"  10 -55 "normal kerning-1"  11 -65 "normal kerning-1"  8 -43 "normal kerning-1"  9 -57 "normal kerning-1"  6 -31 "normal kerning-1"  7 -84 "normal kerning-1"  5 -31 "normal kerning-1"  4 -24 "normal kerning-1" 
+EndChar
+
+StartChar: r
+Encoding: 114 114 38
+Width: 350
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+36 22 m 0
+ 21 48 15 68 12 103 c 0
+ 11 111 11 120 11 128 c 0
+ 11 161 17 194 24 220 c 0
+ 32 251 35 274 35 291 c 0
+ 35 317 29 329 24 338 c 0
+ 18 348 16 359 16 370 c 0
+ 16 372 16 375 16 377 c 0
+ 18 400 21 403 45 405 c 0
+ 48 405 51 406 54 406 c 0
+ 69 406 82 402 90 393 c 0
+ 97 386 100 381 106 381 c 0
+ 112 381 120 385 137 392 c 0
+ 159 401 180 406 201 406 c 0
+ 225 406 249 400 274 388 c 0
+ 323 363 336 336 336 305 c 0
+ 336 276 330 265 312 261 c 0
+ 309 260 307 260 304 260 c 0
+ 290 260 274 268 269 280 c 0
+ 257 311 230 327 201 327 c 0
+ 173 327 143 313 122 285 c 0
+ 82 231 79 151 79 111 c 0
+ 79 100 86 82 95 71 c 0
+ 104 60 108 47 108 33 c 0
+ 108 31 108 29 108 27 c 0
+ 106 5 103 1 79 0 c 0
+ 78 0 77 0 76 0 c 0
+ 57 0 43 10 36 22 c 0
+EndSplineSet
+Kerns2: 0 -141 "normal kerning-1"  56 -251 "normal kerning-1"  2 -240 "normal kerning-1"  3 -40 "normal kerning-1"  1 -275 "normal kerning-1"  54 -15 "normal kerning-1"  55 -161 "normal kerning-1"  51 -10 "normal kerning-1"  53 -243 "normal kerning-1"  50 -68 "normal kerning-1"  52 -194 "normal kerning-1"  48 -37 "normal kerning-1"  49 -111 "normal kerning-1"  46 -43 "normal kerning-1"  47 -173 "normal kerning-1"  45 -30 "normal kerning-1"  44 -34 "normal kerning-1"  42 -88 "normal kerning-1"  43 -341 "normal kerning-1"  40 -27 "normal kerning-1"  41 -205 "normal kerning-1"  38 -32 "normal kerning-1"  39 -28 "normal kerning-1"  36 -31 "normal kerning-1"  37 -6 "normal kerning-1"  34 -10 "normal kerning-1"  35 -48 "normal kerning-1"  32 -49 "normal kerning-1"  33 -7 "normal kerning-1"  30 -24 "normal kerning-1"  31 -83 "normal kerning-1"  28 -26 "normal kerning-1"  29 -49 "normal kerning-1"  26 -35 "normal kerning-1"  27 -78 "normal kerning-1"  24 -34 "normal kerning-1"  25 -69 "normal kerning-1"  22 -214 "normal kerning-1"  23 -280 "normal kerning-1"  20 -58 "normal kerning-1"  21 -253 "normal kerning-1"  18 -27 "normal kerning-1"  19 -11 "normal kerning-1"  16 -36 "normal kerning-1"  17 -8 "normal kerning-1"  14 -52 "normal kerning-1"  15 -41 "normal kerning-1"  12 -61 "normal kerning-1"  13 -51 "normal kerning-1"  10 -25 "normal kerning-1"  11 -92 "normal kerning-1"  8 -21 "normal kerning-1"  9 -23 "normal kerning-1"  6 -21 "normal kerning-1"  7 -98 "normal kerning-1"  5 -61 "normal kerning-1"  4 -116 "normal kerning-1" 
+EndChar
+
+StartChar: R
+Encoding: 82 82 39
+Width: 407
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+11 746 m 1
+ 135 743 l 2
+ 243 740 266 731 305 708 c 0
+ 354 679 392 624 392 547 c 0
+ 392 442 343 359 206 319 c 2
+ 139 300 l 1
+ 171 242 196 212 243 181 c 0
+ 316 133 391 79 393 30 c 1
+ 393 0 l 1
+ 328 0 l 1
+ 263 0 l 1
+ 263 32 l 2
+ 263 59 255 68 218 97 c 0
+ 194 116 151 150 129 178 c 2
+ 92 225 l 1
+ 90 170 l 1
+ 89 164 90 158 90 152 c 0
+ 90 100 112 64 129 64 c 0
+ 137 64 142 53 142 32 c 2
+ 142 0 l 1
+ 82 0 l 1
+ 22 0 l 1
+ 22 0 22 5 22 14 c 0
+ 22 31 21 59 19 76 c 0
+ 15 109 13 142 13 173 c 0
+ 13 258 28 335 54 392 c 0
+ 70 428 79 471 79 512 c 0
+ 79 529 78 545 75 560 c 0
+ 62 627 40 680 24 680 c 0
+ 15 680 11 691 11 713 c 2
+ 11 746 l 1
+126 678 m 1
+ 138 623 l 2
+ 145 591 148 556 148 521 c 0
+ 148 483 145 446 139 416 c 0
+ 136 402 134 393 134 387 c 0
+ 134 381 136 380 140 380 c 0
+ 143 380 146 381 151 382 c 0
+ 162 385 194 398 222 412 c 0
+ 281 440 321 480 321 547 c 0
+ 321 606 271 660 168 675 c 1
+ 126 678 l 1
+EndSplineSet
+Kerns2: 0 -13 "normal kerning-1"  56 -16 "normal kerning-1"  3 -20 "normal kerning-1"  1 -45 "normal kerning-1"  54 -10 "normal kerning-1"  55 -16 "normal kerning-1"  51 -77 "normal kerning-1"  53 -96 "normal kerning-1"  50 -25 "normal kerning-1"  52 -17 "normal kerning-1"  48 -36 "normal kerning-1"  49 -107 "normal kerning-1"  46 -88 "normal kerning-1"  47 -99 "normal kerning-1"  45 -45 "normal kerning-1"  44 -72 "normal kerning-1"  42 -99 "normal kerning-1"  43 -67 "normal kerning-1"  40 -36 "normal kerning-1"  41 -12 "normal kerning-1"  38 -34 "normal kerning-1"  39 -38 "normal kerning-1"  36 -82 "normal kerning-1"  37 -43 "normal kerning-1"  34 -47 "normal kerning-1"  35 -45 "normal kerning-1"  32 -77 "normal kerning-1"  33 -59 "normal kerning-1"  30 -31 "normal kerning-1"  31 -19 "normal kerning-1"  28 -36 "normal kerning-1"  29 -19 "normal kerning-1"  26 -64 "normal kerning-1"  27 -20 "normal kerning-1"  24 -47 "normal kerning-1"  25 -19 "normal kerning-1"  22 -203 "normal kerning-1"  23 -104 "normal kerning-1"  20 -30 "normal kerning-1"  21 -17 "normal kerning-1"  18 -57 "normal kerning-1"  19 -22 "normal kerning-1"  16 -72 "normal kerning-1"  17 -66 "normal kerning-1"  14 -109 "normal kerning-1"  15 -19 "normal kerning-1"  12 -57 "normal kerning-1"  13 -20 "normal kerning-1"  10 -86 "normal kerning-1"  11 -56 "normal kerning-1"  8 -65 "normal kerning-1"  9 -53 "normal kerning-1"  6 -47 "normal kerning-1"  7 -66 "normal kerning-1"  5 -54 "normal kerning-1"  4 -17 "normal kerning-1" 
+EndChar
+
+StartChar: s
+Encoding: 115 115 40
+Width: 337
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+254 401 m 0
+ 255 401 256 401 257 401 c 0
+ 279 401 305 397 315 375 c 0
+ 320 364 323 353 323 342 c 0
+ 323 320 313 297 297 281 c 0
+ 278 262 250 258 225 257 c 1
+ 223 257 l 0
+ 216 257 209 256 202 256 c 0
+ 192 256 181 258 172 263 c 1
+ 161 269 152 279 152 291 c 0
+ 152 295 153 298 155 302 c 0
+ 162 315 177 321 191 321 c 0
+ 195 321 198 321 201 320 c 1
+ 203 319 206 319 209 319 c 0
+ 218 319 226 324 229 333 c 0
+ 232 340 225 346 218 345 c 0
+ 184 343 152 334 120 323 c 1
+ 106 316 89 306 89 288 c 0
+ 89 277 100 269 108 263 c 0
+ 142 239 184 237 224 230 c 0
+ 261 223 288 191 292 154 c 0
+ 293 148 293 142 293 136 c 0
+ 293 110 288 85 276 62 c 0
+ 261 33 230 15 200 6 c 0
+ 185 2 169 0 153 0 c 0
+ 116 0 79 11 46 28 c 0
+ 23 40 11 65 11 90 c 0
+ 11 97 12 104 14 111 c 1
+ 22 142 52 162 83 162 c 1
+ 109 160 137 159 163 155 c 1
+ 178 152 193 141 193 125 c 0
+ 193 108 181 97 166 95 c 0
+ 161 94 155 94 150 94 c 0
+ 138 94 127 96 115 98 c 0
+ 109 98 100 101 96 94 c 1
+ 94 86 102 79 107 75 c 0
+ 118 68 130 66 143 66 c 0
+ 151 66 158 67 166 68 c 0
+ 194 74 222 93 229 122 c 0
+ 230 125 230 127 230 130 c 0
+ 230 139 224 148 216 154 c 0
+ 192 172 161 177 132 182 c 0
+ 102 187 69 191 46 214 c 1
+ 27 235 24 265 24 294 c 0
+ 24 320 31 345 52 363 c 1
+ 86 388 129 396 170 399 c 0
+ 184 400 197 401 211 401 c 0
+ 219 401 227 401 235 401 c 0
+ 241 401 248 401 254 401 c 0
+EndSplineSet
+Kerns2: 56 -201 "normal kerning-1"  2 -64 "normal kerning-1"  3 -43 "normal kerning-1"  1 -105 "normal kerning-1"  54 -11 "normal kerning-1"  55 -79 "normal kerning-1"  51 -20 "normal kerning-1"  53 -186 "normal kerning-1"  50 -28 "normal kerning-1"  52 -79 "normal kerning-1"  48 -20 "normal kerning-1"  49 -103 "normal kerning-1"  46 -22 "normal kerning-1"  47 -158 "normal kerning-1"  45 -22 "normal kerning-1"  44 -41 "normal kerning-1"  42 -35 "normal kerning-1"  43 -278 "normal kerning-1"  40 -35 "normal kerning-1"  41 -62 "normal kerning-1"  38 -22 "normal kerning-1"  39 -33 "normal kerning-1"  36 -39 "normal kerning-1"  37 -9 "normal kerning-1"  34 -21 "normal kerning-1"  35 -39 "normal kerning-1"  32 -47 "normal kerning-1"  33 -14 "normal kerning-1"  30 -17 "normal kerning-1"  31 -60 "normal kerning-1"  28 -24 "normal kerning-1"  29 -45 "normal kerning-1"  26 -37 "normal kerning-1"  27 -58 "normal kerning-1"  24 -34 "normal kerning-1"  25 -53 "normal kerning-1"  22 -173 "normal kerning-1"  23 -84 "normal kerning-1"  20 -39 "normal kerning-1"  21 -134 "normal kerning-1"  18 -33 "normal kerning-1"  19 -22 "normal kerning-1"  16 -39 "normal kerning-1"  17 -17 "normal kerning-1"  14 -18 "normal kerning-1"  15 -41 "normal kerning-1"  12 -44 "normal kerning-1"  13 -48 "normal kerning-1"  10 -35 "normal kerning-1"  11 -74 "normal kerning-1"  8 -32 "normal kerning-1"  9 -29 "normal kerning-1"  6 -30 "normal kerning-1"  7 -81 "normal kerning-1"  5 -45 "normal kerning-1"  4 -70 "normal kerning-1" 
+EndChar
+
+StartChar: S
+Encoding: 83 83 41
+Width: 419
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+53 25 m 0
+ 32 38 21 77 21 119 c 0
+ 21 161 32 205 55 224 c 0
+ 76 241 105 246 132 246 c 0
+ 159 246 183 241 196 235 c 0
+ 222 223 252 213 252 187 c 0
+ 252 179 249 169 242 157 c 0
+ 237 148 228 145 218 145 c 0
+ 197 145 168 159 143 159 c 0
+ 140 159 137 159 134 159 c 0
+ 110 155 100 138 100 121 c 0
+ 100 104 109 88 123 82 c 0
+ 134 77 146 75 160 75 c 0
+ 228 75 321 122 321 179 c 0
+ 321 231 287 281 177 336 c 0
+ 77 386 11 440 11 528 c 0
+ 11 591 16 651 67 706 c 0
+ 93 734 154 750 214 750 c 0
+ 216 750 l 0
+ 284 750 366 727 391 676 c 0
+ 400 659 402 640 402 623 c 0
+ 402 592 393 565 387 556 c 0
+ 356 507 299 496 256 496 c 0
+ 244 496 234 496 225 497 c 0
+ 186 502 170 520 170 544 c 0
+ 170 555 173 566 179 579 c 0
+ 185 593 193 598 203 598 c 0
+ 222 598 247 581 272 581 c 0
+ 277 581 283 582 288 584 c 0
+ 306 591 316 607 316 622 c 0
+ 316 632 312 641 304 647 c 0
+ 289 660 255 664 223 664 c 0
+ 193 664 164 661 153 656 c 0
+ 127 644 104 624 97 565 c 0
+ 96 557 96 550 96 543 c 0
+ 96 481 132 453 214 413 c 0
+ 316 363 338 337 371 291 c 0
+ 396 256 405 229 405 154 c 0
+ 405 62 292 0 153 0 c 0
+ 152 0 152 0 151 0 c 0
+ 108 0 95 0 53 25 c 0
+EndSplineSet
+Kerns2: 0 -14 "normal kerning-1"  56 -32 "normal kerning-1"  2 -61 "normal kerning-1"  3 -43 "normal kerning-1"  1 -107 "normal kerning-1"  54 -55 "normal kerning-1"  55 -56 "normal kerning-1"  51 -8 "normal kerning-1"  53 -69 "normal kerning-1"  50 -50 "normal kerning-1"  52 -62 "normal kerning-1"  48 -21 "normal kerning-1"  49 -83 "normal kerning-1"  46 -69 "normal kerning-1"  47 -51 "normal kerning-1"  45 -11 "normal kerning-1"  44 -30 "normal kerning-1"  42 -107 "normal kerning-1"  43 -23 "normal kerning-1"  40 -26 "normal kerning-1"  41 -20 "normal kerning-1"  38 -8 "normal kerning-1"  39 -13 "normal kerning-1"  36 -7 "normal kerning-1"  37 -35 "normal kerning-1"  34 -6 "normal kerning-1"  35 -12 "normal kerning-1"  32 -6 "normal kerning-1"  33 -16 "normal kerning-1"  31 -40 "normal kerning-1"  28 -7 "normal kerning-1"  29 -31 "normal kerning-1"  26 -11 "normal kerning-1"  27 -39 "normal kerning-1"  24 -12 "normal kerning-1"  25 -39 "normal kerning-1"  22 -171 "normal kerning-1"  23 -17 "normal kerning-1"  20 -15 "normal kerning-1"  21 -67 "normal kerning-1"  18 -12 "normal kerning-1"  19 -13 "normal kerning-1"  17 -16 "normal kerning-1"  14 -127 "normal kerning-1"  15 -24 "normal kerning-1"  12 -6 "normal kerning-1"  13 -34 "normal kerning-1"  10 -8 "normal kerning-1"  11 -59 "normal kerning-1"  9 -12 "normal kerning-1"  6 -10 "normal kerning-1"  7 -52 "normal kerning-1"  4 -59 "normal kerning-1" 
+EndChar
+
+StartChar: t
+Encoding: 116 116 42
+Width: 348
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+177 611 m 0
+ 178 611 l 0
+ 215 611 228 586 228 508 c 0
+ 228 463 223 425 215 392 c 1
+ 228 389 242 386 256 386 c 0
+ 258 386 259 386 261 386 c 0
+ 279 386 276 389 291 391 c 0
+ 294 391 298 391 301 391 c 0
+ 319 391 334 385 334 361 c 0
+ 334 339 325 332 309 324 c 0
+ 294 317 278 314 257 314 c 0
+ 251 314 245 315 238 315 c 0
+ 222 316 207 319 193 324 c 1
+ 171 263 146 210 146 134 c 0
+ 146 132 147 130 147 127 c 0
+ 148 88 170 68 195 68 c 0
+ 200 68 206 69 211 71 c 0
+ 223 75 244 82 256 82 c 0
+ 257 82 l 0
+ 273 82 281 74 281 53 c 0
+ 281 30 264 20 252 14 c 0
+ 238 7 219 0 189 0 c 0
+ 157 0 135 12 117 31 c 0
+ 95 54 82 87 82 135 c 0
+ 82 170 89 214 105 268 c 0
+ 114 300 124 327 133 351 c 1
+ 124 355 115 359 106 361 c 0
+ 100 363 93 363 87 363 c 0
+ 70 363 56 359 42 359 c 0
+ 36 359 30 360 25 362 c 0
+ 16 366 11 373 11 392 c 0
+ 11 412 22 419 36 425 c 0
+ 45 429 62 432 81 432 c 0
+ 86 432 91 432 96 432 c 0
+ 113 430 133 422 155 413 c 1
+ 160 432 163 450 163 470 c 0
+ 163 492 159 515 149 543 c 0
+ 146 553 140 568 140 581 c 0
+ 140 605 145 609 169 611 c 0
+ 172 611 174 611 177 611 c 0
+EndSplineSet
+Kerns2: 0 -117 "normal kerning-1"  56 -192 "normal kerning-1"  2 -67 "normal kerning-1"  3 -71 "normal kerning-1"  1 -105 "normal kerning-1"  54 -14 "normal kerning-1"  55 -127 "normal kerning-1"  51 -30 "normal kerning-1"  53 -216 "normal kerning-1"  50 -22 "normal kerning-1"  52 -131 "normal kerning-1"  48 -17 "normal kerning-1"  49 -145 "normal kerning-1"  46 -16 "normal kerning-1"  47 -199 "normal kerning-1"  45 -24 "normal kerning-1"  44 -74 "normal kerning-1"  42 -36 "normal kerning-1"  43 -341 "normal kerning-1"  40 -61 "normal kerning-1"  41 -119 "normal kerning-1"  38 -24 "normal kerning-1"  39 -70 "normal kerning-1"  36 -81 "normal kerning-1"  37 -17 "normal kerning-1"  34 -35 "normal kerning-1"  35 -89 "normal kerning-1"  32 -113 "normal kerning-1"  33 -27 "normal kerning-1"  30 -15 "normal kerning-1"  31 -109 "normal kerning-1"  28 -32 "normal kerning-1"  29 -83 "normal kerning-1"  26 -85 "normal kerning-1"  27 -101 "normal kerning-1"  24 -72 "normal kerning-1"  25 -91 "normal kerning-1"  22 -232 "normal kerning-1"  23 -223 "normal kerning-1"  20 -66 "normal kerning-1"  21 -152 "normal kerning-1"  18 -70 "normal kerning-1"  19 -45 "normal kerning-1"  16 -84 "normal kerning-1"  17 -35 "normal kerning-1"  14 -19 "normal kerning-1"  15 -75 "normal kerning-1"  12 -106 "normal kerning-1"  13 -83 "normal kerning-1"  10 -85 "normal kerning-1"  11 -117 "normal kerning-1"  8 -69 "normal kerning-1"  9 -60 "normal kerning-1"  6 -67 "normal kerning-1"  7 -125 "normal kerning-1"  5 -106 "normal kerning-1"  4 -116 "normal kerning-1" 
+EndChar
+
+StartChar: T
+Encoding: 84 84 43
+Width: 670
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+230 0 m 0
+ 226 4 224 10 224 17 c 0
+ 224 31 231 47 241 52 c 0
+ 252 58 270 62 270 80 c 0
+ 270 82 270 85 269 88 c 0
+ 265 104 252 162 252 217 c 0
+ 252 303 265 325 286 404 c 0
+ 303 469 315 511 315 554 c 0
+ 315 583 310 612 297 650 c 2
+ 283 693 l 1
+ 227 697 l 2
+ 219 698 212 698 204 698 c 0
+ 155 698 115 686 98 672 c 0
+ 92 667 86 652 85 639 c 0
+ 83 618 80 615 58 613 c 0
+ 54 613 51 612 48 612 c 0
+ 21 612 11 626 11 662 c 0
+ 11 705 20 722 55 739 c 0
+ 93 758 152 769 216 769 c 0
+ 257 769 300 764 341 755 c 0
+ 426 737 451 726 472 726 c 0
+ 485 726 496 731 520 740 c 0
+ 545 749 590 766 606 768 c 0
+ 612 769 617 770 621 770 c 0
+ 634 770 638 764 646 744 c 0
+ 652 729 656 707 656 684 c 0
+ 656 680 655 677 655 673 c 2
+ 653 630 l 1
+ 623 630 l 2
+ 594 630 592 632 590 655 c 0
+ 589 669 586 680 584 680 c 0
+ 582 680 547 668 521 661 c 0
+ 504 657 491 655 478 655 c 0
+ 455 655 432 661 392 669 c 2
+ 368 674 l 1
+ 375 648 l 2
+ 384 618 388 591 388 563 c 0
+ 388 510 375 457 358 392 c 0
+ 337 312 324 283 324 209 c 0
+ 324 102 339 79 379 63 c 0
+ 408 51 419 47 419 21 c 0
+ 419 20 419 19 419 18 c 1
+ 419 18 418 10 411 3 c 0
+ 406 -1 400 -2 394 -2 c 0
+ 388 -2 382 -1 375 -1 c 0
+ 356 0 340 3 330 4 c 0
+ 328 4 326 4 324 4 c 0
+ 313 4 297 2 279 0 c 0
+ 268 -1 256 -2 247 -2 c 0
+ 238 -2 232 -2 230 0 c 0
+EndSplineSet
+Kerns2: 0 -19 "normal kerning-1"  56 -94 "normal kerning-1"  2 -260 "normal kerning-1"  3 -136 "normal kerning-1"  1 -291 "normal kerning-1"  54 -324 "normal kerning-1"  55 -76 "normal kerning-1"  51 -320 "normal kerning-1"  53 -13 "normal kerning-1"  50 -327 "normal kerning-1"  52 -69 "normal kerning-1"  48 -312 "normal kerning-1"  49 -18 "normal kerning-1"  46 -342 "normal kerning-1"  47 -8 "normal kerning-1"  45 -314 "normal kerning-1"  44 -10 "normal kerning-1"  42 -376 "normal kerning-1"  43 -6 "normal kerning-1"  40 -326 "normal kerning-1"  41 -54 "normal kerning-1"  38 -308 "normal kerning-1"  39 -14 "normal kerning-1"  36 -330 "normal kerning-1"  37 -202 "normal kerning-1"  34 -309 "normal kerning-1"  35 -131 "normal kerning-1"  32 -333 "normal kerning-1"  33 -216 "normal kerning-1"  30 -305 "normal kerning-1"  31 -70 "normal kerning-1"  28 -307 "normal kerning-1"  29 -130 "normal kerning-1"  26 -114 "normal kerning-1"  27 -41 "normal kerning-1"  24 -64 "normal kerning-1"  25 -93 "normal kerning-1"  22 -445 "normal kerning-1"  23 -28 "normal kerning-1"  20 -311 "normal kerning-1"  21 -27 "normal kerning-1"  18 -124 "normal kerning-1"  19 -11 "normal kerning-1"  16 -327 "normal kerning-1"  17 -117 "normal kerning-1"  14 -210 "normal kerning-1"  15 -13 "normal kerning-1"  12 -330 "normal kerning-1"  13 -12 "normal kerning-1"  10 -311 "normal kerning-1"  11 -15 "normal kerning-1"  8 -321 "normal kerning-1"  9 -150 "normal kerning-1"  6 -99 "normal kerning-1"  7 -12 "normal kerning-1"  5 -328 "normal kerning-1"  4 -282 "normal kerning-1" 
+EndChar
+
+StartChar: U
+Encoding: 85 85 44
+Width: 582
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+177 0 m 0
+ 128 8 80 47 55 98 c 0
+ 38 134 26 160 26 240 c 0
+ 26 243 26 246 26 249 c 0
+ 27 311 43 375 55 433 c 0
+ 65 484 74 540 74 557 c 0
+ 74 603 49 660 28 660 c 0
+ 14 660 11 667 11 692 c 2
+ 11 723 l 1
+ 92 723 l 1
+ 173 723 l 1
+ 173 692 l 2
+ 173 665 170 660 152 660 c 0
+ 139 660 135 660 135 642 c 0
+ 135 631 136 615 139 588 c 0
+ 140 575 141 563 141 551 c 0
+ 141 442 93 362 93 254 c 0
+ 93 251 93 247 93 244 c 1
+ 98 136 170 62 267 62 c 0
+ 284 62 302 64 320 69 c 0
+ 446 102 492 184 504 395 c 0
+ 505 410 506 424 506 437 c 0
+ 506 501 496 541 481 587 c 0
+ 459 653 441 660 415 660 c 0
+ 402 660 399 667 399 692 c 2
+ 399 723 l 1
+ 476 723 l 1
+ 552 723 l 1
+ 552 692 l 2
+ 552 675 549 660 544 660 c 0
+ 543 660 543 660 543 658 c 0
+ 543 652 549 632 554 608 c 0
+ 561 572 568 523 568 427 c 0
+ 568 418 568 408 568 398 c 0
+ 566 224 550 155 513 100 c 0
+ 467 31 376 -7 265 -7 c 0
+ 237 -7 207 -5 177 0 c 0
+EndSplineSet
+Kerns2: 0 -9 "normal kerning-1"  56 -27 "normal kerning-1"  2 -110 "normal kerning-1"  3 -39 "normal kerning-1"  1 -155 "normal kerning-1"  54 -11 "normal kerning-1"  55 -78 "normal kerning-1"  51 -9 "normal kerning-1"  53 -59 "normal kerning-1"  50 -17 "normal kerning-1"  52 -84 "normal kerning-1"  48 -12 "normal kerning-1"  49 -61 "normal kerning-1"  46 -11 "normal kerning-1"  47 -53 "normal kerning-1"  45 -17 "normal kerning-1"  44 -29 "normal kerning-1"  42 -17 "normal kerning-1"  43 -40 "normal kerning-1"  40 -28 "normal kerning-1"  41 -15 "normal kerning-1"  38 -14 "normal kerning-1"  39 -24 "normal kerning-1"  36 -19 "normal kerning-1"  37 -6 "normal kerning-1"  34 -10 "normal kerning-1"  35 -35 "normal kerning-1"  32 -23 "normal kerning-1"  33 -10 "normal kerning-1"  30 -10 "normal kerning-1"  31 -55 "normal kerning-1"  28 -15 "normal kerning-1"  29 -41 "normal kerning-1"  26 -30 "normal kerning-1"  27 -49 "normal kerning-1"  24 -27 "normal kerning-1"  25 -53 "normal kerning-1"  22 -166 "normal kerning-1"  23 -31 "normal kerning-1"  20 -31 "normal kerning-1"  21 -75 "normal kerning-1"  18 -25 "normal kerning-1"  19 -15 "normal kerning-1"  16 -18 "normal kerning-1"  17 -12 "normal kerning-1"  14 -21 "normal kerning-1"  15 -32 "normal kerning-1"  12 -29 "normal kerning-1"  13 -36 "normal kerning-1"  10 -22 "normal kerning-1"  11 -52 "normal kerning-1"  8 -16 "normal kerning-1"  9 -22 "normal kerning-1"  6 -23 "normal kerning-1"  7 -49 "normal kerning-1"  5 -27 "normal kerning-1"  4 -84 "normal kerning-1" 
+EndChar
+
+StartChar: u
+Encoding: 117 117 45
+Width: 369
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+36 41 m 0
+ 22 56 13 84 12 111 c 0
+ 12 115 11 118 11 121 c 0
+ 11 156 20 178 26 201 c 0
+ 34 232 37 256 37 275 c 0
+ 37 293 34 307 27 324 c 0
+ 21 338 17 358 17 371 c 0
+ 17 373 18 374 18 376 c 0
+ 20 398 22 400 50 400 c 0
+ 76 400 80 397 89 378 c 0
+ 95 366 101 331 105 300 c 0
+ 106 293 106 285 106 276 c 0
+ 106 238 99 187 85 140 c 0
+ 84 135 83 131 83 126 c 0
+ 83 106 96 88 112 81 c 0
+ 122 77 133 74 146 74 c 0
+ 160 74 175 77 196 86 c 0
+ 234 102 248 134 263 266 c 0
+ 277 395 287 400 318 400 c 0
+ 320 400 322 400 324 400 c 0
+ 345 400 354 386 354 366 c 0
+ 354 363 354 361 354 358 c 0
+ 352 341 345 329 339 294 c 0
+ 333 259 332 258 330 226 c 0
+ 329 211 325 189 325 164 c 0
+ 325 144 327 122 337 105 c 0
+ 344 93 355 61 355 41 c 0
+ 355 21 344 2 321 0 c 0
+ 319 0 316 0 314 0 c 0
+ 301 0 288 4 280 28 c 0
+ 277 37 269 38 259 32 c 0
+ 234 17 215 0 152 0 c 0
+ 102 0 63 13 36 41 c 0
+EndSplineSet
+Kerns2: 56 -173 "normal kerning-1"  2 -6 "normal kerning-1"  3 -14 "normal kerning-1"  1 -46 "normal kerning-1"  54 -7 "normal kerning-1"  55 -15 "normal kerning-1"  51 -19 "normal kerning-1"  53 -162 "normal kerning-1"  50 -12 "normal kerning-1"  52 -13 "normal kerning-1"  48 -12 "normal kerning-1"  49 -95 "normal kerning-1"  46 -19 "normal kerning-1"  47 -148 "normal kerning-1"  45 -15 "normal kerning-1"  44 -37 "normal kerning-1"  42 -27 "normal kerning-1"  43 -252 "normal kerning-1"  40 -18 "normal kerning-1"  41 -33 "normal kerning-1"  38 -13 "normal kerning-1"  39 -17 "normal kerning-1"  36 -29 "normal kerning-1"  37 -11 "normal kerning-1"  34 -17 "normal kerning-1"  35 -18 "normal kerning-1"  32 -31 "normal kerning-1"  33 -15 "normal kerning-1"  30 -10 "normal kerning-1"  31 -16 "normal kerning-1"  28 -15 "normal kerning-1"  29 -14 "normal kerning-1"  26 -22 "normal kerning-1"  27 -15 "normal kerning-1"  24 -19 "normal kerning-1"  25 -14 "normal kerning-1"  22 -154 "normal kerning-1"  23 -47 "normal kerning-1"  20 -17 "normal kerning-1"  21 -17 "normal kerning-1"  18 -21 "normal kerning-1"  19 -11 "normal kerning-1"  16 -26 "normal kerning-1"  17 -18 "normal kerning-1"  14 -16 "normal kerning-1"  15 -13 "normal kerning-1"  12 -25 "normal kerning-1"  13 -15 "normal kerning-1"  10 -24 "normal kerning-1"  11 -40 "normal kerning-1"  8 -24 "normal kerning-1"  9 -22 "normal kerning-1"  6 -17 "normal kerning-1"  7 -51 "normal kerning-1"  5 -25 "normal kerning-1"  4 -15 "normal kerning-1" 
+EndChar
+
+StartChar: v
+Encoding: 118 118 46
+Width: 431
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+83 39 m 0
+ 67 67 62 90 62 115 c 0
+ 62 139 67 164 70 198 c 0
+ 71 208 71 218 71 226 c 0
+ 71 302 38 328 20 349 c 0
+ 15 355 11 368 11 381 c 0
+ 11 383 11 385 11 387 c 0
+ 13 411 16 412 45 414 c 0
+ 48 414 51 415 54 415 c 0
+ 69 415 80 412 84 407 c 0
+ 101 385 140 335 140 260 c 0
+ 140 252 139 244 138 236 c 0
+ 135 211 135 190 135 172 c 0
+ 135 125 142 99 144 86 c 1
+ 158 97 178 120 194 163 c 0
+ 211 210 233 253 271 337 c 0
+ 277 350 298 374 318 389 c 0
+ 344 409 356 415 375 415 c 0
+ 378 415 381 414 384 414 c 0
+ 413 412 415 410 417 385 c 0
+ 417 381 417 378 417 375 c 0
+ 417 359 411 353 382 334 c 0
+ 350 313 332 301 315 257 c 0
+ 300 219 291 195 269 140 c 0
+ 236 59 193 0 145 0 c 0
+ 110 0 96 17 83 39 c 0
+EndSplineSet
+Kerns2: 0 -25 "normal kerning-1"  56 -259 "normal kerning-1"  2 -205 "normal kerning-1"  3 -65 "normal kerning-1"  1 -245 "normal kerning-1"  54 -21 "normal kerning-1"  55 -176 "normal kerning-1"  51 -40 "normal kerning-1"  53 -233 "normal kerning-1"  50 -12 "normal kerning-1"  52 -190 "normal kerning-1"  48 -11 "normal kerning-1"  49 -124 "normal kerning-1"  46 -9 "normal kerning-1"  47 -181 "normal kerning-1"  45 -25 "normal kerning-1"  44 -62 "normal kerning-1"  42 -10 "normal kerning-1"  43 -335 "normal kerning-1"  40 -82 "normal kerning-1"  41 -131 "normal kerning-1"  38 -21 "normal kerning-1"  39 -67 "normal kerning-1"  36 -91 "normal kerning-1"  37 -9 "normal kerning-1"  34 -45 "normal kerning-1"  35 -86 "normal kerning-1"  32 -118 "normal kerning-1"  33 -21 "normal kerning-1"  30 -15 "normal kerning-1"  31 -119 "normal kerning-1"  28 -29 "normal kerning-1"  29 -83 "normal kerning-1"  26 -79 "normal kerning-1"  27 -101 "normal kerning-1"  24 -64 "normal kerning-1"  25 -98 "normal kerning-1"  22 -227 "normal kerning-1"  23 -181 "normal kerning-1"  20 -62 "normal kerning-1"  21 -249 "normal kerning-1"  18 -63 "normal kerning-1"  19 -42 "normal kerning-1"  16 -65 "normal kerning-1"  17 -28 "normal kerning-1"  14 -11 "normal kerning-1"  15 -70 "normal kerning-1"  12 -119 "normal kerning-1"  13 -82 "normal kerning-1"  10 -84 "normal kerning-1"  11 -118 "normal kerning-1"  8 -83 "normal kerning-1"  9 -50 "normal kerning-1"  6 -64 "normal kerning-1"  7 -123 "normal kerning-1"  5 -120 "normal kerning-1"  4 -141 "normal kerning-1" 
+EndChar
+
+StartChar: V
+Encoding: 86 86 47
+Width: 585
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+224 34 m 0
+ 224 54 215 86 203 108 c 0
+ 156 192 124 245 124 356 c 0
+ 124 366 124 377 125 388 c 0
+ 127 422 127 448 127 470 c 0
+ 127 523 122 546 105 575 c 0
+ 79 620 41 656 22 657 c 0
+ 15 657 11 670 11 689 c 2
+ 11 720 l 1
+ 91 720 l 1
+ 171 720 l 1
+ 171 690 l 2
+ 171 673 166 658 161 656 c 0
+ 159 655 158 653 158 650 c 0
+ 158 644 163 633 172 619 c 0
+ 189 592 200 551 200 490 c 0
+ 200 475 199 458 198 441 c 0
+ 196 415 195 394 195 376 c 0
+ 195 300 211 281 232 231 c 0
+ 254 179 265 155 271 155 c 0
+ 276 155 277 174 280 210 c 0
+ 287 306 319 375 385 452 c 0
+ 423 497 455 537 463 578 c 0
+ 468 606 472 626 472 638 c 0
+ 472 652 468 658 456 658 c 0
+ 442 658 438 664 438 689 c 2
+ 438 720 l 1
+ 504 720 l 1
+ 571 720 l 1
+ 571 689 l 2
+ 571 664 567 658 553 658 c 0
+ 538 658 536 652 536 619 c 0
+ 536 573 524 498 484 448 c 0
+ 419 365 391 347 372 295 c 0
+ 351 240 346 197 346 162 c 0
+ 346 146 347 132 349 119 c 0
+ 354 81 355 67 368 64 c 0
+ 380 61 384 52 384 30 c 2
+ 384 0 l 1
+ 304 0 l 1
+ 224 0 l 1
+ 224 34 l 0
+EndSplineSet
+Kerns2: 0 -50 "normal kerning-1"  56 -71 "normal kerning-1"  2 -199 "normal kerning-1"  3 -123 "normal kerning-1"  1 -235 "normal kerning-1"  54 -210 "normal kerning-1"  55 -92 "normal kerning-1"  51 -204 "normal kerning-1"  53 -22 "normal kerning-1"  50 -211 "normal kerning-1"  52 -86 "normal kerning-1"  48 -193 "normal kerning-1"  49 -32 "normal kerning-1"  46 -208 "normal kerning-1"  47 -11 "normal kerning-1"  45 -201 "normal kerning-1"  44 -15 "normal kerning-1"  42 -201 "normal kerning-1"  43 -11 "normal kerning-1"  40 -219 "normal kerning-1"  41 -57 "normal kerning-1"  38 -193 "normal kerning-1"  39 -23 "normal kerning-1"  36 -220 "normal kerning-1"  37 -111 "normal kerning-1"  34 -200 "normal kerning-1"  35 -132 "normal kerning-1"  32 -228 "normal kerning-1"  33 -127 "normal kerning-1"  30 -194 "normal kerning-1"  31 -86 "normal kerning-1"  28 -194 "normal kerning-1"  29 -121 "normal kerning-1"  26 -124 "normal kerning-1"  27 -50 "normal kerning-1"  24 -86 "normal kerning-1"  25 -103 "normal kerning-1"  22 -307 "normal kerning-1"  23 -40 "normal kerning-1"  20 -145 "normal kerning-1"  21 -33 "normal kerning-1"  18 -124 "normal kerning-1"  19 -17 "normal kerning-1"  16 -218 "normal kerning-1"  17 -132 "normal kerning-1"  14 -164 "normal kerning-1"  15 -22 "normal kerning-1"  12 -226 "normal kerning-1"  13 -17 "normal kerning-1"  10 -232 "normal kerning-1"  11 -21 "normal kerning-1"  8 -213 "normal kerning-1"  9 -112 "normal kerning-1"  6 -126 "normal kerning-1"  7 -15 "normal kerning-1"  5 -225 "normal kerning-1"  4 -221 "normal kerning-1" 
+EndChar
+
+StartChar: w
+Encoding: 119 119 48
+Width: 620
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+66 2 m 0
+ 33 16 17 43 17 94 c 0
+ 17 125 23 165 34 216 c 0
+ 41 250 45 272 45 289 c 0
+ 45 313 37 326 19 348 c 0
+ 14 354 11 368 11 380 c 0
+ 11 382 11 384 11 386 c 0
+ 13 409 16 411 39 413 c 0
+ 41 413 44 414 46 414 c 0
+ 73 414 90 397 109 355 c 0
+ 117 338 121 319 121 295 c 0
+ 121 267 115 233 104 188 c 0
+ 98 165 92 132 89 114 c 0
+ 88 105 87 98 87 93 c 0
+ 87 81 92 79 111 71 c 0
+ 127 64 142 60 157 60 c 0
+ 173 60 189 65 206 73 c 0
+ 249 94 259 127 266 265 c 0
+ 272 387 276 406 308 406 c 0
+ 311 406 315 406 319 406 c 0
+ 340 404 345 404 345 387 c 0
+ 345 382 344 376 344 369 c 0
+ 343 350 340 283 338 218 c 0
+ 337 182 336 157 336 139 c 0
+ 336 103 339 95 348 87 c 0
+ 356 80 381 73 396 73 c 0
+ 398 73 399 73 401 73 c 0
+ 415 73 425 75 440 87 c 0
+ 464 106 464 112 475 208 c 0
+ 491 344 521 406 572 406 c 0
+ 574 406 576 406 578 406 c 0
+ 601 404 604 401 606 378 c 0
+ 606 376 606 373 606 371 c 0
+ 606 357 602 345 594 336 c 0
+ 569 307 554 265 546 194 c 0
+ 543 168 542 147 542 131 c 0
+ 542 97 549 82 563 74 c 0
+ 572 69 576 62 576 48 c 0
+ 576 45 575 42 575 38 c 0
+ 573 12 571 10 544 8 c 0
+ 541 8 539 8 536 8 c 0
+ 523 8 510 10 505 14 c 0
+ 502 17 499 18 495 18 c 0
+ 490 18 483 16 475 10 c 0
+ 463 2 435 -1 405 -1 c 0
+ 364 -1 318 5 305 17 c 0
+ 297 24 293 27 289 27 c 0
+ 285 27 282 25 276 20 c 0
+ 269 14 251 5 237 0 c 0
+ 221 -5 189 -8 157 -8 c 0
+ 119 -8 82 -5 66 2 c 0
+EndSplineSet
+Kerns2: 0 -48 "normal kerning-1"  56 -202 "normal kerning-1"  2 -40 "normal kerning-1"  3 -44 "normal kerning-1"  1 -81 "normal kerning-1"  54 -17 "normal kerning-1"  55 -67 "normal kerning-1"  51 -30 "normal kerning-1"  53 -187 "normal kerning-1"  50 -17 "normal kerning-1"  52 -66 "normal kerning-1"  48 -15 "normal kerning-1"  49 -108 "normal kerning-1"  46 -14 "normal kerning-1"  47 -161 "normal kerning-1"  45 -24 "normal kerning-1"  44 -51 "normal kerning-1"  42 -17 "normal kerning-1"  43 -279 "normal kerning-1"  40 -48 "normal kerning-1"  41 -75 "normal kerning-1"  38 -22 "normal kerning-1"  39 -42 "normal kerning-1"  36 -56 "normal kerning-1"  37 -11 "normal kerning-1"  34 -32 "normal kerning-1"  35 -50 "normal kerning-1"  32 -64 "normal kerning-1"  33 -20 "normal kerning-1"  30 -16 "normal kerning-1"  31 -58 "normal kerning-1"  28 -27 "normal kerning-1"  29 -48 "normal kerning-1"  26 -50 "normal kerning-1"  27 -56 "normal kerning-1"  24 -44 "normal kerning-1"  25 -52 "normal kerning-1"  22 -179 "normal kerning-1"  23 -92 "normal kerning-1"  20 -44 "normal kerning-1"  21 -81 "normal kerning-1"  18 -43 "normal kerning-1"  19 -30 "normal kerning-1"  16 -48 "normal kerning-1"  17 -25 "normal kerning-1"  14 -13 "normal kerning-1"  15 -44 "normal kerning-1"  12 -63 "normal kerning-1"  13 -49 "normal kerning-1"  10 -51 "normal kerning-1"  11 -74 "normal kerning-1"  8 -49 "normal kerning-1"  9 -39 "normal kerning-1"  6 -41 "normal kerning-1"  7 -81 "normal kerning-1"  5 -62 "normal kerning-1"  4 -62 "normal kerning-1" 
+EndChar
+
+StartChar: W
+Encoding: 87 87 49
+Width: 783
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+159 0 m 1
+ 156 3 154 18 154 35 c 0
+ 154 52 147 66 139 82 c 0
+ 101 160 81 247 81 329 c 0
+ 81 361 84 392 90 422 c 0
+ 96 449 99 468 99 488 c 0
+ 99 502 97 517 95 535 c 0
+ 82 634 58 692 30 695 c 0
+ 14 697 11 700 11 726 c 2
+ 11 755 l 1
+ 84 761 l 2
+ 110 763 136 764 151 764 c 0
+ 159 764 164 764 166 763 c 0
+ 172 761 175 748 175 735 c 0
+ 175 722 173 708 167 702 c 0
+ 162 697 152 693 145 693 c 0
+ 134 693 133 691 140 670 c 0
+ 153 631 168 536 168 485 c 0
+ 168 459 163 414 157 383 c 0
+ 152 360 150 340 150 320 c 0
+ 150 279 159 239 180 183 c 2
+ 200 129 l 1
+ 213 179 l 2
+ 221 210 238 247 258 278 c 0
+ 287 322 303 359 303 381 c 0
+ 303 390 301 396 296 400 c 0
+ 289 405 286 414 286 426 c 0
+ 286 429 286 431 286 434 c 2
+ 288 459 l 1
+ 350 459 l 1
+ 412 459 l 1
+ 415 434 l 2
+ 415 431 415 430 415 427 c 0
+ 415 416 413 406 410 403 c 0
+ 406 399 405 389 409 380 c 0
+ 413 371 420 335 426 299 c 0
+ 437 235 457 182 476 166 c 0
+ 477 165 479 164 480 164 c 0
+ 486 164 489 178 495 221 c 0
+ 509 311 533 376 576 441 c 0
+ 625 516 649 587 649 665 c 0
+ 649 691 647 695 633 697 c 0
+ 619 699 616 704 616 728 c 2
+ 616 757 l 1
+ 652 763 l 2
+ 667 766 691 767 712 767 c 0
+ 718 767 723 767 728 767 c 2
+ 769 765 l 1
+ 769 735 l 2
+ 769 707 769 704 742 704 c 1
+ 715 702 l 1
+ 714 646 l 2
+ 714 541 696 481 641 397 c 0
+ 592 321 557 208 557 128 c 0
+ 557 119 557 110 558 102 c 0
+ 561 78 563 45 564 29 c 2
+ 567 0 l 1
+ 531 0 493 0 457 0 c 1
+ 454 34 l 1
+ 450 63 427 91 416 107 c 0
+ 402 129 368 209 364 227 c 0
+ 362 238 362 256 359 265 c 0
+ 357 270 355 273 353 273 c 0
+ 349 273 342 262 324 235 c 0
+ 307 210 288 174 282 155 c 1
+ 271 130 269 105 269 80 c 0
+ 269 68 269 55 269 43 c 0
+ 269 29 269 15 266 0 c 1
+ 159 0 l 1
+EndSplineSet
+Kerns2: 0 -73 "normal kerning-1"  56 -112 "normal kerning-1"  2 -212 "normal kerning-1"  3 -137 "normal kerning-1"  1 -249 "normal kerning-1"  54 -205 "normal kerning-1"  55 -131 "normal kerning-1"  51 -192 "normal kerning-1"  53 -15 "normal kerning-1"  50 -207 "normal kerning-1"  52 -98 "normal kerning-1"  48 -186 "normal kerning-1"  49 -15 "normal kerning-1"  46 -201 "normal kerning-1"  47 -45 "normal kerning-1"  45 -192 "normal kerning-1"  44 -42 "normal kerning-1"  42 -206 "normal kerning-1"  43 -50 "normal kerning-1"  40 -209 "normal kerning-1"  41 -92 "normal kerning-1"  38 -186 "normal kerning-1"  39 -22 "normal kerning-1"  36 -207 "normal kerning-1"  37 -131 "normal kerning-1"  34 -189 "normal kerning-1"  35 -135 "normal kerning-1"  32 -216 "normal kerning-1"  33 -145 "normal kerning-1"  30 -185 "normal kerning-1"  31 -93 "normal kerning-1"  28 -185 "normal kerning-1"  29 -156 "normal kerning-1"  26 -122 "normal kerning-1"  27 -84 "normal kerning-1"  24 -69 "normal kerning-1"  25 -122 "normal kerning-1"  22 -308 "normal kerning-1"  23 -105 "normal kerning-1"  20 -159 "normal kerning-1"  21 -83 "normal kerning-1"  18 -122 "normal kerning-1"  19 -32 "normal kerning-1"  16 -206 "normal kerning-1"  17 -149 "normal kerning-1"  14 -181 "normal kerning-1"  15 -56 "normal kerning-1"  12 -215 "normal kerning-1"  13 -35 "normal kerning-1"  10 -225 "normal kerning-1"  11 -28 "normal kerning-1"  8 -201 "normal kerning-1"  9 -135 "normal kerning-1"  6 -94 "normal kerning-1"  7 -45 "normal kerning-1"  5 -215 "normal kerning-1"  4 -225 "normal kerning-1" 
+EndChar
+
+StartChar: x
+Encoding: 120 120 50
+Width: 385
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+31 405 m 0
+ 32 405 l 0
+ 33 405 l 0
+ 52 405 70 405 88 399 c 0
+ 116 388 142 369 161 345 c 0
+ 178 322 189 296 199 269 c 1
+ 200 269 200 270 201 270 c 0
+ 228 288 258 300 282 321 c 1
+ 291 331 302 340 304 354 c 1
+ 303 365 297 377 297 388 c 0
+ 297 399 304 405 313 405 c 2
+ 314 405 l 0
+ 315 405 l 0
+ 328 405 342 403 353 396 c 0
+ 368 386 371 367 371 349 c 0
+ 371 331 363 315 353 301 c 1
+ 334 272 305 251 275 234 c 0
+ 257 224 238 213 221 202 c 1
+ 224 193 227 185 230 177 c 0
+ 245 137 270 97 307 74 c 1
+ 312 74 315 80 319 82 c 0
+ 322 83 325 83 328 83 c 0
+ 343 83 357 72 362 58 c 0
+ 364 53 364 48 364 42 c 0
+ 364 29 360 15 351 6 c 0
+ 345 0 338 -1 330 -1 c 0
+ 324 -1 318 0 313 0 c 0
+ 286 2 261 16 242 35 c 0
+ 225 52 206 69 194 90 c 0
+ 181 112 173 136 165 160 c 1
+ 158 155 152 149 146 143 c 0
+ 132 129 116 117 104 101 c 0
+ 94 86 92 69 92 51 c 0
+ 92 42 93 34 93 25 c 1
+ 95 13 84 4 74 2 c 0
+ 69 1 65 0 60 0 c 0
+ 49 0 38 3 31 12 c 1
+ 22 28 16 46 16 64 c 0
+ 16 95 35 122 53 146 c 0
+ 78 179 109 206 142 231 c 1
+ 141 234 140 237 139 240 c 0
+ 124 279 101 316 64 338 c 1
+ 54 345 39 342 29 350 c 0
+ 19 359 11 373 11 387 c 0
+ 11 399 21 405 31 405 c 0
+EndSplineSet
+Kerns2: 56 -194 "normal kerning-1"  2 -14 "normal kerning-1"  3 -23 "normal kerning-1"  1 -52 "normal kerning-1"  54 -8 "normal kerning-1"  55 -26 "normal kerning-1"  51 -23 "normal kerning-1"  53 -184 "normal kerning-1"  50 -18 "normal kerning-1"  52 -25 "normal kerning-1"  48 -16 "normal kerning-1"  49 -107 "normal kerning-1"  46 -18 "normal kerning-1"  47 -162 "normal kerning-1"  45 -21 "normal kerning-1"  44 -46 "normal kerning-1"  42 -28 "normal kerning-1"  43 -279 "normal kerning-1"  40 -31 "normal kerning-1"  41 -63 "normal kerning-1"  38 -19 "normal kerning-1"  39 -29 "normal kerning-1"  36 -52 "normal kerning-1"  37 -9 "normal kerning-1"  34 -23 "normal kerning-1"  35 -36 "normal kerning-1"  32 -65 "normal kerning-1"  33 -15 "normal kerning-1"  30 -14 "normal kerning-1"  31 -28 "normal kerning-1"  28 -23 "normal kerning-1"  29 -25 "normal kerning-1"  26 -42 "normal kerning-1"  27 -27 "normal kerning-1"  24 -35 "normal kerning-1"  25 -25 "normal kerning-1"  22 -180 "normal kerning-1"  23 -130 "normal kerning-1"  20 -33 "normal kerning-1"  21 -29 "normal kerning-1"  18 -35 "normal kerning-1"  19 -17 "normal kerning-1"  16 -51 "normal kerning-1"  17 -19 "normal kerning-1"  14 -15 "normal kerning-1"  15 -23 "normal kerning-1"  12 -58 "normal kerning-1"  13 -25 "normal kerning-1"  10 -44 "normal kerning-1"  11 -52 "normal kerning-1"  8 -41 "normal kerning-1"  9 -34 "normal kerning-1"  6 -29 "normal kerning-1"  7 -64 "normal kerning-1"  5 -57 "normal kerning-1"  4 -26 "normal kerning-1" 
+EndChar
+
+StartChar: y
+Encoding: 121 121 51
+Width: 381
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+40 -143 m 0
+ 42 -123 58 -113 75 -113 c 0
+ 84 -113 93 -116 101 -121 c 0
+ 109 -126 119 -130 130 -130 c 0
+ 143 -130 156 -125 167 -112 c 0
+ 182 -94 188 -75 188 -54 c 0
+ 188 -47 188 -39 187 -32 c 0
+ 184 -15 181 0 148 0 c 0
+ 94 0 38 58 24 120 c 0
+ 16 156 11 197 11 239 c 0
+ 11 276 15 314 23 350 c 0
+ 29 375 29 400 65 400 c 0
+ 87 400 93 384 93 363 c 0
+ 93 357 93 350 92 343 c 0
+ 85 293 79 258 79 224 c 0
+ 79 196 82 170 92 136 c 0
+ 102 101 121 85 150 78 c 0
+ 154 77 157 77 160 77 c 0
+ 170 77 175 85 175 128 c 0
+ 175 217 194 320 263 370 c 0
+ 283 384 311 400 330 400 c 0
+ 362 400 367 387 367 360 c 0
+ 367 340 348 336 327 324 c 0
+ 260 284 244 206 244 131 c 0
+ 244 68 255 7 257 -27 c 0
+ 257 -34 258 -40 258 -46 c 0
+ 258 -97 246 -131 227 -156 c 0
+ 211 -177 182 -200 136 -200 c 0
+ 88 -200 40 -191 40 -149 c 0
+ 40 -147 40 -145 40 -143 c 0
+EndSplineSet
+Kerns2: 56 -242 "normal kerning-1"  2 -123 "normal kerning-1"  3 -65 "normal kerning-1"  1 -127 "normal kerning-1"  54 -17 "normal kerning-1"  55 -143 "normal kerning-1"  51 -41 "normal kerning-1"  53 -226 "normal kerning-1"  50 -19 "normal kerning-1"  52 -153 "normal kerning-1"  48 -15 "normal kerning-1"  49 -125 "normal kerning-1"  46 -14 "normal kerning-1"  47 -182 "normal kerning-1"  45 -25 "normal kerning-1"  44 -61 "normal kerning-1"  42 -20 "normal kerning-1"  43 -320 "normal kerning-1"  40 -70 "normal kerning-1"  41 -133 "normal kerning-1"  38 -23 "normal kerning-1"  39 -62 "normal kerning-1"  36 -94 "normal kerning-1"  37 -11 "normal kerning-1"  34 -49 "normal kerning-1"  35 -81 "normal kerning-1"  32 -107 "normal kerning-1"  33 -21 "normal kerning-1"  30 -16 "normal kerning-1"  31 -108 "normal kerning-1"  28 -32 "normal kerning-1"  29 -78 "normal kerning-1"  26 -74 "normal kerning-1"  27 -101 "normal kerning-1"  24 -62 "normal kerning-1"  25 -88 "normal kerning-1"  22 -182 "normal kerning-1"  23 -166 "normal kerning-1"  20 -63 "normal kerning-1"  21 -183 "normal kerning-1"  18 -60 "normal kerning-1"  19 -39 "normal kerning-1"  16 -84 "normal kerning-1"  17 -27 "normal kerning-1"  14 -11 "normal kerning-1"  15 -68 "normal kerning-1"  12 -106 "normal kerning-1"  13 -78 "normal kerning-1"  10 -75 "normal kerning-1"  11 -112 "normal kerning-1"  8 -73 "normal kerning-1"  9 -50 "normal kerning-1"  6 -59 "normal kerning-1"  7 -116 "normal kerning-1"  5 -108 "normal kerning-1"  4 -123 "normal kerning-1" 
+EndChar
+
+StartChar: X
+Encoding: 88 88 52
+Width: 527
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+11 32 m 2
+ 11 54 14 64 24 64 c 0
+ 34 64 38 74 38 101 c 0
+ 38 158 86 242 158 312 c 2
+ 220 373 l 1
+ 207 421 l 2
+ 180 524 105 650 58 671 c 0
+ 43 678 38 688 38 710 c 2
+ 38 740 l 1
+ 112 740 l 1
+ 186 740 l 1
+ 183 705 l 2
+ 183 702 183 699 183 696 c 0
+ 183 676 188 659 200 642 c 0
+ 224 608 265 478 271 453 c 0
+ 275 436 278 427 284 427 c 0
+ 291 427 302 441 324 466 c 0
+ 372 520 418 621 418 660 c 0
+ 418 670 415 676 408 676 c 0
+ 398 676 394 685 394 708 c 2
+ 394 740 l 1
+ 454 740 l 1
+ 513 740 l 1
+ 513 708 l 2
+ 513 687 508 676 500 676 c 0
+ 491 676 487 658 483 617 c 0
+ 476 537 434 459 360 382 c 1
+ 306 320 l 1
+ 317 278 l 2
+ 323 255 338 215 351 190 c 0
+ 377 138 441 64 460 64 c 0
+ 468 64 473 53 473 32 c 2
+ 473 0 l 1
+ 400 0 l 1
+ 327 0 l 1
+ 327 30 l 2
+ 327 47 314 85 298 115 c 0
+ 282 145 262 193 254 222 c 2
+ 239 276 l 1
+ 194 232 l 2
+ 143 181 111 115 111 83 c 0
+ 111 71 116 64 125 64 c 0
+ 135 64 138 54 138 32 c 2
+ 138 0 l 1
+ 75 0 l 1
+ 11 0 l 1
+ 11 32 l 2
+EndSplineSet
+Kerns2: 0 -48 "normal kerning-1"  56 -73 "normal kerning-1"  2 -47 "normal kerning-1"  3 -85 "normal kerning-1"  1 -86 "normal kerning-1"  54 -80 "normal kerning-1"  55 -71 "normal kerning-1"  51 -127 "normal kerning-1"  53 -16 "normal kerning-1"  50 -91 "normal kerning-1"  52 -62 "normal kerning-1"  48 -98 "normal kerning-1"  49 -20 "normal kerning-1"  46 -153 "normal kerning-1"  47 -19 "normal kerning-1"  45 -105 "normal kerning-1"  44 -22 "normal kerning-1"  42 -176 "normal kerning-1"  43 -20 "normal kerning-1"  40 -103 "normal kerning-1"  41 -59 "normal kerning-1"  38 -95 "normal kerning-1"  39 -19 "normal kerning-1"  36 -130 "normal kerning-1"  37 -112 "normal kerning-1"  34 -103 "normal kerning-1"  35 -94 "normal kerning-1"  32 -126 "normal kerning-1"  33 -118 "normal kerning-1"  30 -92 "normal kerning-1"  31 -62 "normal kerning-1"  28 -96 "normal kerning-1"  29 -85 "normal kerning-1"  26 -96 "normal kerning-1"  27 -49 "normal kerning-1"  24 -67 "normal kerning-1"  25 -74 "normal kerning-1"  22 -251 "normal kerning-1"  23 -54 "normal kerning-1"  20 -92 "normal kerning-1"  21 -40 "normal kerning-1"  18 -97 "normal kerning-1"  19 -19 "normal kerning-1"  16 -123 "normal kerning-1"  17 -121 "normal kerning-1"  14 -158 "normal kerning-1"  15 -31 "normal kerning-1"  12 -115 "normal kerning-1"  13 -20 "normal kerning-1"  10 -147 "normal kerning-1"  11 -19 "normal kerning-1"  8 -118 "normal kerning-1"  9 -99 "normal kerning-1"  6 -86 "normal kerning-1"  7 -22 "normal kerning-1"  5 -112 "normal kerning-1"  4 -103 "normal kerning-1" 
+EndChar
+
+StartChar: Y
+Encoding: 89 89 53
+Width: 496
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+143 33 m 2
+ 143 51 147 66 152 66 c 0
+ 157 66 162 93 162 128 c 0
+ 162 162 169 216 177 248 c 0
+ 184 274 187 289 187 306 c 0
+ 187 323 183 342 175 375 c 0
+ 165 419 143 471 112 515 c 0
+ 67 580 39 648 39 671 c 0
+ 39 680 33 687 25 687 c 0
+ 15 687 11 697 11 720 c 2
+ 11 753 l 1
+ 77 753 l 1
+ 143 753 l 1
+ 143 720 l 2
+ 143 697 139 687 129 687 c 0
+ 125 687 122 684 122 678 c 0
+ 122 668 128 651 136 630 c 0
+ 147 602 175 569 192 544 c 0
+ 209 519 219 491 229 462 c 0
+ 236 443 243 424 247 424 c 0
+ 256 424 366 630 374 663 c 0
+ 378 678 377 687 370 687 c 0
+ 364 687 359 702 359 720 c 2
+ 359 753 l 1
+ 420 753 l 1
+ 482 753 l 1
+ 482 720 l 2
+ 482 698 477 687 469 687 c 0
+ 461 687 453 672 449 647 c 0
+ 446 625 418 566 356 462 c 0
+ 287 344 261 288 242 175 c 0
+ 240 164 239 150 239 137 c 0
+ 239 101 247 66 262 66 c 0
+ 270 66 274 54 274 33 c 2
+ 274 0 l 1
+ 209 0 l 1
+ 143 0 l 1
+ 143 33 l 2
+EndSplineSet
+Kerns2: 0 -66 "normal kerning-1"  56 -101 "normal kerning-1"  2 -220 "normal kerning-1"  3 -134 "normal kerning-1"  1 -255 "normal kerning-1"  54 -234 "normal kerning-1"  55 -103 "normal kerning-1"  51 -223 "normal kerning-1"  53 -11 "normal kerning-1"  50 -237 "normal kerning-1"  52 -80 "normal kerning-1"  48 -217 "normal kerning-1"  49 -13 "normal kerning-1"  46 -236 "normal kerning-1"  47 -23 "normal kerning-1"  45 -222 "normal kerning-1"  44 -24 "normal kerning-1"  42 -236 "normal kerning-1"  43 -26 "normal kerning-1"  40 -237 "normal kerning-1"  41 -82 "normal kerning-1"  38 -216 "normal kerning-1"  39 -15 "normal kerning-1"  36 -237 "normal kerning-1"  37 -147 "normal kerning-1"  34 -218 "normal kerning-1"  35 -130 "normal kerning-1"  32 -244 "normal kerning-1"  33 -160 "normal kerning-1"  30 -214 "normal kerning-1"  31 -77 "normal kerning-1"  28 -215 "normal kerning-1"  29 -143 "normal kerning-1"  26 -119 "normal kerning-1"  27 -60 "normal kerning-1"  24 -69 "normal kerning-1"  25 -106 "normal kerning-1"  22 -336 "normal kerning-1"  23 -62 "normal kerning-1"  20 -190 "normal kerning-1"  21 -50 "normal kerning-1"  18 -125 "normal kerning-1"  19 -20 "normal kerning-1"  16 -235 "normal kerning-1"  17 -160 "normal kerning-1"  14 -185 "normal kerning-1"  15 -34 "normal kerning-1"  12 -243 "normal kerning-1"  13 -21 "normal kerning-1"  10 -248 "normal kerning-1"  11 -18 "normal kerning-1"  8 -230 "normal kerning-1"  9 -138 "normal kerning-1"  6 -100 "normal kerning-1"  7 -25 "normal kerning-1"  5 -242 "normal kerning-1"  4 -236 "normal kerning-1" 
+EndChar
+
+StartChar: z
+Encoding: 122 122 54
+Width: 393
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+357 411 m 1
+ 359 411 362 411 365 411 c 0
+ 369 411 374 411 377 406 c 1
+ 379 397 379 388 379 379 c 0
+ 379 374 379 369 379 364 c 0
+ 379 341 376 317 365 298 c 0
+ 348 272 325 256 302 240 c 0
+ 255 208 205 180 159 144 c 1
+ 136 128 117 103 97 82 c 1
+ 108 83 119 84 130 85 c 0
+ 141 87 152 88 163 88 c 0
+ 190 88 217 83 243 76 c 0
+ 258 72 272 67 287 67 c 0
+ 292 67 297 68 302 69 c 1
+ 315 76 329 80 343 80 c 0
+ 344 80 l 0
+ 350 79 358 82 362 74 c 1
+ 363 67 364 59 364 52 c 0
+ 364 41 362 30 359 19 c 0
+ 358 11 354 6 348 4 c 0
+ 333 0 318 -2 302 -2 c 0
+ 290 -2 277 -1 265 0 c 0
+ 237 2 210 9 182 14 c 0
+ 176 15 170 16 164 16 c 0
+ 135 16 108 4 80 -4 c 0
+ 65 -7 50 -12 35 -12 c 0
+ 31 -12 27 -12 23 -11 c 1
+ 17 -11 13 -4 12 3 c 0
+ 12 7 12 12 12 16 c 0
+ 12 32 14 49 18 64 c 0
+ 31 115 62 154 94 186 c 0
+ 150 241 216 275 279 315 c 1
+ 239 321 200 327 160 333 c 1
+ 150 335 140 337 130 337 c 0
+ 117 337 104 334 92 329 c 1
+ 72 320 51 309 29 309 c 0
+ 28 309 28 309 27 309 c 0
+ 22 309 15 309 13 317 c 0
+ 12 324 11 331 11 339 c 0
+ 11 344 12 350 12 355 c 0
+ 12 365 16 373 23 378 c 0
+ 45 393 69 401 93 405 c 0
+ 108 407 122 408 137 408 c 0
+ 162 408 187 405 211 397 c 0
+ 226 392 241 387 257 387 c 0
+ 263 387 267 388 273 389 c 1
+ 301 398 328 410 357 411 c 1
+EndSplineSet
+Kerns2: 0 -23 "normal kerning-1"  56 -199 "normal kerning-1"  2 -22 "normal kerning-1"  3 -29 "normal kerning-1"  1 -62 "normal kerning-1"  54 -8 "normal kerning-1"  55 -40 "normal kerning-1"  51 -20 "normal kerning-1"  53 -187 "normal kerning-1"  50 -12 "normal kerning-1"  52 -38 "normal kerning-1"  48 -10 "normal kerning-1"  49 -101 "normal kerning-1"  46 -9 "normal kerning-1"  47 -156 "normal kerning-1"  45 -18 "normal kerning-1"  44 -41 "normal kerning-1"  42 -12 "normal kerning-1"  43 -284 "normal kerning-1"  40 -32 "normal kerning-1"  41 -69 "normal kerning-1"  38 -15 "normal kerning-1"  39 -31 "normal kerning-1"  36 -49 "normal kerning-1"  34 -21 "normal kerning-1"  35 -40 "normal kerning-1"  32 -63 "normal kerning-1"  33 -11 "normal kerning-1"  30 -11 "normal kerning-1"  31 -40 "normal kerning-1"  28 -19 "normal kerning-1"  29 -32 "normal kerning-1"  26 -42 "normal kerning-1"  27 -37 "normal kerning-1"  24 -35 "normal kerning-1"  25 -35 "normal kerning-1"  22 -184 "normal kerning-1"  23 -134 "normal kerning-1"  20 -34 "normal kerning-1"  21 -46 "normal kerning-1"  18 -34 "normal kerning-1"  19 -18 "normal kerning-1"  16 -43 "normal kerning-1"  17 -15 "normal kerning-1"  14 -10 "normal kerning-1"  15 -29 "normal kerning-1"  12 -59 "normal kerning-1"  13 -33 "normal kerning-1"  10 -41 "normal kerning-1"  11 -59 "normal kerning-1"  8 -38 "normal kerning-1"  9 -30 "normal kerning-1"  6 -30 "normal kerning-1"  7 -69 "normal kerning-1"  5 -58 "normal kerning-1"  4 -39 "normal kerning-1" 
+EndChar
+
+StartChar: Z
+Encoding: 90 90 55
+Width: 581
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+11 27 m 0
+ 11 49 16 61 24 61 c 0
+ 32 61 37 87 47 137 c 0
+ 71 261 129 364 365 517 c 0
+ 421 553 453 616 453 641 c 0
+ 453 645 453 648 451 650 c 0
+ 450 651 448 651 445 651 c 0
+ 434 651 409 647 377 646 c 0
+ 371 646 364 645 358 645 c 0
+ 323 645 285 649 259 654 c 0
+ 241 658 224 659 207 659 c 0
+ 161 659 123 646 117 625 c 0
+ 113 612 105 607 81 607 c 2
+ 49 607 l 1
+ 49 663 l 2
+ 49 718 49 720 74 720 c 0
+ 88 720 124 725 154 731 c 0
+ 174 735 190 737 207 737 c 0
+ 228 737 251 733 287 726 c 0
+ 323 719 344 715 363 715 c 0
+ 380 715 397 718 421 724 c 0
+ 452 732 497 738 522 738 c 2
+ 567 738 l 1
+ 567 706 l 2
+ 567 683 563 665 553 665 c 0
+ 542 665 543 660 534 624 c 0
+ 525 586 514 565 501 545 c 0
+ 482 514 411 438 333 386 c 0
+ 264 339 170 269 146 201 c 0
+ 138 177 123 142 120 121 c 2
+ 114 82 l 1
+ 220 82 l 2
+ 223 82 226 83 229 83 c 0
+ 286 83 353 77 381 71 c 0
+ 405 66 425 64 441 64 c 0
+ 474 64 491 75 491 95 c 0
+ 491 115 495 117 524 117 c 2
+ 557 117 l 1
+ 557 65 l 2
+ 557 17 555 12 531 3 c 0
+ 521 -1 502 -3 473 -3 c 0
+ 453 -3 430 -2 402 0 c 0
+ 342 4 291 6 242 6 c 0
+ 191 6 143 3 89 -1 c 2
+ 11 -7 l 1
+ 11 27 l 0
+EndSplineSet
+Kerns2: 0 -56 "normal kerning-1"  56 -82 "normal kerning-1"  2 -17 "normal kerning-1"  3 -39 "normal kerning-1"  1 -56 "normal kerning-1"  54 -21 "normal kerning-1"  55 -32 "normal kerning-1"  51 -55 "normal kerning-1"  53 -14 "normal kerning-1"  50 -24 "normal kerning-1"  52 -30 "normal kerning-1"  48 -26 "normal kerning-1"  49 -18 "normal kerning-1"  46 -103 "normal kerning-1"  47 -14 "normal kerning-1"  45 -23 "normal kerning-1"  44 -16 "normal kerning-1"  42 -155 "normal kerning-1"  43 -15 "normal kerning-1"  40 -18 "normal kerning-1"  41 -42 "normal kerning-1"  38 -20 "normal kerning-1"  39 -12 "normal kerning-1"  36 -55 "normal kerning-1"  37 -118 "normal kerning-1"  34 -34 "normal kerning-1"  35 -33 "normal kerning-1"  32 -49 "normal kerning-1"  33 -92 "normal kerning-1"  30 -21 "normal kerning-1"  31 -31 "normal kerning-1"  28 -23 "normal kerning-1"  29 -31 "normal kerning-1"  26 -44 "normal kerning-1"  27 -26 "normal kerning-1"  24 -34 "normal kerning-1"  25 -31 "normal kerning-1"  22 -235 "normal kerning-1"  23 -44 "normal kerning-1"  20 -21 "normal kerning-1"  21 -25 "normal kerning-1"  18 -47 "normal kerning-1"  19 -11 "normal kerning-1"  16 -43 "normal kerning-1"  17 -105 "normal kerning-1"  14 -155 "normal kerning-1"  15 -16 "normal kerning-1"  12 -27 "normal kerning-1"  13 -12 "normal kerning-1"  10 -56 "normal kerning-1"  11 -15 "normal kerning-1"  8 -38 "normal kerning-1"  9 -58 "normal kerning-1"  6 -35 "normal kerning-1"  7 -17 "normal kerning-1"  5 -28 "normal kerning-1"  4 -34 "normal kerning-1" 
+EndChar
+
+StartChar: question
+Encoding: 63 63 56
+Width: 497
+VWidth: 0
+Flags: HW
+LayerCount: 2
+Fore
+SplineSet
+178 146 m 0
+ 176 150 176 163 176 179 c 0
+ 176 194 177 212 178 231 c 0
+ 187 350 206 385 295 429 c 0
+ 326 445 355 456 380 478 c 0
+ 402 498 417 526 421 572 c 0
+ 421 575 422 576 422 579 c 0
+ 422 618 398 661 347 675 c 0
+ 319 683 293 687 268 687 c 0
+ 235 687 203 680 168 664 c 0
+ 126 645 91 598 79 553 c 0
+ 74 533 68 528 48 528 c 0
+ 22 528 9 540 9 560 c 0
+ 9 580 21 608 46 644 c 0
+ 95 716 157 754 273 754 c 0
+ 278 754 282 754 287 754 c 0
+ 363 752 393 733 418 720 c 0
+ 462 696 487 648 487 575 c 0
+ 487 570 487 565 487 559 c 0
+ 487 556 487 553 487 550 c 0
+ 480 446 431 405 341 371 c 0
+ 298 355 274 336 260 299 c 0
+ 252 279 244 233 240 199 c 0
+ 234 140 232 137 209 134 c 0
+ 206 134 203 134 201 134 c 0
+ 189 134 181 138 178 146 c 0
+155 0 m 0
+ 150 5 148 14 148 24 c 0
+ 148 43 155 68 167 79 c 0
+ 176 88 193 93 206 93 c 0
+ 208 93 208 93 210 93 c 0
+ 229 90 234 82 237 56 c 0
+ 237 53 238 50 238 47 c 0
+ 238 31 234 15 228 8 c 0
+ 220 -1 199 -7 181 -7 c 0
+ 170 -7 160 -5 155 0 c 0
+EndSplineSet
+Kerns2: 0 -7 "normal kerning-1"  2 -258 "normal kerning-1"  3 -95 "normal kerning-1"  1 -291 "normal kerning-1"  54 -207 "normal kerning-1"  55 -94 "normal kerning-1"  51 -211 "normal kerning-1"  53 -52 "normal kerning-1"  50 -198 "normal kerning-1"  52 -115 "normal kerning-1"  48 -172 "normal kerning-1"  49 -64 "normal kerning-1"  46 -174 "normal kerning-1"  47 -58 "normal kerning-1"  45 -202 "normal kerning-1"  44 -44 "normal kerning-1"  42 -138 "normal kerning-1"  43 -24 "normal kerning-1"  40 -239 "normal kerning-1"  38 -182 "normal kerning-1"  39 -53 "normal kerning-1"  36 -238 "normal kerning-1"  37 -43 "normal kerning-1"  34 -209 "normal kerning-1"  35 -114 "normal kerning-1"  32 -251 "normal kerning-1"  33 -65 "normal kerning-1"  30 -196 "normal kerning-1"  31 -113 "normal kerning-1"  28 -184 "normal kerning-1"  29 -98 "normal kerning-1"  26 -112 "normal kerning-1"  27 -80 "normal kerning-1"  24 -70 "normal kerning-1"  25 -113 "normal kerning-1"  22 -279 "normal kerning-1"  23 -65 "normal kerning-1"  20 -66 "normal kerning-1"  21 -76 "normal kerning-1"  18 -94 "normal kerning-1"  19 -45 "normal kerning-1"  16 -231 "normal kerning-1"  17 -64 "normal kerning-1"  14 -125 "normal kerning-1"  15 -50 "normal kerning-1"  12 -249 "normal kerning-1"  13 -57 "normal kerning-1"  10 -234 "normal kerning-1"  11 -67 "normal kerning-1"  8 -230 "normal kerning-1"  9 -59 "normal kerning-1"  6 -109 "normal kerning-1"  7 -60 "normal kerning-1"  5 -250 "normal kerning-1"  4 -208 "normal kerning-1" 
+EndChar
+EndChars
+EndSplineFont

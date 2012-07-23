@@ -648,6 +648,14 @@ void view_on_the_world::prepare_gl_data(
 
   gl_data.facing = cast_vector3_to_float(view_towards - view_loc);
   gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
+  const heads_up_display_text hud_text = {
+    "We can has cake?",
+    color(0xffcc33cc),
+    "Granger_ch8plus",
+    24,
+    36, 18
+  };
+  gl_data.hud_text = hud_text;
 }
 
 
