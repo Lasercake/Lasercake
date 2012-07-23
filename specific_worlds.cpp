@@ -34,6 +34,102 @@ typedef vector3<coord> coords;
 namespace /* anonymous */ {
 
 const coord wcc = world_center_tile_coord;
+template<typename Functor>
+struct with_state {
+  shared_ptr<Functor> functor_;
+  with_state() : functor_(new Functor()) {}
+  with_state(shared_ptr<Functor> ptr) : functor_(ptr) {}
+  tile_contents operator()(coords l)const {
+    return (*functor_)(l);
+  }
+  void operator()(world_column_builder& b, coord x, coord y, coord min_z_demanded, coord max_z_demanded)const {
+    (*functor_)(b, x, y, min_z_demanded, max_z_demanded);
+  }
+};
+
+
+template<size_t Index, class...Types>
+struct tuple_hash_impl {
+  static BOOST_FORCEINLINE void impl(size_t& v, std::tuple<Types...> const& tup) {
+    tuple_hash_impl<Index - 1, Types...>::impl(v, tup);
+    boost::hash_combine(v, std::get<Index>(tup));
+  }
+};
+template<class...Types>
+struct tuple_hash_impl<0, Types...> {
+  static BOOST_FORCEINLINE void impl(size_t& v, std::tuple<Types...> const& tup) {
+    boost::hash_combine(v, std::get<0>(tup));
+  }
+};
+
+} /*end anonymous namespace*/
+
+namespace std {
+  template<class...Types>
+  struct hash<std::tuple<Types...>> {
+    size_t operator()(std::tuple<Types...> const& tup)const {
+      size_t result = 0;
+      tuple_hash_impl<
+        std::tuple_size<std::tuple<Types...>>::value - 1,
+        Types...
+      >::impl(result, tup);
+      return result;
+    }
+  };
+}
+
+namespace /*anonymous*/ {
+
+template<typename Functor, typename Signature>
+struct memoized;
+template<typename Functor, typename Result, typename...Arguments>
+struct memoized<Functor, Result(Arguments...)> {
+  Functor functor_;
+  typedef std::tuple<Arguments...> arguments_tuple_type;
+  typedef Result original_result_type;
+  typedef original_result_type const& result_type;
+  typedef std::unordered_map<arguments_tuple_type, original_result_type> memo_type;
+  typedef typename memo_type::value_type memo_pair_type;
+  mutable memo_type memo_;
+
+  template<typename...Arguments2>
+  result_type operator()(Arguments2&&... args)const {
+    const arguments_tuple_type args_tuple(args...);
+    typename memo_type::const_iterator i = memo_.find(args_tuple);
+    if(i != memo_.end()) {
+      return i->second;
+    }
+    else {
+      return memo_.insert(
+        memo_pair_type(
+          args_tuple,
+          functor_(std::forward<Arguments>(args)...)
+        )
+      ).first->second;
+    }
+  }
+
+  memoized() : functor_() {}
+  memoized(Functor&& f) : functor_(std::forward<Functor>(f)) {}
+};
+
+// This is a mechanism to make pseudo-random worlds whose contents
+// don't depend on the order you explore them in.
+
+// An RNG that's fast enough to init and gives good enough results
+// for a good worldgen.
+typedef boost::random::ranlux3 memo_rng;
+
+// This doesn't get all the bits of the arguments into the rng seed init,
+// but it seems to work fine.  Also it may be redundant hashing work with
+// memoized that the compiler may or may not figure out...
+template<typename...HashableArguments>
+inline memo_rng make_rng(HashableArguments&&... args) {
+  typedef std::tuple<HashableArguments...> arguments_tuple_type;
+  memo_rng result(std::hash<arguments_tuple_type>()(arguments_tuple_type(args...)));
+  return result;
+}
+
 
 class simple_hills {
 public:
@@ -62,7 +158,7 @@ private:
     }
     else return iter->second;
   }
-  
+
   coord get_height(pair<coord, coord> loc) {
     const auto iter = height_map_.find(loc);
     if (iter == height_map_.end()) {
@@ -146,101 +242,6 @@ private:
   }
 };
 
-template<typename Functor>
-struct with_state {
-  shared_ptr<Functor> functor_;
-  with_state() : functor_(new Functor()) {}
-  with_state(shared_ptr<Functor> ptr) : functor_(ptr) {}
-  tile_contents operator()(coords l)const {
-    return (*functor_)(l);
-  }
-  void operator()(world_column_builder& b, coord x, coord y, coord min_z_demanded, coord max_z_demanded)const {
-    (*functor_)(b, x, y, min_z_demanded, max_z_demanded);
-  }
-};
-
-
-template<size_t Index, class...Types>
-struct tuple_hash_impl {
-  static BOOST_FORCEINLINE void impl(size_t& v, std::tuple<Types...> const& tup) {
-    tuple_hash_impl<Index - 1, Types...>::impl(v, tup);
-    boost::hash_combine(v, std::get<Index>(tup));
-  }
-};
-template<class...Types>
-struct tuple_hash_impl<0, Types...> {
-  static BOOST_FORCEINLINE void impl(size_t& v, std::tuple<Types...> const& tup) {
-    boost::hash_combine(v, std::get<0>(tup));
-  }
-};
-
-} /*end anonymous namespace*/
-
-namespace std {
-  template<class...Types>
-  struct hash<std::tuple<Types...>> {
-    size_t operator()(std::tuple<Types...> const& tup)const {
-      size_t result = 0;
-      tuple_hash_impl<
-        std::tuple_size<std::tuple<Types...>>::value - 1,
-        Types...
-      >::impl(result, tup);
-      return result;
-    }
-  };
-}
-
-namespace /*anonymous*/ {
-
-template<typename Functor, typename Signature>
-struct memoized;
-template<typename Functor, typename Result, typename...Arguments>
-struct memoized<Functor, Result(Arguments...)> {
-  Functor functor_;
-  typedef std::tuple<Arguments...> arguments_tuple_type;
-  typedef Result original_result_type;
-  typedef original_result_type const& result_type;
-  typedef std::unordered_map<arguments_tuple_type, original_result_type> memo_type;
-  typedef typename memo_type::value_type memo_pair_type;
-  mutable memo_type memo_;
-
-  template<typename...Arguments2>
-  result_type operator()(Arguments2&&... args)const {
-    const arguments_tuple_type args_tuple(args...);
-    typename memo_type::const_iterator i = memo_.find(args_tuple);
-    if(i != memo_.end()) {
-      return i->second;
-    }
-    else {
-      return memo_.insert(
-        memo_pair_type(
-          args_tuple,
-          functor_(std::forward<Arguments>(args)...)
-        )
-      ).first->second;
-    }
-  }
-
-  memoized() : functor_() {}
-  memoized(Functor&& f) : functor_(std::forward<Functor>(f)) {}
-};
-
-// This is a mechanism to make pseudo-random worlds whose contents
-// don't depend on the order you explore them in.
-//
-// An RNG that's fast enough to init and gives good enough results
-// for a good worldgen.
-typedef boost::random::ranlux3 memo_rng;
-
-// This doesn't get all the bits of the arguments into the rng seed init,
-// but it seems to work fine.  Also it may be redundant hashing work with
-// memoized that the compiler may or may not figure out...
-template<typename...HashableArguments>
-inline memo_rng make_rng(HashableArguments&&... args) {
-  typedef std::tuple<HashableArguments...> arguments_tuple_type;
-  memo_rng result(std::hash<arguments_tuple_type>()(arguments_tuple_type(args...)));
-  return result;
-}
 
 class spiky3 {
   static const int a_spike_height = 20;
