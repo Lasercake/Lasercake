@@ -27,16 +27,6 @@
 typedef tile_coordinate coord;
 typedef vector3<coord> coords;
 
-namespace std {
-  template<> struct hash<pair<coord, coord> > {
-    inline size_t operator()(pair<coord, coord> const& v) const {
-      size_t seed = 0;
-      boost::hash_combine(seed, v.first);
-      boost::hash_combine(seed, v.second);
-      return seed;
-    }
-  };
-}
 namespace /* anonymous */ {
 
 const coord wcc = world_center_tile_coord;
@@ -120,6 +110,37 @@ private:
   }
 };
 
+class spiky2 {
+public:
+  void operator()(world_column_builder& b, coord x, coord y, coord, coord) {
+    b.specify_lowest(ROCK);
+    b.specify(get_height(make_pair(x, y)), AIR);
+  }
+private:
+  unordered_map<std::pair<coord, coord>, coord> height_map_;
+  // RNG default-initialized for now
+  // (so, deterministic except for worldblock realization order)
+  large_fast_noncrypto_rng rng_;
+
+  static const int a_spike_height = 20;
+
+  coord get_height(pair<coord, coord> loc) {
+    const auto iter = height_map_.find(loc);
+    if (iter == height_map_.end()) {
+      const int which = boost::random::uniform_int_distribution<int>(0,20)(rng_);
+      int spike_max = a_spike_height;
+      if (which < 5) spike_max *= 3;
+      if (which == 0) spike_max *= 5;
+      const boost::random::uniform_int_distribution<int> random_spike_height(0,spike_max);
+      coord height = wcc + random_spike_height(rng_);
+      height_map_.insert(make_pair(loc, height));
+      return height;
+    }
+    else {
+      return iter->second;
+    }
+  }
+};
 
 template<typename Functor>
 struct with_state {
@@ -128,6 +149,9 @@ struct with_state {
   with_state(shared_ptr<Functor> ptr) : functor_(ptr) {}
   tile_contents operator()(coords l)const {
     return (*functor_)(l);
+  }
+  void operator()(world_column_builder& b, coord x, coord y, coord min_z_demanded, coord max_z_demanded)const {
+    (*functor_)(b, x, y, min_z_demanded, max_z_demanded);
   }
 };
 
@@ -189,6 +213,12 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         (l.z < wcc) ? ROCK : AIR;
     });
   }
+  if (scenario == "flat2") {
+    return worldgen_from_column_spec([](world_column_builder& b, coord, coord, coord, coord) {
+      b.specify_lowest(ROCK);
+      b.specify(wcc, AIR);
+    });
+  }
   if (scenario == "plane") {
     return worldgen_from_tilespec([](coords l) {
       return
@@ -212,6 +242,9 @@ worldgen_function_t make_world_building_func(std::string scenario) {
   }
   if (scenario == "spiky") {
     return worldgen_from_tilespec(with_state<spiky>());
+  }
+  if (scenario == "spiky2") {
+    return worldgen_from_column_spec(with_state<spiky2>());
   }
   if (scenario == "pressure_tunnel" || scenario == "pressure_tunnel_ground") {
     const bool has_ground = (scenario == "pressure_tunnel_ground");
