@@ -192,7 +192,7 @@ private:
   memoized<get_height, coord (unhashed<simple_hills const*>, coord, coord)> height_memo_;
 };
 
-class spiky {
+class spiky1 {
 public:
   tile_contents operator()(coords l) {
     const coord height = get_height(make_pair(l.x, l.y));
@@ -370,13 +370,13 @@ worldgen_function_t make_world_building_func(std::string scenario) {
   if (scenario == "simple_hills") {
     return worldgen_from_column_spec(simple_hills());
   }
-  if (scenario == "spiky") {
-    return worldgen_from_tilespec(with_state<spiky>());
+  if (scenario == "spiky1") {
+    return worldgen_from_tilespec(with_state<spiky1>());
   }
   if (scenario == "spiky2") {
     return worldgen_from_column_spec(with_state<spiky2>());
   }
-  if (scenario == "spiky3") {
+  if (scenario == "spiky" || scenario == "spiky3") {
     return worldgen_from_column_spec(spiky3());
   }
   if (scenario == "pressure_tunnel" || scenario == "pressure_tunnel_ground") {
