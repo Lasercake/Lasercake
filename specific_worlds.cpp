@@ -19,6 +19,10 @@
 
 */
 
+#include <tuple>
+#include <unordered_map>
+#include <boost/random/ranlux.hpp>
+
 #include "world.hpp"
 #include "worldgen.hpp"
 #include "specific_worlds.hpp"
@@ -156,6 +160,115 @@ struct with_state {
 };
 
 
+template<size_t Index, class...Types>
+struct tuple_hash_impl {
+  static BOOST_FORCEINLINE void impl(size_t& v, std::tuple<Types...> const& tup) {
+    tuple_hash_impl<Index - 1, Types...>::impl(v, tup);
+    boost::hash_combine(v, std::get<Index>(tup));
+  }
+};
+template<class...Types>
+struct tuple_hash_impl<0, Types...> {
+  static BOOST_FORCEINLINE void impl(size_t& v, std::tuple<Types...> const& tup) {
+    boost::hash_combine(v, std::get<0>(tup));
+  }
+};
+
+} /*end anonymous namespace*/
+
+namespace std {
+  template<class...Types>
+  struct hash<std::tuple<Types...>> {
+    size_t operator()(std::tuple<Types...> const& tup)const {
+      size_t result = 0;
+      tuple_hash_impl<
+        std::tuple_size<std::tuple<Types...>>::value - 1,
+        Types...
+      >::impl(result, tup);
+      return result;
+    }
+  };
+}
+
+namespace /*anonymous*/ {
+
+template<typename Functor, typename Signature>
+struct memoized;
+template<typename Functor, typename Result, typename...Arguments>
+struct memoized<Functor, Result(Arguments...)> {
+  Functor functor_;
+  typedef std::tuple<Arguments...> arguments_tuple_type;
+  typedef Result original_result_type;
+  typedef original_result_type const& result_type;
+  typedef std::unordered_map<arguments_tuple_type, original_result_type> memo_type;
+  typedef typename memo_type::value_type memo_pair_type;
+  mutable memo_type memo_;
+
+  template<typename...Arguments2>
+  result_type operator()(Arguments2&&... args)const {
+    const arguments_tuple_type args_tuple(args...);
+    typename memo_type::const_iterator i = memo_.find(args_tuple);
+    if(i != memo_.end()) {
+      return i->second;
+    }
+    else {
+      return memo_.insert(
+        memo_pair_type(
+          args_tuple,
+          functor_(std::forward<Arguments>(args)...)
+        )
+      ).first->second;
+    }
+  }
+
+  memoized() : functor_() {}
+  memoized(Functor&& f) : functor_(std::forward<Functor>(f)) {}
+};
+
+// This is a mechanism to make pseudo-random worlds whose contents
+// don't depend on the order you explore them in.
+//
+// An RNG that's fast enough to init and gives good enough results
+// for a good worldgen.
+typedef boost::random::ranlux3 memo_rng;
+
+// This doesn't get all the bits of the arguments into the rng seed init,
+// but it seems to work fine.  Also it may be redundant hashing work with
+// memoized that the compiler may or may not figure out...
+template<typename...HashableArguments>
+inline memo_rng make_rng(HashableArguments&&... args) {
+  typedef std::tuple<HashableArguments...> arguments_tuple_type;
+  memo_rng result(std::hash<arguments_tuple_type>()(arguments_tuple_type(args...)));
+  return result;
+}
+
+class spiky3 {
+  static const int a_spike_height = 20;
+public:
+  void operator()(world_column_builder& b, coord x, coord y, coord, coord)const {
+    b.specify_lowest(ROCK);
+    b.specify(height_memo_(x, y), AIR);
+  }
+
+  struct get_height {
+    coord operator()(coord x, coord y)const {
+      // TODO include a constant-for-this-instance-of-the-world random-seed too.
+      memo_rng rng_here = make_rng(x, y);
+
+      const int which = boost::random::uniform_int_distribution<int>(0,20)(rng_here);
+      int spike_max = a_spike_height;
+      if (which < 5) spike_max *= 3;
+      if (which == 0) spike_max *= 5;
+      const boost::random::uniform_int_distribution<int> random_spike_height(0,spike_max);
+      coord height = wcc + random_spike_height(rng_here);
+      return height;
+    }
+  };
+private:
+  memoized<get_height, coord (coord, coord)> height_memo_;
+};
+
+
 bool in_old_box(coords l) {
   return  l.x >= wcc-1 && l.x < wcc+21 &&
           l.y >= wcc-1 && l.y < wcc+21 &&
@@ -201,6 +314,7 @@ struct twisty {
 
 } /* end anonymous namespace */
 
+
 worldgen_function_t make_world_building_func(std::string scenario) {
   if(scenario == "vacuum") {
     return worldgen_from_tilespec([](coords) {
@@ -245,6 +359,9 @@ worldgen_function_t make_world_building_func(std::string scenario) {
   }
   if (scenario == "spiky2") {
     return worldgen_from_column_spec(with_state<spiky2>());
+  }
+  if (scenario == "spiky3") {
+    return worldgen_from_column_spec(spiky3());
   }
   if (scenario == "pressure_tunnel" || scenario == "pressure_tunnel_ground") {
     const bool has_ground = (scenario == "pressure_tunnel_ground");
