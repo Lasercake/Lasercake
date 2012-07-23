@@ -458,6 +458,17 @@ void view_on_the_world::prepare_gl_data(
   const vector3<double> view_loc_double(cast_vector3_to_double(view_loc));
   const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
 
+  gl_data.facing = cast_vector3_to_float(view_towards - view_loc);
+  gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
+  const heads_up_display_text hud_text = {
+    "We can has cake?",
+    color(0xffcc33cc),
+    "Granger_ch8plus",
+    24,
+    36, 18
+  };
+  gl_data.hud_text = hud_text;
+
   const auto tiles_here = get_all_containing_tile_coordinates(view_loc);
   // Average the color. Take the max opacity, so that you can't see through rock ever.
   //
@@ -645,17 +656,6 @@ void view_on_the_world::prepare_gl_data(
       gl_collections_by_distance, view_loc_double, view_tile_loc_rounded_down, tile_view_bounds, *this, w
     });
   }
-
-  gl_data.facing = cast_vector3_to_float(view_towards - view_loc);
-  gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
-  const heads_up_display_text hud_text = {
-    "We can has cake?",
-    color(0xffcc33cc),
-    "Granger_ch8plus",
-    24,
-    36, 18
-  };
-  gl_data.hud_text = hud_text;
 }
 
 
