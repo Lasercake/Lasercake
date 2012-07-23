@@ -151,10 +151,15 @@ typedef boost::random::ranlux3 memo_rng;
 // hash implementation, nor that an implementation return the same result
 // on every run of the program (the latter might be false for security reasons
 // [a mild defense against computational-complexity attacks]).
+//
+// Using boost::hash and a fixed Boost version helps some, though Boost
+// can also call types' custom hash functions... so still TODO think
+// about this.  (Linux packagers wouldn't even want to use the fixed Boost
+// version.  Probably we'll just use some code duplication at some point.)
 template<typename...HashableArguments>
 inline memo_rng make_rng(HashableArguments&&... args) {
   typedef std::tuple<HashableArguments...> arguments_tuple_type;
-  memo_rng result(std::hash<arguments_tuple_type>()(arguments_tuple_type(args...)));
+  memo_rng result(boost::hash<arguments_tuple_type>()(arguments_tuple_type(args...)));
   return result;
 }
 
