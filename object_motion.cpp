@@ -929,11 +929,12 @@ void update_moving_objects_impl(
             // Because one object can follow another closely, with the one in front known to be
             // not colliding with anything else until after the time the back one intersects
             // where the front one was.
+            /*these are no longer needed OR WANTED
             if (inf1.last_time_updated < collision.computation_time)
               update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.computation_time);
             if (inf2.last_time_updated < collision.computation_time)
               update_object_to_time(obj2, *o2pss, *o2ds, inf2, collision.computation_time);
-            assert (!o1pss->intersects(*o2pss) && true);
+            assert (!o1pss->intersects(*o2pss) && true);*/
             update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
             ++inf1.invalidation_counter; // required in case update_object_to_time did nothing
             update_object_to_time(obj2, *o2pss, *o2ds, inf2, collision.time);
