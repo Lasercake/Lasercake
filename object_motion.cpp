@@ -29,25 +29,6 @@ typedef non_normalized_rational<time_int_type> time_type;
 typedef faux_optional<time_type> optional_time;
 
 vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& velocity, time_type end_time) {
-  // Always round 'up'.
-  // This is the simplest way to play nicely with the polyhedron sweep code.
-  // It has the downside that it makes everything move, on average, 0.5 fine scalar units faster than it should
-  // in each dimension of its movement. 
-  /*return vector3<fine_scalar>(
-    sign(velocity.x) * (
-      ((std::abs(velocity.x) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
-      / (                                             end_time.denominator * velocity_scale_factor)
-    ),
-    sign(velocity.y) * (
-      ((std::abs(velocity.y) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
-      / (                                             end_time.denominator * velocity_scale_factor)
-    ),
-    sign(velocity.z) * (
-      ((std::abs(velocity.z) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
-      / (                                             end_time.denominator * velocity_scale_factor)
-    )
-  );*/
-  
   // Round to nearest:
   return vector3<fine_scalar>(
     divide_rounding_towards_zero(
@@ -61,6 +42,23 @@ vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& ve
     divide_rounding_towards_zero(
       ((2 * velocity.z * end_time.numerator) + (end_time.denominator * velocity_scale_factor)),
       ( 2 *                                     end_time.denominator * velocity_scale_factor )
+    )
+  );
+}
+
+vector3<fine_scalar> movement_delta_rounding_up(vector3<fine_scalar> const& velocity, time_type end_time) {
+  return vector3<fine_scalar>(
+    sign(velocity.x) * (
+      ((std::abs(velocity.x) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
+      / (                                             end_time.denominator * velocity_scale_factor)
+    ),
+    sign(velocity.y) * (
+      ((std::abs(velocity.y) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
+      / (                                             end_time.denominator * velocity_scale_factor)
+    ),
+    sign(velocity.z) * (
+      ((std::abs(velocity.z) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
+      / (                                             end_time.denominator * velocity_scale_factor)
     )
   );
 }
@@ -479,16 +477,16 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
   for (auto const& plane : p1_planes) {
     //std::cerr << plane.base_point << plane.normal << relative_velocity << "\n";
     const auto vel_dotprod = relative_velocity.dot<fine_scalar>(plane.normal);
-    const polygon_rational_type before_frame_offset = polygon_rational_type(s2_velocity.dot<fine_scalar>(plane.normal), velocity_scale_factor) * (s1_last_time_updated - s2_last_time_updated);
+    const polygon_rational_type before_frame_offset = round_time_downwards(polygon_rational_type(s2_velocity.dot<fine_scalar>(plane.normal), velocity_scale_factor) * (s1_last_time_updated - s2_last_time_updated), prec);
     
     bool found_any_verts = false;
     bool excludes_entire = true;
     polygon_rational_type closest_vertex_cross;
     for (auto const& v : p2.vertices()) {
       vector3<fine_scalar> worst_error(
-        -sign(plane.normal(X)) * sign(vel_dotprod),
-        -sign(plane.normal(Y)) * sign(vel_dotprod),
-        -sign(plane.normal(Z)) * sign(vel_dotprod));
+        -sign(plane.normal(X)),
+        -sign(plane.normal(Y)),
+        -sign(plane.normal(Z)));
       const auto dotprod = before_frame_offset + polygon_rational_type(((v - plane.base_point) + worst_error).dot<fine_scalar>(plane.normal));
       //std::cerr << "foo" << dotprod << "\n";
       if (vel_dotprod == 0) {
@@ -514,7 +512,7 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
     }
     else {
       if (vel_dotprod < 0) {
-        const time_type crossing_point = round_time_upwards(round_time_upwards(round_time_upwards(closest_vertex_cross, prec) * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
+        const time_type crossing_point = round_time_upwards(round_time_upwards(closest_vertex_cross * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
         if (crossing_point < max_intersecting) {
           std::cerr << min_intersecting << ", " << crossing_point << "==" << max_intersecting << "\n";
           max_intersecting = crossing_point;
@@ -522,7 +520,7 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
         }
       }
       else {
-        const time_type crossing_point = round_time_downwards(round_time_downwards(round_time_downwards(closest_vertex_cross, prec) * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
+        const time_type crossing_point = round_time_downwards(round_time_downwards(closest_vertex_cross * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
         if (crossing_point > min_intersecting) {
           std::cerr << min_intersecting << "==" << crossing_point << ", " << max_intersecting << "\n";
           min_intersecting = crossing_point;
@@ -544,9 +542,9 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
     polygon_rational_type closest_vertex_cross;
     for (auto const& v : p1.vertices()) {
       vector3<fine_scalar> worst_error(
-        sign(plane.normal(X)) * sign(vel_dotprod),
-        sign(plane.normal(Y)) * sign(vel_dotprod),
-        sign(plane.normal(Z)) * sign(vel_dotprod));
+        sign(plane.normal(X)),
+        sign(plane.normal(Y)),
+        sign(plane.normal(Z)));
       const auto dotprod = before_frame_offset + polygon_rational_type(((plane.base_point - v) + worst_error).dot<fine_scalar>(-plane.normal));
       if (vel_dotprod == 0) {
         // Either this plane completely excludes the other shape
@@ -570,7 +568,7 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
     }
     else {
       if (vel_dotprod < 0) {
-        const time_type crossing_point = round_time_upwards(round_time_upwards(round_time_upwards(closest_vertex_cross, prec) * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
+        const time_type crossing_point = round_time_upwards(round_time_upwards(closest_vertex_cross * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
         if (crossing_point < max_intersecting) {
           std::cerr << min_intersecting << ", " << crossing_point << "==" << max_intersecting << "ii\n";
           max_intersecting = crossing_point;
@@ -578,7 +576,7 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
         }
       }
       else {
-        const time_type crossing_point = round_time_downwards(round_time_downwards(round_time_downwards(closest_vertex_cross, prec) * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
+        const time_type crossing_point = round_time_downwards(round_time_downwards(closest_vertex_cross * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
         if (crossing_point > min_intersecting) {
           std::cerr << min_intersecting << "==" << crossing_point << ", " << max_intersecting << "ii\n";
           min_intersecting = crossing_point;
@@ -662,10 +660,10 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
   if (erase_old_sweep) sweep_box_cd.erase(id);
   
   bounding_box sweep_bounds = personal_space_shape->bounds();
-  auto delta = movement_delta_from_start_to(obj->velocity(), time_type(1) - min_time);
+  // Round up, so that our sweep bounds contains all area we might reach.
+  auto delta = movement_delta_rounding_up(obj->velocity(), time_type(1) - min_time);
   if (delta != vector3<fine_scalar>(0,0,0)) {
-    // Round up, so that our sweep bounds contains at least the area the rounded polygon sweep will contain
-    sweep_bounds.translate(delta + vector3<fine_scalar>(sign(delta.x) * max_error_dist,sign(delta.y) * max_error_dist,sign(delta.z) * max_error_dist));
+    sweep_bounds.translate(delta);
     sweep_bounds.combine_with(personal_space_shape->bounds());
     assert(sweep_bounds != personal_space_shape->bounds());
   }
