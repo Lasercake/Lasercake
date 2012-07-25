@@ -203,8 +203,8 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
 
 time_type round_time_downwards(time_type time, time_int_type max_meaningful_precision) {
   if (time.denominator < 0) {
-    time.numerator == -time.numerator;
-    time.denominator == -time.denominator;
+    time.numerator = -time.numerator;
+    time.denominator = -time.denominator;
   }
     //ilog2 is giving me weird errors I don't understand. TODO understand that and do this the right way
   /*if (farthest_plane_cross.denominator > max_meaningful_precision) {
@@ -222,8 +222,8 @@ time_type round_time_downwards(time_type time, time_int_type max_meaningful_prec
 
 time_type round_time_upwards(time_type time, time_int_type max_meaningful_precision) {
   if (time.denominator < 0) {
-    time.numerator == -time.numerator;
-    time.denominator == -time.denominator;
+    time.numerator = -time.numerator;
+    time.denominator = -time.denominator;
   }
     //ilog2 is giving me weird errors I don't understand. TODO understand that and do this the right way
   /*if (farthest_plane_cross.denominator > max_meaningful_precision) {
