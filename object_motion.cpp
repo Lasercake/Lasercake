@@ -65,6 +65,23 @@ vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& ve
   );
 }
 
+vector3<fine_scalar> movement_delta_rounding_down(vector3<fine_scalar> const& velocity, time_type end_time) {
+  return vector3<fine_scalar>(
+    divide_rounding_towards_zero(
+      (velocity.x * end_time.numerator),
+      (end_time.denominator * velocity_scale_factor)
+    ),
+    divide_rounding_towards_zero(
+      (velocity.y * end_time.numerator),
+      (end_time.denominator * velocity_scale_factor)
+    ),
+    divide_rounding_towards_zero(
+      (velocity.z * end_time.numerator),
+      (end_time.denominator * velocity_scale_factor)
+    )
+  );
+}
+
 vector3<fine_scalar> movement_delta_intermediate(vector3<fine_scalar> const& velocity, time_type min, time_type max) {
   return movement_delta_from_start_to(velocity, max) - movement_delta_from_start_to(velocity, min);
 }
@@ -184,20 +201,106 @@ optional_time get_first_moment_of_intersection_(shape const* s1, shape const* s2
   }
 }
 
-inline optional_time get_first_moment_of_intersection(shape const* s1, shape const* s2, vector3<fine_scalar> s1_velocity, vector3<fine_scalar> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
+time_type round_time_downwards(time_type time, time_int_type max_meaningful_precision) {
+  if (time.denominator < 0) {
+    time.numerator == -time.numerator;
+    time.denominator == -time.denominator;
+  }
+    //ilog2 is giving me weird errors I don't understand. TODO understand that and do this the right way
+  /*if (farthest_plane_cross.denominator > max_meaningful_precision) {
+    int shift_amount = ilog2(farthest_plane_cross.denominator) - ilog2(max_meaningful_precision);
+    farthest_plane_cross.numerator >>= shift_amount;
+    farthest_plane_cross.denominator = (farthest_plane_cross.denominator + (1 << shift_amount) - 1) >> shift_amount;
+  }*/
+  while (time.denominator > max_meaningful_precision) {
+    int shift_amount = 2;
+    time.numerator >>= shift_amount;
+    time.denominator = (time.denominator + (1 << shift_amount) - 1) >> shift_amount;
+  }
+  return time;
+}
+
+time_type round_time_upwards(time_type time, time_int_type max_meaningful_precision) {
+  if (time.denominator < 0) {
+    time.numerator == -time.numerator;
+    time.denominator == -time.denominator;
+  }
+    //ilog2 is giving me weird errors I don't understand. TODO understand that and do this the right way
+  /*if (farthest_plane_cross.denominator > max_meaningful_precision) {
+    int shift_amount = ilog2(farthest_plane_cross.denominator) - ilog2(max_meaningful_precision);
+    farthest_plane_cross.numerator >>= shift_amount;
+    farthest_plane_cross.denominator = (farthest_plane_cross.denominator + (1 << shift_amount) - 1) >> shift_amount;
+  }*/
+  while(time.denominator > max_meaningful_precision) {
+    int shift_amount = 2;
+    time.denominator >>= shift_amount;
+    time.numerator = (time.numerator + (1 << shift_amount) - 1) >> shift_amount;
+  }
+  return time;
+}
+
+// This is essentially arbitrary - beyond a certain value it doesn't really matter, but there's no clear cutoff.
+time_int_type max_meaningful_time_precision(vector3<fine_scalar> const& velocity) {
+  return 16+std::max(std::max(std::abs(velocity(X)),std::abs(velocity(Y))),std::abs(velocity(Z))) * 16 / velocity_scale_factor;
+}
+
+time_type get_first_moment_of_all_overlapping(std::vector<plane_as_base_point_and_normal> const& excluding_planes, std::vector<vector3<fine_scalar>> const& other_vertices, vector3<fine_scalar> relative_velocity) {
+  time_type farthest_plane_cross(0);
+  for (auto const& p : excluding_planes) {
+  //std::cerr << p.base_point << p.normal << relative_velocity << "\n";
+    time_type closest_vertex_cross(1);
+    const auto vel_dotprod = relative_velocity.dot<fine_scalar>(p.normal);
+    if (vel_dotprod == 0) return time_type(0);
+    for (auto const& v : other_vertices) {
+      vector3<fine_scalar> worst_error(
+        -sign(p.normal(X)),
+        -sign(p.normal(Y)),
+        -sign(p.normal(Z)));
+      const auto dotprod = ((v - p.base_point) + worst_error).dot<fine_scalar>(p.normal);
+      const time_type vertex_cross(dotprod * velocity_scale_factor, vel_dotprod);
+        //std::cerr << vertex_cross << "\n";
+      if (vertex_cross < closest_vertex_cross) {
+        closest_vertex_cross = vertex_cross;
+      }
+    }
+    if (closest_vertex_cross > farthest_plane_cross) {
+      farthest_plane_cross = closest_vertex_cross;
+    }
+  }
+        //std::cerr << farthest_plane_cross << "!\n";
+  // Simplify...
+  farthest_plane_cross = round_time_downwards(farthest_plane_cross, max_meaningful_time_precision(relative_velocity));
+        //std::cerr << farthest_plane_cross << "!\n";
+        return time_type(0);
+  return farthest_plane_cross;
+}
+
+inline optional_time get_first_moment_of_intersection_old(shape const* s1, shape const* s2, vector3<fine_scalar> s1_velocity, vector3<fine_scalar> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
+  // Standardize: s1 is the one whose position is up-to-date.
+  if (s2_last_time_updated > s1_last_time_updated) {
+    return get_first_moment_of_intersection_old(s2, s1, s2_velocity, s1_velocity, s2_last_time_updated, s1_last_time_updated);
+  }
   vector3<time_type> reciprocal_last_moments_before_rounding;
   std::array<int, num_dimensions> dimension_rounding_order = {{X,Y,Z}};
   for (int dim = 0; dim < num_dimensions; ++dim) {
     // obeys the rule 0.5 = time * (abs(velocity) / velocity_scale_factor)
     // thus time = 0.5 * (velocity_scale_factor / abs(velocity))
     
-    if (s1_velocity(dim) == s2_velocity(dim)) {
-      // If they're going at the same rate in the same direction, they never round relative to each other.
-      reciprocal_last_moments_before_rounding[dim] = time_type(0, 1);
-    }
+    //if (s2_last_time_updated > s1_last_time_updated) {
+      if (s1_velocity(dim) == s2_velocity(dim)) {
+        // If they're going at the same rate in the same direction, they never round relative to each other.
+        reciprocal_last_moments_before_rounding[dim] = time_type(0, 1);
+      }
+      else {
+        reciprocal_last_moments_before_rounding[dim] = time_type(2 * std::max(std::abs(s1_velocity(dim)), std::abs(s2_velocity(dim))), velocity_scale_factor);
+      }
+    /*}
     else {
-      reciprocal_last_moments_before_rounding[dim] = time_type(2 * std::max(std::abs(s1_velocity(dim)), std::abs(s2_velocity(dim))), velocity_scale_factor);
-    }
+      // hack - just do one step.
+      // The worst-case scenario is a "false-"positive that causes a collision when it was
+      // already a very close thing, whereupon the two objects will be updated to the same time for the next round of checking.
+      reciprocal_last_moments_before_rounding[dim] = time_type(0, 1);
+    }*/
   }
   
   // Sort them in ascending order BY TIME
@@ -215,36 +318,107 @@ inline optional_time get_first_moment_of_intersection(shape const* s1, shape con
     dimension_rounding_order[1] = temp; }
 
   bool intersects = false;
+  time_type force_min_intersect_duration;
+  
+  const vector3<fine_scalar> other_prior_displacement = movement_delta_from_start_to(s2_velocity, s1_last_time_updated - s2_last_time_updated);
+  
+  // Hack...
+  shape s2_moved(*s2);
+  s2_moved.translate(other_prior_displacement);
+  if(s1->intersects(s2_moved)) return boost::none;
+
+  time_type total_duration = time_type(1) - s1_last_time_updated;
   // Hack, TODO fix: Only polyhedra collide properly!
   for (convex_polyhedron /*copy, not reference*/ p : s1->get_polyhedra()) {
+    p.translate(-other_prior_displacement);
     //std::cerr << "...\n";
     vector3<fine_scalar> delta_to_last_step_end(0,0,0);
-    for (int i = 0; i < num_dimensions + 1; ++i) {
-      time_type end_time(1);
-      if (i < num_dimensions) {
+    time_type last_duration(0);
+    for (int i = 0; i < 3; ++i) {
+      time_type duration = total_duration;
+      if ((i < 2) && reciprocal_last_moments_before_rounding[i+1].numerator != 0) {
         int dim = dimension_rounding_order[i];
         auto recip_time = reciprocal_last_moments_before_rounding(dim);
         if (recip_time.numerator != 0) {
-          end_time = recip_time.reciprocal();
+          duration = recip_time.reciprocal();
+          if (duration > total_duration) duration = total_duration;
         }
       }
-      const vector3<fine_scalar> delta_to_this_step_end = movement_delta_from_start_to(s1_velocity - s2_velocity, end_time);
+      const vector3<fine_scalar> delta_to_this_step_end = movement_delta_from_start_to(s1_velocity - s2_velocity, duration);
       //std::cerr << delta_to_this_step_end << dim << s1_velocity << s2_velocity << end_time << "\n";
+      assert(!(duration < last_duration));
+      assert((((delta_to_this_step_end(X) != 0) + (delta_to_this_step_end(Y) != 0) + (delta_to_this_step_end(Z) != 0)) <= (i+1)) || (duration == total_duration));
       if (delta_to_this_step_end != delta_to_last_step_end) {
         const vector3<fine_scalar> this_step_delta = delta_to_this_step_end - delta_to_last_step_end;
         convex_polyhedron sweep(p, this_step_delta, vector3<fine_scalar>(sign(delta_to_this_step_end(X)),sign(delta_to_this_step_end(Y)),sign(delta_to_this_step_end(Z))));
+        
+        const fine_scalar inverse_tinystep_size = std::max(max_meaningful_time_precision(s1_velocity), max_meaningful_time_precision(s1_velocity));
+        
         if (sweep_vs_shape(sweep, s2)) {
           intersects = true;
+          force_min_intersect_duration = last_duration;
           break;
+        }
+        else {
+          for(time_type q(0/*(inverse_tinystep_size * s1_last_time_updated.numerator + s1_last_time_updated.denominator - 1) / s1_last_time_updated.denominator*/, inverse_tinystep_size); q < duration; ++q.numerator) {
+            shape s1t(*s1); s1t.translate(movement_delta_from_start_to(s1_velocity, q));
+            shape s2t(*s2); s2t.translate(movement_delta_from_start_to(s2_velocity, q + s1_last_time_updated - s2_last_time_updated));
+            assert(!s1t.intersects(s2t));
+          }
+            shape s1t(*s1); s1t.translate(movement_delta_from_start_to(s1_velocity, duration));
+            shape s2t(*s2); s2t.translate(movement_delta_from_start_to(s2_velocity, duration + s1_last_time_updated - s2_last_time_updated));
+            assert(!s1t.intersects(s2t));
         }
         delta_to_last_step_end = delta_to_this_step_end;
         p.translate(this_step_delta);
       }
+      last_duration = duration;
     }
   }
   
   if (intersects) {
-  
+    //std::cerr << "yo";
+    time_type first_duration_of_collision = total_duration;
+    // Hack, TODO fix: Only polyhedra collide properly!
+    for (convex_polyhedron /*copy, not reference*/ p : s1->get_polyhedra()) {
+      p.translate(-other_prior_displacement);
+      for (convex_polyhedron const& p2 : s2->get_polyhedra()) {
+        std::vector<plane_as_base_point_and_normal> excluding_planes;
+        find_excluding_planes(p, p2, &excluding_planes);
+        auto moment = get_first_moment_of_all_overlapping(excluding_planes, p2.vertices(), s1_velocity - s2_velocity);
+        if (moment < first_duration_of_collision) {
+          first_duration_of_collision = moment;
+        }
+      }
+      for (bounding_box const& bb : s2->get_boxes()) {
+        std::vector<plane_as_base_point_and_normal> excluding_planes;
+        convex_polyhedron bbpoly(bb);
+        find_excluding_planes(p, bbpoly, &excluding_planes);
+        auto moment = get_first_moment_of_all_overlapping(excluding_planes, bbpoly.vertices(), s1_velocity - s2_velocity);
+        if (moment < first_duration_of_collision) {
+          first_duration_of_collision = moment;
+        }
+      }
+    }
+    time_type result;
+    if (first_duration_of_collision < force_min_intersect_duration) {
+      //std::cerr << "what: " << force_min_intersect_duration <<"," <<s1_last_time_updated << "\n";
+      result = force_min_intersect_duration + s1_last_time_updated;
+    }
+    else {
+      //std::cerr << "butt: " << first_duration_of_collision <<"," <<s1_last_time_updated << "\n";
+      result = first_duration_of_collision + s1_last_time_updated;
+    }
+    result = round_time_downwards(result, std::max(max_meaningful_time_precision(s1_velocity), max_meaningful_time_precision(s2_velocity)));
+    if (result < s1_last_time_updated) return s1_last_time_updated;
+    else {
+      
+            shape s1tr(*s1); s1tr.translate(movement_delta_from_start_to(s1_velocity, result - s1_last_time_updated));
+            shape s2tr(*s2); s2tr.translate(movement_delta_from_start_to(s2_velocity, result - s2_last_time_updated));
+            assert(!s1tr.intersects(s2tr));
+      return result;
+    }
+  /*
   //assert(!s1->intersects(*s2));
   //assert(false);
     if (auto result = get_first_moment_of_intersection_(s1, s2, s1_velocity, s2_velocity, s1_last_time_updated, s2_last_time_updated,
@@ -259,15 +433,197 @@ inline optional_time get_first_moment_of_intersection(shape const* s1, shape con
     else {
       std::cerr << "Warning: Detecting no collisions when it seems like there should be one!";
       //assert(false);
-    }
+    }*/
   }
   return boost::none;
 }
 
+//haaaaaaaaaaaack, copied from polygon_collision_detection.cpp!
+vector3<polygon_int_type> plane_normal(vector3<polygon_int_type> p1, vector3<polygon_int_type> p2, vector3<polygon_int_type> p3) {
+  return vector3<polygon_int_type>(
+    (p1(Y) * (p2(Z) - p3(Z))) + (p2(Y) * (p3(Z) - p1(Z))) + (p3(Y) * (p1(Z) - p2(Z))),
+    (p1(Z) * (p2(X) - p3(X))) + (p2(Z) * (p3(X) - p1(X))) + (p3(Z) * (p1(X) - p2(X))),
+    (p1(X) * (p2(Y) - p3(Y))) + (p2(X) * (p3(Y) - p1(Y))) + (p3(X) * (p1(Y) - p2(Y)))
+  );
+}
+void populate_with_plane_info(convex_polyhedron const& p, std::vector<plane_as_base_point_and_normal>& collector) {
+  for (uint8_t i = 0; i < p.face_info().size(); i += p.face_info()[i] + 1) {
+    collector.push_back(plane_as_base_point_and_normal(
+        p.vertices()[p.face_info()[i + 1]],
+        // relying on the fact that the first three vertices of each face are in the proper order.
+        plane_normal(p.vertices()[p.face_info()[i + 1]],
+                     p.vertices()[p.face_info()[i + 2]],
+                     p.vertices()[p.face_info()[i + 3]])
+      ));
+  }
+}
+
+// should probably be in polygon_collision_detection.cpp instead?
+inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron const& p1, convex_polyhedron const& p2, vector3<fine_scalar> s1_velocity, vector3<fine_scalar> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
+  // Standardize: s1 is the one whose position is up-to-date.
+  if (s2_last_time_updated > s1_last_time_updated) {
+    return get_first_moment_of_intersection_of_polys(p2, p1, s2_velocity, s1_velocity, s2_last_time_updated, s1_last_time_updated);
+  }
+  
+  time_type min_intersecting(s1_last_time_updated);
+  time_type max_intersecting(1);
+  
+  const vector3<fine_scalar> relative_velocity = s1_velocity - s2_velocity;
+  std::cerr << relative_velocity << "\n";
+  const time_int_type prec = std::max(max_meaningful_time_precision(s1_velocity), max_meaningful_time_precision(s2_velocity));
+  
+  // TODO clean up duplicate code
+  std::vector<plane_as_base_point_and_normal> p1_planes; p1_planes.reserve(p1.num_faces());
+  populate_with_plane_info(p1, p1_planes);
+  
+  for (auto const& plane : p1_planes) {
+    //std::cerr << plane.base_point << plane.normal << relative_velocity << "\n";
+    const auto vel_dotprod = relative_velocity.dot<fine_scalar>(plane.normal);
+    const polygon_rational_type before_frame_offset = polygon_rational_type(s2_velocity.dot<fine_scalar>(plane.normal), velocity_scale_factor) * (s1_last_time_updated - s2_last_time_updated);
+    
+    bool found_any_verts = false;
+    bool excludes_entire = true;
+    polygon_rational_type closest_vertex_cross;
+    for (auto const& v : p2.vertices()) {
+      vector3<fine_scalar> worst_error(
+        -sign(plane.normal(X)) * sign(vel_dotprod),
+        -sign(plane.normal(Y)) * sign(vel_dotprod),
+        -sign(plane.normal(Z)) * sign(vel_dotprod));
+      const auto dotprod = before_frame_offset + polygon_rational_type(((v - plane.base_point) + worst_error).dot<fine_scalar>(plane.normal));
+      //std::cerr << "foo" << dotprod << "\n";
+      if (vel_dotprod == 0) {
+        // Either this plane completely excludes the other shape
+        // ("there is no intersection")
+        // or always will contain it ("we learn nothing")
+        if (dotprod <= polygon_rational_type(0)) {
+          excludes_entire = false;
+        }
+      }
+      else if ((!found_any_verts) || (dotprod < closest_vertex_cross)) {
+        found_any_verts = true;
+        closest_vertex_cross = dotprod;
+      //std::cerr << "bar" << closest_vertex_cross << "\n";
+      }
+    }
+      
+    if (vel_dotprod == 0) {
+      if (excludes_entire) {
+        //std::cerr << "bail\n";
+        return boost::none;
+      }
+    }
+    else {
+      if (vel_dotprod < 0) {
+        const time_type crossing_point = round_time_upwards(round_time_upwards(round_time_upwards(closest_vertex_cross, prec) * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
+        if (crossing_point < max_intersecting) {
+          std::cerr << min_intersecting << ", " << crossing_point << "==" << max_intersecting << "\n";
+          max_intersecting = crossing_point;
+          if (min_intersecting > max_intersecting) return boost::none;
+        }
+      }
+      else {
+        const time_type crossing_point = round_time_downwards(round_time_downwards(round_time_downwards(closest_vertex_cross, prec) * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
+        if (crossing_point > min_intersecting) {
+          std::cerr << min_intersecting << "==" << crossing_point << ", " << max_intersecting << "\n";
+          min_intersecting = crossing_point;
+          if (min_intersecting > max_intersecting) return boost::none;
+        }
+      }
+    }
+  }
+  
+  std::vector<plane_as_base_point_and_normal> p2_planes; p2_planes.reserve(p2.num_faces());
+  populate_with_plane_info(p2, p2_planes);
+  
+  for (auto const& plane : p2_planes) {
+    const auto vel_dotprod = relative_velocity.dot<fine_scalar>(-plane.normal);
+    const polygon_rational_type before_frame_offset = polygon_rational_type(s2_velocity.dot<fine_scalar>(-plane.normal), velocity_scale_factor) * (s1_last_time_updated - s2_last_time_updated);
+    
+    bool found_any_verts = false;
+    bool excludes_entire = true;
+    polygon_rational_type closest_vertex_cross;
+    for (auto const& v : p1.vertices()) {
+      vector3<fine_scalar> worst_error(
+        sign(plane.normal(X)) * sign(vel_dotprod),
+        sign(plane.normal(Y)) * sign(vel_dotprod),
+        sign(plane.normal(Z)) * sign(vel_dotprod));
+      const auto dotprod = before_frame_offset + polygon_rational_type(((plane.base_point - v) + worst_error).dot<fine_scalar>(-plane.normal));
+      if (vel_dotprod == 0) {
+        // Either this plane completely excludes the other shape
+        // ("there is no intersection")
+        // or always will contain it ("we learn nothing")
+        if (dotprod <= polygon_rational_type(0)) {
+          excludes_entire = false;
+        }
+      }
+      else if ((!found_any_verts) || (dotprod < closest_vertex_cross)) {
+        found_any_verts = true;
+        closest_vertex_cross = dotprod;
+      }
+    }
+      
+    if (vel_dotprod == 0) {
+      if (excludes_entire) {
+        //std::cerr << "bailii\n";
+        return boost::none;
+      }
+    }
+    else {
+      if (vel_dotprod < 0) {
+        const time_type crossing_point = round_time_upwards(round_time_upwards(round_time_upwards(closest_vertex_cross, prec) * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
+        if (crossing_point < max_intersecting) {
+          std::cerr << min_intersecting << ", " << crossing_point << "==" << max_intersecting << "ii\n";
+          max_intersecting = crossing_point;
+          if (min_intersecting > max_intersecting) return boost::none;
+        }
+      }
+      else {
+        const time_type crossing_point = round_time_downwards(round_time_downwards(round_time_downwards(closest_vertex_cross, prec) * time_type(velocity_scale_factor, vel_dotprod), prec) + s1_last_time_updated, prec);
+        if (crossing_point > min_intersecting) {
+          std::cerr << min_intersecting << "==" << crossing_point << ", " << max_intersecting << "ii\n";
+          min_intersecting = crossing_point;
+          if (min_intersecting > max_intersecting) return boost::none;
+        }
+      }
+    }
+  }
+  
+        //std::cerr << min_intersecting << "!\n";
+  shape p1tb(p1);
+  shape p2tb(p2);
+  p2tb.translate(movement_delta_from_start_to(s2_velocity, s1_last_time_updated - s2_last_time_updated));
+  std::cerr << "checking... ";
+  if(p1tb.intersects(p2tb)) {
+    std::cerr << "fail!\n";
+    }
+    else {
+    std::cerr << "ok\n";
+  shape p1t(p1);
+  shape p2t(p2);
+  p1t.translate(movement_delta_from_start_to(s1_velocity, min_intersecting - s1_last_time_updated));
+  p2t.translate(movement_delta_from_start_to(s2_velocity, min_intersecting - s2_last_time_updated));
+  assert(!p1t.intersects(p2t));
+    }
+  return min_intersecting;
+}
+
+inline optional_time get_first_moment_of_intersection(shape const* s1, shape const* s2, vector3<fine_scalar> s1_velocity, vector3<fine_scalar> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
+  // haaaaaack
+  if (s2->get_polyhedra().empty()) {
+    return get_first_moment_of_intersection_of_polys(s1->get_polyhedra().front(), convex_polyhedron(s2->get_boxes().front()), s1_velocity, s2_velocity, s1_last_time_updated, s2_last_time_updated);
+  }
+  else {
+    return get_first_moment_of_intersection_of_polys(s1->get_polyhedra().front(), s2->get_polyhedra().front(), s1_velocity, s2_velocity, s1_last_time_updated, s2_last_time_updated);
+  }
+}
+
+
+
 struct collision_info {
-  collision_info(time_type t,object_or_tile_identifier o1,int v1,object_or_tile_identifier o2,int v2):
-    time(t),oid1(o1),validation1(v1),oid2(o2),validation2(v2){}
+  collision_info(time_type t,time_type ct,object_or_tile_identifier o1,int v1,object_or_tile_identifier o2,int v2):
+    time(t),computation_time(ct),oid1(o1),validation1(v1),oid2(o2),validation2(v2){}
   time_type time;
+  time_type computation_time;
   object_or_tile_identifier oid1;
   int validation1;
   object_or_tile_identifier oid2;
@@ -343,7 +699,7 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
       const time_type ltu2 = (i2 == objects_info.end()) ? time_type(0) : i2->second.last_time_updated;
       if (optional_time result = get_first_moment_of_intersection(personal_space_shape, opss, obj->velocity(), other_velocity, ltu1, ltu2)) {
         anticipated_collisions.push(collision_info(
-          *result,
+          *result, min_time,
           // operator[] creates the entry if needed
           object_or_tile_identifier(id), objects_info[id].invalidation_counter,
           object_or_tile_identifier(other_id), objects_info[other_id].invalidation_counter));
@@ -362,7 +718,7 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
     const time_type ltu1 = (i1 == objects_info.end()) ? time_type(0) : i1->second.last_time_updated;
     if (optional_time result = get_first_moment_of_intersection(personal_space_shape, &t, obj->velocity(), vector3<fine_scalar>(0,0,0), ltu1, time_type(0))) {
       anticipated_collisions.push(collision_info(
-        *result,
+        *result, min_time,
         // operator[] creates the entry if needed
         object_or_tile_identifier(id), objects_info[id].invalidation_counter,
         object_or_tile_identifier(loc), objects_info[loc].invalidation_counter));
@@ -573,6 +929,11 @@ void update_moving_objects_impl(
             // Because one object can follow another closely, with the one in front known to be
             // not colliding with anything else until after the time the back one intersects
             // where the front one was.
+            if (inf1.last_time_updated < collision.computation_time)
+              update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.computation_time);
+            if (inf2.last_time_updated < collision.computation_time)
+              update_object_to_time(obj2, *o2pss, *o2ds, inf2, collision.computation_time);
+            assert (!o1pss->intersects(*o2pss) && true);
             update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
             ++inf1.invalidation_counter; // required in case update_object_to_time did nothing
             update_object_to_time(obj2, *o2pss, *o2ds, inf2, collision.time);
