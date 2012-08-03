@@ -24,11 +24,6 @@
 #include "../data_structures/bbox_collision_detector.hpp"
 #include "../data_structures/bbox_collision_detector_iteration.hpp"
 
-// hack to let us instantiate more bbox_collision_detector variations for
-// the tests (without bothering the main executable with them).
-#define BBOX_COLLISION_DETECTOR_IMPL_TREAT_AS_HEADER 1
-#include "../data_structures/bbox_collision_detector.cpp"
-
 typedef int32_t obj_t;
 typedef bbox_collision_detector<obj_t, 32, 1> detector_1d;
 typedef bbox_collision_detector<obj_t, 32, 2> detector_2d;

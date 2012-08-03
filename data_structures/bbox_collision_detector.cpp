@@ -390,5 +390,12 @@ bbox_collision_detector<ObjectIdentifier, CoordinateBits, NumDimensions>::
 namespace collision_detector {
 template class bbox_collision_detector<object_or_tile_identifier, 64, 3>;
 template class bbox_collision_detector<object_identifier, 64, 3>;
+
+#if !LASERCAKE_NO_SELF_TESTS
+// for bbox_collision_detector_tests.cpp
+template class bbox_collision_detector<int32_t, 32, 1>;
+template class bbox_collision_detector<int32_t, 32, 2>;
+template class bbox_collision_detector<int32_t, 64, 3>;
+#endif
 }
 #endif
