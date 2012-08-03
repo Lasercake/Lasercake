@@ -139,6 +139,10 @@ vector3<polygon_int_type> forcedly_directed_plane_normal(vector3<polygon_int_typ
   }
 }
 
+bool vectors_are_parallel(vector3<polygon_int_type> const& v1, vector3<polygon_int_type> const& v2) {
+  return (v1(X) * v2(Y) == v2(X) * v1(Y)) && (v1(X) * v2(Z) == v2(X) * v1(Z)) && (v1(Y) * v2(Z) == v2(Y) * v1(Z));
+}
+
 faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face_onesided(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps2) {
   for (auto const& p : ps2.base_points_and_outward_facing_normals) {
     bool excludes_entire = true;
@@ -155,7 +159,114 @@ faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> g
   return none;
 }
 
+bool find_excluding_planes_onesided(std::vector<plane_as_base_point_and_normal> p1_planes, convex_polyhedron const& p2,
+    std::vector<plane_as_base_point_and_normal>* planes_collector_1,
+    std::vector<plane_as_base_point_and_normal>* planes_collector_2) {
+  bool found_any_excluding_planes = false;
+  for (auto const& plane : p1_planes) {
+    bool excludes_entire = true;
+    bool found_any_points = false;
+    vector3<polygon_int_type> closest_point;
+    polygon_int_type closest_dotprod;
+    for (auto const& v : p2.vertices()) {
+      const auto dotprod = plane.normal.dot<polygon_int_type>(v - plane.base_point);
+      if (dotprod <= 0) {
+        excludes_entire = false;
+        break;
+      }
+      if (planes_collector_2 && ((!found_any_points) || (dotprod < closest_dotprod))) {
+        found_any_points = true;
+        closest_dotprod = dotprod;
+        closest_point = v;
+      }
+    }
+    if (excludes_entire) {
+      if (!(planes_collector_1 || planes_collector_2)) return true;
+      found_any_excluding_planes = true;
+      if (planes_collector_1) {
+        planes_collector_1->push_back(plane);
+      }
+      if (planes_collector_2) {
+        assert(found_any_points);
+        planes_collector_2->push_back(plane_as_base_point_and_normal(closest_point, -plane.normal));
+      }
+    }
+  }
+  return found_any_excluding_planes;
+}
+
+void populate_with_plane_info(convex_polyhedron const& p, std::vector<plane_as_base_point_and_normal>& collector) {
+  for (uint8_t i = 0; i < p.face_info().size(); i += p.face_info()[i] + 1) {
+    collector.push_back(plane_as_base_point_and_normal(
+        p.vertices()[p.face_info()[i + 1]],
+        // relying on the fact that the first three vertices of each face are in the proper order.
+        plane_normal(p.vertices()[p.face_info()[i + 1]],
+                     p.vertices()[p.face_info()[i + 2]],
+                     p.vertices()[p.face_info()[i + 3]])
+      ));
+  }
+}
+
+bool planes_exclude_together_but_not_alone(plane_as_base_point_and_normal const& p1, plane_as_base_point_and_normal const& p2, std::vector<vector3<polygon_int_type>> const& verts) {
+  bool excludes_entire1 = true;
+  bool excludes_entire2 = true;
+  for (auto const& v : verts) {
+    const auto dotprod1 = p1.normal.dot<polygon_int_type>(v - p1.base_point);
+    const auto dotprod2 = p2.normal.dot<polygon_int_type>(v - p2.base_point);
+    if (dotprod1 <= 0) {
+      excludes_entire1 = false;
+      if (dotprod2 <= 0) {
+        return false;
+      }
+    }
+    if (dotprod2 <= 0) {
+      excludes_entire2 = false;
+    }
+  }
+  return !(excludes_entire1 || excludes_entire2);
+}
+
 } /* end anonymous namespace */
+
+bool find_excluding_planes(convex_polyhedron const& p1, convex_polyhedron const& p2, std::vector<plane_as_base_point_and_normal>* planes_collector_1, std::vector<plane_as_base_point_and_normal>* planes_collector_2) {
+  bool found_any_excluding_planes = false;
+  std::vector<plane_as_base_point_and_normal> p1_planes; p1_planes.reserve(p1.num_faces());
+  populate_with_plane_info(p1, p1_planes);
+  if (find_excluding_planes_onesided(p1_planes, p2, planes_collector_1, planes_collector_2)) {
+    if (!(planes_collector_1 || planes_collector_2)) return true;
+    found_any_excluding_planes = true;
+  }
+  
+  std::vector<plane_as_base_point_and_normal> p2_planes; p2_planes.reserve(p2.num_faces());
+  populate_with_plane_info(p2, p2_planes);
+  if (find_excluding_planes_onesided(p2_planes, p1, planes_collector_2, planes_collector_1)) {
+    if (!(planes_collector_1 || planes_collector_2)) return true;
+    found_any_excluding_planes = true;
+  }
+  /*
+  for (auto const& e1 : p1.edges()) {
+    for (auto const& e2 : p2.edges()) {
+      const auto e1v1 = p1.vertices()[e1.vert_1];
+      const auto e1v2 = p1.vertices()[e1.vert_2];
+      const auto e2v1 = p2.vertices()[e2.vert_1];
+      const auto e2v2 = p2.vertices()[e2.vert_2];
+      if (planes_exclude_together_but_not_alone(
+             p1_planes[e1.face_1], p1_planes[e1.face_2], p2.vertices()) &&
+          planes_exclude_together_but_not_alone(
+             p2_planes[e2.face_1], p2_planes[e2.face_2], p1.vertices())) {
+        
+        assert(!vectors_are_parallel(e2v2 - e2v1, e1v2 - e1v1));
+        if (!(planes_collector_1 || planes_collector_2)) return true;
+        found_any_excluding_planes = true;
+        const auto normal = forcedly_directed_plane_normal(e1v1,e1v2,e1v1 + (e2v2-e2v1), e1v1 - e2v1);
+        if (planes_collector_1) planes_collector_1->push_back(plane_as_base_point_and_normal(e1v1, normal));
+        if (planes_collector_2) planes_collector_2->push_back(plane_as_base_point_and_normal(e2v1, -normal));
+      }
+    }
+  }*/
+  
+  return found_any_excluding_planes;
+}
 
 faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps1, std::vector<vector3<polygon_int_type>> const& vs2, polyhedron_planes_info_for_intersection ps2) {
   if (auto result = get_excluding_face_onesided(vs1, ps2)) return result;
@@ -225,10 +336,6 @@ faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> g
   compute_planes_info_for_intersection(p, ps1);
   compute_info_for_intersection(bb, vs2, ps2);
   return get_excluding_face(p.vertices(), ps1, vs2, ps2);
-}
-
-bool vectors_are_parallel(vector3<polygon_int_type> const& v1, vector3<polygon_int_type> const& v2) {
-  return (v1(X) * v2(Y) == v2(X) * v1(Y)) && (v1(X) * v2(Z) == v2(X) * v1(Z)) && (v1(Y) * v2(Z) == v2(Y) * v1(Z));
 }
 
 template<typename VectorType, int ArraySize> class arrayvector {
@@ -306,6 +413,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
     face_building_info(){}
     arrayvector<std::vector<int>, 8> verts;
     vector3<polygon_int_type> normal;
+    int final_idx;
   };
   typedef std::list<face_building_info>::iterator face_reference_t;
   struct line_building_info {
@@ -574,15 +682,11 @@ void convex_polyhedron::init_other_info_from_vertices() {
     }
   }
   vertices_.erase(vertices_.begin() + next_vert_id, vertices_.end());
-  for (auto const& l : lines) {
-    //std::cerr << l.vert_1 << l.vert_2 << vertices_.size();
-    //if (vertex_id_map.find(l.vert_1) != vertex_id_map.end() && vertex_id_map.find(l.vert_2) != vertex_id_map.end())
-    edges_.push_back(std::make_pair(
-       vertex_id_map[l.vert_1],
-       vertex_id_map[l.vert_2]));
-  }
+  num_faces_ = faces.size();
+  int which_face = 0;
   for (auto& f : faces) {
     const int face_idx = face_info_.size();
+    f.final_idx = which_face++;
     face_info_.push_back(f.verts.size());
     for (int vid : f.verts) {
       face_info_.push_back(vertex_id_map[vid]);
@@ -595,6 +699,14 @@ void convex_polyhedron::init_other_info_from_vertices() {
       face_info_[face_idx + 2] = face_info_[face_idx + 3];
       face_info_[face_idx + 3] = temp;
     }
+  }
+  for (auto const& l : lines) {
+    //std::cerr << l.vert_1 << l.vert_2 << vertices_.size();
+    //if (vertex_id_map.find(l.vert_1) != vertex_id_map.end() && vertex_id_map.find(l.vert_2) != vertex_id_map.end())
+    edges_.push_back(edge(
+      vertex_id_map[l.vert_1], vertex_id_map[l.vert_2],
+      l.face_1->final_idx, l.face_2->final_idx
+      ));
   }
 }
 convex_polyhedron::convex_polyhedron(std::vector<vector3<polygon_int_type>> const& vs):vertices_(vs) {
@@ -612,18 +724,21 @@ convex_polyhedron::convex_polyhedron(bounding_box const& bb) {
   init_other_info_from_vertices();
 }
 
-void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<polygon_int_type> const& v, vector3<polygon_int_type> max_error, std::vector<vector3<polygon_int_type>>& vertex_collector, polyhedron_planes_info_for_intersection& plane_collector) {
-  // Essentially, the polyhedron plus the entire space the polyhedron can reach by moving
-  // in any combination of 0-to-1 of each of the following vectors:
+convex_polyhedron::convex_polyhedron(convex_polyhedron const& start_shape, vector3<polygon_int_type> displacement, vector3<polygon_int_type> max_error) {
+  // Compute a maximum sweep with possible rounding error.
+  // The resulting polyhedron will represent the union of all
+  // of p + a*dirs[0] + b*dirs[1] + c*dirs[2] + d.dirs[3]
+  // for p \in start_shape, a,b,c,d \in [0,1]
+  
   std::array<vector3<polygon_int_type>, 4> dirs = {{
     vector3<polygon_int_type>(max_error(X), 0, 0),
     vector3<polygon_int_type>(0, max_error(Y), 0),
     vector3<polygon_int_type>(0, 0, max_error(Z)),
-    v
+    displacement
   }};
   // Collapse parallel dirs.
   for (int dim = 0; dim < num_dimensions; ++dim) {
-    if ((v((dim+1) % num_dimensions) == 0) && (v((dim+2) % num_dimensions) == 0)) {
+    if ((displacement((dim+1) % num_dimensions) == 0) && (displacement((dim+2) % num_dimensions) == 0)) {
       dirs[3][dim] += dirs[dim](dim);
       dirs[dim][dim] = 0;
       //std::cerr << "eliminating parallel " << dir << "\n";
@@ -682,18 +797,20 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
   
   // Eliminate whatever vertices we can eliminate with complete confidence;
   // We'll leave some incorrect (i.e. strictly interior) vertices around,
-  //   but the polyhedron generation will catch them.
-  std::vector<arrayvector<std::vector<vector3<polygon_int_type>>, 8>> normals_by_point_idx(ph.vertices().size());
-  for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
-    for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
-      normals_by_point_idx[ph.face_info()[i + j + 1]].push_back(
+  //   but init_other_info_from_vertices() will catch them.
+  std::vector<arrayvector<std::vector<vector3<polygon_int_type>>, 8>> normals_by_point_idx(start_shape.vertices().size());
+  for (uint8_t i = 0; i < start_shape.face_info().size(); i += start_shape.face_info()[i] + 1) {
+    for (uint8_t j = 0; j < start_shape.face_info()[i]; ++j) {
+      normals_by_point_idx[start_shape.face_info()[i + j + 1]].push_back(
         // relying on the fact that the first three vertices of each face are in the proper order.
-        plane_normal(ph.vertices()[ph.face_info()[i + 1]], ph.vertices()[ph.face_info()[i + 2]], ph.vertices()[ph.face_info()[i + 3]]));
+        plane_normal(
+          start_shape.vertices()[start_shape.face_info()[i + 1]],
+          start_shape.vertices()[start_shape.face_info()[i + 2]],
+          start_shape.vertices()[start_shape.face_info()[i + 3]]));
     }
   }
   
-  std::vector<vector3<polygon_int_type>> verts;
-  for (uint8_t vert_idx = 0; vert_idx < ph.vertices().size(); ++vert_idx) {
+  for (uint8_t vert_idx = 0; vert_idx < start_shape.vertices().size(); ++vert_idx) {
     uint16_t existences_of_translates = 0xffff;
     for (int dir = 0; dir < 4; ++dir) {
       if (dir_existences[dir]) {
@@ -726,16 +843,12 @@ void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<
     
     for (int combo = 0; combo < 16; ++combo) {
       if (existences_of_translates & (1 << combo)) {
-        verts.push_back(ph.vertices()[vert_idx]+vectors_by_combo[combo]);
+        vertices_.push_back(start_shape.vertices()[vert_idx]+vectors_by_combo[combo]);
       }
     }
   }
   
-  /// Haaaack: Create a polyhedron just to compute its info.
-  // In the future this function should just return the polyhedron.
-  convex_polyhedron sweep_poly(verts);
-  compute_planes_info_for_intersection(sweep_poly, plane_collector);
-  for(auto v : sweep_poly.vertices()) vertex_collector.push_back(v);
+  init_other_info_from_vertices();
  
 #if 0
   return;
