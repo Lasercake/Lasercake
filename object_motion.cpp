@@ -436,6 +436,80 @@ inline optional_time get_first_moment_of_intersection_old(shape const* s1, shape
   return boost::none;
 }
 
+
+bool velocity_cant_move_against_normal_even_by_rounding(vector3<fine_scalar> const& velocity, vector3<fine_scalar> const& normal) {
+  if (velocity == vector3<fine_scalar>(0,0,0)) return true;
+  if (velocity.dot<fine_scalar>(normal) < 0) return false;
+  int smallest_vel_dim = X;
+  int biggest_vel_dim = X;
+  int middle_vel_dim = X;
+  for (int i = 0; i < 3; ++i) {
+    if (std::abs(velocity(i)) > std::abs(velocity(biggest_vel_dim))) {
+      biggest_vel_dim = i;
+    }
+    if (std::abs(velocity(i)) <= std::abs(velocity(smallest_vel_dim))) {
+      smallest_vel_dim = i;
+    }
+  }
+  assert(biggest_vel_dim != smallest_vel_dim);
+  middle_vel_dim =
+      ((biggest_vel_dim != X) && (smallest_vel_dim != X)) ? X :
+      ((biggest_vel_dim != Y) && (smallest_vel_dim != Y)) ? Y : Z;
+  const fine_scalar abs_biggest = std::abs(velocity(biggest_vel_dim));
+//  const fine_scalar abs_middle = std::abs(velocity(middle_vel_dim));
+//  const fine_scalar abs_smallest = std::abs(velocity(smallest_vel_dim));
+  const fine_scalar sign_biggest = sign(velocity(biggest_vel_dim));
+//  const fine_scalar sign_middle = sign(velocity(middle_vel_dim));
+//  const fine_scalar sign_smallest = sign(velocity(smallest_vel_dim));
+  const bool biggest_moves_against_plane = (velocity(biggest_vel_dim) * normal(biggest_vel_dim) < 0);
+  const bool middle_moves_against_plane = (velocity(middle_vel_dim) * normal(middle_vel_dim) < 0);
+  const bool smallest_moves_against_plane = (velocity(smallest_vel_dim) * normal(smallest_vel_dim) < 0);
+  if (biggest_moves_against_plane) {
+    // We round in that direction first. So there's some moment at which we're
+    // the unit vector in the biggest_vel_dim direction, into the plane.
+    return false;
+  }
+  const int number_against_plane = middle_moves_against_plane + smallest_moves_against_plane;
+  if (number_against_plane == 0) {
+    return true;
+  }
+  else if (number_against_plane == 1) {
+    const int dim_against_plane = smallest_moves_against_plane ? smallest_vel_dim : middle_vel_dim;
+    const int dim_not_against_plane = smallest_moves_against_plane ? middle_vel_dim : smallest_vel_dim;
+    const fine_scalar  abs_against     = std::abs(velocity(dim_against_plane    ));
+    const fine_scalar  abs_not_against = std::abs(velocity(dim_not_against_plane));
+    const fine_scalar sign_against     =     sign(velocity(dim_against_plane    ));
+    const fine_scalar sign_not_against =     sign(velocity(dim_not_against_plane));
+      // If the biggest direction is actually moving away from the plane,
+      // the worst-case angle between that dimension and each of the others
+      // is when the other dimension has a 'real' value of 0.5.
+      // At that value, you round the biggest-dim value to nearest, even though it might sometimes round up.
+      // After all, the next time against-dim can round up is at 1.5,
+      // and the ratio at 0.5 would be:
+      // 1 / ceil(big/against)
+      // and the ratio at 1.5 would be:
+      // 2 / floor(3big/against)
+      // However, big/against is always >= 1.5 if we're rounding up, so floor(3big/against) >= 2ceil(big/against),
+      // so we're better off just going with the 0.5 value.
+      // same goes for not-against vs against as for big vs against
+    vector3<fine_scalar> worst_rounded_vector(0,0,0);
+    worst_rounded_vector(dim_against_plane) = sign_against;
+    worst_rounded_vector(biggest_vel_dim      ) = sign_biggest     * divide_rounding_towards_zero(
+        abs_biggest     + abs_against, 2*abs_against);
+    worst_rounded_vector(dim_not_against_plane) = sign_not_against * divide_rounding_towards_zero(
+        abs_not_against + abs_against, 2*abs_against);
+    if (worst_rounded_vector.dot<fine_scalar>(normal) < 0) return false;
+    else return true;
+  }
+  else if (number_against_plane == 2) {
+    std::cerr << "TODO: Implement velocity_cant_move_against_normal_even_by_rounding() for the two-dimensions-going-towards-the-plane case";
+    return false; // A few false-falses are okay
+  }
+  
+  assert(false);
+}
+
+
 //haaaaaaaaaaaack, copied from polygon_collision_detection.cpp!
 vector3<polygon_int_type> plane_normal(vector3<polygon_int_type> p1, vector3<polygon_int_type> p2, vector3<polygon_int_type> p3) {
   return vector3<polygon_int_type>(
@@ -463,6 +537,17 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
     return get_first_moment_of_intersection_of_polys(p2, p1, s2_velocity, s1_velocity, s2_last_time_updated, s1_last_time_updated);
   }
   
+  // SPECIAL CASE HACK
+  // If the velocities are identical, they'll round at the same times, too, so the accounting
+  // for rounding error would give clear false-positives.
+  std::array<bool, 3> veldim_identical{{false, false, false}};
+  if (s1_last_time_updated == s2_last_time_updated) {
+    if (s1_velocity == s2_velocity) return boost::none;
+    for (int dim = 0; dim < num_dimensions; ++dim) {
+      if (s1_velocity(dim) == s2_velocity(dim)) veldim_identical[dim] = true;
+    }
+  }
+  
   time_type min_intersecting(s1_last_time_updated);
   time_type max_intersecting(1);
   
@@ -475,38 +560,51 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
   populate_with_plane_info(p1, p1_planes);
   
   for (auto const& plane : p1_planes) {
-    //std::cerr << plane.base_point << plane.normal << relative_velocity << "\n";
+    std::cerr << plane.base_point << plane.normal << relative_velocity << "\n";
     const auto vel_dotprod = relative_velocity.dot<fine_scalar>(plane.normal);
     const polygon_rational_type before_frame_offset = round_time_downwards(polygon_rational_type(s2_velocity.dot<fine_scalar>(plane.normal), velocity_scale_factor) * (s1_last_time_updated - s2_last_time_updated), prec);
+    std::cerr << plane.base_point << plane.normal << relative_velocity << before_frame_offset << "\n";
     
     bool found_any_verts = false;
     bool excludes_entire = true;
+    bool excludes_entire_noerror = true;
     polygon_rational_type closest_vertex_cross;
     for (auto const& v : p2.vertices()) {
       vector3<fine_scalar> worst_error(
-        -sign(plane.normal(X)),
-        -sign(plane.normal(Y)),
-        -sign(plane.normal(Z)));
+        veldim_identical[X] ? 0 : -sign(plane.normal(X)),
+        veldim_identical[Y] ? 0 : -sign(plane.normal(Y)),
+        veldim_identical[Z] ? 0 : -sign(plane.normal(Z)));
       const auto dotprod = before_frame_offset + polygon_rational_type(((v - plane.base_point) + worst_error).dot<fine_scalar>(plane.normal));
+      const auto dotprod_noerror = (v - plane.base_point).dot<fine_scalar>(plane.normal);
       //std::cerr << "foo" << dotprod << "\n";
-      if (vel_dotprod == 0) {
-        // Either this plane completely excludes the other shape
-        // ("there is no intersection")
-        // or always will contain it ("we learn nothing")
-        if (dotprod <= polygon_rational_type(0)) {
-          excludes_entire = false;
-        }
+      if (dotprod <= polygon_rational_type(0)) {
+        excludes_entire = false;
       }
-      else if ((!found_any_verts) || (dotprod < closest_vertex_cross)) {
+      if (dotprod_noerror <= 0) {
+        excludes_entire_noerror = false;
+      }
+      if ((vel_dotprod != 0) && ((!found_any_verts) || (dotprod < closest_vertex_cross))) {
         found_any_verts = true;
         closest_vertex_cross = dotprod;
       //std::cerr << "bar" << closest_vertex_cross << "\n";
       }
     }
+    
+    // SPECIAL CASE HACK
+    // TODO: This needs to account for some situations in which s2's moving, too
+    // (we could probably do it exactly iff s2's up-to-date)
+    // but that'll require improving velocities_cant...() to handle more rounding cases
+    if (excludes_entire_noerror && (s2_velocity == vector3<fine_scalar>(0,0,0)) && velocity_cant_move_against_normal_even_by_rounding(s1_velocity, -plane.normal)) {
+      std::cerr << "super bailii\n";
+      return boost::none;
+    }
       
     if (vel_dotprod == 0) {
+      // Either this plane completely excludes the other shape
+      // ("there is no intersection")
+      // or always will contain it ("we learn nothing")
       if (excludes_entire) {
-        //std::cerr << "bail\n";
+        std::cerr << "bail\n";
         return boost::none;
       }
     }
@@ -535,34 +633,46 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
   
   for (auto const& plane : p2_planes) {
     const auto vel_dotprod = relative_velocity.dot<fine_scalar>(-plane.normal);
-    const polygon_rational_type before_frame_offset = polygon_rational_type(s2_velocity.dot<fine_scalar>(-plane.normal), velocity_scale_factor) * (s1_last_time_updated - s2_last_time_updated);
+    const polygon_rational_type before_frame_offset = round_time_downwards(polygon_rational_type(s2_velocity.dot<fine_scalar>(-plane.normal), velocity_scale_factor) * (s1_last_time_updated - s2_last_time_updated), prec);
     
     bool found_any_verts = false;
     bool excludes_entire = true;
+    bool excludes_entire_noerror = true;
     polygon_rational_type closest_vertex_cross;
     for (auto const& v : p1.vertices()) {
       vector3<fine_scalar> worst_error(
-        sign(plane.normal(X)),
-        sign(plane.normal(Y)),
-        sign(plane.normal(Z)));
+        veldim_identical[X] ? 0 : sign(plane.normal(X)),
+        veldim_identical[Y] ? 0 : sign(plane.normal(Y)),
+        veldim_identical[Z] ? 0 : sign(plane.normal(Z)));
       const auto dotprod = before_frame_offset + polygon_rational_type(((plane.base_point - v) + worst_error).dot<fine_scalar>(-plane.normal));
-      if (vel_dotprod == 0) {
-        // Either this plane completely excludes the other shape
-        // ("there is no intersection")
-        // or always will contain it ("we learn nothing")
-        if (dotprod <= polygon_rational_type(0)) {
-          excludes_entire = false;
-        }
+      const auto dotprod_noerror = (plane.base_point - v).dot<fine_scalar>(-plane.normal);
+      if (dotprod <= polygon_rational_type(0)) {
+        excludes_entire = false;
       }
-      else if ((!found_any_verts) || (dotprod < closest_vertex_cross)) {
+      if (dotprod_noerror <= 0) {
+        excludes_entire_noerror = false;
+      }
+      if ((vel_dotprod != 0) && ((!found_any_verts) || (dotprod < closest_vertex_cross))) {
         found_any_verts = true;
         closest_vertex_cross = dotprod;
       }
     }
+    
+    // SPECIAL CASE HACK
+    // TODO: This needs to account for some situations in which s2's moving, too
+    // (we could probably do it exactly iff s2's up-to-date)
+    // but that'll require improving velocities_cant...() to handle more rounding cases
+    if (excludes_entire_noerror && (s2_velocity == vector3<fine_scalar>(0,0,0)) && velocity_cant_move_against_normal_even_by_rounding(s1_velocity, plane.normal)) {
+      std::cerr << "super bailii\n";
+      return boost::none;
+    }
       
     if (vel_dotprod == 0) {
+      // Either this plane completely excludes the other shape
+      // ("there is no intersection")
+      // or always will contain it ("we learn nothing")
       if (excludes_entire) {
-        //std::cerr << "bailii\n";
+        std::cerr << "bailii\n";
         return boost::none;
       }
     }
@@ -590,12 +700,12 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
   shape p1tb(p1);
   shape p2tb(p2);
   p2tb.translate(movement_delta_from_start_to(s2_velocity, s1_last_time_updated - s2_last_time_updated));
-  std::cerr << "checking... ";
+  //std::cerr << "checking... ";
   if(p1tb.intersects(p2tb)) {
-    std::cerr << "fail!\n";
+    //std::cerr << "fail!\n";
     }
     else {
-    std::cerr << "ok\n";
+    //std::cerr << "ok\n";
   shape p1t(p1);
   shape p2t(p2);
   p1t.translate(movement_delta_from_start_to(s1_velocity, min_intersecting - s1_last_time_updated));
@@ -605,16 +715,59 @@ inline optional_time get_first_moment_of_intersection_of_polys(convex_polyhedron
   return min_intersecting;
 }
 
-inline optional_time get_first_moment_of_intersection(shape const* s1, shape const* s2, vector3<fine_scalar> s1_velocity, vector3<fine_scalar> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
+inline optional_time get_first_moment_of_intersection_old2(shape const* s1, shape const* s2, vector3<fine_scalar> s1_velocity, vector3<fine_scalar> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
   // haaaaaack
+  optional_time result;
   if (s2->get_polyhedra().empty()) {
-    return get_first_moment_of_intersection_of_polys(s1->get_polyhedra().front(), convex_polyhedron(s2->get_boxes().front()), s1_velocity, s2_velocity, s1_last_time_updated, s2_last_time_updated);
+    result = get_first_moment_of_intersection_of_polys(s1->get_polyhedra().front(), convex_polyhedron(s2->get_boxes().front()), s1_velocity, s2_velocity, s1_last_time_updated, s2_last_time_updated);
   }
   else {
-    return get_first_moment_of_intersection_of_polys(s1->get_polyhedra().front(), s2->get_polyhedra().front(), s1_velocity, s2_velocity, s1_last_time_updated, s2_last_time_updated);
+    result = get_first_moment_of_intersection_of_polys(s1->get_polyhedra().front(), s2->get_polyhedra().front(), s1_velocity, s2_velocity, s1_last_time_updated, s2_last_time_updated);
   }
+  if (!result) {
+    shape s1t(*s1);
+    shape s2t(*s2);
+    s1t.translate(movement_delta_from_start_to(s1_velocity, time_type(1) - s1_last_time_updated));
+    s2t.translate(movement_delta_from_start_to(s2_velocity, time_type(1) - s2_last_time_updated));
+    assert(!s1t.intersects(s2t));
+  }
+  return result;
 }
 
+optional_time get_first_moment_of_intersection(shape const* s1, shape const* s2, vector3<fine_scalar> s1_velocity, vector3<fine_scalar> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
+  // Standardize: s1 is the one whose position is up-to-date.
+  if (s2_last_time_updated > s1_last_time_updated) {
+    return get_first_moment_of_intersection(s2, s1, s2_velocity, s1_velocity, s2_last_time_updated, s1_last_time_updated);
+  }
+
+  const auto relative_velocity = s1_velocity - s2_velocity;
+  
+  // We currently don't care too much about a bit of rounding error.
+  shape s2t(*s2);
+  s2t.translate(movement_delta_from_start_to(-relative_velocity, s1_last_time_updated - s2_last_time_updated));
+
+  // Hack? - only polyhedra and bboxes work
+  // Hack - Pointlessly wasting processor time to make this code simpler
+  std::vector<convex_polyhedron> p1s(s1->get_polyhedra());
+  std::vector<convex_polyhedron> p2s(s2t.get_polyhedra());
+  for (auto bb : s1->get_boxes()) {
+    p1s.push_back(convex_polyhedron(bb));
+  }
+  for (auto bb : s2t.get_boxes()) {
+    p2s.push_back(convex_polyhedron(bb));
+  }
+  for (auto const& p1 : p1s) {
+    for (auto const& p2 : p2s) {
+      auto coll_info = when_do_polyhedra_intersect(p1,p2,relative_velocity);
+      if ((coll_info.is_anywhere) && (coll_info.max >= 0) && (coll_info.min <= (time_type(1) - s1_last_time_updated))) {
+        if ((coll_info.min > 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<fine_scalar>(relative_velocity) > 0)) {
+          coll_info.min + s1_last_time_updated,
+          *random_element_of_sequence(coll_info.planes_hit_first, rng),
+        }
+      }
+    }
+  }
+}
 
 
 struct collision_info {
@@ -679,8 +832,9 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
   w.objects_exposed_to_collision().get_objects_overlapping(objects_this_could_collide_with, sweep_bounds);
   
   for (object_identifier other_id : objects_this_could_collide_with) {
-  //for (auto const& p1 : moving_objects) {
-  //  object_identifier other_id = p1.first;
+  /*std::cerr << "Warning: Doing paranoid checks, remove this;\n";
+  for (auto const& p1 : moving_objects) {
+    object_identifier other_id = p1.first;*/
     if (other_id != id) {
         //std::cerr << "Considering " << id << ", " << other_id << "\n";
       shape const* opss = find_as_pointer(w.get_object_personal_space_shapes(), other_id);
@@ -759,29 +913,27 @@ void assert_about_overlaps(objects_map<mobile_object>::type & moving_objects,
   }
 }
 
-size_t pick_random_preferring_axis_aligned(std::vector<plane_as_base_point_and_normal> const& planes, large_fast_noncrypto_rng& rng) {
-  int num_axis_aligned_found = 0;
-  for (auto const& p : planes) {
-    if ((p.normal(X) != 0) + (p.normal(Y) != 0) + (p.normal(Z) != 0) < 2) {
-      ++num_axis_aligned_found;
-    }
-  }
-  if (num_axis_aligned_found == 0) {
-    const boost::random::uniform_int_distribution<size_t> random_index(0, planes.size()-1);
-    return random_index(rng);
-  }
-  else {
-    const boost::random::uniform_int_distribution<size_t> random_index(0, num_axis_aligned_found-1);
-    int which = random_index(rng);
-    for (size_t i = 0; i < planes.size(); ++i) {
-      auto const& p = planes[i];
-      if ((p.normal(X) != 0) + (p.normal(Y) != 0) + (p.normal(Z) != 0) < 2) {
-        if (which == 0) return i;
-        --which;
+size_t pick_random_preferring_hittable_and_axis_aligned(std::vector<plane_as_base_point_and_normal> const& planes, vector3<fine_scalar> const& velocity, large_fast_noncrypto_rng& rng) {
+  std::vector<size_t> okay_planes;
+  std::vector<size_t> aa_planes;
+  for (size_t i = 0; i < planes.size(); ++i) {
+    auto const& normal = planes[i].normal;
+    std::cerr << velocity << normal << "\n";
+    if (!velocity_cant_move_against_normal_even_by_rounding(velocity, -normal)) {
+    std::cerr <<"check\n";
+      okay_planes.push_back(i);
+      if ((normal(X) != 0) + (normal(Y) != 0) + (normal(Z) != 0) < 2) {
+        aa_planes.push_back(i);
       }
     }
   }
-  assert(false);
+       if (!  aa_planes.empty()) return *random_element_of_sequence(  aa_planes, rng);
+  else if (!okay_planes.empty()) return *random_element_of_sequence(okay_planes, rng);
+  else {
+    std::cerr << "Warning: NONE of these planes should work!\n";
+    const boost::random::uniform_int_distribution<size_t> random_index(0, planes.size()-1);
+    return random_index(rng);
+  }
 }
 
 void update_moving_objects_impl(
@@ -826,7 +978,8 @@ void update_moving_objects_impl(
     }
   }
   
-  
+  time_type last_time(0);
+  int collisions_at_last_time = 0;
       //std::cerr << "poopPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPpoop!\n";
   while(!anticipated_collisions.empty()) {
     //std::cerr << "..." << anticipated_collisions.size() << "?\n";
@@ -850,6 +1003,18 @@ void update_moving_objects_impl(
         assert(inf2_iter != objects_info.end());
         moving_object_info& inf2 = inf2_iter->second;
         if (collision.validation2 == inf2.invalidation_counter){
+          bool failsafe_mode = false;
+          if (collision.time == last_time) {
+            ++collisions_at_last_time;
+            if (collisions_at_last_time > 100) {
+              std::cerr << "FAILSAFE: There were 100 collisions at the same moment. Zeroing the velocities of everything...\n";
+              failsafe_mode = true;
+            }
+          }
+          else {
+            last_time = collision.time;
+            collisions_at_last_time = 1;
+          }
           //std::cerr << "BLAM!\n";
           // oid1 is always an object identifier
           object_identifier const* oid1p = collision.oid1.get_object_identifier(); assert(oid1p);
@@ -889,7 +1054,7 @@ void update_moving_objects_impl(
                 std::vector<plane_as_base_point_and_normal> excluding_planes;
                 find_excluding_planes(*(o1pss->get_polyhedra().begin()), convex_polyhedron(*(t.get_boxes().begin())), &excluding_planes);
                 assert(!excluding_planes.empty());
-                size_t which_plane = pick_random_preferring_axis_aligned(excluding_planes, w.get_rng());
+                size_t which_plane = pick_random_preferring_hittable_and_axis_aligned(excluding_planes, obj1->velocity(), w.get_rng());
                 auto normal = excluding_planes[which_plane].normal;
                 auto vel_change = (normal * obj1->velocity().dot<fine_scalar>(normal));
                 if (vel_change != vector3<fine_scalar>(0,0,0)) {
@@ -904,6 +1069,7 @@ void update_moving_objects_impl(
                 //if (((normal(X) != 0) + (normal(Y) != 0) + (normal(Z) != 0)) > 1) {
                 //  
                 //}
+                if (failsafe_mode) obj1->velocity_ = vector3<fine_scalar>(0,0,0);
                 if (obj1->velocity() != old_vel) ++inf1.invalidation_counter;
                 else {
                   std::cerr << "Warning: No velocity change on collision. This can potentially cause overlaps.\n";
@@ -944,7 +1110,7 @@ void update_moving_objects_impl(
             std::vector<plane_as_base_point_and_normal> excluding_planes;
             find_excluding_planes(*(o1pss->get_polyhedra().begin()), convex_polyhedron(*(o2pss->get_polyhedra().begin())), &excluding_planes);
             assert(!excluding_planes.empty());
-            size_t which_plane = pick_random_preferring_axis_aligned(excluding_planes, w.get_rng());
+            size_t which_plane = pick_random_preferring_hittable_and_axis_aligned(excluding_planes, obj1->velocity() - obj2->velocity(), w.get_rng());
             auto normal = excluding_planes[which_plane].normal;
             // Hack: To avoid getting locked in a nonzero velocity due to rounding error,
             // make sure to round down your eventual velocity!
@@ -955,6 +1121,9 @@ void update_moving_objects_impl(
             
             //obj1->velocity_ = (obj1->velocity() + obj2->velocity()) / 2;
             //obj2->velocity_ = obj1->velocity();
+            
+            if (failsafe_mode) obj1->velocity_ = vector3<fine_scalar>(0,0,0);
+            if (failsafe_mode) obj2->velocity_ = vector3<fine_scalar>(0,0,0);
           
             // If we updated anything about the objects, they might have new collisions.
             // If we *didn't*, they won't repeat the same collision again, since we have

@@ -122,12 +122,20 @@ typedef polygon_rational_type rational;
 
 namespace {
 
-vector3<polygon_int_type> plane_normal(vector3<polygon_int_type> p1, vector3<polygon_int_type> p2, vector3<polygon_int_type> p3) {
+vector3<polygon_int_type> cross_product(vector3<polygon_int_type> a, vector3<polygon_int_type> b) {
   return vector3<polygon_int_type>(
+    (a(Y) * b(Z)) - (b(Y) * a(Z)),
+    (a(Z) * b(X)) - (b(Z) * a(X)),
+    (a(X) * b(Y)) - (b(X) * a(Y))
+  );
+}
+vector3<polygon_int_type> plane_normal(vector3<polygon_int_type> p1, vector3<polygon_int_type> p2, vector3<polygon_int_type> p3) {
+  return cross_product(p2 - p1, p3 - p1);
+  /*return vector3<polygon_int_type>(
     (p1(Y) * (p2(Z) - p3(Z))) + (p2(Y) * (p3(Z) - p1(Z))) + (p3(Y) * (p1(Z) - p2(Z))),
     (p1(Z) * (p2(X) - p3(X))) + (p2(Z) * (p3(X) - p1(X))) + (p3(Z) * (p1(X) - p2(X))),
     (p1(X) * (p2(Y) - p3(Y))) + (p2(X) * (p3(Y) - p1(Y))) + (p3(X) * (p1(Y) - p2(Y)))
-  );
+  );*/
 }
 vector3<polygon_int_type> forcedly_directed_plane_normal(vector3<polygon_int_type> p1, vector3<polygon_int_type> p2, vector3<polygon_int_type> p3, vector3<polygon_int_type> interior_direction) {
   const vector3<polygon_int_type> arbitrary_normal = plane_normal(p1, p2, p3);
@@ -227,6 +235,264 @@ bool planes_exclude_together_but_not_alone(plane_as_base_point_and_normal const&
 }
 
 } /* end anonymous namespace */
+#if 0
+struct pair_of_parallel_supporting_planes {
+  pair_of_parallel_supporting_planes(vector3<polygon_int_type> p1_base_point, vector3<polygon_int_type> p2_base_point, vector3<polygon_int_type> p1_to_p2_normal):p1_base_point(p1_base_point),p2_base_point(p2_base_point),p1_to_p2_normal(p1_to_p2_normal){}
+  vector3<polygon_int_type> p1_base_point;
+  vector3<polygon_int_type> p2_base_point;
+  vector3<polygon_int_type> p1_to_p2_normal;
+};
+
+void populate_with_relating_planes__faces_onesided(std::vector<plane_as_base_point_and_normal> pA_planes, convex_polyhedron const& pB, bool A_is_1, std::vector<pair_of_parallel_supporting_planes>& planes_collector) {
+  for (auto const& plane : pA_planes) {
+    bool found_any_points = false;
+    vector3<polygon_int_type> closest_point;
+    polygon_int_type closest_dotprod;
+    for (auto const& v : pB.vertices()) {
+      // We subtract base_point just to minimize integer size; the behavior should be the same either way.
+      const auto dotprod = (v - plane.base_point).dot<polygon_int_type>(plane.normal);
+      if ((!found_any_points) || (dotprod < closest_dotprod)) {
+        found_any_points = true;
+        closest_dotprod = dotprod;
+        closest_point = v;
+      }
+    }
+    if (A_is_1) planes_collector.push_back(pair_of_parallel_supporting_planes(
+                  plane.base_point, closest_point   ,  plane.normal));
+    else        planes_collector.push_back(pair_of_parallel_supporting_planes(
+                  closest_point   , plane.base_point, -plane.normal));
+  }
+}
+
+void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedron const& p2, std::vector<pair_of_parallel_supporting_planes>& planes_collector) {
+  std::vector<plane_as_base_point_and_normal> p1_planes; p1_planes.reserve(p1.num_faces());
+  populate_with_plane_info(p1, p1_planes);
+  std::vector<plane_as_base_point_and_normal> p2_planes; p2_planes.reserve(p2.num_faces());
+  populate_with_plane_info(p2, p2_planes);
+  planes_collector.reserve(p1_planes.size() + p2_planes.size());
+  populate_with_relating_planes__faces_onesided(p1_planes, p2, true, planes_collector);
+  populate_with_relating_planes__faces_onesided(p2_planes, p1, false, planes_collector);
+
+  for (auto e1 : p1.edges()) {
+    const auto e1v1 = p1.vertices()[e1.vert_1];
+    const auto e1v2 = p1.vertices()[e1.vert_2];
+    const auto e1d = e1v2 - e1v1;
+    const auto e1f1 = p1_planes[e1.face_1];
+    const auto e1f2 = p1_planes[e1.face_2];
+
+    // a vector:
+    // - perpendicular to e1d
+    // - parallel to the plane of e1f1
+    // - pointing towards e1
+    // (the term 'discriminant' is just because it discriminates between cases, not any standard mathematical usage.)
+    auto e1f1_discriminant = cross_product(e1d, e1f1.normal);
+    if (e1f1_discriminant.dot<polygon_int_type>(e1f2.normal) < 0) e1f1_discriminant = -e1f1_discriminant;
+    auto e1f2_discriminant = cross_product(e1d, e1f2.normal);
+    if (e1f2_discriminant.dot<polygon_int_type>(e1f1.normal) < 0) e1f2_discriminant = -e1f2_discriminant;
+    
+    for (auto e2 : p2.edges()) {
+      const auto e2v1 = p2.vertices()[e2.vert_1];
+      const auto e2v2 = p2.vertices()[e2.vert_2];
+      const auto e2d = e2v2 - e2v1;
+      const auto e2f1 = p2_planes[e2.face_1];
+      const auto e2f2 = p2_planes[e2.face_2];
+
+      // TODO: perhaps only compute these once for each edge in p2
+      auto e2f1_discriminant = cross_product(e2d, e2f1.normal);
+      if (e2f1_discriminant.dot<polygon_int_type>(e2f2.normal) < 0) e2f1_discriminant = -e2f1_discriminant;
+      auto e2f2_discriminant = cross_product(e2d, e2f2.normal);
+      if (e2f2_discriminant.dot<polygon_int_type>(e2f1.normal) < 0) e2f2_discriminant = -e2f2_discriminant;
+
+      vector3<polygon_int_type> proposed_normal;
+      if (vectors_are_parallel(e1d, e2d)) {
+        // a vector:
+        // - perpendicular to the lines
+        // - in the plane containing the two lines
+        proposed_normal = cross_product(e1d, cross_product(e1d, e2v1 - e1v1));
+      }
+      else {
+        proposed_normal = cross_product(e1d, e2d);
+      }
+
+      // The proposed normal has to be on the proper side of all four discriminants
+      // in order to represent a meaningful plane that's not a face.
+      // However it might just be in the wrong sense.
+      {
+        auto dotprod1 = proposed_normal.dot<polygon_int_type>(e1f1_discriminant);
+        if (dotprod1 == 0) continue;
+        if (dotprod1 < 0) {
+          proposed_normal = -proposed_normal;
+        }
+      }
+      if (proposed_normal.dot<polygon_int_type>(e1f2_discriminant) <= 0) continue;
+      if (proposed_normal.dot<polygon_int_type>(e2f1_discriminant) >= 0) continue;
+      if (proposed_normal.dot<polygon_int_type>(e2f2_discriminant) >= 0) continue;
+      
+      planes_collector.push_back(pair_of_parallel_supporting_planes(
+                  e1v1, e2v1, proposed_normal));
+    }
+  }
+}
+#endif
+
+struct potential_running_into_a_polyhedron_info {
+  potential_running_into_a_polyhedron_info():min(none),max(none),is_anywhere(true){}
+  potential_running_into_a_polyhedron_info(optional_rational min,optional_rational max):min(min),max(max),is_anywhere((!min) || (!max) || (*min <= *max)){}
+  potential_running_into_a_polyhedron_info(boost::none_t):min(none),max(none),is_anywhere(false){}
+  potential_running_into_a_polyhedron_info(rational loc, plane_as_base_point_and_normal plane):min(loc),max(loc){
+    planes_hit_first.push_back(plane);
+  }
+  potential_running_into_a_polyhedron_info(rational min, boost::none_t, plane_as_base_point_and_normal plane):min(min),max(none){
+    planes_hit_first.push_back(plane);
+  }
+  bool is_anywhere;
+  optional_rational min;
+  optional_rational max;
+  std::unordered_map<plane_as_base_point_and_normal> planes_hit_first;
+  plane_as_base_point_and_normal arbitrary_plane_of_closest_exclusion;
+  void combine_with(potential_running_into_a_polyhedron_info const& other) {
+    if (!is_anywhere) {
+      *this = other;
+    }
+    else {
+      if (other.min == min) {
+        planes_hit_first.combin e(other.planes_hit_first);
+      }
+      else if (other.min < min) {
+        planes_hit_first = other.planes_hit_first;
+        min = other.min;
+      }
+      
+      if (other.max > max) {
+        max = other.max;
+      }
+    }
+  }
+  void intersect_with(potential_running_into_a_polyhedron_info const& other);
+}
+
+potential_running_into_a_polyhedron_info when_is_point_within_planes(vector3<polygon_int_type> point, vector3<polygon_int_type> velocity, std::vector<plane_as_base_point_and_normal> const& planes) {
+  potential_running_into_a_polyhedron_info result;
+  for (auto const& plane : planes) {
+    // We subtract base_point just to minimize integer size; the behavior should be the same either way.
+    const auto vel_dotprod = velocity.dot<polygon_int_type>(plane.normal);
+    const auto disp_dotprod = (plane.base_point - point).dot<polygon_int_type>(plane.normal);
+    if (vel_dotprod == 0) {
+      if (disp_dotprod < 0) result = potential_running_into_a_polyhedron_info(none);
+    }
+    else {
+      const rational moment(disp_dotprod, vel_dotprod);
+      if (vel_dotprod > 0) {
+        result.intersect_with(potential_running_into_a_polyhedron_info(none, moment));
+      }
+      else {
+        result.intersect_with(potential_running_into_a_polyhedron_info(moment, none, plane));
+      }
+      if (!result.is_anywhere) break;
+    }
+  }
+  return result;
+}
+
+potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_polyhedron const& p1, convex_polyhedron const& p2, vector3<polygon_int_type> velocity) {
+  potential_running_into_a_polyhedron_info result(none);
+  std::vector<plane_as_base_point_and_normal> p1_planes; p1_planes.reserve(p1.num_faces());
+  populate_with_plane_info(p1, p1_planes);
+  for (auto v : p2.vertices()) {
+    result.combine_with(when_is_point_within_planes(v, velocity, p1_planes));
+    if (!result.is_anywhere) return result;
+  }
+  std::vector<plane_as_base_point_and_normal> p2_planes; p2_planes.reserve(p2.num_faces());
+  populate_with_plane_info(p2, p2_planes);
+  for (auto v : p1.vertices()) {
+    result.combine_with(when_is_point_within_planes(v, -velocity, p2_planes));
+    if (!result.is_anywhere) return result;
+  }
+
+  // At a moment when two polyhedra start/stop intersecting,
+  // either a vertex is touching a face, or an edge is touching an edge.
+  // Handle the latter here.
+  for (auto e1 : p1.edges()) {
+    const auto e1v1 = p1.vertices()[e1.vert_1];
+    const auto e1v2 = p1.vertices()[e1.vert_2];
+    const auto e1d = e1v2 - e1v1;
+    if (vectors_are_parallel(e1d, velocity)) continue;
+
+    const auto e1_travel_plane_normal = cross_product(e1d, velocity);
+
+    // a vector:
+    // - perpendicular to e1d
+    // - parallel to the plane of e1f1
+    // - pointing towards e1 from any other point on e1f1
+    // (the term 'discriminant' is just because it discriminates between cases, not any standard mathematical usage.)
+    auto e1f1_discriminant = cross_product(e1d, e1f1.normal);
+    if (e1f1_discriminant.dot<polygon_int_type>(e1f2.normal) < 0) e1f1_discriminant = -e1f1_discriminant;
+    auto e1f2_discriminant = cross_product(e1d, e1f2.normal);
+    if (e1f2_discriminant.dot<polygon_int_type>(e1f1.normal) < 0) e1f2_discriminant = -e1f2_discriminant;
+
+    for (auto e2 : p2.edges()) {
+      const auto e2v1 = p2.vertices()[e2.vert_1];
+      const auto e2v2 = p2.vertices()[e2.vert_2];
+      const auto e2v1side = sign((e2v1 - e1v1).dot<polygon_int_type>(e1_travel_plane_normal));
+      // If one of the ends is on the same plane, that end (a vertex) was already caught where it entered the volume
+      if (e2v1side == 0) continue;
+      const auto e2v2side = sign((e2v2 - e1v1).dot<polygon_int_type>(e1_travel_plane_normal));
+      if (e2v2side == 0) continue;
+      if (e2v2side == e2v1side) continue;
+      const auto e2d = e2v2 - e2v1;
+      if (vectors_are_parallel(e1d, e2d)) continue;
+      if (vectors_are_parallel(e2d, velocity)) continue;
+      const auto e2_travel_plane_normal = cross_product(e2d, velocity);
+      const auto e1v1side = sign((e2v1 - e1v1).dot<polygon_int_type>(e2_travel_plane_normal));
+      if (e1v1side == 0) continue;
+      const auto e1v2side = sign((e2v2 - e1v1).dot<polygon_int_type>(e2_travel_plane_normal));
+      if (e1v2side == 0) continue;
+      if (e1v2side == e1v1side) continue;
+
+      // Now we know that the two lines intersect when they're coplanar.
+      // But don't report this if there's already an 
+
+      // TODO: perhaps only compute these once for each edge in p2
+      auto e2f1_discriminant = cross_product(e2d, e2f1.normal);
+      if (e2f1_discriminant.dot<polygon_int_type>(e2f2.normal) < 0) e2f1_discriminant = -e2f1_discriminant;
+      auto e2f2_discriminant = cross_product(e2d, e2f2.normal);
+      if (e2f2_discriminant.dot<polygon_int_type>(e2f1.normal) < 0) e2f2_discriminant = -e2f2_discriminant;
+
+      vector3<polygon_int_type> proposed_normal = cross_product(e1d, e2d);
+
+      // The proposed normal has to be on the proper side of all four discriminants
+      // in order to represent a meaningful plane that's not a face.
+      // However it might just be in the wrong sense.
+      {
+        auto dotprod1 = proposed_normal.dot<polygon_int_type>(e1f1_discriminant);
+        if (dotprod1 == 0) continue;
+        if (dotprod1 < 0) {
+          proposed_normal = -proposed_normal;
+        }
+      }
+      if (proposed_normal.dot<polygon_int_type>(e1f2_discriminant) <= 0) continue;
+      if (proposed_normal.dot<polygon_int_type>(e2f1_discriminant) >= 0) continue;
+      if (proposed_normal.dot<polygon_int_type>(e2f2_discriminant) >= 0) continue;
+
+
+      const auto vel_dotprod = velocity.dot<polygon_int_type>(proposed_normal);
+      if (vel_dotprod == 0) continue;
+      const auto disp_dotprod = (e2v1 - e1v1).dot<polygon_int_type>(proposed_normal);
+      const rational moment(disp_dotprod, vel_dotprod);
+      if (vel_dotprod > 0) {
+        result.combine_with(potential_running_into_a_polyhedron_info(moment));
+      }
+      else {
+        result.combine_with(potential_running_into_a_polyhedron_info(moment, plane));
+      }
+    }
+  }
+
+  if (result.is_anywhere) {
+    assert(!result.planes_hit_first.empty());
+  }
+  return result;
+}
 
 bool find_excluding_planes(convex_polyhedron const& p1, convex_polyhedron const& p2, std::vector<plane_as_base_point_and_normal>* planes_collector_1, std::vector<plane_as_base_point_and_normal>* planes_collector_2) {
   bool found_any_excluding_planes = false;
