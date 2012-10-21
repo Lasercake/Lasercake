@@ -172,7 +172,7 @@ view_on_the_world::view_on_the_world(object_identifier robot_id, vector3<fine_sc
 : robot_id(robot_id),
   view_loc_for_local_display(approx_initial_center),
   view_type(GLOBAL),
-  view_direction(0),
+  local_view_direction(0),
   surveilled_by_global_display(approx_initial_center + vector3<fine_scalar>(5*tile_width, 5*tile_width, 5*tile_width)),
   global_view_dist(20*tile_width),
   drawing_regular_stuff(true),
@@ -202,20 +202,20 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
   if (view_type == LOCAL) {
     if (input_news.is_currently_pressed("u")) {
       view_loc_for_local_display += vector3<fine_scalar>(
-        fine_scalar(get_primitive_double(tile_width) * std::cos(view_direction)) / 10,
-        fine_scalar(get_primitive_double(tile_width) * std::sin(view_direction)) / 10,
+        fine_scalar(get_primitive_double(tile_width) * std::cos(local_view_direction)) / 10,
+        fine_scalar(get_primitive_double(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
     if (input_news.is_currently_pressed("j")) {
       view_loc_for_local_display -= vector3<fine_scalar>(
-        fine_scalar(get_primitive_double(tile_width) * std::cos(view_direction)) / 10,
-        fine_scalar(get_primitive_double(tile_width) * std::sin(view_direction)) / 10,
+        fine_scalar(get_primitive_double(tile_width) * std::cos(local_view_direction)) / 10,
+        fine_scalar(get_primitive_double(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
-    if (input_news.is_currently_pressed("h")) { view_direction += 0.06; }
-    if (input_news.is_currently_pressed("k")) { view_direction -= 0.06; }
+    if (input_news.is_currently_pressed("h")) { local_view_direction += 0.06; }
+    if (input_news.is_currently_pressed("k")) { local_view_direction -= 0.06; }
     if (input_news.is_currently_pressed("y")) { view_loc_for_local_display.z += tile_width / 10; }
     if (input_news.is_currently_pressed("n")) { view_loc_for_local_display.z -= tile_width / 10; }
   }
@@ -434,8 +434,8 @@ void view_on_the_world::prepare_gl_data(
   if (view_type == LOCAL) {
     view_loc = view_loc_for_local_display;
     view_towards = view_loc + vector3<fine_scalar>(
-      (100*tile_width) * std::cos(view_direction),
-      (100*tile_width) * std::sin(view_direction),
+      (100*tile_width) * std::cos(local_view_direction),
+      (100*tile_width) * std::sin(local_view_direction),
       0
     );
   }

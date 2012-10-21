@@ -190,7 +190,7 @@ public:
   object_identifier robot_id;
   vector3<fine_scalar> view_loc_for_local_display;
   enum { GLOBAL, LOCAL, ROBOT } view_type;
-  double view_direction;
+  double local_view_direction;
   vector3<fine_scalar> surveilled_by_global_display;
   fine_scalar global_view_dist;
   bool drawing_regular_stuff;
