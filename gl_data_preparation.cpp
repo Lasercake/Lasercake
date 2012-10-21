@@ -174,7 +174,7 @@ view_on_the_world::view_on_the_world(object_identifier robot_id, vector3<fine_sc
   view_type(GLOBAL),
   view_direction(0),
   surveilled_by_global_display(approx_initial_center + vector3<fine_scalar>(5*tile_width, 5*tile_width, 5*tile_width)),
-  globallocal_view_dist(20*tile_width),
+  global_view_dist(20*tile_width),
   drawing_regular_stuff(true),
   drawing_debug_stuff(true)
 {}
@@ -192,8 +192,8 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
       if(k == "s") surveilled_by_global_display.y -= tile_width;
       if(k == "e") surveilled_by_global_display.z += tile_width;
       if(k == "d") surveilled_by_global_display.z -= tile_width;
-      if(k == "r") globallocal_view_dist += tile_width;
-      if(k == "f") globallocal_view_dist -= tile_width;
+      if(k == "r") global_view_dist += tile_width;
+      if(k == "f") global_view_dist -= tile_width;
       if(k == "l") view_type = view_on_the_world::LOCAL;
       if(k == "o") view_type = view_on_the_world::GLOBAL;
       if(k == "i") view_type = view_on_the_world::ROBOT;
@@ -434,8 +434,8 @@ void view_on_the_world::prepare_gl_data(
   if (view_type == LOCAL) {
     view_loc = view_loc_for_local_display;
     view_towards = view_loc + vector3<fine_scalar>(
-      get_primitive_double(globallocal_view_dist) * std::cos(view_direction),
-      get_primitive_double(globallocal_view_dist) * std::sin(view_direction),
+      (100*tile_width) * std::cos(view_direction),
+      (100*tile_width) * std::sin(view_direction),
       0
     );
   }
@@ -449,9 +449,9 @@ void view_on_the_world::prepare_gl_data(
     double game_time_in_seconds = get_primitive_double(w.game_time_elapsed()) / get_primitive_double(time_units_per_second);
     view_towards = surveilled_by_global_display;
     view_loc = surveilled_by_global_display + vector3<fine_scalar>(
-      get_primitive_double(globallocal_view_dist) * std::cos(game_time_in_seconds * 3 / 4),
-      get_primitive_double(globallocal_view_dist) * std::sin(game_time_in_seconds * 3 / 4),
-      get_primitive_double(globallocal_view_dist / 2) + get_primitive_double(globallocal_view_dist / 4) * std::sin(game_time_in_seconds / 2)
+      get_primitive_double(global_view_dist) * std::cos(game_time_in_seconds * 3 / 4),
+      get_primitive_double(global_view_dist) * std::sin(game_time_in_seconds * 3 / 4),
+      get_primitive_double(global_view_dist / 2) + get_primitive_double(global_view_dist / 4) * std::sin(game_time_in_seconds / 2)
     );
   }
 

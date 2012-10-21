@@ -192,7 +192,7 @@ public:
   enum { GLOBAL, LOCAL, ROBOT } view_type;
   double view_direction;
   vector3<fine_scalar> surveilled_by_global_display;
-  fine_scalar globallocal_view_dist;
+  fine_scalar global_view_dist;
   bool drawing_regular_stuff;
   bool drawing_debug_stuff;
 };
