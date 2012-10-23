@@ -27,11 +27,15 @@
 world::world(worldgen_function_t f)
    : current_game_time_(0), tile_physics_state_(*this), next_object_identifier_(1), worldgen_function_(f) {}
 
-void world::update(input_representation::input_news_t const& input_news) {
-  input_news_ = input_news;
+void world::update(unordered_map<object_identifier, input_representation::input_news_t> input) {
   laser_sfxes_.clear();
   update_fluids();
-  for (auto& obj : autonomously_active_objects_) obj.second->update(*this, obj.first);
+  const input_representation::input_news_t no_input;
+  for (auto& obj : autonomously_active_objects_) {
+    input_representation::input_news_t const* input_for_obj = find_as_pointer(input, obj.first);
+    if (input_for_obj == nullptr) { input_for_obj = &no_input; }
+    obj.second->update(*this, *input_for_obj, obj.first);
+  }
   update_moving_objects();
   current_game_time_ += time_units_per_fixed_frame;
 }

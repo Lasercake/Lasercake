@@ -168,10 +168,9 @@ tile_coordinate tile_manhattan_distance_to_tile_bounding_box(tile_bounding_box b
 
 
 
-view_on_the_world::view_on_the_world(object_identifier robot_id, vector3<fine_scalar> approx_initial_center)
-: robot_id(robot_id),
-  view_loc_for_local_display(approx_initial_center),
-  view_type(GLOBAL),
+view_on_the_world::view_on_the_world(vector3<fine_scalar> approx_initial_center)
+: view_loc_for_local_display(approx_initial_center),
+  view_type(ROBOT),
   local_view_direction(0),
   surveilled_by_global_display(approx_initial_center + vector3<fine_scalar>(5*tile_width, 5*tile_width, 5*tile_width)),
   global_view_dist(20*tile_width),
@@ -431,7 +430,14 @@ void view_on_the_world::prepare_gl_data(
   vector3<fine_scalar> view_loc;
   vector3<fine_scalar> view_towards;
 
-  if (view_type == LOCAL) {
+  if (view_type == ROBOT) {
+    assert(config.view_from != NO_OBJECT);
+    bounding_box b = w.get_object_personal_space_shapes().find(config.view_from)->second.bounds();
+    view_loc = ((b.min() + b.max()) / 2);
+    vector3<fine_scalar> facing = boost::dynamic_pointer_cast<object_with_eye_direction>(w.get_objects().find(config.view_from)->second)->get_facing();
+    view_towards = view_loc + facing;
+  }
+  else if (view_type == LOCAL) {
     view_loc = view_loc_for_local_display;
     view_towards = view_loc + vector3<fine_scalar>(
       (100*tile_width) * std::cos(local_view_direction),
@@ -439,13 +445,7 @@ void view_on_the_world::prepare_gl_data(
       0
     );
   }
-  else if (view_type == ROBOT) {
-    bounding_box b = w.get_object_personal_space_shapes().find(robot_id)->second.bounds();
-    view_loc = ((b.min() + b.max()) / 2);
-    vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(robot_id)->second)->get_facing();
-    view_towards = view_loc + facing;
-  }
-  else {
+  else if (view_type == GLOBAL) {
     double game_time_in_seconds = get_primitive_double(w.game_time_elapsed()) / get_primitive_double(time_units_per_second);
     view_towards = surveilled_by_global_display;
     view_loc = surveilled_by_global_display + vector3<fine_scalar>(
@@ -576,7 +576,7 @@ void view_on_the_world::prepare_gl_data(
       gl_collection& coll = gl_collections_by_distance.at(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
       );
-      if ((view_type != ROBOT) || (id != robot_id)) {
+      if ((view_type != ROBOT) || (id != config.view_from)) {
         shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
         const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
 

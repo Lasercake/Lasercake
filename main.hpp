@@ -82,6 +82,7 @@ private:
   shared_ptr<world> world_ptr_;
   microseconds_t microseconds_last_sim_frame_took_; //hack
   shared_ptr<view_on_the_world> view_ptr_;
+  object_identifier currently_focused_object_;
 };
 
 struct gl_thread_data_t {
