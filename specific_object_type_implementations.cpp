@@ -199,6 +199,24 @@ shape robot::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
+
+std::string robot::player_instructions()const {
+  static const std::string instructions =
+    "x: go forward\n"
+    //friction: implicit, we don't mention it, i guess.
+    "0 (zero): jump\n" //hmm should we have a jump and have it do this
+    "right: turn right\n"
+    "left: turn left\n"
+    "up: look up\n"
+    "down: look down\n"
+    "b: fire dual lasers\n"
+    "m: make new auto digging robot, going towards the current facing\n"
+    "        and leaving rubble at the current location\n"
+    "(c, v: commented-out ability to pick up things, too bad.)\n"
+    ;
+  return instructions;
+}
+
 void robot::update(world& w, input_representation::input_news_t const& input_news, object_identifier my_id) {
   update_location(location_, w, my_id);
   //float_above_ground(velocity_, w, my_id);

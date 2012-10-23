@@ -24,7 +24,7 @@
 
 #include "world.hpp"
 
-class robot : public mobile_object, public autonomous_object, public object_with_eye_direction {
+class robot : public mobile_object, public autonomous_object, public object_with_eye_direction, public object_with_player_instructions {
 public:
   robot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location_(location),facing_(facing),carrying_(false){}
   
@@ -33,6 +33,8 @@ public:
   
   virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
   vector3<fine_scalar> get_facing()const { return facing_; }
+
+  std::string player_instructions()const;
 private:
   vector3<fine_scalar> location_;
   vector3<fine_scalar> facing_;

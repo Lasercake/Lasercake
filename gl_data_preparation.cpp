@@ -460,14 +460,25 @@ void view_on_the_world::prepare_gl_data(
 
   gl_data.facing = cast_vector3_to_float(view_towards - view_loc);
   gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
-  const heads_up_display_text hud_text = {
-    "We can has cake?",
-    color(0xffcc33cc),
-    "Granger_ch8plus",
-    24,
-    36, 18
-  };
-  gl_data.hud_text = hud_text;
+  {
+    const heads_up_display_text pointless_hud_text = {
+      "We can has cake?",
+      color(0xffcc33cc),
+      "Granger_ch8plus",
+      24,
+      36, 18
+    };
+    auto const robot_has_instructions =
+      boost::dynamic_pointer_cast<object_with_player_instructions>(w.get_objects().find(config.view_from)->second);
+    if (view_type == ROBOT && robot_has_instructions) {
+      heads_up_display_text useful_hud_text = pointless_hud_text;
+      useful_hud_text.text = robot_has_instructions->player_instructions();
+      gl_data.hud_text = useful_hud_text;
+    }
+    else {
+      gl_data.hud_text = pointless_hud_text;
+    }
+  }
 
   const auto tiles_here = get_all_containing_tile_coordinates(view_loc);
   // Average the color. Take the max opacity, so that you can't see through rock ever.
