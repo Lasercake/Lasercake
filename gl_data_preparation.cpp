@@ -461,8 +461,19 @@ void view_on_the_world::prepare_gl_data(
   gl_data.facing = cast_vector3_to_float(view_towards - view_loc);
   gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
   {
-    const heads_up_display_text pointless_hud_text = {
-      "We can has cake?",
+    const heads_up_display_text everywhere_hud_text = {
+      "Esc: quit; Tab: switch robot; "
+      // F11 and [cmd|ctrl]-shift-F both work on all platforms, but
+      //save space by showing the typical one for the platform
+      #if defined(__APPLE__) || defined(__MACOSX__)
+      "cmd-shift-F"
+      #else
+      "F11"
+      #endif
+      ": toggle fullscreen; "
+      "p: pause; g: single-step (broken); "//o: overview view; l: local view; i: robot view; "
+                                          "o, l, i: overview, local, robot view; "
+      "z: toggle regular drawing; t: toggle debug drawing\n",
       color(0xffcc33cc),
       "Granger_ch8plus",
       24,
@@ -471,12 +482,25 @@ void view_on_the_world::prepare_gl_data(
     auto const robot_has_instructions =
       boost::dynamic_pointer_cast<object_with_player_instructions>(w.get_objects().find(config.view_from)->second);
     if (view_type == ROBOT && robot_has_instructions) {
-      heads_up_display_text useful_hud_text = pointless_hud_text;
-      useful_hud_text.text = robot_has_instructions->player_instructions();
+      heads_up_display_text useful_hud_text = everywhere_hud_text;
+      useful_hud_text.text = robot_has_instructions->player_instructions()
+          + '\n' + useful_hud_text.text;
+      gl_data.hud_text = useful_hud_text;
+    }
+    else if (view_type == GLOBAL) {
+      heads_up_display_text useful_hud_text = everywhere_hud_text;
+      useful_hud_text.text = "qawsedrf: navigate overview view\n\n"
+          + useful_hud_text.text;
+      gl_data.hud_text = useful_hud_text;
+    }
+    else if (view_type == LOCAL) {
+      heads_up_display_text useful_hud_text = everywhere_hud_text;
+      useful_hud_text.text = "ujhkyn: navigate local view\n\n"
+          + useful_hud_text.text;
       gl_data.hud_text = useful_hud_text;
     }
     else {
-      gl_data.hud_text = pointless_hud_text;
+      gl_data.hud_text = everywhere_hud_text;
     }
   }
 
