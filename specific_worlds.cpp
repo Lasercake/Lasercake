@@ -337,59 +337,7 @@ struct twisty {
   }
 };
 
-} /* end anonymous namespace */
-
-
-worldgen_function_t make_world_building_func(std::string scenario) {
-  if(scenario == "vacuum") {
-    return worldgen_from_tilespec([](coords) {
-      return AIR;
-    });
-  }
-  if (scenario == "flat") {
-    return worldgen_from_tilespec([](coords l) {
-      return
-        (l.z < wcc) ? ROCK : AIR;
-    });
-  }
-  if (scenario == "flat2") {
-    return worldgen_from_column_spec([](world_column_builder& b, coord, coord, coord, coord) {
-      b.specify_lowest(ROCK);
-      b.specify(wcc, AIR);
-    });
-  }
-  if (scenario == "plane") {
-    return worldgen_from_tilespec([](coords l) {
-      return
-        (l.z == wcc) ? ROCK : AIR;
-    });
-  }
-  if (scenario == "ceiling") {
-    return worldgen_from_tilespec([](coords l) {
-      return
-        (l.z > wcc + 100) ? ROCK : AIR;
-    });
-  }
-  if (scenario == "low_ceiling") {
-    return worldgen_from_tilespec([](coords l) {
-      return
-        (l.z > wcc) ? ROCK : AIR;
-    });
-  }
-  if (scenario == "simple_hills") {
-    return worldgen_from_column_spec(simple_hills());
-  }
-  if (scenario == "spiky1") {
-    return worldgen_from_tilespec(with_state<spiky1>());
-  }
-  if (scenario == "spiky2") {
-    return worldgen_from_column_spec(with_state<spiky2>());
-  }
-  if (scenario == "spiky" || scenario == "spiky3") {
-    return worldgen_from_column_spec(spiky3());
-  }
-  if (scenario == "pressure_tunnel" || scenario == "pressure_tunnel_ground") {
-    const bool has_ground = (scenario == "pressure_tunnel_ground");
+  worldgen_function_t pressure_tunnel(const bool has_ground) {
     return worldgen_from_tilespec([has_ground](coords l)->tile_contents {
       const coord tower_lower_coord = wcc;
       const coord tower_upper_coord = wcc+10;
@@ -399,17 +347,17 @@ worldgen_function_t make_world_building_func(std::string scenario) {
           l.y >= tower_lower_coord && l.y <= tower_lower_coord &&
           l.z >= wcc && l.z <= wcc
         ) ? AIR :
-        
+
         ( l.x < tower_lower_coord &&
           l.y >= tower_lower_coord-1 && l.y <= tower_lower_coord+1 &&
           l.z >= wcc-1 && l.z <= wcc+1
         ) ? ROCK :
-        
+
         ( l.x >= tower_lower_coord && l.x < tower_upper_coord &&
           l.y >= tower_lower_coord && l.y < tower_upper_coord &&
           l.z >= wcc && l.z < wcc + tower_height
         ) ? GROUPABLE_WATER :
-        
+
         ( l.x >= tower_lower_coord-1 && l.x < tower_upper_coord+1 &&
           l.y >= tower_lower_coord-1 && l.y < tower_upper_coord+1 &&
           l.z >= wcc-1 && l.z < wcc + tower_height+1
@@ -417,11 +365,75 @@ worldgen_function_t make_world_building_func(std::string scenario) {
 
         ( l.z <= wcc-1 && has_ground
         ) ? ROCK :
-        
+
         AIR;
     });
   }
-  if (scenario == "stepped_pools") {
+
+} /* end anonymous namespace */
+
+
+typedef worldgen_function_t (*worldgen_function_creator)();
+const std::pair<std::string, worldgen_function_creator> world_builders[] = {
+  {
+  "vacuum", []() {
+    return worldgen_from_tilespec([](coords) {
+      return AIR;
+    });
+  }}, {
+  "flat", []() {
+    return worldgen_from_tilespec([](coords l) {
+      return
+        (l.z < wcc) ? ROCK : AIR;
+    });
+  }}, {
+  "flat2", []() {
+    return worldgen_from_column_spec([](world_column_builder& b, coord, coord, coord, coord) {
+      b.specify_lowest(ROCK);
+      b.specify(wcc, AIR);
+    });
+  }}, {
+
+  "plane", []() {
+    return worldgen_from_tilespec([](coords l) {
+      return
+        (l.z == wcc) ? ROCK : AIR;
+    });
+  }}, {
+  "ceiling", []() {
+    return worldgen_from_tilespec([](coords l) {
+      return
+        (l.z > wcc + 100) ? ROCK : AIR;
+    });
+  }}, {
+  "low_ceiling", []() {
+    return worldgen_from_tilespec([](coords l) {
+      return
+        (l.z > wcc) ? ROCK : AIR;
+    });
+  }}, {
+  "simple_hills", []() {
+    return worldgen_from_column_spec(simple_hills());
+  }}, {
+  "spiky1", []() {
+    return worldgen_from_tilespec(with_state<spiky1>());
+  }}, {
+  "spiky2", []() {
+    return worldgen_from_column_spec(with_state<spiky2>());
+  }}, {
+  "spiky", []() {
+    return worldgen_from_column_spec(spiky3());
+  }}, {
+  "spiky3", []() {
+    return worldgen_from_column_spec(spiky3());
+  }}, {
+  "pressure_tunnel", []() {
+    return pressure_tunnel(false);
+  }}, {
+  "pressure_tunnel_ground", []() {
+    return pressure_tunnel(true);
+  }}, {
+  "stepped_pools", []() {
     return worldgen_from_tilespec([](coords l)->tile_contents {
       typedef lasercake_int<int64_t>::type number;
       const number block_width = 30;
@@ -436,7 +448,7 @@ worldgen_function_t make_world_building_func(std::string scenario) {
       const number dist_from_block_edge = std::min(
         std::min(number(l.x % block_width), block_width - 1 - (l.x % block_width)),
         std::min(number(l.y % block_width), block_width - 1 - (l.y % block_width)));
-      
+
       if (dist_from_block_edge <= border_width) {
         return (lmwc.z <= base_height) ? ROCK : AIR;
       }
@@ -455,18 +467,18 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         }
       }
     });
-  }
+  }}, {
 
 
-  if(scenario == "default") {
+  "default", []() {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
         (is_old_box(l)) ? ROCK :
         AIR;
     });
-  }
-  if(scenario == "tower") {
+  }}, {
+  "tower", []() {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -474,8 +486,8 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         (in_old_water_tower(l)) ? GROUPABLE_WATER :
         AIR;
     });
-  }
-  if(scenario == "tower2") {
+  }}, {
+  "tower2", []() {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -484,8 +496,8 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         (around_old_water_tower(l)) ? ROCK :
         AIR;
     });
-  }
-  if(scenario == "tower3") {
+  }}, {
+  "tower3", []() {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -495,9 +507,9 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         (dike_surrounding_old_water_tower(l)) ? ROCK :
         AIR;
     });
-  }
-  
-  if(scenario == "shallow") {
+  }}, {
+
+  "shallow", []() {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -508,8 +520,8 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         (l.x == wcc+19) ? GROUPABLE_WATER :
         AIR;
     });
-  }
-  if(scenario == "steep") {
+  }}, {
+  "steep", []() {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -518,8 +530,8 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         (l.z >= wcc+15 && (wcc + 20 - l.x) >= 15) ? GROUPABLE_WATER :
         AIR;
     });
-  }
-  if(scenario == "tank") {
+  }}, {
+  "tank", []() {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -531,8 +543,8 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         (l.x > wcc+10) ? GROUPABLE_WATER :
         AIR;
     });
-  }
-  if(scenario == "tank2") {
+  }}, {
+  "tank2", []() {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -544,38 +556,22 @@ worldgen_function_t make_world_building_func(std::string scenario) {
         (l.x > wcc+10) ? GROUPABLE_WATER :
         AIR;
     });
-  }
-#if 0
-      /*GCC 4.6.2 segfaulted trying to compile this code. TODO: bugreport it.*/
-      /*Might be related: http://gcc.gnu.org/bugzilla/show_bug.cgi?id=52014 */
-  auto a_twisty = [](tile_contents twist) {
-    return [twist](coords l) {
-      return
-        (!in_old_box(l)) ? AIR :
-        (is_old_box(l)) ? ROCK :
-        (l.x == wcc+0) ? GROUPABLE_WATER :
-        (l.x == wcc+1 && l.z > wcc+0) ? ROCK :
-        (l.x == wcc+2 && (l.z % 4) == 1) ? ROCK :
-        (l.x == wcc+3 && (l.z % 2) == 1) ? ROCK :
-        (l.x == wcc+4 && (l.z % 4) == 3) ? ROCK :
-        (l.x == wcc+5) ? twist :
-        AIR;
-    };
-  };
-  if(scenario == "twisty") {
-    return worldgen_from_tilespec(a_twisty(ROCK));
-  }
-  if(scenario == "twistyrubble") {
-    return worldgen_from_tilespec(a_twisty(RUBBLE));
-  }
-#endif
-  if(scenario == "twisty") {
+  }}, {
+  "twisty", []() {
     return worldgen_from_tilespec(twisty<ROCK>());
-  }
-  if(scenario == "twistyrubble") {
+  }}, {
+  "twistyrubble", []() {
     return worldgen_from_tilespec(twisty<RUBBLE>());
-  }
+  }}
+};
+const size_t num_world_builders = sizeof(world_builders)/sizeof(*world_builders);
+const std::map<std::string, worldgen_function_creator> world_builder_table
+  (world_builders + 0, world_builders + sizeof(world_builders)/sizeof(*world_builders));
 
+worldgen_function_t make_world_building_func(std::string scenario) {
+  if(auto const* worldgen = find_as_pointer(world_builder_table, scenario)) {
+    return (*worldgen)();
+  }
   // If it wasn't named, we have no function.
   // The caller should probably check for this unfortunateness.
   return worldgen_function_t();
