@@ -202,17 +202,17 @@ shape robot::get_initial_detail_shape()const {
 
 std::string robot::player_instructions()const {
   static const std::string instructions =
-    "x: go forward\n"
+    "x: go forward; "
     //friction: implicit, we don't mention it, i guess.
     "0 (zero): jump\n" //hmm should we have a jump and have it do this
-    "right: turn right\n"
+    "right: turn right; "
     "left: turn left\n"
-    "up: look up\n"
+    "up: look up; "
     "down: look down\n"
     "b: fire dual lasers\n"
-    "m: make new auto digging robot, going towards the current facing\n"
-    "        and leaving rubble at the current location\n"
-    "(c, v: commented-out ability to pick up things, too bad.)\n"
+    "m: make digging robot that goes towards the current facing"
+    " and leaves rubble at the current location\n"
+    //"(c, v: commented-out ability to pick up things, too bad.)\n"
     ;
   return instructions;
 }
