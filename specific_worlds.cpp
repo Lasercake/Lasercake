@@ -576,3 +576,12 @@ worldgen_function_t make_world_building_func(std::string scenario) {
   // The caller should probably check for this unfortunateness.
   return worldgen_function_t();
 }
+
+std::vector<std::string> scenario_names() {
+  std::vector<std::string> result;
+  result.reserve(num_world_builders);
+  for(size_t i = 0; i != num_world_builders; ++i) {
+    result.push_back(world_builders[i].first);
+  }
+  return result;
+}

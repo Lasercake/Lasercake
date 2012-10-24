@@ -516,6 +516,11 @@ int main(int argc, char *argv[])
     }
     if(vm.count("help")) {
       std::cout << desc << std::endl;
+      std::cout << "Scenario names:";
+      for(auto const& name : scenario_names()) {
+        std::cout << "\n  " << name;
+      }
+      std::cout << std::endl;
       exit(0);
     }
 #if !LASERCAKE_NO_SELF_TESTS
