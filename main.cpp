@@ -891,10 +891,10 @@ void LasercakeController::invoke_simulation_step_() {
   }
 
   // get the simulator going again as promptly as possible
+  const bool paused_this_time = paused_ && steps_queued_to_do_while_paused_ == 0;
   if(steps_queued_to_do_while_paused_ > 0) {
     --steps_queued_to_do_while_paused_;
   }
-  const bool paused_this_time = paused_ && steps_queued_to_do_while_paused_ == 0;
   if(!paused_this_time) {
     input_representation::input_news_t input_news;
     if(config_.have_gui) {

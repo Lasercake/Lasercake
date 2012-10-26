@@ -471,7 +471,7 @@ void view_on_the_world::prepare_gl_data(
       "F11"
       #endif
       ": fullscreen; "
-      "p: pause; g: single-step (broken); "//o: overview view; l: local view; i: robot view; "
+      "p: pause; g: single-step; "//o: overview view; l: local view; i: robot view; "
                                           "o, l, i: overview, local, robot view; "
       "z: regular drawing; t: debug drawing\n",
       color(0xffcc33cc),
