@@ -500,7 +500,10 @@ void view_on_the_world::prepare_gl_data(
       gl_data.hud_text = useful_hud_text;
     }
     else {
-      gl_data.hud_text = everywhere_hud_text;
+      heads_up_display_text useful_hud_text = everywhere_hud_text;
+      useful_hud_text.text = "(this robot can't be psychically controlled)\n\n"
+          + useful_hud_text.text;
+      gl_data.hud_text = useful_hud_text;
     }
   }
 
