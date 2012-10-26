@@ -29,6 +29,7 @@
 #include <math.h>
 
 #include <QtGui/QApplication>
+#include <QtGui/QDesktopWidget>
 #include <QtCore/QMetaEnum>
 #include <QtCore/QLocale>
 #include <QtGui/QFontDatabase>
@@ -588,6 +589,9 @@ LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* paren
   //TODO setWindowFlags(), setWindow*()?
   //TODO do we want to request/check anything about the GL context?
   setWindowTitle("Lasercake");
+  // default window size to 2/3 of available screen width and height
+  const QRect approximateAvailableScreenArea = QApplication::desktop()->availableGeometry();
+  resize(approximateAvailableScreenArea.width()*2/3, approximateAvailableScreenArea.height()*2/3);
   setAutoBufferSwap(false);
   setAutoFillBackground(false);
   gl_thread_data_.reset(new gl_thread_data_t);
