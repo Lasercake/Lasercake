@@ -168,13 +168,12 @@ tile_coordinate tile_manhattan_distance_to_tile_bounding_box(tile_bounding_box b
 
 
 
-view_on_the_world::view_on_the_world(object_identifier robot_id, vector3<fine_scalar> approx_initial_center)
-: robot_id(robot_id),
-  view_loc_for_local_display(approx_initial_center),
-  view_type(GLOBAL),
-  view_direction(0),
+view_on_the_world::view_on_the_world(vector3<fine_scalar> approx_initial_center)
+: view_loc_for_local_display(approx_initial_center),
+  view_type(ROBOT),
+  local_view_direction(0),
   surveilled_by_global_display(approx_initial_center + vector3<fine_scalar>(5*tile_width, 5*tile_width, 5*tile_width)),
-  globallocal_view_dist(20*tile_width),
+  global_view_dist(20*tile_width),
   drawing_regular_stuff(true),
   drawing_debug_stuff(true)
 {}
@@ -192,8 +191,8 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
       if(k == "s") surveilled_by_global_display.y -= tile_width;
       if(k == "e") surveilled_by_global_display.z += tile_width;
       if(k == "d") surveilled_by_global_display.z -= tile_width;
-      if(k == "r") globallocal_view_dist += tile_width;
-      if(k == "f") globallocal_view_dist -= tile_width;
+      if(k == "r") global_view_dist += tile_width;
+      if(k == "f") global_view_dist -= tile_width;
       if(k == "l") view_type = view_on_the_world::LOCAL;
       if(k == "o") view_type = view_on_the_world::GLOBAL;
       if(k == "i") view_type = view_on_the_world::ROBOT;
@@ -202,20 +201,20 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
   if (view_type == LOCAL) {
     if (input_news.is_currently_pressed("u")) {
       view_loc_for_local_display += vector3<fine_scalar>(
-        fine_scalar(get_primitive_double(tile_width) * std::cos(view_direction)) / 10,
-        fine_scalar(get_primitive_double(tile_width) * std::sin(view_direction)) / 10,
+        fine_scalar(get_primitive_double(tile_width) * std::cos(local_view_direction)) / 10,
+        fine_scalar(get_primitive_double(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
     if (input_news.is_currently_pressed("j")) {
       view_loc_for_local_display -= vector3<fine_scalar>(
-        fine_scalar(get_primitive_double(tile_width) * std::cos(view_direction)) / 10,
-        fine_scalar(get_primitive_double(tile_width) * std::sin(view_direction)) / 10,
+        fine_scalar(get_primitive_double(tile_width) * std::cos(local_view_direction)) / 10,
+        fine_scalar(get_primitive_double(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
-    if (input_news.is_currently_pressed("h")) { view_direction += 0.06; }
-    if (input_news.is_currently_pressed("k")) { view_direction -= 0.06; }
+    if (input_news.is_currently_pressed("h")) { local_view_direction += 0.06; }
+    if (input_news.is_currently_pressed("k")) { local_view_direction -= 0.06; }
     if (input_news.is_currently_pressed("y")) { view_loc_for_local_display.z += tile_width / 10; }
     if (input_news.is_currently_pressed("n")) { view_loc_for_local_display.z -= tile_width / 10; }
   }
@@ -431,32 +430,82 @@ void view_on_the_world::prepare_gl_data(
   vector3<fine_scalar> view_loc;
   vector3<fine_scalar> view_towards;
 
-  if (view_type == LOCAL) {
+  if (view_type == ROBOT) {
+    assert(config.view_from != NO_OBJECT);
+    bounding_box b = w.get_object_personal_space_shapes().find(config.view_from)->second.bounds();
+    view_loc = ((b.min() + b.max()) / 2);
+    vector3<fine_scalar> facing = boost::dynamic_pointer_cast<object_with_eye_direction>(w.get_objects().find(config.view_from)->second)->get_facing();
+    view_towards = view_loc + facing;
+  }
+  else if (view_type == LOCAL) {
     view_loc = view_loc_for_local_display;
     view_towards = view_loc + vector3<fine_scalar>(
-      get_primitive_double(globallocal_view_dist) * std::cos(view_direction),
-      get_primitive_double(globallocal_view_dist) * std::sin(view_direction),
+      (100*tile_width) * std::cos(local_view_direction),
+      (100*tile_width) * std::sin(local_view_direction),
       0
     );
   }
-  else if (view_type == ROBOT) {
-    bounding_box b = w.get_object_personal_space_shapes().find(robot_id)->second.bounds();
-    view_loc = ((b.min() + b.max()) / 2);
-    vector3<fine_scalar> facing = boost::dynamic_pointer_cast<robot>(w.get_objects().find(robot_id)->second)->get_facing();
-    view_towards = view_loc + facing;
-  }
-  else {
+  else if (view_type == GLOBAL) {
     double game_time_in_seconds = get_primitive_double(w.game_time_elapsed()) / get_primitive_double(time_units_per_second);
     view_towards = surveilled_by_global_display;
     view_loc = surveilled_by_global_display + vector3<fine_scalar>(
-      get_primitive_double(globallocal_view_dist) * std::cos(game_time_in_seconds * 3 / 4),
-      get_primitive_double(globallocal_view_dist) * std::sin(game_time_in_seconds * 3 / 4),
-      get_primitive_double(globallocal_view_dist / 2) + get_primitive_double(globallocal_view_dist / 4) * std::sin(game_time_in_seconds / 2)
+      get_primitive_double(global_view_dist) * std::cos(game_time_in_seconds * 3 / 4),
+      get_primitive_double(global_view_dist) * std::sin(game_time_in_seconds * 3 / 4),
+      get_primitive_double(global_view_dist / 2) + get_primitive_double(global_view_dist / 4) * std::sin(game_time_in_seconds / 2)
     );
   }
 
   const vector3<double> view_loc_double(cast_vector3_to_double(view_loc));
   const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
+
+  gl_data.facing = cast_vector3_to_float(view_towards - view_loc);
+  gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
+  {
+    const heads_up_display_text everywhere_hud_text = {
+      "Esc: quit; Tab: switch robot; "
+      // F11 and [cmd|ctrl]-shift-F both work on all platforms, but
+      //save space by showing the typical one for the platform
+      #if defined(__APPLE__) || defined(__MACOSX__)
+      "cmd-shift-F"
+      #else
+      "F11"
+      #endif
+      ": fullscreen; "
+      "p: pause; g: single-step; "//o: overview view; l: local view; i: robot view; "
+                                          "o, l, i: overview, local, robot view; "
+      "z: regular drawing; t: debug drawing\n",
+      color(0xffcc33cc),
+      "Granger_ch8plus",
+      24,
+      36, 18
+    };
+    auto const robot_has_instructions =
+      boost::dynamic_pointer_cast<object_with_player_instructions>(w.get_objects().find(config.view_from)->second);
+    if (view_type == ROBOT && robot_has_instructions) {
+      heads_up_display_text useful_hud_text = everywhere_hud_text;
+      useful_hud_text.text = robot_has_instructions->player_instructions()
+          + '\n' + useful_hud_text.text;
+      gl_data.hud_text = useful_hud_text;
+    }
+    else if (view_type == GLOBAL) {
+      heads_up_display_text useful_hud_text = everywhere_hud_text;
+      useful_hud_text.text = "qawsedrf: navigate overview view\n\n"
+          + useful_hud_text.text;
+      gl_data.hud_text = useful_hud_text;
+    }
+    else if (view_type == LOCAL) {
+      heads_up_display_text useful_hud_text = everywhere_hud_text;
+      useful_hud_text.text = "ujhkyn: navigate local view\n\n"
+          + useful_hud_text.text;
+      gl_data.hud_text = useful_hud_text;
+    }
+    else {
+      heads_up_display_text useful_hud_text = everywhere_hud_text;
+      useful_hud_text.text = "(this robot can't be psychically controlled)\n\n"
+          + useful_hud_text.text;
+      gl_data.hud_text = useful_hud_text;
+    }
+  }
 
   const auto tiles_here = get_all_containing_tile_coordinates(view_loc);
   // Average the color. Take the max opacity, so that you can't see through rock ever.
@@ -565,7 +614,7 @@ void view_on_the_world::prepare_gl_data(
       gl_collection& coll = gl_collections_by_distance.at(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
       );
-      if ((view_type != ROBOT) || (id != robot_id)) {
+      if ((view_type != ROBOT) || (id != config.view_from)) {
         shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
         const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
 
@@ -645,17 +694,6 @@ void view_on_the_world::prepare_gl_data(
       gl_collections_by_distance, view_loc_double, view_tile_loc_rounded_down, tile_view_bounds, *this, w
     });
   }
-
-  gl_data.facing = cast_vector3_to_float(view_towards - view_loc);
-  gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
-  const heads_up_display_text hud_text = {
-    "We can has cake?",
-    color(0xffcc33cc),
-    "Granger_ch8plus",
-    24,
-    36, 18
-  };
-  gl_data.hud_text = hud_text;
 }
 
 

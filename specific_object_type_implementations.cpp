@@ -199,11 +199,28 @@ shape robot::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
-void robot::update(world& w, object_identifier my_id) {
+
+std::string robot::player_instructions()const {
+  static const std::string instructions =
+    "x: go forward; "
+    //friction: implicit, we don't mention it, i guess.
+    "0 (zero): jump\n" //hmm should we have a jump and have it do this
+    "right: turn right; "
+    "left: turn left\n"
+    "up: look up; "
+    "down: look down\n"
+    "b: fire dual lasers\n"
+    "m: make digging robot that goes towards the current facing"
+    " and leaves rubble at the current location\n"
+    //"(c, v: commented-out ability to pick up things, too bad.)\n"
+    ;
+  return instructions;
+}
+
+void robot::update(world& w, input_representation::input_news_t const& input_news, object_identifier my_id) {
   update_location(location_, w, my_id);
   //float_above_ground(velocity_, w, my_id);
     
-  input_representation::input_news_t const& input_news = w.input_news();
   velocity_.x = divide_rounding_towards_zero(velocity_.x, 2);
   velocity_.y = divide_rounding_towards_zero(velocity_.y, 2);
   const fine_scalar xymag = i64sqrt(facing_.x*facing_.x + facing_.y*facing_.y);
@@ -319,7 +336,7 @@ shape laser_emitter::get_initial_detail_shape()const {
 }
 
 
-void laser_emitter::update(world& w, object_identifier my_id) {
+void laser_emitter::update(world& w, input_representation::input_news_t const&, object_identifier my_id) {
   update_location(location_, w, my_id);
   
   const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type> random_delta(-1023, 1023);
@@ -371,7 +388,7 @@ autorobot::autorobot(vector3<fine_scalar> location, vector3<fine_scalar> facing)
   else facing_.z = 0;
 }
 
-void autorobot::update(world& w, object_identifier my_id) {
+void autorobot::update(world& w, input_representation::input_news_t const&, object_identifier my_id) {
   auto& rng = w.get_rng();
   update_location(location_, w, my_id);
   float_above_ground(velocity_, w, my_id);

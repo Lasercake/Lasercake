@@ -31,5 +31,7 @@
 // nothing (if(result) will be false and calling it will be in error).
 worldgen_function_t make_world_building_func(std::string scenario);
 
+std::vector<std::string> scenario_names();
+
 #endif
 

@@ -166,7 +166,8 @@ enum tile_contents {
   ROCK,
   UNGROUPABLE_WATER,
   GROUPABLE_WATER,
-  RUBBLE
+  RUBBLE,
+  UNSPECIFIED_TILE_CONTENTS // Only valid to use in particular parts of code that note thus.
   // NOTE: we currently rely on these fitting into three bits
 };
 

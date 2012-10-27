@@ -156,6 +156,16 @@ public:
   vector3<fine_scalar> velocity_;
 };
 
+// The player can use these objects.
+class object_with_eye_direction : virtual public object {
+public:
+  virtual vector3<fine_scalar> get_facing()const = 0;
+};
+class object_with_player_instructions : virtual public object {
+public:
+  virtual std::string player_instructions()const = 0;
+};
+
 class tile_aligned_object : virtual public object {
 public:
   
@@ -163,7 +173,7 @@ public:
 
 class autonomous_object : virtual public object {
 public:
-  virtual void update(world& w, object_identifier my_id) = 0;
+  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id) = 0;
 };
 
 
@@ -337,12 +347,7 @@ public:
   // (and currently, also can get ahead because we don't cap the frame-rate.)
   time_unit game_time_elapsed()const { return current_game_time_; }
 
-  void update(input_representation::input_news_t const& input_news);
-
-  // TODO come up with a good way of farming this information out to robots once
-  // we know how we want that to work, and a good way of representing multiple
-  // players' input.
-  input_representation::input_news_t const& input_news() const { return input_news_; }
+  void update(unordered_map<object_identifier, input_representation::input_news_t> input);
 
   large_fast_noncrypto_rng& get_rng() { return rng_; }
   
@@ -458,9 +463,7 @@ private:
   
   // Worldgen functions TODO describe them
   worldgen_function_t worldgen_function_;
-
-  input_representation::input_news_t input_news_;
-
+  
   // RNG, default-initialized for now
   large_fast_noncrypto_rng rng_;
   

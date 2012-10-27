@@ -19,7 +19,7 @@ CMake
 A recent C++ compiler (e.g. GCC >= 4.6, CLang >= 3.0)
     that supports the C++0x features Lasercake uses.
 
-To build, run 'cmake' then 'make' (or use your favorite CMake
+To build, run 'cmake .' then 'make' (or use your favorite CMake
 interface).  (If developing, using ./dev-build.py might
 float your boat better.)
 It will give you an executable 'lasercake'.

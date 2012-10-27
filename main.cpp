@@ -29,6 +29,7 @@
 #include <math.h>
 
 #include <QtGui/QApplication>
+#include <QtGui/QDesktopWidget>
 #include <QtCore/QMetaEnum>
 #include <QtCore/QLocale>
 #include <QtGui/QFontDatabase>
@@ -231,7 +232,8 @@ void LasercakeSimulator::init(worldgen_function_t worldgen, config_struct config
   const microseconds_t microseconds_before_initing = get_this_thread_microseconds();
   world_ptr_.reset(new world(worldgen));
   const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers);
-  view_ptr_.reset(new view_on_the_world(robot_id, world_center_fine_coords));
+  currently_focused_object_ = robot_id;
+  view_ptr_.reset(new view_on_the_world(world_center_fine_coords));
   view_ptr_->drawing_debug_stuff = config.initially_drawing_debug_stuff;
   const microseconds_t microseconds_after_initing = get_this_thread_microseconds();
   microseconds_last_sim_frame_took_ = microseconds_after_initing - microseconds_before_initing; //hack?
@@ -247,7 +249,9 @@ void LasercakeSimulator::init(worldgen_function_t worldgen, config_struct config
 void LasercakeSimulator::new_input_as_of(time_unit /*moment*/, input_news_t input_news) {
   //(TODO?) we don't currently respect the given moment to simulate up to
   const microseconds_t microseconds_before_simulating = get_this_thread_microseconds();
-  world_ptr_->update(input_news);
+  unordered_map<object_identifier, input_news_t> targeted_input;
+  targeted_input[currently_focused_object_] = input_news;
+  world_ptr_->update(targeted_input);
   const microseconds_t microseconds_after_simulating = get_this_thread_microseconds();
   microseconds_last_sim_frame_took_ = microseconds_after_simulating - microseconds_before_simulating;
 
@@ -259,8 +263,29 @@ void LasercakeSimulator::prepare_graphics(input_news_t input_since_last_prepare,
   const microseconds_t microseconds_before_drawing = get_this_thread_microseconds();
   gl_data_ptr_t gl_data_ptr(new gl_data_t());
   if(actually_prepare_graphics) {
+    const int32_t num_tab_presses = input_since_last_prepare.num_times_pressed("tab");
+    for(int32_t i = 0; i != num_tab_presses; ++i) {
+      //TODO better than O(N) (or worse, O(N * num tab presses!)
+      objects_map<object>::type const& objects = world_ptr_->get_objects();
+      //restrict to autonomous objs perhaps?
+      object_identifier best = currently_focused_object_; //the worst best
+      for(auto const& p : objects) {
+        if(boost::dynamic_pointer_cast<object_with_eye_direction>(p.second)) {
+          if(p.first > currently_focused_object_) {
+            if(best <= currently_focused_object_ || p.first < best) {
+              best = p.first;
+            }
+          }
+          else if(best <= currently_focused_object_ && p.first < best) {
+            best = p.first;
+          }
+        }
+      }
+      currently_focused_object_ = best;
+    }
+    //hmm
     view_ptr_->input(input_since_last_prepare);
-    view_ptr_->prepare_gl_data(*world_ptr_, gl_data_preparation_config(view_radius), *gl_data_ptr);
+    view_ptr_->prepare_gl_data(*world_ptr_, gl_data_preparation_config(view_radius, currently_focused_object_), *gl_data_ptr);
   }
   const microseconds_t microseconds_after_drawing = get_this_thread_microseconds();
   const microseconds_t microseconds_for_drawing = microseconds_after_drawing - microseconds_before_drawing;
@@ -492,6 +517,11 @@ int main(int argc, char *argv[])
     }
     if(vm.count("help")) {
       std::cout << desc << std::endl;
+      std::cout << "Scenario names:";
+      for(auto const& name : scenario_names()) {
+        std::cout << "\n  " << name;
+      }
+      std::cout << std::endl;
       exit(0);
     }
 #if !LASERCAKE_NO_SELF_TESTS
@@ -559,6 +589,9 @@ LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* paren
   //TODO setWindowFlags(), setWindow*()?
   //TODO do we want to request/check anything about the GL context?
   setWindowTitle("Lasercake");
+  // default window size to 2/3 of available screen width and height
+  const QRect approximateAvailableScreenArea = QApplication::desktop()->availableGeometry();
+  resize(approximateAvailableScreenArea.width()*2/3, approximateAvailableScreenArea.height()*2/3);
   setAutoBufferSwap(false);
   setAutoFillBackground(false);
   gl_thread_data_.reset(new gl_thread_data_t);
@@ -862,10 +895,10 @@ void LasercakeController::invoke_simulation_step_() {
   }
 
   // get the simulator going again as promptly as possible
+  const bool paused_this_time = paused_ && steps_queued_to_do_while_paused_ == 0;
   if(steps_queued_to_do_while_paused_ > 0) {
     --steps_queued_to_do_while_paused_;
   }
-  const bool paused_this_time = paused_ && steps_queued_to_do_while_paused_ == 0;
   if(!paused_this_time) {
     input_representation::input_news_t input_news;
     if(config_.have_gui) {

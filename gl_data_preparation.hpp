@@ -172,13 +172,20 @@ struct gl_all_data {
 
 
 struct gl_data_preparation_config {
-  gl_data_preparation_config(fine_scalar view_radius) : view_radius(view_radius) {}
+  gl_data_preparation_config(fine_scalar view_radius, object_identifier view_from)
+   : view_radius(view_radius), view_from(view_from) {}
   fine_scalar view_radius;
+  object_identifier view_from;
+  // TODO do we also want the config to be able to specify
+  // a view *location* (that's not an object)?
+  // view_from is used to look up location, facing, and avoiding
+  // drawing the object we're viewing from.
+  // It is also only used when view_on_the_world::view_type is ROBOT.
 };
 
 class view_on_the_world {
 public:
-  view_on_the_world(object_identifier robot_id, vector3<fine_scalar> approx_initial_center);
+  view_on_the_world(vector3<fine_scalar> approx_initial_center);
 
   // Call this every frame that you want user-input to have view-related effects.
   void input(input_representation::input_news_t const& input_news);
@@ -187,12 +194,11 @@ public:
   void prepare_gl_data(world /*TODO const*/& w, gl_data_preparation_config c, gl_data_preparation::gl_all_data& result);
 
   // TODO make private and/or trailing underscore
-  object_identifier robot_id;
   vector3<fine_scalar> view_loc_for_local_display;
   enum { GLOBAL, LOCAL, ROBOT } view_type;
-  double view_direction;
+  double local_view_direction;
   vector3<fine_scalar> surveilled_by_global_display;
-  fine_scalar globallocal_view_dist;
+  fine_scalar global_view_dist;
   bool drawing_regular_stuff;
   bool drawing_debug_stuff;
 };

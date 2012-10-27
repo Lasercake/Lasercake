@@ -4,6 +4,8 @@
 
 To add (or remove) a font, you need to make the following changes:
 * Add a .ttf font file to resources/
+* Remember that Lasercake is GPLed so you shall also:
+  Include your most-preferred format for editing the font next to the .ttf.
 * List this file in fonts.qrc
 * Add another QFontDatabase::addApplicationFont line in main.cpp
 * Find out the "font name" of the font so you can refer to it in your code
