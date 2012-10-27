@@ -335,78 +335,68 @@ void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedro
 }
 #endif
 
-struct potential_running_into_a_polyhedron_info {
-  potential_running_into_a_polyhedron_info():min(none),max(none),is_anywhere(true){}
-  potential_running_into_a_polyhedron_info(optional_rational min,optional_rational max):min(min),max(max),is_anywhere((!min) || (!max) || (*min <= *max)){}
-  potential_running_into_a_polyhedron_info(boost::none_t):min(none),max(none),is_anywhere(false){}
-  potential_running_into_a_polyhedron_info(rational loc, plane_as_base_point_and_normal plane):min(loc),max(loc){
-    planes_hit_first.push_back(plane);
-  }
-  potential_running_into_a_polyhedron_info(rational min, boost::none_t, plane_as_base_point_and_normal plane):min(min),max(none){
-    planes_hit_first.push_back(plane);
-  }
-  bool is_anywhere;
+
+void add_when_point_is_within_planes(potential_running_into_a_polyhedron_info& inf, vector3<polygon_int_type> point, vector3<polygon_int_type> velocity, std::vector<plane_as_base_point_and_normal> const& planes) {
   optional_rational min;
   optional_rational max;
-  std::unordered_map<plane_as_base_point_and_normal> planes_hit_first;
-  plane_as_base_point_and_normal arbitrary_plane_of_closest_exclusion;
-  void combine_with(potential_running_into_a_polyhedron_info const& other) {
-    if (!is_anywhere) {
-      *this = other;
-    }
-    else {
-      if (other.min == min) {
-        planes_hit_first.combin e(other.planes_hit_first);
-      }
-      else if (other.min < min) {
-        planes_hit_first = other.planes_hit_first;
-        min = other.min;
-      }
-      
-      if (other.max > max) {
-        max = other.max;
-      }
-    }
-  }
-  void intersect_with(potential_running_into_a_polyhedron_info const& other);
-}
-
-potential_running_into_a_polyhedron_info when_is_point_within_planes(vector3<polygon_int_type> point, vector3<polygon_int_type> velocity, std::vector<plane_as_base_point_and_normal> const& planes) {
-  potential_running_into_a_polyhedron_info result;
+  plane_as_base_point_and_normal arbitrary_plane_hit_first;
   for (auto const& plane : planes) {
     // We subtract base_point just to minimize integer size; the behavior should be the same either way.
     const auto vel_dotprod = velocity.dot<polygon_int_type>(plane.normal);
     const auto disp_dotprod = (plane.base_point - point).dot<polygon_int_type>(plane.normal);
     if (vel_dotprod == 0) {
-      if (disp_dotprod < 0) result = potential_running_into_a_polyhedron_info(none);
+      if (disp_dotprod < 0) {
+        // We're moving parallel to the plane and the point is outside the plane. So we will never be on the inside.
+        return;
+      }
+      // Otherwise we're moving parallel to the plane and we're on the INSIDE of the plane, so this plane will never restrict when the point is inside the polyhedron.
     }
     else {
       const rational moment(disp_dotprod, vel_dotprod);
       if (vel_dotprod > 0) {
-        result.intersect_with(potential_running_into_a_polyhedron_info(none, moment));
+        //
+        if (!max || (moment < *max)) {
+          max = moment;
+        }
       }
       else {
-        result.intersect_with(potential_running_into_a_polyhedron_info(moment, none, plane));
+        if (!min || (moment > *min)) {
+          min = moment;
+          arbitrary_plane_hit_first = plane;
+        }
       }
-      if (!result.is_anywhere) break;
+      if (min && max && (*min > *max)) return;
     }
   }
-  return result;
+  
+  assert (min && max && (*min <= *max));
+  
+  if (!inf.is_anywhere || *min < inf.min) {
+    inf.min = *min;
+    inf.arbitrary_plane_hit_first = arbitrary_plane_hit_first;
+  }
+  if (!inf.is_anywhere || *max > inf.max) {
+    inf.max = *max;
+  }
+  inf.is_anywhere = true;
 }
 
 potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_polyhedron const& p1, convex_polyhedron const& p2, vector3<polygon_int_type> velocity) {
-  potential_running_into_a_polyhedron_info result(none);
+  potential_running_into_a_polyhedron_info result;
+  if (velocity == vector3<polygon_int_type>(0,0,0)) {
+    // Hack - we don't have a way to indicate "At all times", which this might be.
+    // We don't need to, anyway. So just indicate "never" regardless.
+    return result;
+  }
   std::vector<plane_as_base_point_and_normal> p1_planes; p1_planes.reserve(p1.num_faces());
   populate_with_plane_info(p1, p1_planes);
   for (auto v : p2.vertices()) {
-    result.combine_with(when_is_point_within_planes(v, velocity, p1_planes));
-    if (!result.is_anywhere) return result;
+    add_when_point_is_within_planes(result, v, velocity, p1_planes);
   }
   std::vector<plane_as_base_point_and_normal> p2_planes; p2_planes.reserve(p2.num_faces());
   populate_with_plane_info(p2, p2_planes);
   for (auto v : p1.vertices()) {
-    result.combine_with(when_is_point_within_planes(v, -velocity, p2_planes));
-    if (!result.is_anywhere) return result;
+    add_when_point_is_within_planes(result, v, -velocity, p2_planes);
   }
 
   // At a moment when two polyhedra start/stop intersecting,
@@ -415,6 +405,8 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
   for (auto e1 : p1.edges()) {
     const auto e1v1 = p1.vertices()[e1.vert_1];
     const auto e1v2 = p1.vertices()[e1.vert_2];
+    const auto e1f1 = p1_planes[e1.face_1];
+    const auto e1f2 = p1_planes[e1.face_2];
     const auto e1d = e1v2 - e1v1;
     if (vectors_are_parallel(e1d, velocity)) continue;
 
@@ -433,6 +425,8 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
     for (auto e2 : p2.edges()) {
       const auto e2v1 = p2.vertices()[e2.vert_1];
       const auto e2v2 = p2.vertices()[e2.vert_2];
+      const auto e2f1 = p1_planes[e2.face_1];
+      const auto e2f2 = p1_planes[e2.face_2];
       const auto e2v1side = sign((e2v1 - e1v1).dot<polygon_int_type>(e1_travel_plane_normal));
       // If one of the ends is on the same plane, that end (a vertex) was already caught where it entered the volume
       if (e2v1side == 0) continue;
@@ -480,17 +474,71 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
       const auto disp_dotprod = (e2v1 - e1v1).dot<polygon_int_type>(proposed_normal);
       const rational moment(disp_dotprod, vel_dotprod);
       if (vel_dotprod > 0) {
-        result.combine_with(potential_running_into_a_polyhedron_info(moment));
+        if (moment < result.min) {
+          result.arbitrary_plane_hit_first = plane_as_base_point_and_normal(e1v1, proposed_normal);
+          result.min = moment;
+        }
       }
       else {
-        result.combine_with(potential_running_into_a_polyhedron_info(moment, plane));
+        if (moment > result.max) {
+          result.max = moment;
+        }
       }
     }
   }
 
-  if (result.is_anywhere) {
-    assert(!result.planes_hit_first.empty());
+  if (!result.is_anywhere) return result;
+  
+  assert(result.arbitrary_plane_hit_first.normal != vector3<polygon_int_type>(0,0,0));
+
+  // If we start out intersecting them, find the plane across which we could most quickly exit.
+  // The movement code uses this: if the movement is INTO this plane then it's blocked, if it's
+  // OUT OF this plane then it's fudged by allowing it not to collide.
+  if (result.min <= 0 && result.max >= 0) {
+    rational closest_excl_dist = -1;
+    // TODO: We write this only for the faces, not for crossed-edges planes.
+    // The latter would be more complicated.
+    // It is, however, INCORRECT without it ; the only reason we can omit it is
+    // 1) the CURRENT situations don't require it, AND
+    // 2) we plan to replace this function with a preprocessing-based one that will be
+    // (in some cases) O(n) instead of O(n^2), and do the omitted part in a simpler way than we could here.
+    // Possible shorter-term TODO: Fix duplicate code.
+    for (auto pl : p1_planes) {
+      rational this_excl_dist = 0;
+      for (auto v : p2.vertices()) {
+        // NOTE: The magnitude calculation seems unavoidable here,
+        // because the rule is "if we went directly outwards through the plane", i.e. in the direction of the normal,
+        // but the normals may have differing magnitudes.
+        // This calcuation has problems:
+        // 1) Rounding error
+        // 2) Seemingly unneeded extra height limit on the normal
+        rational vertex_excl_dist((pl.base_point - v).dot<polygon_int_type>(pl.normal), pl.normal.magnitude_within_32_bits());
+        if (vertex_excl_dist > this_excl_dist) this_excl_dist = vertex_excl_dist;
+      }
+      if (closest_excl_dist == -1 || this_excl_dist < closest_excl_dist) {
+        closest_excl_dist = this_excl_dist;
+        result.arbitrary_plane_of_closest_exclusion = pl;
+      }
+    }
+    for (auto pl : p2_planes) {
+      rational this_excl_dist = 0;
+      for (auto v : p1.vertices()) {
+        // NOTE: The magnitude calculation seems unavoidable here,
+        // because the rule is "if we went directly outwards through the plane", i.e. in the direction of the normal,
+        // but the normals may have differing magnitudes.
+        // This calcuation has problems:
+        // 1) Rounding error
+        // 2) Seemingly unneeded extra height limit on the normal
+        rational vertex_excl_dist((pl.base_point - v).dot<polygon_int_type>(pl.normal), pl.normal.magnitude_within_32_bits());
+        if (vertex_excl_dist > this_excl_dist) this_excl_dist = vertex_excl_dist;
+      }
+      if (closest_excl_dist == -1 || this_excl_dist < closest_excl_dist) {
+        closest_excl_dist = this_excl_dist;
+        result.arbitrary_plane_of_closest_exclusion = pl;
+      }
+    }
   }
+  
   return result;
 }
 

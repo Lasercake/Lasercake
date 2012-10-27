@@ -268,7 +268,20 @@ struct plane_as_base_point_and_normal {
   vector3<polygon_int_type> normal;
   
   plane_as_base_point_and_normal(vector3<polygon_int_type> base_point, vector3<polygon_int_type> normal):base_point(base_point),normal(normal){}
+  plane_as_base_point_and_normal(){}
 };
+
+
+struct potential_running_into_a_polyhedron_info {
+  potential_running_into_a_polyhedron_info():is_anywhere(false){}
+  bool is_anywhere;
+  polygon_rational_type min;
+  polygon_rational_type max;
+  plane_as_base_point_and_normal arbitrary_plane_hit_first;
+  plane_as_base_point_and_normal arbitrary_plane_of_closest_exclusion;
+};
+
+potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_polyhedron const& p1, convex_polyhedron const& p2, vector3<polygon_int_type> velocity);
 
 //void compute_sweep_allowing_rounding_error(convex_polyhedron const& ph, vector3<polygon_int_type> const& v, vector3<polygon_int_type> max_error, std::vector<vector3<polygon_int_type>>& vertex_collector, polyhedron_planes_info_for_intersection& plane_collector);
 
