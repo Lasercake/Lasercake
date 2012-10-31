@@ -347,6 +347,8 @@ void output_gl_data_to_OpenGL(
   }
   // TODO Apparently atexit we should glDeleteBuffers, glDisable, and stuff?
 
+  glViewport(0, 0, viewport_width, viewport_height);
+
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
   // Depth func LEQUAL not LESS.  We try to draw objects in back-to-front
@@ -564,7 +566,6 @@ microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widge
   // free to fork more threads, and/or wait for the GPU without consuming CPU,
   // etc [mine seems to do both somewhat].)
   const microseconds_t microseconds_before_gl = get_monotonic_microseconds();
-  glViewport(0, 0, viewport_size.width(), viewport_size.height());
   output_gl_data_to_OpenGL(*gl_data_ptr, viewport_size.width(), viewport_size.height(), gl_widget);
   //TODO measure the microseconds ~here~ in the different configurations. e.g. should the before/after here be split across threads?
   //gl_data_ptr.reset(); // but if the deletion does happen now, it'll be in this thread, now, delaying swapBuffers etc :(
