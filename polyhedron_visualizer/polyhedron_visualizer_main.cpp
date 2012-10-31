@@ -101,9 +101,22 @@ static void createSurface (int fullscreen)
 	}
 }
 
+typedef lasercake_int<int64_t>::type time_int_type;
+typedef non_normalized_rational<time_int_type> time_type;
+typedef faux_optional<time_type> optional_time;
 
 void draw_vertex(vector3<polygon_int_type> v) {
   glVertex3f((GLfloat)v(X), (GLfloat)v(Y), (GLfloat)v(Z));
+}
+void draw_polyhedron(convex_polyhedron foo) {
+
+          for (uint8_t i = 0; i < foo.face_info().size(); i += foo.face_info()[i] + 1) {
+           glBegin(GL_LINE_LOOP);
+            for (uint8_t j = 0; j < foo.face_info()[i]; ++j) {
+              draw_vertex(foo.vertices()[foo.face_info()[i + j + 1]]);
+            }
+            glEnd();
+          }
 }
 
 extern void compute_planes_info_for_intersection(convex_polyhedron const& ph, polyhedron_planes_info_for_intersection& collector);
@@ -128,9 +141,10 @@ int frame = 0;
   verts.push_back(vector3<polygon_int_type>(0, 0, -3));
   convex_polyhedron foo1(verts);
   convex_polyhedron foo2(bounding_box::min_and_max(-vector3<polygon_int_type>(3, 3, 3), vector3<polygon_int_type>(3, 3, 3)));
+  convex_polyhedron obstacle(bounding_box::min_and_max(-vector3<polygon_int_type>(3, 3, 1), vector3<polygon_int_type>(3, 3, 1)));
   
-  //bool draw_sweep_verts = false;
-  //bool draw_sweep_normals = false;
+  bool draw_endp = false;
+  bool draw_coll_stuff = false;
   bool draw_normals = false;
   bool draw_poly = true;
   bool use_foo1 = false;
@@ -150,8 +164,8 @@ int frame = 0;
           if(event.key.keysym.sym == SDLK_p) ++p_mode;
           if(event.key.keysym.sym == SDLK_z) draw_poly = !draw_poly;
           if(event.key.keysym.sym == SDLK_x) draw_normals = !draw_normals;
-          //if(event.key.keysym.sym == SDLK_c) draw_sweep_verts = !draw_sweep_verts;
-          //if(event.key.keysym.sym == SDLK_v) draw_sweep_normals = !draw_sweep_normals;
+          if(event.key.keysym.sym == SDLK_c) draw_endp = !draw_endp;
+          if(event.key.keysym.sym == SDLK_v) draw_coll_stuff = !draw_coll_stuff;
           if(event.key.keysym.sym == SDLK_b) use_foo1 = !use_foo1;
           if(event.key.keysym.sym == SDLK_q) ++velocity[X];
           if(event.key.keysym.sym == SDLK_a) --velocity[X];
@@ -159,6 +173,12 @@ int frame = 0;
           if(event.key.keysym.sym == SDLK_s) --velocity[Y];
           if(event.key.keysym.sym == SDLK_e) ++velocity[Z];
           if(event.key.keysym.sym == SDLK_d) --velocity[Z];
+          if(event.key.keysym.sym == SDLK_r) obstacle.translate(vector3<polygon_int_type>(1,0,0));
+          if(event.key.keysym.sym == SDLK_f) obstacle.translate(vector3<polygon_int_type>(-1,0,0));
+          if(event.key.keysym.sym == SDLK_t) obstacle.translate(vector3<polygon_int_type>(0,1,0));
+          if(event.key.keysym.sym == SDLK_g) obstacle.translate(vector3<polygon_int_type>(0,-1,0));
+          if(event.key.keysym.sym == SDLK_y) obstacle.translate(vector3<polygon_int_type>(0,0,1));
+          if(event.key.keysym.sym == SDLK_h) obstacle.translate(vector3<polygon_int_type>(0,0,-1));
           //if(event.key.keysym.sym == SDLK_r) ++view_dist;
           //if(event.key.keysym.sym == SDLK_f) --view_dist;
           if(event.key.keysym.sym != SDLK_ESCAPE)break;
@@ -185,20 +205,46 @@ int frame = 0;
   polyhedron_planes_info_for_intersection bar;
   compute_planes_info_for_intersection(foo, bar);
   
- // std::vector<vector3<polygon_int_type>> sweep_verts;
- // polyhedron_planes_info_for_intersection sweep_bar;
-  
-  //compute_sweep_allowing_rounding_error(foo, velocity, vector3<polygon_int_type>(sign(velocity(X)),sign(velocity(Y)),sign(velocity(Z))), sweep_verts, sweep_bar);
-    
-    if (draw_poly) {
+  if (draw_coll_stuff) {
+      auto coll_info = when_do_polyhedra_intersect(foo, obstacle, velocity);
+      if ((coll_info.is_anywhere) && (coll_info.max >= 0) && (coll_info.min <= (time_type(1)))) {
+        if ((coll_info.min >= 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<polygon_int_type>(velocity) < 0)) {
+  glColor4f(0.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.6);
+          
+        }
+        else {
+  glColor4f(0.5 + GLfloat(rand()%255) / 512.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.0, 0.6);
+        }
+      }
+      else {
+
+
+  glColor4f(0.5 + GLfloat(rand()%255) / 512.0, 0.0, 0.5 + GLfloat(rand()%255) / 512.0,  0.6);
+      }
+
+      if (coll_info.is_anywhere) {
           for (uint8_t i = 0; i < foo.face_info().size(); i += foo.face_info()[i] + 1) {
-  glColor4f(0.5 + GLfloat(rand()%255) / 512.0, 0.0, 0.0, 0.6);
            glBegin(GL_LINE_LOOP);
             for (uint8_t j = 0; j < foo.face_info()[i]; ++j) {
-              draw_vertex(foo.vertices()[foo.face_info()[i + j + 1]]);
+              auto v = foo.vertices()[foo.face_info()[i + j + 1]];
+  glVertex3f((GLfloat)v(X) + (GLfloat)velocity(X) * (GLfloat)coll_info.min.numerator / (GLfloat)coll_info.min.denominator,
+             (GLfloat)v(Y) + (GLfloat)velocity(Y) * (GLfloat)coll_info.min.numerator / (GLfloat)coll_info.min.denominator,
+             (GLfloat)v(Z) + (GLfloat)velocity(Z) * (GLfloat)coll_info.min.numerator / (GLfloat)coll_info.min.denominator);
             }
             glEnd();
           }
+      }
+  }
+
+  glColor4f(0.5 + GLfloat(rand()%255) / 512.0, 0.0, 0.0, 0.6);
+  draw_polyhedron(obstacle);
+    if (draw_poly) {
+  glColor4f(0.5 + GLfloat(rand()%255) / 512.0, 0.0, 0.0, 0.6);
+  draw_polyhedron(foo);
+        }
+    if (draw_endp) { 
+  glColor4f(0.5 + GLfloat(rand()%255) / 512.0, 0.0, 0.0, 0.6);
+  convex_polyhedron foot(foo); foot.translate(velocity); draw_polyhedron(foot);
         }
           if (draw_normals) {
             glBegin(GL_LINES);
