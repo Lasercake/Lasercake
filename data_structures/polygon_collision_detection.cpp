@@ -235,6 +235,43 @@ bool planes_exclude_together_but_not_alone(plane_as_base_point_and_normal const&
 }
 
 } /* end anonymous namespace */
+
+
+/*
+
+Given two polyhedra, p1 and p2...
+
+Imagine that p1 is fixed in space, and p2d can be moved around freely (but not rotated).
+
+Let n be the total number of vertices.
+
+Let "touching" mean the (topological) boundaries of the two shapes intersect, but neither's (topological) interior intersects the other's boundary or interior.  Let "overlapping" mean either's interior intersects the other's interior or boundary. (TODO: Look up if there are mathematical words for these concepts.) Let "moment of collision" be a position of p2 where it touches p1. (Observe that if p2 moves continuously from disjoint-with-p1 to intersecting-p1, it must have a moment of collision as defined here.)
+
+Prop 1: (I believe, but haven't (TODO) proved quite formally enough:) At the moment when two polyhedra collide, there is a plane that doesn't intersect the interior of either polyhedron, but either intersects an entire face of one and at least one vertex of the other or intersects an edge of each. Three cases:
+  Face of p1 to vertex of p2 (O(n))
+  Face of p2 to vertex of p1 (O(n))
+  Edge of p1 to edge of p2 (I think this ends up being O(n) as well due to something like the fact that if there are a lot of edges, a lot of them have very small angles over which they would actually collide into another edge, but I haven't proved it. TODO prove it)
+
+Based on prop 1, I can touch the surface of p1 with O(n) fixed planes, so that at any moment of collision, p2 is touching one of them (but might miss or interior-intersect the others.)
+
+Replace those planes with closed half-spaces that have the original plane as their boundaries. Each half-space includes p1.
+
+Now observe these things: At a moment of collision, can p2 be disjoint with any half-space? No, because each half-space contains p1. And if p1 merely touches a half-space, it can't be overlapping p2. Thus, the statements "p1 touches p2" and "p2 touches one half-space and intersects the rest" are equivalent if the following condition holds: "If p2 intersects all the half-spaces, p2 intersects p1".
+
+Outline of a proof by contradiction: If p2 does not intersect p1 and yet intersects all the half-spaces, then I can (1) shove it a tiny distances so that it overlaps all the half-spaces and still doesn't intersect p1, and then (2) continuously move it to overlap p1 without ever ceasing to overlap all the half-spaces. This move causes p1 and p2 to become intersecting without crossing a moment of collision, a contradiction.
+
+For each half-space, if p2 moves from outside to inside the half-space, a vertex will be the first thing to hit it. We can fix that vertex, since p2 won't rotate.
+
+The question remains, "which edge-to-edge planes do we need to consider?".
+
+Suppose two edges are parallel. Then they cannot intersect without one of the four vertices intersecting the other line, which means it intersects a face, so we don't need to consider it.
+So we only need cases where the edges are not parallel. Then, when they intersect, there is exactly one plane that contains both. At every non-vertex point of e1, there's an open ball in which p1 is just an intersection of two half-spaces. If that shape contains either half of the e1-e2 plane, then e2 intersects the interior of p1 (or intersects a face, in which case it's covered by the vertex-to-face case), so this isn't a moment of collision; the same goes for e1 vs p2.
+Hence, for every relevant edge-edge plane, e1's two faces will be on the same side of the e1-e2 plane, as will e2's faces. Can all four be on the same side? No - near the crossing point, there'd be a point where the interiors intersect each other.
+So we only need to consider edge-edge planes where e1's faces are both on one side and e2's faces are both on the other side.
+
+ */
+
+
 #if 0
 struct pair_of_parallel_supporting_planes {
   pair_of_parallel_supporting_planes(vector3<polygon_int_type> p1_base_point, vector3<polygon_int_type> p2_base_point, vector3<polygon_int_type> p1_to_p2_normal):p1_base_point(p1_base_point),p2_base_point(p2_base_point),p1_to_p2_normal(p1_to_p2_normal){}
