@@ -777,11 +777,11 @@ get_first_moment_of_intersection_results get_first_moment_of_intersection(shape 
     }
   }
   if (results.time) {
-    std::cerr << *results.time << "...\n";
+    //std::cerr << *results.time << "...\n";
     *results.time += s1_last_time_updated;
     *results.time = round_time_downwards(*results.time, max_meaningful_time_precision(relative_velocity));
     if (*results.time < s1_last_time_updated) *results.time = s1_last_time_updated;
-    std::cerr << *results.time << ", "<< s1_last_time_updated << "\n";
+    //std::cerr << *results.time << ", "<< s1_last_time_updated << "\n";
   }
   return results;
 }
@@ -884,7 +884,7 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
   w.get_tiles_exposed_to_collision_within(tiles_this_could_collide_with,
       get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(sweep_bounds));
   for (auto const& loc : tiles_this_could_collide_with) {
-      std::cerr << "Considering " << id << ", " << loc << "\n";
+      //std::cerr << "Considering " << id << ", " << loc << "\n";
     shape t = tile_shape(loc.coords());
     const auto i1 = objects_info.find(id);
     const time_type ltu1 = (i1 == objects_info.end()) ? time_type(0) : i1->second.last_time_updated;
@@ -1017,7 +1017,7 @@ void update_moving_objects_impl(
     
     //std::cerr << "..." << now_collisions.size() << "!\n";
     for (collision_info collision : now_collisions) {
-      std::cerr << "Wham!\n";
+      //std::cerr << "Wham!\n";
       const auto inf1_iter = objects_info.find(collision.oid1);
       assert(inf1_iter != objects_info.end());
       moving_object_info& inf1 = inf1_iter->second;
