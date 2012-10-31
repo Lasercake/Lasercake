@@ -9,3 +9,11 @@ sim
 .*.kate-swp
 /.kdev4/
 /zzzuncommitted
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+Makefile
+cmake_install.cmake
+fonts.qrc.depends
+moc_main.cxx
+qrc_fonts.cxx
