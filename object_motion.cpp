@@ -765,9 +765,9 @@ get_first_moment_of_intersection_results get_first_moment_of_intersection(shape 
   }
   for (auto const& p1 : p1s) {
     for (auto const& p2 : p2s) {
-      auto coll_info = when_do_polyhedra_intersect(p1,p2,relative_velocity);
+      auto coll_info = when_do_polyhedra_intersect(p1,p2,relative_velocity / velocity_scale_factor);
       if ((coll_info.is_anywhere) && (coll_info.max >= 0) && (coll_info.min <= (time_type(1) - s1_last_time_updated))) {
-        if ((coll_info.min > 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<fine_scalar>(relative_velocity) > 0)) {
+        if ((coll_info.min >= 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<fine_scalar>(relative_velocity) < 0)) {
           if (!results.time || (coll_info.min < *results.time)) {
             results.time = ((coll_info.min > 0) ? coll_info.min : 0);
             results.normal = coll_info.arbitrary_plane_hit_first.normal;
@@ -776,7 +776,12 @@ get_first_moment_of_intersection_results get_first_moment_of_intersection(shape 
       }
     }
   }
-  if (results.time) *results.time += s1_last_time_updated;
+  if (results.time) {
+    std::cerr << *results.time << "...\n";
+    *results.time = round_time_downwards(*results.time, max_meaningful_time_precision(relative_velocity));
+    *results.time += s1_last_time_updated;
+    std::cerr << *results.time << ", "<< s1_last_time_updated << "\n";
+  }
   return results;
 }
 
@@ -862,6 +867,8 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
       const auto i2 = objects_info.find(other_id);
       const time_type ltu2 = (i2 == objects_info.end()) ? time_type(0) : i2->second.last_time_updated;
       if (auto result = get_first_moment_of_intersection(personal_space_shape, opss, obj->velocity(), other_velocity, ltu1, ltu2)) {
+        assert(result.time);
+        assert(*result.time >= min_time);
         anticipated_collisions.push(collision_info(
           *result.time, min_time, result.normal,
           // operator[] creates the entry if needed
@@ -876,11 +883,14 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
   w.get_tiles_exposed_to_collision_within(tiles_this_could_collide_with,
       get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(sweep_bounds));
   for (auto const& loc : tiles_this_could_collide_with) {
-      //std::cerr << "Considering " << id << ", " << loc << "\n";
+      std::cerr << "Considering " << id << ", " << loc << "\n";
     shape t = tile_shape(loc.coords());
     const auto i1 = objects_info.find(id);
     const time_type ltu1 = (i1 == objects_info.end()) ? time_type(0) : i1->second.last_time_updated;
+    assert(ltu1 == min_time); // TODO just use this instead and not pass the min_time argument?
     if (auto result = get_first_moment_of_intersection(personal_space_shape, &t, obj->velocity(), vector3<fine_scalar>(0,0,0), ltu1, time_type(0))) {
+      assert(result.time);
+      assert(*result.time >= min_time);
       anticipated_collisions.push(collision_info(
         *result.time, min_time, result.normal,
         // operator[] creates the entry if needed
@@ -910,7 +920,7 @@ void assert_about_overlaps(objects_map<mobile_object>::type & moving_objects,
       if (ltu1 > ltu2) {
         s2.translate(movement_delta_from_start_to(p2.second->velocity(), ltu1 - ltu2));
       }
-      if (ltu2 > ltu1) {
+        if (ltu2 > ltu1) {
         s1.translate(movement_delta_from_start_to(p1.second->velocity(), ltu2 - ltu1));
       }
         
@@ -1006,7 +1016,7 @@ void update_moving_objects_impl(
     
     //std::cerr << "..." << now_collisions.size() << "!\n";
     for (collision_info collision : now_collisions) {
-      //std::cerr << "Wham!\n";
+      std::cerr << "Wham!\n";
       const auto inf1_iter = objects_info.find(collision.oid1);
       assert(inf1_iter != objects_info.end());
       moving_object_info& inf1 = inf1_iter->second;
@@ -1024,6 +1034,7 @@ void update_moving_objects_impl(
             }
           }
           else {
+            caller_error_if(collision.time < last_time, "You can't go back in time!");
             last_time = collision.time;
             collisions_at_last_time = 1;
           }
@@ -1150,7 +1161,7 @@ void update_moving_objects_impl(
     }
   }
   
-  assert_about_overlaps(moving_objects, personal_space_shapes, objects_info);
+  // assert_about_overlaps(moving_objects, personal_space_shapes, objects_info);
   //std::cerr << "Excellently.\n";
   for (auto const& p : moving_objects) {
     auto const& oid = p.first;
@@ -1174,7 +1185,7 @@ void update_moving_objects_impl(
     objects_exposed_to_collision.erase(oid);
     objects_exposed_to_collision.insert(oid, new_bounds);
   }
-  assert_about_overlaps(moving_objects, personal_space_shapes, objects_info, false);
+  //assert_about_overlaps(moving_objects, personal_space_shapes, objects_info, false);
 }
 
 } /* end anonymous namespace */

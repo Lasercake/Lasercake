@@ -391,12 +391,12 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
   std::vector<plane_as_base_point_and_normal> p1_planes; p1_planes.reserve(p1.num_faces());
   populate_with_plane_info(p1, p1_planes);
   for (auto v : p2.vertices()) {
-    add_when_point_is_within_planes(result, v, velocity, p1_planes);
+    add_when_point_is_within_planes(result, v, -velocity, p1_planes);
   }
   std::vector<plane_as_base_point_and_normal> p2_planes; p2_planes.reserve(p2.num_faces());
   populate_with_plane_info(p2, p2_planes);
   for (auto v : p1.vertices()) {
-    add_when_point_is_within_planes(result, v, -velocity, p2_planes);
+    add_when_point_is_within_planes(result, v, velocity, p2_planes);
   }
 
   // At a moment when two polyhedra start/stop intersecting,
@@ -518,6 +518,7 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
       if (closest_excl_dist == -1 || this_excl_dist < closest_excl_dist) {
         closest_excl_dist = this_excl_dist;
         result.arbitrary_plane_of_closest_exclusion = pl;
+        result.arbitrary_plane_of_closest_exclusion.normal *= -1;
       }
     }
     for (auto pl : p2_planes) {
