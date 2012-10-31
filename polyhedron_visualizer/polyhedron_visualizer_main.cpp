@@ -129,8 +129,8 @@ int frame = 0;
   convex_polyhedron foo1(verts);
   convex_polyhedron foo2(bounding_box::min_and_max(-vector3<polygon_int_type>(3, 3, 3), vector3<polygon_int_type>(3, 3, 3)));
   
-  bool draw_sweep_verts = false;
-  bool draw_sweep_normals = false;
+  //bool draw_sweep_verts = false;
+  //bool draw_sweep_normals = false;
   bool draw_normals = false;
   bool draw_poly = true;
   bool use_foo1 = false;
@@ -150,8 +150,8 @@ int frame = 0;
           if(event.key.keysym.sym == SDLK_p) ++p_mode;
           if(event.key.keysym.sym == SDLK_z) draw_poly = !draw_poly;
           if(event.key.keysym.sym == SDLK_x) draw_normals = !draw_normals;
-          if(event.key.keysym.sym == SDLK_c) draw_sweep_verts = !draw_sweep_verts;
-          if(event.key.keysym.sym == SDLK_v) draw_sweep_normals = !draw_sweep_normals;
+          //if(event.key.keysym.sym == SDLK_c) draw_sweep_verts = !draw_sweep_verts;
+          //if(event.key.keysym.sym == SDLK_v) draw_sweep_normals = !draw_sweep_normals;
           if(event.key.keysym.sym == SDLK_b) use_foo1 = !use_foo1;
           if(event.key.keysym.sym == SDLK_q) ++velocity[X];
           if(event.key.keysym.sym == SDLK_a) --velocity[X];
@@ -185,10 +185,10 @@ int frame = 0;
   polyhedron_planes_info_for_intersection bar;
   compute_planes_info_for_intersection(foo, bar);
   
-  std::vector<vector3<polygon_int_type>> sweep_verts;
-  polyhedron_planes_info_for_intersection sweep_bar;
+ // std::vector<vector3<polygon_int_type>> sweep_verts;
+ // polyhedron_planes_info_for_intersection sweep_bar;
   
-  compute_sweep_allowing_rounding_error(foo, velocity, vector3<polygon_int_type>(sign(velocity(X)),sign(velocity(Y)),sign(velocity(Z))), sweep_verts, sweep_bar);
+  //compute_sweep_allowing_rounding_error(foo, velocity, vector3<polygon_int_type>(sign(velocity(X)),sign(velocity(Y)),sign(velocity(Z))), sweep_verts, sweep_bar);
     
     if (draw_poly) {
           for (uint8_t i = 0; i < foo.face_info().size(); i += foo.face_info()[i] + 1) {
@@ -209,7 +209,7 @@ int frame = 0;
             }
             glEnd();
           }
-          if (draw_sweep_normals) {
+          /*if (draw_sweep_normals) {
             glBegin(GL_LINES);
             for (auto const& pair : sweep_bar.base_points_and_outward_facing_normals) {
   glColor4f(0.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.6);
@@ -226,7 +226,7 @@ int frame = 0;
               draw_vertex(v);
             }
             glEnd();
-          }
+          }*/
           
     
     int before_GL = SDL_GetTicks();
