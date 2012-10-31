@@ -159,19 +159,22 @@ void float_above_ground(vector3<fine_scalar>& velocity_, world& w, object_identi
   const vector3<fine_scalar> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
   const vector3<fine_scalar> bottom_middle(middle(X), middle(Y), shape_bounds.min(Z));
   const auto tiles_containing_bottom_middle = get_all_containing_tile_coordinates(bottom_middle);
-  bool ground_below = false;
+  fine_scalar target_height = shape_bounds.min(Z);
   for(vector3<tile_coordinate> tile_containing_bottom_middle : tiles_containing_bottom_middle) {
-    if(w.make_tile_location(tile_containing_bottom_middle, COMPLETELY_IMAGINARY)
-        .get_neighbor<zminus>(CONTENTS_ONLY)
-        .stuff_at().contents()
-      != AIR) {
-      ground_below = true;
+    tile_location loc_below_bottom_middle = w.make_tile_location(tile_containing_bottom_middle, COMPLETELY_IMAGINARY).get_neighbor<zminus>(CONTENTS_ONLY);
+    if (loc_below_bottom_middle.stuff_at().contents() != AIR) {
+      target_height = lower_bound_in_fine_units(loc_below_bottom_middle.coords()(Z), Z) + tile_height * 9 / 4;
+    }
+    else {
+      loc_below_bottom_middle = loc_below_bottom_middle.get_neighbor<zminus>(CONTENTS_ONLY);
+      if (loc_below_bottom_middle.stuff_at().contents() != AIR) {
+        target_height = lower_bound_in_fine_units(loc_below_bottom_middle.coords()(Z), Z) + tile_height * 9 / 4;
+      }
     }
   }
-  if (ground_below) {
+  fine_scalar deficiency = target_height - shape_bounds.min(Z);
+  if (deficiency > 0) {
     // goal: decay towards levitating...
-    fine_scalar target_height = (lower_bound_in_fine_units(get_max_containing_tile_coordinate(shape_bounds.min(Z), Z), Z) + tile_height * 5 / 4);
-    fine_scalar deficiency = target_height - shape_bounds.min(Z);
     fine_scalar target_vel = gravity_acceleration_magnitude + deficiency * velocity_scale_factor / 8;
     if (velocity_.z < target_vel) {
       velocity_.z = std::min(velocity_.z + gravity_acceleration_magnitude * 5, target_vel);
@@ -426,12 +429,13 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
     if (facing_.z >= 0 || mag >= 10*tile_width) {
     const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
     const vector3<fine_scalar> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
-    const vector3<fine_scalar> top_middle(middle(X), middle(Y), shape_bounds.max(Z));
+    const vector3<fine_scalar> top_middle(middle(X), middle(Y), shape_bounds.max(Z) + tile_height / 4);
     /*const vector3<fine_scalar> top_middle(
       boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>(shape_bounds.min(X), shape_bounds.max(X))(rng),
       boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>(shape_bounds.min(Y), shape_bounds.max(Y))(rng),
       shape_bounds.max(Z));*/
-    const vector3<fine_scalar> beam_vector_1 = facing_;
+    vector3<fine_scalar> beam_vector_1 = facing_;
+    beam_vector_1[Z] -= tile_height / 2;
     const object_or_tile_identifier hit1 = laser_find(w, my_id, top_middle, beam_vector_1, true);
     if (hit1 != object_or_tile_identifier()) {
       if (tile_location const* locp = hit1.get_tile_location()) {
