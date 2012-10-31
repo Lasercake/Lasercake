@@ -206,9 +206,12 @@ int frame = 0;
   compute_planes_info_for_intersection(foo, bar);
   
   if (draw_coll_stuff) {
+  std::vector<pair_of_parallel_supporting_planes> relating_planes;
+  populate_with_relating_planes(foo, obstacle, relating_planes);
+  
       auto coll_info = when_do_polyhedra_intersect(foo, obstacle, velocity);
       if ((coll_info.is_anywhere) && (coll_info.max >= 0) && (coll_info.min <= (time_type(1)))) {
-        if ((coll_info.min >= 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<polygon_int_type>(velocity) < 0)) {
+        if ((coll_info.min >= 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<polygon_int_type>(velocity) > 0)) {
   glColor4f(0.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.6);
           
         }
@@ -222,6 +225,17 @@ int frame = 0;
   glColor4f(0.5 + GLfloat(rand()%255) / 512.0, 0.0, 0.5 + GLfloat(rand()%255) / 512.0,  0.6);
       }
 
+    for (auto const& p : relating_planes) {
+            glBegin(GL_LINES);
+              draw_vertex(p.p1_base_point);
+              draw_vertex(p.p1_base_point + p.p1_to_p2_normal);
+            glEnd();
+      /*      glBegin(GL_LINES);
+              draw_vertex(p.p2_base_point);
+              draw_vertex(p.p2_base_point - p.p1_to_p2_normal);
+            glEnd();*/
+    }
+    
       if (coll_info.is_anywhere) {
           for (uint8_t i = 0; i < foo.face_info().size(); i += foo.face_info()[i] + 1) {
            glBegin(GL_LINE_LOOP);
@@ -233,7 +247,14 @@ int frame = 0;
             }
             glEnd();
           }
+
+  glColor4f(0.5 + GLfloat(rand()%255) / 512.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.5 + GLfloat(rand()%255) / 512.0,  0.6);
+            glBegin(GL_LINES);
+              draw_vertex(coll_info.arbitrary_plane_of_closest_exclusion.base_point);
+              draw_vertex(coll_info.arbitrary_plane_of_closest_exclusion.base_point + coll_info.arbitrary_plane_of_closest_exclusion.normal);
+            glEnd();
       }
+
   }
 
   glColor4f(0.5 + GLfloat(rand()%255) / 512.0, 0.0, 0.0, 0.6);

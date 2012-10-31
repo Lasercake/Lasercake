@@ -272,6 +272,15 @@ struct plane_as_base_point_and_normal {
 };
 
 
+struct pair_of_parallel_supporting_planes {
+  pair_of_parallel_supporting_planes(vector3<polygon_int_type> p1_base_point, vector3<polygon_int_type> p2_base_point, vector3<polygon_int_type> p1_to_p2_normal):p1_base_point(p1_base_point),p2_base_point(p2_base_point),p1_to_p2_normal(p1_to_p2_normal){}
+  vector3<polygon_int_type> p1_base_point;
+  vector3<polygon_int_type> p2_base_point;
+  vector3<polygon_int_type> p1_to_p2_normal;
+};
+void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedron const& p2, std::vector<pair_of_parallel_supporting_planes>& planes_collector);
+
+
 struct potential_running_into_a_polyhedron_info {
   potential_running_into_a_polyhedron_info():is_anywhere(false){}
   bool is_anywhere;

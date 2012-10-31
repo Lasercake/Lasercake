@@ -767,7 +767,7 @@ get_first_moment_of_intersection_results get_first_moment_of_intersection(shape 
     for (auto const& p2 : p2s) {
       auto coll_info = when_do_polyhedra_intersect(p1,p2,relative_velocity / velocity_scale_factor);
       if ((coll_info.is_anywhere) && (coll_info.max >= 0) && (coll_info.min <= (time_type(1) - s1_last_time_updated))) {
-        if ((coll_info.min >= 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<fine_scalar>(relative_velocity) < 0)) {
+        if ((coll_info.min >= 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<fine_scalar>(relative_velocity) > 0)) {
           if (!results.time || (coll_info.min < *results.time)) {
             results.time = ((coll_info.min > 0) ? coll_info.min : 0);
             results.normal = coll_info.arbitrary_plane_hit_first.normal;
@@ -778,8 +778,9 @@ get_first_moment_of_intersection_results get_first_moment_of_intersection(shape 
   }
   if (results.time) {
     std::cerr << *results.time << "...\n";
-    *results.time = round_time_downwards(*results.time, max_meaningful_time_precision(relative_velocity));
     *results.time += s1_last_time_updated;
+    *results.time = round_time_downwards(*results.time, max_meaningful_time_precision(relative_velocity));
+    if (*results.time < s1_last_time_updated) *results.time = s1_last_time_updated;
     std::cerr << *results.time << ", "<< s1_last_time_updated << "\n";
   }
   return results;

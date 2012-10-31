@@ -272,13 +272,6 @@ So we only need to consider edge-edge planes where e1's faces are both on one si
  */
 
 
-#if 0
-struct pair_of_parallel_supporting_planes {
-  pair_of_parallel_supporting_planes(vector3<polygon_int_type> p1_base_point, vector3<polygon_int_type> p2_base_point, vector3<polygon_int_type> p1_to_p2_normal):p1_base_point(p1_base_point),p2_base_point(p2_base_point),p1_to_p2_normal(p1_to_p2_normal){}
-  vector3<polygon_int_type> p1_base_point;
-  vector3<polygon_int_type> p2_base_point;
-  vector3<polygon_int_type> p1_to_p2_normal;
-};
 
 void populate_with_relating_planes__faces_onesided(std::vector<plane_as_base_point_and_normal> pA_planes, convex_polyhedron const& pB, bool A_is_1, std::vector<pair_of_parallel_supporting_planes>& planes_collector) {
   for (auto const& plane : pA_planes) {
@@ -334,45 +327,50 @@ void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedro
       const auto e2f1 = p2_planes[e2.face_1];
       const auto e2f2 = p2_planes[e2.face_2];
 
+      if (vectors_are_parallel(e1d, e2d)) continue;
+      
       // TODO: perhaps only compute these once for each edge in p2
       auto e2f1_discriminant = cross_product(e2d, e2f1.normal);
       if (e2f1_discriminant.dot<polygon_int_type>(e2f2.normal) < 0) e2f1_discriminant = -e2f1_discriminant;
       auto e2f2_discriminant = cross_product(e2d, e2f2.normal);
       if (e2f2_discriminant.dot<polygon_int_type>(e2f1.normal) < 0) e2f2_discriminant = -e2f2_discriminant;
 
-      vector3<polygon_int_type> proposed_normal;
-      if (vectors_are_parallel(e1d, e2d)) {
-        // a vector:
-        // - perpendicular to the lines
-        // - in the plane containing the two lines
-        proposed_normal = cross_product(e1d, cross_product(e1d, e2v1 - e1v1));
-      }
-      else {
-        proposed_normal = cross_product(e1d, e2d);
-      }
+      vector3<polygon_int_type> proposed_normal = cross_product(e1d, e2d);
 
       // The proposed normal has to be on the proper side of all four discriminants
       // in order to represent a meaningful plane that's not a face.
       // However it might just be in the wrong sense.
+
+      // If the dotprods are 0 then the plane is parallel to a face,
+      // which means that sometimes these planes will often be duplicated
+      // (two pairs of edges generate the same plane).
+      // We originally had all of the 0-cases eliminate the plane as a possibility,
+      // but sometimes an edge-to-face collision wouldn't be caught any other way.
+      // TODO handle this more nicely
       {
         auto dotprod1 = proposed_normal.dot<polygon_int_type>(e1f1_discriminant);
-        if (dotprod1 == 0) continue;
         if (dotprod1 < 0) {
           proposed_normal = -proposed_normal;
         }
+        if (dotprod1 == 0) {
+          auto dotprod2 = proposed_normal.dot<polygon_int_type>(e1f2_discriminant);
+          if (dotprod1 < 0) {
+            proposed_normal = -proposed_normal;
+          }
+          assert(dotprod2 != 0);
+        }
       }
-      if (proposed_normal.dot<polygon_int_type>(e1f2_discriminant) <= 0) continue;
-      if (proposed_normal.dot<polygon_int_type>(e2f1_discriminant) >= 0) continue;
-      if (proposed_normal.dot<polygon_int_type>(e2f2_discriminant) >= 0) continue;
+      if (proposed_normal.dot<polygon_int_type>(e1f2_discriminant) < 0) continue;
+      if (proposed_normal.dot<polygon_int_type>(e2f1_discriminant) > 0) continue;
+      if (proposed_normal.dot<polygon_int_type>(e2f2_discriminant) > 0) continue;
       
       planes_collector.push_back(pair_of_parallel_supporting_planes(
                   e1v1, e2v1, proposed_normal));
     }
   }
 }
-#endif
 
-
+#if 0
 void add_when_point_is_within_planes(potential_running_into_a_polyhedron_info& inf, vector3<polygon_int_type> point, vector3<polygon_int_type> velocity, std::vector<plane_as_base_point_and_normal> const& planes) {
   optional_rational min;
   optional_rational max;
@@ -417,8 +415,87 @@ void add_when_point_is_within_planes(potential_running_into_a_polyhedron_info& i
   }
   inf.is_anywhere = true;
 }
+#endif
 
 potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_polyhedron const& p1, convex_polyhedron const& p2, vector3<polygon_int_type> velocity) {
+  if (velocity == vector3<polygon_int_type>(0,0,0)) {
+    // Hack - we don't have a way to indicate "At all times", which this might be.
+    // We don't need to, anyway. So just indicate "never" regardless.
+    return potential_running_into_a_polyhedron_info();
+  }
+
+  std::vector<pair_of_parallel_supporting_planes> relating_planes;
+  populate_with_relating_planes(p1, p2, relating_planes);
+
+  optional_rational min;
+  optional_rational max;
+  potential_running_into_a_polyhedron_info result;
+  plane_as_base_point_and_normal arbitrary_plane_hit_first;
+  for (auto const& plane : relating_planes) {
+    // We subtract base_point just to minimize integer size; the behavior should be the same either way.
+    const auto vel_dotprod = velocity.dot<polygon_int_type>(plane.p1_to_p2_normal);
+    const auto disp_dotprod = (plane.p2_base_point - plane.p1_base_point).dot<polygon_int_type>(plane.p1_to_p2_normal);
+    if (vel_dotprod == 0) {
+      if (disp_dotprod > 0) {
+        // We're moving parallel to the plane and the point is outside the plane. So we will never be on the inside.
+        return result;
+      }
+      // Otherwise we're moving parallel to the plane and we're on the INSIDE of the plane, so this plane will never restrict when the point is inside the polyhedron.
+    }
+    else {
+      const rational moment(disp_dotprod, vel_dotprod);
+      if (vel_dotprod < 0) {
+        //
+        if (!max || (moment < *max)) {
+            max = moment;
+        }
+      }
+      else {
+        if (!min || (moment > *min)) {
+          min = moment;
+          result.arbitrary_plane_hit_first = plane_as_base_point_and_normal(plane.p1_base_point, plane.p1_to_p2_normal);
+        }
+      }
+      if (min && max && (*min > *max)) return potential_running_into_a_polyhedron_info();
+    }
+  }
+
+  assert (min && max && (*min <= *max));
+
+  result.is_anywhere = true;
+  result.min = *min;
+  result.max = *max;
+
+
+  assert(result.arbitrary_plane_hit_first.normal != vector3<polygon_int_type>(0,0,0));
+
+  // If we start out intersecting them, find the plane across which we could most quickly exit.
+  // The movement code uses this: if the movement is INTO this plane then it's blocked, if it's
+  // OUT OF this plane then it's fudged by allowing it not to collide.
+  if (result.min <= 0 && result.max >= 0) {
+    rational closest_excl_dist = -1;
+    for (auto const& plane : relating_planes) {
+      // NOTE: The magnitude calculation seems unavoidable here,
+      // because the rule is "if we went directly outwards through the plane", i.e. in the direction of the normal,
+      // but the normals may have differing magnitudes.
+      // This calcuation has problems:
+      // 1) Rounding error
+      // 2) Seemingly unneeded extra height limit on the normal
+      rational this_excl_dist(
+          (plane.p1_base_point - plane.p2_base_point)
+          .dot<polygon_int_type>(plane.p1_to_p2_normal),
+          // divided by
+          plane.p1_to_p2_normal.magnitude_within_32_bits());
+      if (closest_excl_dist == -1 || this_excl_dist < closest_excl_dist) {
+        closest_excl_dist = this_excl_dist;
+        result.arbitrary_plane_of_closest_exclusion = plane_as_base_point_and_normal(plane.p1_base_point, plane.p1_to_p2_normal);
+      }
+    }
+  }
+  
+  return result;
+  
+#if 0
   potential_running_into_a_polyhedron_info result;
   if (velocity == vector3<polygon_int_type>(0,0,0)) {
     // Hack - we don't have a way to indicate "At all times", which this might be.
@@ -578,6 +655,7 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
   }
   
   return result;
+#endif
 }
 
 bool find_excluding_planes(convex_polyhedron const& p1, convex_polyhedron const& p2, std::vector<plane_as_base_point_and_normal>* planes_collector_1, std::vector<plane_as_base_point_and_normal>* planes_collector_2) {
