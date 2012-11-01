@@ -33,6 +33,7 @@
 #include "gl_data_preparation.hpp"
 #include "input_representation.hpp"
 #include "world.hpp"
+#include "gl_rendering.hpp"
 
 typedef gl_data_preparation::gl_all_data gl_data_t;
 
@@ -110,7 +111,8 @@ public:
   LasercakeGLWidget* gl_widget_;
   uint64_t last_revision_;
   microseconds_t microseconds_this_gl_render_took_;
-
+  microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, QSize viewport_size);
+  gl_renderer gl_renderer_;
 protected:
   // overriding virtual functions
   void run();

@@ -30,19 +30,23 @@ class LasercakeGLWidget;
 
 typedef int viewport_dimension; // Qt uses 'int' for sizes.
 
-void output_gl_data_to_OpenGL(
-    gl_data_preparation::gl_all_data const& gl_data,
-    viewport_dimension viewport_width,
-    viewport_dimension viewport_height,
-    LasercakeGLWidget& gl_widget
-);
+class gl_renderer {
+public:
+  void output_gl_data_to_OpenGL(
+      gl_data_preparation::gl_all_data const& gl_data,
+      viewport_dimension viewport_width,
+      viewport_dimension viewport_height,
+      LasercakeGLWidget& gl_widget
+  );
 
-// implemented in main.cpp using Qt:
-void render_2d_text_overlay(
-    gl_data_preparation::gl_all_data const& gl_data,
-    viewport_dimension viewport_width,
-    viewport_dimension viewport_height,
-    LasercakeGLWidget& gl_widget
-);
+private:
+  // implemented in main.cpp using Qt:
+  void render_2d_text_overlay_(
+      gl_data_preparation::gl_all_data const& gl_data,
+      viewport_dimension viewport_width,
+      viewport_dimension viewport_height,
+      LasercakeGLWidget& gl_widget
+  );
+};
 
 #endif

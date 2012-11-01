@@ -31,7 +31,7 @@
 
 #include "gl_rendering.hpp"
 
-void output_gl_data_to_OpenGL(
+void gl_renderer::output_gl_data_to_OpenGL(
     gl_data_preparation::gl_all_data const& gl_data,
     viewport_dimension viewport_width,
     viewport_dimension viewport_height,
@@ -151,7 +151,7 @@ void output_gl_data_to_OpenGL(
   glDrawArrays(GL_QUADS, 0, 4);
   glBindBuffer(GL_ARRAY_BUFFER, INVALID_BUFFER_ID);
 
-  render_2d_text_overlay(gl_data, viewport_width, viewport_height, gl_widget);
+  render_2d_text_overlay_(gl_data, viewport_width, viewport_height, gl_widget);
 
   #undef BUFFER_OFFSET
 }

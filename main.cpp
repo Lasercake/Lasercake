@@ -61,7 +61,6 @@
 #include "world.hpp"
 #include "specific_worlds.hpp"
 #include "specific_object_types.hpp"
-#include "gl_rendering.hpp"
 
 #include "tests/test_main.hpp"
 
@@ -307,7 +306,7 @@ boost::program_options::typed_value<bool>* bool_switch_off(bool* v = nullptr) {
 
 } /* end anonymous namespace */
 
-void render_2d_text_overlay(
+void gl_renderer::render_2d_text_overlay_(
     gl_data_preparation::gl_all_data const& gl_data,
     viewport_dimension viewport_width,
     viewport_dimension viewport_height,
@@ -425,8 +424,7 @@ int main(int argc, char *argv[])
   return qapp.exec();
 }
 
-namespace /*anonymous*/ {
-microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, QSize viewport_size) {
+microseconds_t LasercakeGLThread::gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, QSize viewport_size) {
   gl_widget.makeCurrent();
   BOOST_SCOPE_EXIT((&gl_widget)) {
    gl_widget.doneCurrent();
@@ -436,7 +434,7 @@ microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widge
   // free to fork more threads, and/or wait for the GPU without consuming CPU,
   // etc [mine seems to do both somewhat].)
   const microseconds_t microseconds_before_gl = get_monotonic_microseconds();
-  output_gl_data_to_OpenGL(*gl_data_ptr, viewport_size.width(), viewport_size.height(), gl_widget);
+  gl_renderer_.output_gl_data_to_OpenGL(*gl_data_ptr, viewport_size.width(), viewport_size.height(), gl_widget);
   //TODO measure the microseconds ~here~ in the different configurations. e.g. should the before/after here be split across threads?
   //gl_data_ptr.reset(); // but if the deletion does happen now, it'll be in this thread, now, delaying swapBuffers etc :(
   // but it's a good time and CPU(cache) to delete the data on...
@@ -444,14 +442,14 @@ microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widge
   const microseconds_t microseconds_after_gl = get_monotonic_microseconds();
   return microseconds_after_gl - microseconds_before_gl;
 }
-}
+
 void LasercakeGLWidget::invoke_render_() {
   if(use_separate_gl_thread_) {
     gl_thread_data_->wait_for_instruction.wakeAll();
   }
   else {
     gl_thread_data_->microseconds_last_gl_render_took =
-      gl_render(gl_thread_data_->current_data, *this, gl_thread_data_->viewport_size);
+      thread_.gl_render(gl_thread_data_->current_data, *this, gl_thread_data_->viewport_size);
   }
 }
 LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* parent)
@@ -481,7 +479,7 @@ LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* paren
   }
   else {
     gl_thread_data_->microseconds_last_gl_render_took =
-      gl_render(gl_thread_data_->current_data, *this, size());
+      thread_.gl_render(gl_thread_data_->current_data, *this, size());
   }
 }
 void LasercakeGLWidget::update_gl_data(gl_data_ptr_t data) {
@@ -512,7 +510,7 @@ void LasercakeGLThread::run() {
       viewport_size = gl_thread_data_->viewport_size;
     }
     microseconds_this_gl_render_took_ =
-      gl_render(gl_data_ptr, *gl_widget_, viewport_size);
+      this->gl_render(gl_data_ptr, *gl_widget_, viewport_size);
   }
 }
 void LasercakeGLWidget::resizeEvent(QResizeEvent*) {
