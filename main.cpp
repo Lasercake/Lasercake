@@ -335,11 +335,6 @@ void output_gl_data_to_OpenGL(
   static std::vector<size_t> by_distance_VBO_sizes;
   typedef std::array<vertex_with_color, 4> rect_type;
   if(!gl_inited) {
-    QFontDatabase::addApplicationFont(":/resources/VC_Granger_ch8plus.ttf");
-    QFontDatabase::addApplicationFont(":/resources/VC_Luna.ttf");
-    QFontDatabase::addApplicationFont(":/resources/VC_Slytherin.ttf");
-    QFontDatabase::addApplicationFont(":/resources/VC_Gryffindor.ttf");
-
     glGenBuffers(1, &rect_VBO_name);
     glBindBuffer(GL_ARRAY_BUFFER, rect_VBO_name);
     glBufferData(GL_ARRAY_BUFFER, sizeof(rect_type), nullptr, GL_STREAM_DRAW);
@@ -551,6 +546,12 @@ int main(int argc, char *argv[])
   qRegisterMetaType<config_struct>("config_struct");
   qRegisterMetaType<fine_scalar>("fine_scalar");
   qRegisterMetaType<time_unit>("time_unit");
+
+  QFontDatabase::addApplicationFont(":/resources/VC_Granger_ch8plus.ttf");
+  QFontDatabase::addApplicationFont(":/resources/VC_Luna.ttf");
+  QFontDatabase::addApplicationFont(":/resources/VC_Slytherin.ttf");
+  QFontDatabase::addApplicationFont(":/resources/VC_Gryffindor.ttf");
+
   LasercakeController controller(config);
   return qapp.exec();
 }
