@@ -27,6 +27,11 @@ Extra CMake arguments:
 (GLIB=NO because it's only an ineffective performance thing currently
 and it's easier to have less deps here)
 
+CMake might say
+"CMake Warning: Manually-specified variables were not used by the project:
+    CMAKE_TOOLCHAIN_FILE
+" (it does for me); ignore that warning, it's incorrect.
+
 Then copy
 /usr/i486-mingw32/{bin/{zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll,QtCore4.dll,QtGui4.dll,QtOpenGL4.dll}}
 next to lasercake.exe
