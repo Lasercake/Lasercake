@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_GL_RENDERING_HPP__
 #define LASERCAKE_GL_RENDERING_HPP__
 
+#include <boost/scoped_ptr.hpp>
+
 #include "gl_data_preparation.hpp"
 
 // Avoid including any Qt headers because Qt headers and GLEW
@@ -30,14 +32,30 @@ class LasercakeGLWidget;
 
 typedef int viewport_dimension; // Qt uses 'int' for sizes.
 
+// One instance of gl_renderer should exist per GL context.
+// This ensures that its initing and state correspond with
+// GL state correctly.
+//
+// gl_renderer is not guaranteed that its constructor or destructor
+// are called with its GL context active.  It inits itself
+// the first time output_gl_data_to_OpenGL() is called.
+// To clean up those GL resources, call fini(), which also resets
+// gl_renderer to a clean state.
 class gl_renderer {
 public:
+  // These functions must be called with the relevant GL context active.
   void output_gl_data_to_OpenGL(
       gl_data_preparation::gl_all_data const& gl_data,
       viewport_dimension viewport_width,
       viewport_dimension viewport_height,
       LasercakeGLWidget& gl_widget
   );
+  void fini();
+
+  // The constructor and destructor needn't be.
+  // explicit destructor for private-implementation idiom.
+  gl_renderer();
+  ~gl_renderer();
 
 private:
   // implemented in main.cpp using Qt:
@@ -47,6 +65,9 @@ private:
       viewport_dimension viewport_height,
       LasercakeGLWidget& gl_widget
   );
+
+  struct state_t_;
+  boost::scoped_ptr<state_t_> state_;
 };
 
 #endif

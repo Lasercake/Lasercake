@@ -21,6 +21,9 @@
 
 #define GL_GLEXT_PROTOTYPES 1
 
+#include <vector>
+#include <array>
+
 #if defined(__APPLE__) || defined(__MACOSX__)
 #include "OpenGL/gl.h"
 #include "OpenGL/glu.h"
@@ -31,39 +34,49 @@
 
 #include "gl_rendering.hpp"
 
+using namespace gl_data_preparation;
+
+#define BUFFER_OFFSET(i) ((void*)(i))
+const GLuint INVALID_BUFFER_ID = 0;
+
+// by_distance_VBO_* are indexed by distance*DISTANCE_IDX_FACTOR + this enum:
+enum by_distance_idx_adjustment_enum {
+  QUADS_IDX = 0, TRIANGLES_IDX, LINES_IDX, POINTS_IDX,
+  DISTANCE_IDX_FACTOR
+};
+
+typedef std::array<vertex_with_color, 4> rect_type;
+
+struct gl_renderer::state_t_ {
+  GLuint rect_VBO_name;
+  std::vector<GLuint> by_distance_VBO_names;
+  std::vector<size_t> by_distance_VBO_sizes;
+};
+
+gl_renderer::gl_renderer() {}
+gl_renderer::~gl_renderer() {}
+
 void gl_renderer::output_gl_data_to_OpenGL(
     gl_data_preparation::gl_all_data const& gl_data,
     viewport_dimension viewport_width,
     viewport_dimension viewport_height,
     LasercakeGLWidget& gl_widget
 ) {
-  using namespace gl_data_preparation;
-  #define BUFFER_OFFSET(i) ((void*)(i))
-  const GLuint INVALID_BUFFER_ID = 0;
-
   // This code is intended to have no operations in it that can possibly
   // throw exceptions, to simplify dealing with OpenGL context state.
   // When allocating, e.g. via std::vector, wrap it in a try/catch
   // and do something sensible if there's an exception.
 
-  // TODO perhaps these static data should be member variables and this
-  // function should be a class instead.
-  static bool gl_inited = false;
-  static GLuint rect_VBO_name = INVALID_BUFFER_ID;
-
-  // by_distance_VBO_* indexed by distance*DISTANCE_IDX_FACTOR + this enum:
-  enum by_distance_idx_adjustment_enum {
-    QUADS_IDX = 0, TRIANGLES_IDX, LINES_IDX, POINTS_IDX,
-    DISTANCE_IDX_FACTOR
-  };
-  static std::vector<GLuint> by_distance_VBO_names;
-  static std::vector<size_t> by_distance_VBO_sizes;
-  typedef std::array<vertex_with_color, 4> rect_type;
-  if(!gl_inited) {
-    glGenBuffers(1, &rect_VBO_name);
-    glBindBuffer(GL_ARRAY_BUFFER, rect_VBO_name);
+  if(!state_) {
+    try {
+      state_.reset(new state_t_);
+    }
+    catch(std::bad_alloc const&) {
+      return;
+    }
+    glGenBuffers(1, &state_->rect_VBO_name);
+    glBindBuffer(GL_ARRAY_BUFFER, state_->rect_VBO_name);
     glBufferData(GL_ARRAY_BUFFER, sizeof(rect_type), nullptr, GL_STREAM_DRAW);
-    gl_inited = true;
   }
   // TODO Apparently atexit we should glDeleteBuffers, glDisable, and stuff?
 
@@ -87,19 +100,19 @@ void gl_renderer::output_gl_data_to_OpenGL(
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
 
-  if(gl_data.stuff_to_draw_as_gl_collections_by_distance.size() > by_distance_VBO_names.size()) {
-    const size_t new_buffers_base = by_distance_VBO_names.size()*DISTANCE_IDX_FACTOR;
+  if(gl_data.stuff_to_draw_as_gl_collections_by_distance.size() > state_->by_distance_VBO_names.size()) {
+    const size_t new_buffers_base = state_->by_distance_VBO_names.size()*DISTANCE_IDX_FACTOR;
     const size_t num_new_buffers = gl_data.stuff_to_draw_as_gl_collections_by_distance.size()*DISTANCE_IDX_FACTOR - new_buffers_base;
     try {
-      by_distance_VBO_names.resize(new_buffers_base + num_new_buffers);
-      by_distance_VBO_sizes.resize(new_buffers_base + num_new_buffers);
+      state_->by_distance_VBO_names.resize(new_buffers_base + num_new_buffers);
+      state_->by_distance_VBO_sizes.resize(new_buffers_base + num_new_buffers);
     }
     catch(std::bad_alloc const&) {
       return;
     }
-    glGenBuffers(num_new_buffers, &by_distance_VBO_names[new_buffers_base]);
+    glGenBuffers(num_new_buffers, &state_->by_distance_VBO_names[new_buffers_base]);
     for(size_t i = 0; i != num_new_buffers; ++i) {
-      by_distance_VBO_sizes[new_buffers_base + i] = 0;
+      state_->by_distance_VBO_sizes[new_buffers_base + i] = 0;
     }
   }
 
@@ -121,10 +134,10 @@ void gl_renderer::output_gl_data_to_OpenGL(
       gl_call_data const& data = coll.*(type.gl_data_container_ptr_to_member);
       if(const size_t count = data.size()) {
         const size_t buf_name_idx = dist*DISTANCE_IDX_FACTOR + type.our_idx_adj;
-        glBindBuffer(GL_ARRAY_BUFFER, by_distance_VBO_names[buf_name_idx]);
-        if(by_distance_VBO_sizes[buf_name_idx] < count) {
+        glBindBuffer(GL_ARRAY_BUFFER, state_->by_distance_VBO_names[buf_name_idx]);
+        if(state_->by_distance_VBO_sizes[buf_name_idx] < count) {
           glBufferData(GL_ARRAY_BUFFER, count*sizeof(vertex_with_color), data.vertices, GL_STREAM_DRAW);
-          by_distance_VBO_sizes[buf_name_idx] = count;
+          state_->by_distance_VBO_sizes[buf_name_idx] = count;
         }
         else {
           glBufferSubData(GL_ARRAY_BUFFER, 0, count*sizeof(vertex_with_color), data.vertices);
@@ -145,13 +158,11 @@ void gl_renderer::output_gl_data_to_OpenGL(
   }};
   glLoadIdentity();
   glOrtho(0, 1, 0, 1, -1, 1);
-  glBindBuffer(GL_ARRAY_BUFFER, rect_VBO_name);
+  glBindBuffer(GL_ARRAY_BUFFER, state_->rect_VBO_name);
   glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(rect), &rect[0]);
   glInterleavedArrays(GL_C4UB_V3F, 0, BUFFER_OFFSET(0));
   glDrawArrays(GL_QUADS, 0, 4);
   glBindBuffer(GL_ARRAY_BUFFER, INVALID_BUFFER_ID);
 
   render_2d_text_overlay_(gl_data, viewport_width, viewport_height, gl_widget);
-
-  #undef BUFFER_OFFSET
 }
