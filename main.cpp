@@ -445,7 +445,7 @@ microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widge
   return microseconds_after_gl - microseconds_before_gl;
 }
 }
-void LasercakeGLWidget::do_render_() {
+void LasercakeGLWidget::invoke_render_() {
   if(use_separate_gl_thread_) {
     gl_thread_data_->wait_for_instruction.wakeAll();
   }
@@ -490,7 +490,7 @@ void LasercakeGLWidget::update_gl_data(gl_data_ptr_t data) {
     gl_thread_data_->current_data = data;
     ++gl_thread_data_->revision;
   }
-  do_render_();
+  invoke_render_();
 }
 microseconds_t LasercakeGLWidget::get_last_gl_render_microseconds() {
   QMutexLocker lock(&gl_thread_data_->gl_data_lock);
@@ -524,7 +524,7 @@ void LasercakeGLWidget::paintEvent(QPaintEvent*) {
     QMutexLocker lock(&gl_thread_data_->gl_data_lock);
     ++gl_thread_data_->revision;
   }
-  do_render_();
+  invoke_render_();
 }
 void LasercakeGLWidget::closeEvent(QCloseEvent* event)
 {

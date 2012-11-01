@@ -145,7 +145,7 @@ protected:
 
 private:
   void key_change_(QKeyEvent* event, bool pressed);
-  void do_render_(); //precondition: you incremented gl_thread_data_->revision
+  void invoke_render_(); //precondition: you incremented gl_thread_data_->revision
 
   typedef int qt_key_type_;
   // e.g. in case there can be multiple shift keys pressed at once
