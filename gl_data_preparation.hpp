@@ -22,15 +22,12 @@
 #ifndef LASERCAKE_GL_DATA_PREPARATION_HPP__
 #define LASERCAKE_GL_DATA_PREPARATION_HPP__
 
+// This header must be included AFTER including GL headers.
+// This allows this header to be agnostic between GLEW and Qt's opinions
+// of those headers.
+
 #include <vector>
 #include <unordered_map>
-
-// for types e.g. GLfloat, GLubyte
-#if defined(__APPLE__) || defined(__MACOSX__)
-#include "OpenGL/gl.h"
-#else
-#include "GL/gl.h"
-#endif
 
 #include "world.hpp"
 #include "input_representation.hpp"

@@ -22,6 +22,7 @@
 #ifndef LASERCAKE_WORLDGEN_HPP__
 #define LASERCAKE_WORLDGEN_HPP__
 
+#include <limits>
 #include <boost/functional/hash.hpp>
 
 #include "world.hpp"
@@ -129,7 +130,7 @@ public:
           world_column_builder& b = worldblock_column[column_base_idx / worldblock_y_factor];
           column_spec_(b, x, y, min_z, max_z);
           // This is a bit of a hack:
-          b.specify(INT32_MAX, UNSPECIFIED_TILE_CONTENTS);
+          b.specify(std::numeric_limits<int32_t>::max(), UNSPECIFIED_TILE_CONTENTS);
           // no binary searches at the moment.
           //
           // These two impls seem to be similar fine speeds, but I haven't
