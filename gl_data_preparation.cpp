@@ -19,6 +19,9 @@
 
 */
 
+// for types e.g. GLubyte, GLfloat:
+#include <GL/glew.h>
+
 #include "gl_data_preparation.hpp"
 #include "world.hpp"
 

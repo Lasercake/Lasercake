@@ -24,11 +24,13 @@
 
 #include <boost/scoped_ptr.hpp>
 
-#include "gl_data_preparation.hpp"
-
 // Avoid including any Qt headers because Qt headers and GLEW
 // headers do not get along.
 class LasercakeGLWidget;
+
+namespace gl_data_preparation {
+  struct gl_all_data;
+}
 
 typedef int viewport_dimension; // Qt uses 'int' for sizes.
 

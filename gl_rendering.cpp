@@ -19,20 +19,13 @@
 
 */
 
-#define GL_GLEXT_PROTOTYPES 1
-
 #include <vector>
 #include <array>
 
-#if defined(__APPLE__) || defined(__MACOSX__)
-#include "OpenGL/gl.h"
-#include "OpenGL/glu.h"
-#else
-#include "GL/gl.h"
-#include "GL/glu.h"
-#endif
+#include <GL/glew.h>
 
 #include "gl_rendering.hpp"
+#include "gl_data_preparation.hpp"
 
 using namespace gl_data_preparation;
 
@@ -74,6 +67,15 @@ void gl_renderer::output_gl_data_to_OpenGL(
     catch(std::bad_alloc const&) {
       return;
     }
+
+    const GLenum glew_init_err = glewInit();
+    if(glew_init_err != GLEW_OK)
+    {
+      // give up
+      state_.reset();
+      return;
+    }
+
     glGenBuffers(1, &state_->rect_VBO_name);
     glBindBuffer(GL_ARRAY_BUFFER, state_->rect_VBO_name);
     glBufferData(GL_ARRAY_BUFFER, sizeof(rect_type), nullptr, GL_STREAM_DRAW);
