@@ -168,37 +168,118 @@ inline memo_rng make_rng(HashableArguments&&... args) {
 }
 
 
+/*
+
+What is simple_hills?
+
+Imagine this: Take an infinite, flat world and randomly stack conical "hills" on top of it. If hills overlap, you simply add up, in any individual column, the height increases called for by hills overlapping that column.
+
+For each column, there's a certain chance if has a radius-1 hill centered on it, a chance it has a radius-2 hill, and so forth. The chances are the same for all columns, so we just have one function/sequence P_n : {1, 2, 3, ... } -> [0,1] that indicates the probability of each size. (We won't worry too much about whether those probabilities are independent.)
+
+If some tail of P_n is all zeroes, then this is relatively simple: for each column, we can check for hills centered on all columns up to max-hill-radius away and add up their effects. But if P_n goes unto infinity, we need more cleverness. And it would be cool not to have an arbitrary maximum hill size.
+
+Considering infinity:
+
+In order for the map to be well-defined, the columns have to have a finite average height, i.e. there has to be a finite volume per column - equivalently, each column has to have a finite volume-contribution from the possible hills centered on it. Each hill of radius n contributes some constant factor of n^3 volume, so the required condition is that the series
+
+(P_n * n^3)
+
+converges. P_n = n^{-5} makes this converge nicely; we'll use that.
+
+To look up what hills have already been computed, we use an infinite sequence of nested axis-aligned, power-of-2-aligned grids. If I want to know whether any hills less than rad-16 affect a column, I need only look for hill-centers in four 16x16 boxes. For bigger hills, I have to look in four 32x32 boxes, four 64x64 boxes, and so on.
+
+How do I look in infinite boxes?
+
+Let's say nothing is determined yet and I want to check the height of some column A. There's some function P'_n : N -> [0,1] that's the probability of there being any hill centers in a box of size 2^n. The probability is approximately
+\int_{1/2}^1 x^5 dx * P_(2^n) * (2^n)^3
+= (1/6 - 1/384) *  (2^n)^{-5} * (2^n)^3
+~= 1/6 * (2^n)^{-2}
+= 1/6 * 2^{-2n}
+= 1/6 * (1/4)^n
+
+With those factors there's less than a 1/8 chance that any hill will come near to touching this tile, but the constant factor doesn't really matter so we can adjust it until there's a reasonable amount of hills.
+
+~= (1/4)^n
+
+What's the probability that *any* hill will appear? That's a nice geometric series so it's easy to compute its sum (3/4), but that isn't exactly what we want because the probabilities are independent. What we really want is the infinite product of (1 - c(1/4)^n) for all natural numbers n. (c is our constant factor). I don't know an easy formula for that but it's easy to make approximations. Let's call it Q(c); it's the chance that there *aren't* any more hills for a starting probability c of having a hill.
+
+The naive thing to do would be to go through all the numbers from 1 to infinity and have a (1/4)^n chance at each one of having a hill there. We can't do that; what we need to do is sometimes *stop*. Stopping eliminates an entire proportion of every remaining chance, so in the later stages we'll have to increase the probability to make up for it. Something like:
+
+real probability_mod = 1;
+for (int n = 0; ; ++n) {
+  real chance_of_hill_here = (1/4)^n;
+  if (chance_of_hill_here * probability_mod chance) {
+    put a hill somewhere between size 2^(n - 1) and size 2^n
+  }
+  real chance_of_nothing_after_this = Q(chance_of_hill_here);
+  if (chance_of_nothing_after_this) break;
+  probability_mod *= (1 - chance_of_nothing_after_this);
+}
+
+However, that can fail; if we get past the "chance_of_nothing_after_this" then we'd have to guarantee that we place at least one hill after that, which this code doesn't guarantee. However, as long as (chance_of_hill_here * probability_mod chance) doesn't exceed 1, the probabilities at each n are necessarily the same as they were before. So the error is that this code makes the probabilities non-independent.
+
+I've come up with a solution to that conceptual problem, but due to limitations of time and labor, I'm just going to implement it with a finite max hill size.
+
+ */
+    
+
+
 class simple_hills {
-  static const int max_simple_hill_width = 20;
+  static const int max_simple_hill_width_shift = 8;
+  static const int max_simple_hill_width = 1 << max_simple_hill_width_shift;
+  struct hill {
+    hill(coord x, coord y, coord height):x(x),y(y),height(height){}
+    coord x;
+    coord y;
+    coord height;
+  };
+  struct hill_block {
+    std::vector<hill> hills;
+    bool inited = false;
+    hill_block& init(coord min_x, coord min_y) {
+      if (!inited) {
+        memo_rng rng_here = make_rng(min_x, min_y);
+        const boost::random::uniform_int_distribution<int> random_coord(0,max_simple_hill_width-1);
+        for(int64_t height = 10; height<max_simple_hill_width; ++height) {
+          // these numbers were picked essentially arbitrarily;
+          // in order to be mathematically correct, they'd have to be normal distributions, I think.
+          // right now, the borders of hill blocks are mathematically observable.
+          // TODO: fix that.
+          const int num_hills_of_this_height = ((height < 20) ? 10 : (10LL*20*20*20*20*20 / (height*height*height*height*height)));
+          for(int i =0; i< num_hills_of_this_height; ++i) {
+            hills.push_back(hill(min_x+random_coord(rng_here),min_y+random_coord(rng_here), height));
+          }
+        }
+        inited = true;
+      }
+      return *this;
+    }
+  };
+  std::unordered_map<vector3<coord>, hill_block> hill_blocks;
+  
 public:
-  void operator()(world_column_builder& b, coord x, coord y, coord, coord)const {
+  void operator()(world_column_builder& b, coord x, coord y, coord, coord) {
     b.specify_lowest(ROCK);
-    b.specify(height_memo_(this, x, y), AIR);
+    b.specify(get_height(x, y), AIR);
   }
 
-  struct get_height {
-    coord operator()(unhashed<simple_hills const*> that, coord x, coord y)const {
+    coord get_height(coord x, coord y) {
       coord height = world_center_tile_coord - 100;
-      for (coord x2 = x - max_simple_hill_width; x2 <= x + max_simple_hill_width; ++x2) {
-        for (coord y2 = y - max_simple_hill_width; y2 <= y + max_simple_hill_width; ++y2) {
-          height += std::max(0, that->hills_memo_(x2, y2) - get_primitive<int>(i64sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y))));
+      coord base_block_x = x >> max_simple_hill_width_shift;
+      coord base_block_y = y >> max_simple_hill_width_shift;
+      for (int i = -1; i < 2; ++i) {
+        for (int j = -1; j < 2; ++j) {
+          vector3<coord> hill_block(i+base_block_x, j+base_block_y, 0);
+          coord block_min_x = (i+base_block_x) << max_simple_hill_width_shift;
+          coord block_min_y = (j+base_block_y) << max_simple_hill_width_shift;
+          auto const& hills = hill_blocks[hill_block].init(block_min_x, block_min_y);
+          for(auto hill : hills.hills) {
+            height += std::max(0, hill.height - get_primitive<int>(i64sqrt((hill.x-x)*(hill.x-x) + (hill.y-y)*(hill.y-y))));
+          }
         }
       }
       return height;
     }
-  };
-  struct get_hill {
-    int operator()(coord x, coord y)const {
-      memo_rng rng_here = make_rng(x, y);
-      const boost::random::uniform_int_distribution<int> random_in_256(0,255);
-      const boost::random::uniform_int_distribution<int> random_hill_height(1,max_simple_hill_width);
-      int hill = (random_in_256(rng_here) != 0 ? 0 : random_hill_height(rng_here));
-      return hill;
-    }
-  };
-private:
-  memoized<get_hill, int (coord, coord)> hills_memo_;
-  memoized<get_height, coord (unhashed<simple_hills const*>, coord, coord)> height_memo_;
 };
 
 class spiky1 {
