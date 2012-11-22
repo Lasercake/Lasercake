@@ -16,6 +16,8 @@ ansi_cyan = '\033[36m'
 ansi_white = '\033[37m'
 ansi_end = '\033[0m'
 
+os.environ['PATH'] = '/usr/lib/colorgcc/bin:'+os.environ['PATH']
+
 def say(string):
 	sys.stdout.write(string)
 	sys.stdout.flush()
