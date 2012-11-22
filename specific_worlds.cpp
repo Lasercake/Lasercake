@@ -172,38 +172,71 @@ inline memo_rng make_rng(HashableArguments&&... args) {
 
 What is simple_hills?
 
-Imagine this: Take an infinite, flat world and randomly stack conical "hills" on top of it. If hills overlap, you simply add up, in any individual column, the height increases called for by hills overlapping that column.
+Imagine this: Take an infinite, flat world and randomly stack conical
+"hills" on top of it. If hills overlap, you simply add up, in any individual
+column, the height increases called for by hills overlapping that column.
 
-For each column, there's a certain chance if has a radius-1 hill centered on it, a chance it has a radius-2 hill, and so forth. The chances are the same for all columns, so we just have one function/sequence P_n : {1, 2, 3, ... } -> [0,1] that indicates the probability of each size. (We won't worry too much about whether those probabilities are independent.)
+For each column, there's a certain chance if has a radius-1 hill centered
+on it, a chance it has a radius-2 hill, and so forth. The chances are the
+same for all columns, so we just have one function/sequence P_n : {1, 2,
+3, ... } -> [0,1] that indicates the probability of each size. (We won't
+worry too much about whether those probabilities are independent.)
 
-If some tail of P_n is all zeroes, then this is relatively simple: for each column, we can check for hills centered on all columns up to max-hill-radius away and add up their effects. But if P_n goes unto infinity, we need more cleverness. And it would be cool not to have an arbitrary maximum hill size.
+If some tail of P_n is all zeroes, then this is relatively simple: for
+each column, we can check for hills centered on all columns up to
+max-hill-radius away and add up their effects. But if P_n goes unto
+infinity, we need more cleverness. And it would be cool not to have
+an arbitrary maximum hill size.
 
 Considering infinity:
 
-In order for the map to be well-defined, the columns have to have a finite average height, i.e. there has to be a finite volume per column - equivalently, each column has to have a finite volume-contribution from the possible hills centered on it. Each hill of radius n contributes some constant factor of n^3 volume, so the required condition is that the series
+In order for the map to be well-defined, the columns have to have a finite
+average height, i.e. there has to be a finite volume per column -
+equivalently, each column has to have a finite volume-contribution from
+the possible hills centered on it. Each hill of radius n contributes some
+constant factor of n^3 volume, so the required condition is that the series
 
 (P_n * n^3)
 
 converges. P_n = n^{-5} makes this converge nicely; we'll use that.
 
-To look up what hills have already been computed, we use an infinite sequence of nested axis-aligned, power-of-2-aligned grids. If I want to know whether any hills less than rad-16 affect a column, I need only look for hill-centers in four 16x16 boxes. For bigger hills, I have to look in four 32x32 boxes, four 64x64 boxes, and so on.
+To look up what hills have already been computed, we use an infinite
+sequence of nested axis-aligned, power-of-2-aligned grids. If I want to
+know whether any hills less than rad-16 affect a column, I need only
+look for hill-centers in four 16x16 boxes. For bigger hills, I
+have to look in four 32x32 boxes, four 64x64 boxes, and so on.
 
 How do I look in infinite boxes?
 
-Let's say nothing is determined yet and I want to check the height of some column A. There's some function P'_n : N -> [0,1] that's the probability of there being any hill centers in a box of size 2^n. The probability is approximately
+Let's say nothing is determined yet and I want to check the height of
+some column A. There's some function P'_n : N -> [0,1] that's the probability
+of there being any hill centers in a box of size 2^n. The probability is
+approximately
 \int_{1/2}^1 x^5 dx * P_(2^n) * (2^n)^3
 = (1/6 - 1/384) *  (2^n)^{-5} * (2^n)^3
 ~= 1/6 * (2^n)^{-2}
 = 1/6 * 2^{-2n}
 = 1/6 * (1/4)^n
 
-With those factors there's less than a 1/8 chance that any hill will come near to touching this tile, but the constant factor doesn't really matter so we can adjust it until there's a reasonable amount of hills.
+With those factors there's less than a 1/8 chance that any hill will come
+near to touching this tile, but the constant factor doesn't really matter
+so we can adjust it until there's a reasonable amount of hills.
 
 ~= (1/4)^n
 
-What's the probability that *any* hill will appear? That's a nice geometric series so it's easy to compute its sum (3/4), but that isn't exactly what we want because the probabilities are independent. What we really want is the infinite product of (1 - c(1/4)^n) for all natural numbers n. (c is our constant factor). I don't know an easy formula for that but it's easy to make approximations. Let's call it Q(c); it's the chance that there *aren't* any more hills for a starting probability c of having a hill.
+What's the probability that *any* hill will appear? That's a nice geometric
+series so it's easy to compute its sum (3/4), but that isn't exactly what
+we want because the probabilities are independent. What we really want is
+the infinite product of (1 - c(1/4)^n) for all natural numbers n. (c is our
+constant factor). I don't know an easy formula for that but it's easy to
+make approximations. Let's call it Q(c); it's the chance that there *aren't*
+any more hills for a starting probability c of having a hill.
 
-The naive thing to do would be to go through all the numbers from 1 to infinity and have a (1/4)^n chance at each one of having a hill there. We can't do that; what we need to do is sometimes *stop*. Stopping eliminates an entire proportion of every remaining chance, so in the later stages we'll have to increase the probability to make up for it. Something like:
+The naive thing to do would be to go through all the numbers from 1 to
+infinity and have a (1/4)^n chance at each one of having a hill there.
+We can't do that; what we need to do is sometimes *stop*. Stopping eliminates
+an entire proportion of every remaining chance, so in the later stages
+we'll have to increase the probability to make up for it. Something like:
 
 real probability_mod = 1;
 for (int n = 0; ; ++n) {
@@ -216,12 +249,18 @@ for (int n = 0; ; ++n) {
   probability_mod *= (1 - chance_of_nothing_after_this);
 }
 
-However, that can fail; if we get past the "chance_of_nothing_after_this" then we'd have to guarantee that we place at least one hill after that, which this code doesn't guarantee. However, as long as (chance_of_hill_here * probability_mod chance) doesn't exceed 1, the probabilities at each n are necessarily the same as they were before. So the error is that this code makes the probabilities non-independent.
+However, that can fail; if we get past the "chance_of_nothing_after_this"
+then we'd have to guarantee that we place at least one hill after that,
+which this code doesn't guarantee. However, as long as
+(chance_of_hill_here * probability_mod chance) doesn't exceed 1,
+the probabilities at each n are necessarily the same as they were before.
+So the error is that this code makes the probabilities non-independent.
 
-I've come up with a solution to that conceptual problem, but due to limitations of time and labor, I'm just going to implement it with a finite max hill size.
+I've come up with a solution to that conceptual problem, but due to
+limitations of time and labor, I'm just going to implement it with a
+finite max hill size.
 
  */
-    
 
 
 class simple_hills {
