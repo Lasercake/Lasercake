@@ -94,24 +94,37 @@ def main():
 		subprocess.call(to_call_make_again)
 		say(ansi_red+'build failed'+ansi_end+'\n')
 		exit(1)
+	is_windows_exe = False
+	if os.access('lasercake', os.F_OK):
+		exe_name = 'lasercake'
+	if os.access('lasercake.exe', os.F_OK):
+		exe_name = 'lasercake.exe'
+		is_windows_exe = True
+	if exe_name == None:
+		say(ansi_red+"couldn't find lasercake binary?!"+ansi_end+'\n')
+		exit(1)
+	# poor estimate that assumes people only cross-compile
+	# if it involves Windows:
+	is_cross_compiling = (is_windows_exe != (os.name == 'nt'))
 	if making_lasercake:
-		say(ansi_green+'and you got:\n./'+build_dir+'/lasercake\n(etc.)'+ansi_end+'\n')
-	if running_tests:
-		say(ansi_cyan+'Testing...\n')
-		say_we_are_calling('./'+build_dir+'/lasercake --run-self-tests')
-		test_status = subprocess.call(['./lasercake', '--run-self-tests'])
-		if test_status != 0:
-			exit(test_status)
-		say(ansi_green+'success')
+		say(ansi_green+'and you got:\n./'+build_dir+'/'+exe_name+'\n(etc.)'+ansi_end+'\n')
+	if is_cross_compiling:
+		say(ansi_yellow+'Cross-compiling, so not running tests or copying the binary.'+ansi_end+'\n')
 	else:
-		say(ansi_yellow+'NOT RUNNING TESTS')
-	if making_lasercake:
-		say('; copying '+build_dir+'/lasercake to ./lasercake')
-	say(ansi_end+'\n')
-	if making_lasercake:
-		#TODO does this work if Windows .exe extension?
-		#(or any of the rest of this script for that matter.)
-		shutil.copy2('lasercake', '../../lasercake')
+		if running_tests:
+			say(ansi_cyan+'Testing...\n')
+			say_we_are_calling('./'+build_dir+'/lasercake --run-self-tests')
+			test_status = subprocess.call(['./lasercake', '--run-self-tests'])
+			if test_status != 0:
+				exit(test_status)
+			say(ansi_green+'success')
+		else:
+			say(ansi_yellow+'NOT RUNNING TESTS')
+		if making_lasercake:
+			say('; copying '+build_dir+'/lasercake to ./lasercake')
+		say(ansi_end+'\n')
+		if making_lasercake:
+			shutil.copy2(exe_name, '../../'+exe_name)
 	exit()
 
 if __name__ == '__main__':
