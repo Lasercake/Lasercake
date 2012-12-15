@@ -324,6 +324,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     const shared_ptr<autorobot> aur (new autorobot(location_ + facing_ * 2, facing_));
     w.try_create_object(aur);
   }
+  if (input_news.num_times_pressed("s")) {
+    const shared_ptr<solar_panel> sol (new solar_panel(location_ + facing_ * 2));
+    w.try_create_object(sol);
+  }
 }
 
 
@@ -476,6 +480,12 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
 }
 
 
-
+shape solar_panel::get_initial_personal_space_shape()const {
+  return tile_shape(get_min_containing_tile_coordinates(initial_location_));
+}
+shape solar_panel::get_initial_detail_shape()const {
+  return tile_shape(get_min_containing_tile_coordinates(initial_location_));
+}
+  
 
 

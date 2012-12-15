@@ -71,6 +71,15 @@ private:
   int carrying_;
 };
 
+class solar_panel : public tile_aligned_object {
+public:
+  solar_panel(vector3<fine_scalar> location):initial_location_(location){}
+  virtual shape get_initial_personal_space_shape()const;
+  virtual shape get_initial_detail_shape()const;
+private:
+  vector3<fine_scalar> initial_location_;
+};
+
 
 #endif
 
