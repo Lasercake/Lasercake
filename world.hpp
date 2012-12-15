@@ -376,25 +376,7 @@ public:
      tile_contents old_substance_type,
      tile_contents new_substance_type);
   
-  object_identifier try_create_object(shared_ptr<object> obj) {
-    // TODO: fail (and return NO_OBJECT) if there's something in the way
-    object_identifier id = next_object_identifier_++;
-    objects_.insert(make_pair(id, obj));
-    bounding_box b; // TODO: in mobile_objects.cpp, include detail_shape in at least the final box left in the ztree
-    object_personal_space_shapes_[id] = obj->get_initial_personal_space_shape();
-    b.combine_with(object_personal_space_shapes_[id].bounds());
-    object_detail_shapes_[id] = obj->get_initial_detail_shape();
-    b.combine_with(object_detail_shapes_[id].bounds());
-    objects_exposed_to_collision_.insert(id, b);
-    if(shared_ptr<mobile_object> m = boost::dynamic_pointer_cast<mobile_object>(obj)) {
-      moving_objects_.insert(make_pair(id, m));
-    }
-    // TODO: don't do this if you're in the middle of updating autonomous objects
-    if(shared_ptr<autonomous_object> m = boost::dynamic_pointer_cast<autonomous_object>(obj)) {
-      autonomously_active_objects_.insert(make_pair(id, m));
-    }
-    return id;
-  }
+  object_identifier try_create_object(shared_ptr<object> obj);
   
   // If objects overlap with the new position, returns their IDs. If not, changes the shape and returns an empty set.
   //unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape(object_identifier id, shape const& new_shape);
