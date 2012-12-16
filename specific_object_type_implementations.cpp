@@ -325,11 +325,30 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     w.try_create_object(aur);
   }
   if (input_news.num_times_pressed("s")) {
-    const shared_ptr<solar_panel> sol (new solar_panel(location_ + facing_ * 2));
+    const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w)));
     w.try_create_object(sol);
   }
 }
 
+vector3<tile_coordinate> robot::get_building_tile(world& w)const { // TODO: This use of world& should be able to be world const&
+  tile_location first_guess = w.make_tile_location(get_min_containing_tile_coordinates(location_ + facing_ * 2), CONTENTS_ONLY);
+  tile_location loc = first_guess;
+  tile_location locd = loc.get_neighbor<zminus>(CONTENTS_ONLY);
+  if ((loc.stuff_at().contents() == AIR) && (locd.stuff_at().contents() != AIR)) return loc.coords();
+
+  tile_location uploc = loc.get_neighbor<zplus>(CONTENTS_ONLY);
+  tile_location uplocd = loc;
+  for (int offs = 0; offs < 15; ++offs) {
+    loc = locd;
+    locd = locd.get_neighbor<zminus>(CONTENTS_ONLY);
+    if ((loc.stuff_at().contents() == AIR) && (locd.stuff_at().contents() != AIR)) return loc.coords();
+    
+    uplocd = uploc;
+    uploc = uploc.get_neighbor<zplus>(CONTENTS_ONLY);
+    if ((uploc.stuff_at().contents() == AIR) && (uplocd.stuff_at().contents() != AIR)) return uploc.coords();
+  }
+  return first_guess.coords();
+}
 
 shape laser_emitter::get_initial_personal_space_shape()const {
   return shape(convex_polyhedron(bounding_box::min_and_max(
@@ -481,10 +500,10 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
 
 
 shape solar_panel::get_initial_personal_space_shape()const {
-  return tile_shape(get_min_containing_tile_coordinates(initial_location_));
+  return tile_shape(initial_location_);
 }
 shape solar_panel::get_initial_detail_shape()const {
-  return tile_shape(get_min_containing_tile_coordinates(initial_location_));
+  return tile_shape(initial_location_);
 }
   
 

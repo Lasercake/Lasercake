@@ -33,6 +33,7 @@ public:
   
   virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
   vector3<fine_scalar> get_facing()const { return facing_; }
+  vector3<tile_coordinate> get_building_tile(world& w)const; // TODO: This use of world& should be able to be world const&
 
   std::string player_instructions()const;
 private:
@@ -73,11 +74,11 @@ private:
 
 class solar_panel : public tile_aligned_object {
 public:
-  solar_panel(vector3<fine_scalar> location):initial_location_(location){}
+  solar_panel(vector3<tile_coordinate> location):initial_location_(location){}
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
 private:
-  vector3<fine_scalar> initial_location_;
+  vector3<tile_coordinate> initial_location_;
 };
 
 
