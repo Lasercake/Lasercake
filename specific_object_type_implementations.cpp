@@ -215,6 +215,7 @@ std::string robot::player_instructions()const {
     "b: fire dual lasers\n"
     "m: make digging robot that goes towards the current facing"
     " and leaves rubble at the current location\n"
+    "s: create solar panel\n"
     //"(c, v: commented-out ability to pick up things, too bad.)\n"
     ;
   return instructions;
