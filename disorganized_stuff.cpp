@@ -40,6 +40,39 @@ void world::update(unordered_map<object_identifier, input_representation::input_
   current_game_time_ += time_units_per_fixed_frame;
 }
 
+object_identifier world::try_create_object(shared_ptr<object> obj) {
+    // fail (and return NO_OBJECT) if there's something in the way
+    const shape obj_shape = obj->get_initial_personal_space_shape();
+    vector<object_identifier> objects_this_could_collide_with;
+    objects_exposed_to_collision_.get_objects_overlapping(objects_this_could_collide_with, obj_shape.bounds());
+    for (auto oid : objects_this_could_collide_with) {
+      // TODO: allow a microscopic "tolerance", i.e. make it so that you're allowed to create an object that overlaps another object
+      // by a small amount.  We already have a way to compute "how much" two polyhedra are overlapping, but we need to work out a few
+      // details.  The tolerance is necessary so that tile aligned objects can be placed next to each other.
+      if (object_personal_space_shapes_.find(oid)->second.intersects(obj_shape)){
+        return NO_OBJECT;
+      }
+    }
+    
+    object_identifier id = next_object_identifier_++;
+    objects_.insert(make_pair(id, obj));
+    bounding_box b; // TODO: in mobile_objects.cpp, include detail_shape in at least the final box left in the ztree
+    object_personal_space_shapes_[id] = obj_shape;
+    b.combine_with(object_personal_space_shapes_[id].bounds());
+    object_detail_shapes_[id] = obj->get_initial_detail_shape();
+    b.combine_with(object_detail_shapes_[id].bounds());
+    objects_exposed_to_collision_.insert(id, b);
+    if(shared_ptr<mobile_object> m = boost::dynamic_pointer_cast<mobile_object>(obj)) {
+      moving_objects_.insert(make_pair(id, m));
+    }
+    // TODO: don't do this if you're in the middle of updating autonomous objects
+    if(shared_ptr<autonomous_object> m = boost::dynamic_pointer_cast<autonomous_object>(obj)) {
+      autonomously_active_objects_.insert(make_pair(id, m));
+    }
+    return id;
+  }
+
+
 bounding_box world::get_bounding_box_of_object_or_tile(object_or_tile_identifier id)const {
   if (tile_location const* tlocp = id.get_tile_location()) {
     return fine_bounding_box_of_tile(tlocp->coords());

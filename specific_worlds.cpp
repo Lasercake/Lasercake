@@ -274,7 +274,8 @@ class simple_hills {
   };
   struct hill_block {
     std::vector<hill> hills;
-    bool inited = false;
+    bool inited;
+    hill_block():inited(false){}
     hill_block& init(coord min_x, coord min_y) {
       if (!inited) {
         memo_rng rng_here = make_rng(min_x, min_y);
