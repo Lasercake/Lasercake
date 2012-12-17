@@ -697,7 +697,7 @@ void view_on_the_world::prepare_gl_data(
         shared_ptr<object> objp = *maybe_objp;
         
         if(dynamic_pointer_cast<solar_panel>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0xff00ffaa));
+          prepare_shape(view_loc, coll, obj_shape, color(0xffff00aa));
         }
         else if(dynamic_pointer_cast<robot>(objp)) {
           prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
@@ -706,7 +706,7 @@ void view_on_the_world::prepare_gl_data(
           prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
         }
         else if(dynamic_pointer_cast<laser_emitter>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
+          prepare_shape(view_loc, coll, obj_shape, color(0xff7755aa));
         }
         else {
           // just in case.
