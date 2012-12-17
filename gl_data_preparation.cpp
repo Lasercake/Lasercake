@@ -415,6 +415,76 @@ struct bbox_tile_prep_visitor {
   world& w;
 };
 
+void prepare_shape(vector3<fine_scalar> view_loc, gl_collection& coll,
+                   shape const& object_shape, color shape_color) {
+  lasercake_vector<bounding_box>::type const& obj_bboxes = object_shape.get_boxes();
+  for (bounding_box const& bbox : obj_bboxes) {
+    const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
+    const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
+    push_quad(coll,
+              vertex(bmin.x, bmin.y, bmin.z),
+              vertex(bmax.x, bmin.y, bmin.z),
+              vertex(bmax.x, bmax.y, bmin.z),
+              vertex(bmin.x, bmax.y, bmin.z),
+              shape_color);
+    push_quad(coll,
+              vertex(bmin.x, bmin.y, bmin.z),
+              vertex(bmax.x, bmin.y, bmin.z),
+              vertex(bmax.x, bmin.y, bmax.z),
+              vertex(bmin.x, bmin.y, bmax.z),
+              shape_color);
+    push_quad(coll,
+              vertex(bmin.x, bmin.y, bmin.z),
+              vertex(bmin.x, bmin.y, bmax.z),
+              vertex(bmin.x, bmax.y, bmax.z),
+              vertex(bmin.x, bmax.y, bmin.z),
+              shape_color);
+    push_quad(coll,
+              vertex(bmin.x, bmin.y, bmax.z),
+              vertex(bmax.x, bmin.y, bmax.z),
+              vertex(bmax.x, bmax.y, bmax.z),
+              vertex(bmin.x, bmax.y, bmax.z),
+              shape_color);
+    push_quad(coll,
+              vertex(bmin.x, bmax.y, bmin.z),
+              vertex(bmax.x, bmax.y, bmin.z),
+              vertex(bmax.x, bmax.y, bmax.z),
+              vertex(bmin.x, bmax.y, bmax.z),
+              shape_color);
+    push_quad(coll,
+              vertex(bmax.x, bmin.y, bmin.z),
+              vertex(bmax.x, bmin.y, bmax.z),
+              vertex(bmax.x, bmax.y, bmax.z),
+              vertex(bmax.x, bmax.y, bmin.z),
+              shape_color);
+  }
+
+  lasercake_vector<convex_polygon>::type const& obj_polygons = object_shape.get_polygons();
+  for (convex_polygon const& polygon : obj_polygons) {
+    push_convex_polygon(view_loc, coll, polygon.get_vertices(), shape_color);
+#if 0
+    // shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
+    // TODO so many redundant velocity vectors!!
+    for(auto const& this_vertex : polygon.get_vertices()) {
+      const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
+      push_line(coll,
+                locv,
+                locv + cast_vector3_to_float(objp->velocity()),
+                shape_color);
+    }
+#endif
+  }
+  lasercake_vector<convex_polyhedron>::type const& obj_polyhedra = object_shape.get_polyhedra();
+  for (convex_polyhedron const& ph : obj_polyhedra) {
+    for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
+      std::vector<vector3<polygon_int_type>> poly;
+      for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
+        poly.push_back(ph.vertices()[ph.face_info()[i + j + 1]]);
+      }
+      push_convex_polygon(view_loc, coll, poly, shape_color);
+    }
+  }
+}
 
 void view_on_the_world::prepare_gl_data(
   world /*TODO const*/& w,
@@ -618,75 +688,29 @@ void view_on_the_world::prepare_gl_data(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
       );
       if ((view_type != ROBOT) || (id != config.view_from)) {
-        shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
-        const object_shapes_t::const_iterator obj_shape = w.get_object_personal_space_shapes().find(id);
-
-        const color objects_color(0xff00ffaa); //something bright&visible
-
-        lasercake_vector<bounding_box>::type const& obj_bboxes = obj_shape->second.get_boxes();
-        for (bounding_box const& bbox : obj_bboxes) {
-          const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
-          const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
-          push_quad(coll,
-                    vertex(bmin.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmax.y, bmin.z),
-                    vertex(bmin.x, bmax.y, bmin.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmin.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmin.y, bmax.z),
-                    vertex(bmin.x, bmin.y, bmax.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmin.x, bmin.y, bmin.z),
-                    vertex(bmin.x, bmin.y, bmax.z),
-                    vertex(bmin.x, bmax.y, bmax.z),
-                    vertex(bmin.x, bmax.y, bmin.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmin.x, bmin.y, bmax.z),
-                    vertex(bmax.x, bmin.y, bmax.z),
-                    vertex(bmax.x, bmax.y, bmax.z),
-                    vertex(bmin.x, bmax.y, bmax.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmin.x, bmax.y, bmin.z),
-                    vertex(bmax.x, bmax.y, bmin.z),
-                    vertex(bmax.x, bmax.y, bmax.z),
-                    vertex(bmin.x, bmax.y, bmax.z),
-                    objects_color);
-          push_quad(coll,
-                    vertex(bmax.x, bmin.y, bmin.z),
-                    vertex(bmax.x, bmin.y, bmax.z),
-                    vertex(bmax.x, bmax.y, bmax.z),
-                    vertex(bmax.x, bmax.y, bmin.z),
-                    objects_color);
+        shape const* maybe_obj_shape = find_as_pointer(w.get_object_personal_space_shapes(), id);
+        assert(maybe_obj_shape);
+        shape const& obj_shape = *maybe_obj_shape;
+        
+        shared_ptr<object>* maybe_objp = w.get_object(id);
+        assert(maybe_objp);
+        shared_ptr<object> objp = *maybe_objp;
+        
+        if(dynamic_pointer_cast<solar_panel>(objp)) {
+          prepare_shape(view_loc, coll, obj_shape, color(0xff00ffaa));
         }
-
-        lasercake_vector<convex_polygon>::type const& obj_polygons = obj_shape->second.get_polygons();
-        for (convex_polygon const& polygon : obj_polygons) {
-          push_convex_polygon(view_loc, coll, polygon.get_vertices(), color(0x77777777));
-
-          // TODO so many redundant velocity vectors!!
-          for(auto const& this_vertex : polygon.get_vertices()) {
-            const vector3<GLfloat> locv = convert_coordinates_to_GL(view_loc, this_vertex);
-            push_line(coll,
-                      locv,
-                      locv + cast_vector3_to_float(objp->velocity()),
-                      objects_color);
-          }
+        else if(dynamic_pointer_cast<robot>(objp)) {
+          prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
         }
-        lasercake_vector<convex_polyhedron>::type const& obj_polyhedra = obj_shape->second.get_polyhedra();
-        for (convex_polyhedron const& ph : obj_polyhedra) {
-          for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
-            std::vector<vector3<polygon_int_type>> poly;
-            for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
-              poly.push_back(ph.vertices()[ph.face_info()[i + j + 1]]);
-            }
-            push_convex_polygon(view_loc, coll, poly, color(0x00ffffaa));
-          }
+        else if(dynamic_pointer_cast<autorobot>(objp)) {
+          prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
+        }
+        else if(dynamic_pointer_cast<laser_emitter>(objp)) {
+          prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
+        }
+        else {
+          // just in case.
+          prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
         }
       }
     }

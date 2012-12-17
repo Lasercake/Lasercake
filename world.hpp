@@ -63,6 +63,7 @@ using std::unordered_set;
 using std::vector;
 using std::array;
 using boost::shared_ptr;
+using boost::dynamic_pointer_cast;
 
 
 inline shape tile_shape(vector3<tile_coordinate> tile) {
