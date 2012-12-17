@@ -231,7 +231,7 @@ inline color compute_tile_color(tile_location const& loc) {
     //case AIR: return color(0x00000000);
     case ROCK: return color(((((get_primitive<uint32_t>(coords.x) + get_primitive<uint32_t>(coords.y) + get_primitive<uint32_t>(coords.z)) % 3)
                                                 * 0x222222u + 0x333333u) << 8) + 0xffu);
-    case RUBBLE: return color(0xffff0077);
+    case RUBBLE: return color(0xffbb5577);
     case GROUPABLE_WATER: return color(0x0000ff77);
     case UNGROUPABLE_WATER: return color(0x6666ff77);
     default: assert(false);
