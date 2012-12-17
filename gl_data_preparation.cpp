@@ -687,15 +687,14 @@ void view_on_the_world::prepare_gl_data(
       gl_collection& coll = gl_collections_by_distance.at(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(w.get_bounding_box_of_object_or_tile(id), view_loc))
       );
+      shape const* maybe_obj_shape = find_as_pointer(w.get_object_personal_space_shapes(), id);
+      assert(maybe_obj_shape);
+      shape const& obj_shape = *maybe_obj_shape;
+
+      shared_ptr<object>* maybe_objp = w.get_object(id);
+      assert(maybe_objp);
+      shared_ptr<object> objp = *maybe_objp;
       if ((view_type != ROBOT) || (id != config.view_from)) {
-        shape const* maybe_obj_shape = find_as_pointer(w.get_object_personal_space_shapes(), id);
-        assert(maybe_obj_shape);
-        shape const& obj_shape = *maybe_obj_shape;
-        
-        shared_ptr<object>* maybe_objp = w.get_object(id);
-        assert(maybe_objp);
-        shared_ptr<object> objp = *maybe_objp;
-        
         if(dynamic_pointer_cast<solar_panel>(objp)) {
           prepare_shape(view_loc, coll, obj_shape, color(0xffff00aa));
         }
@@ -711,6 +710,11 @@ void view_on_the_world::prepare_gl_data(
         else {
           // just in case.
           prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
+        }
+      }
+      else {
+        if(shared_ptr<robot> rob = dynamic_pointer_cast<robot>(objp)) {
+          prepare_shape(view_loc, coll, tile_shape(rob->get_building_tile(w)), color(0xffff0033));
         }
       }
     }
