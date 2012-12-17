@@ -340,6 +340,7 @@ void assert_about_overlaps(objects_map<mobile_object>::type & moving_objects,
 
 void update_moving_objects_impl(
    world                            & w,
+   objects_map<object>       ::type & objects,
    objects_map<mobile_object>::type & moving_objects,
    object_shapes_t                  & personal_space_shapes,
    object_shapes_t                  & detail_shapes,
@@ -427,6 +428,8 @@ void update_moving_objects_impl(
           shape* o1pss = find_as_pointer(personal_space_shapes, oid1); assert(o1pss);
           shape* o1ds = find_as_pointer(detail_shapes, oid1); assert(o1ds);
 
+          bool o2_is_immovable_obstruction = false;
+
           // TODO: collapse this duplicate code (between the object-tile case and the object-object case)
           if (tile_location const* locp = collision.oid2.get_tile_location()) {
             if (is_water(locp->stuff_at().contents())) {
@@ -440,42 +443,16 @@ void update_moving_objects_impl(
               }
             }
             else {
-              // We hit a solyd objyct, o noez.
-              shape t = tile_shape(locp->coords());
-              
-              //std::cerr << inf1.last_time_updated;
-              //std::cerr << collision.time;
-              update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
-              //std::cerr << "!!!" << inf1.last_time_updated << "\n";
-              const auto old_vel = obj1->velocity();
-              auto vel_change = (collision.normal * obj1->velocity().dot<fine_scalar>(collision.normal));
-              if (vel_change != vector3<fine_scalar>(0,0,0)) {
-                fine_scalar vel_change_denom = collision.normal.dot<fine_scalar>(collision.normal);
-                // Hack: To avoid getting locked in a nonzero velocity due to rounding error,
-                // make sure to round down your eventual velocity!
-                //std::cerr << obj1->velocity();
-                obj1->velocity_ = ((obj1->velocity() * vel_change_denom) - vel_change) / vel_change_denom;
-                //std::cerr << vel_change << vel_change_denom << obj1->velocity() << "\n";
-              }
-              // Also push the objects away from each other a little if the surface isn't axis-aligned.
-              // This is a bit of a hack and might violate conservation of energy.
-              if (((collision.normal(X) != 0) + (collision.normal(Y) != 0) + (collision.normal(Z) != 0)) > 1) {
-                obj1->velocity_ -= old_vel * 4 / old_vel.magnitude_within_32_bits();
-              }
-              if (failsafe_mode) obj1->velocity_ = vector3<fine_scalar>(0,0,0);
-              if (obj1->velocity() != old_vel) ++inf1.invalidation_counter;
-              else {
-                std::cerr << "Warning: No velocity change on collision. This can potentially cause overlaps.\n";
-              }
+              o2_is_immovable_obstruction = true;
                 
                 //assert_about_overlaps(moving_objects, personal_space_shapes, objects_info);
               
             }
           }
           if (object_identifier const* oid2p = collision.oid2.get_object_identifier()) {
-            object_identifier const& oid2 = *oid2p;
-            boost::shared_ptr<mobile_object>* obj2p = find_as_pointer(moving_objects, oid2); assert(obj2p);
-            boost::shared_ptr<mobile_object>& obj2 = *obj2p;
+           object_identifier const& oid2 = *oid2p;
+           boost::shared_ptr<object>* obj2p = find_as_pointer(objects, oid2); assert(obj2p);
+           if (boost::shared_ptr<mobile_object> obj2 = boost::dynamic_pointer_cast<mobile_object>(*obj2p)) {
             shape* o2pss = find_as_pointer(personal_space_shapes, oid2); assert(o2pss);
             shape* o2ds = find_as_pointer(detail_shapes, oid2); assert(o2ds);
             
@@ -528,7 +505,39 @@ void update_moving_objects_impl(
             if (inf2.invalidation_counter > collision.validation2) {
               collect_collisions(collision.time, true, oid2, obj2, o2pss, w, sweep_box_cd, anticipated_collisions, objects_info, moving_objects);
             }
+           }
+           else {
+             o2_is_immovable_obstruction = true;
+           }
           }
+
+          if (o2_is_immovable_obstruction) {
+              //std::cerr << inf1.last_time_updated;
+              //std::cerr << collision.time;
+              update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
+              //std::cerr << "!!!" << inf1.last_time_updated << "\n";
+              const auto old_vel = obj1->velocity();
+              auto vel_change = (collision.normal * obj1->velocity().dot<fine_scalar>(collision.normal));
+              if (vel_change != vector3<fine_scalar>(0,0,0)) {
+                fine_scalar vel_change_denom = collision.normal.dot<fine_scalar>(collision.normal);
+                // Hack: To avoid getting locked in a nonzero velocity due to rounding error,
+                // make sure to round down your eventual velocity!
+                //std::cerr << obj1->velocity();
+                obj1->velocity_ = ((obj1->velocity() * vel_change_denom) - vel_change) / vel_change_denom;
+                //std::cerr << vel_change << vel_change_denom << obj1->velocity() << "\n";
+              }
+              // Also push the objects away from each other a little if the surface isn't axis-aligned.
+              // This is a bit of a hack and might violate conservation of energy.
+              if (((collision.normal(X) != 0) + (collision.normal(Y) != 0) + (collision.normal(Z) != 0)) > 1) {
+                obj1->velocity_ -= old_vel * 4 / old_vel.magnitude_within_32_bits();
+              }
+              if (failsafe_mode) obj1->velocity_ = vector3<fine_scalar>(0,0,0);
+              if (obj1->velocity() != old_vel) ++inf1.invalidation_counter;
+              else {
+                std::cerr << "Warning: No velocity change on collision. This can potentially cause overlaps.\n";
+              }
+          }
+          
           // If we updated anything about the objects, they might have new collisions.
           // If we *didn't*, they won't repeat the same collision again, since we have
           //     deleted it and not replaced it.
@@ -571,7 +580,7 @@ void update_moving_objects_impl(
 } /* end anonymous namespace */
 
 void world::update_moving_objects() {
-  update_moving_objects_impl(*this, moving_objects_, object_personal_space_shapes_, object_detail_shapes_, objects_exposed_to_collision_);
+  update_moving_objects_impl(*this, objects_, moving_objects_, object_personal_space_shapes_, object_detail_shapes_, objects_exposed_to_collision_);
 }
 
 
