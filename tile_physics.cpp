@@ -1317,6 +1317,12 @@ void update_fluids_impl(state_t& state) {
   // ==============================================================================
   
   randomized_vector<wanted_move> wanted_moves;
+  //vector<pair<const tile_location, active_fluid_tile_info>> = sorted(active_fluids)
+  //TODO see how this affects speed due to cache usage
+  //TODO this code is not correct because effects depend on unordered_map order
+  //which might be different depending on bitsize or libs
+  //TODO and/or a cache friendlier structure than unordered_* since there
+  //is a lot of local effects(modeled by iterators?extra loc-adornment?)
   for (pair<const tile_location, active_fluid_tile_info>& p : active_fluids) {
     tile_location const& loc = p.first;
     active_fluid_tile_info& fluid = p.second;
