@@ -1,4 +1,5 @@
 #!/bin/sh
 set -eu
 printf 'set args %s\nrun\n' "$*" > build/gdbarg
-gdb ./lasercake -x build/gdbarg
+GDB="$(command -v ggdb || command -v gdb)"
+"$GDB" ./lasercake -x build/gdbarg

@@ -30,10 +30,12 @@ These build instructions have been tested on:
 
 * Linux [Arch Linux as well as Debian Testing, x86_64, June 2012].
 
-* Mac OS X 10.6 [using MacPorts qt4-mac and gcc47;
-                 cmake -DCMAKE_CXX_COMPILER=g++-mp-4.7
+* Mac OS X 10.6
+      [using MacPorts qt4-mac and gcc47;
+      cmake -DCMAKE_C_COMPILER=gcc-mp-4.7 -DCMAKE_CXX_COMPILER=g++-mp-4.7
       Run Lasercake and then click on it in the dock to bring the
-      window to the front... our Mac integration needs improvement!]
+      window to the front... our Mac integration needs improvement!
+      2012-12-17: I'm getting crashes that I'm having trouble debugging.]
 
 * MinGW [Cross-compiling for Windows from Linux;
       I currently have to manually copy all needed .dlls to be
