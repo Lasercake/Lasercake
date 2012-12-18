@@ -395,6 +395,15 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
   return result;
 }
 
+bool polyhedra_volume_intersect (convex_polyhedron const& p1, convex_polyhedron const& p2) {
+  std::vector<pair_of_parallel_supporting_planes> relating_planes;
+  populate_with_relating_planes(p1, p2, relating_planes);
+  for (auto const& plane : relating_planes) {
+    if ((plane.p2_base_point - plane.p1_base_point).dot<polygon_int_type>(plane.p1_to_p2_normal) >= 0) return false;
+  }
+  return true;
+}
+
 faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps1, std::vector<vector3<polygon_int_type>> const& vs2, polyhedron_planes_info_for_intersection ps2) {
   if (auto result = get_excluding_face_onesided(vs1, ps2)) return result;
   if (auto result = get_excluding_face_onesided(vs2, ps1)) return result;
@@ -1404,6 +1413,12 @@ bool bounding_box::overlaps(bounding_box const& o)const {
      && min_.y <= o.max_.y && o.min_.y <= max_.y
      && min_.z <= o.max_.z && o.min_.z <= max_.z;
 }
+bool bounding_box::volume_overlaps(bounding_box const& o)const {
+  return is_anywhere_ && o.is_anywhere_
+     && min_.x < o.max_.x && o.min_.x < max_.x
+     && min_.y < o.max_.y && o.min_.y < max_.y
+     && min_.z < o.max_.z && o.min_.z < max_.z;
+}
 void bounding_box::combine_with(bounding_box const& o) {
        if (!o.is_anywhere_) {            return; }
   else if (!  is_anywhere_) { *this = o; return; }
@@ -1897,6 +1912,29 @@ bool shape::intersects(bounding_box const& other)const {
 
   for (bounding_box const& b1 : boxes_) {
     if (b1.overlaps(other)) return true;
+  }
+  return false;
+}
+
+bool shape::volume_intersects(shape const& other)const {
+  if (!bounds().volume_overlaps(other.bounds())) return false;
+
+  for (convex_polyhedron const& p1 : polyhedra_) {
+    for (convex_polyhedron const& p2 : other.polyhedra_) {
+      if (polyhedra_volume_intersect(p1, p2)) return true;
+    }
+    for (bounding_box const& b2 : other.boxes_) {
+      if (polyhedra_volume_intersect(p1, convex_polyhedron(b2))) return true;
+    }
+  }
+
+  for (bounding_box const& b1 : boxes_) {
+    for (convex_polyhedron const& p2 : other.polyhedra_) {
+      if (polyhedra_volume_intersect(convex_polyhedron(b1), p2)) return true;
+    }
+    for (bounding_box const& b2 : other.boxes_) {
+      if (b1.volume_overlaps(b2)) return true;
+    }
   }
   return false;
 }

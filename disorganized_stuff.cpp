@@ -46,10 +46,8 @@ object_identifier world::try_create_object(shared_ptr<object> obj) {
     vector<object_identifier> objects_this_could_collide_with;
     objects_exposed_to_collision_.get_objects_overlapping(objects_this_could_collide_with, obj_shape.bounds());
     for (auto oid : objects_this_could_collide_with) {
-      // TODO: allow a microscopic "tolerance", i.e. make it so that you're allowed to create an object that overlaps another object
-      // by a small amount.  We already have a way to compute "how much" two polyhedra are overlapping, but we need to work out a few
-      // details.  The tolerance is necessary so that tile aligned objects can be placed next to each other.
-      if (object_personal_space_shapes_.find(oid)->second.intersects(obj_shape)){
+      // We use volume_intersects so that tile aligned objects can be placed next to each other.
+      if (object_personal_space_shapes_.find(oid)->second.volume_intersects(obj_shape)){
         return NO_OBJECT;
       }
     }
