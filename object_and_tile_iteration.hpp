@@ -81,7 +81,7 @@ struct get_cost {
 // for tile visitation (inside tile visitation we call object iteration):
 template<typename Visitor>
 struct tile_visitor {
-  tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
+  tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& /*bbox*/) {
     return true;
     // unnecessarily HACK-y
 //    if(subsumes(tile_bbox_, bbox)) return true;
@@ -93,7 +93,7 @@ struct tile_visitor {
     while(obj_i_ != obj_end_ && obj_i_->cost < cost) {
       visitor_.found(obj_i_->object);
     }
-    visitor_.found_(loc);
+    visitor_.found(loc);
     return true;
   }
   octant_number octant()const { return octant_; }
