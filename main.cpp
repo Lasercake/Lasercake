@@ -328,6 +328,25 @@ void gl_renderer::render_2d_text_overlay_(
   painter.end();
 }
 
+int debug_test_sim_avoiding_qt(config_struct config) {
+  std::cerr << "Constructing worldgen\n";
+  const worldgen_function_t worldgen = make_world_building_func(config.scenario);
+  assert(worldgen);
+  std::cerr << "Constructing world\n";
+  world w(worldgen);
+  std::cerr << "Initing world\n";
+  init_test_world_and_return_our_robot(w, config.crazy_lasers);
+  std::cerr << "Beginning simulating\n";
+  int64_t frame = 0;
+  const unordered_map<object_identifier, input_news_t> there_aint_any_input;
+  while(true) {
+    ++frame;
+    w.update(there_aint_any_input);
+    std::cerr << "end frame " << frame << std::endl;
+  }
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
   try {
@@ -356,6 +375,7 @@ int main(int argc, char *argv[])
       ("exit-after-frames,e", po::value<int64_t>(&config.exit_after_frames)->default_value(-1), "debug: exit after n frames (negative: never)")
       ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
       ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
+      ("sim-only-avoiding-qt", "debug: don't call Qt at all; just simulate")
 #if !LASERCAKE_NO_THREADS
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
@@ -397,6 +417,10 @@ int main(int argc, char *argv[])
     if(!vm.count("scenario")) {
       std::cerr << "You didn't give an argument saying which scenario to use! Using default value...\n";
       config.scenario = "default";
+    }
+
+    if(vm.count("sim-only-avoiding-qt")) {
+      return debug_test_sim_avoiding_qt(config);
     }
   }
 
