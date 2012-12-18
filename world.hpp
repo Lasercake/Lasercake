@@ -72,6 +72,15 @@ inline shape tile_shape(vector3<tile_coordinate> tile) {
 
 
 const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 2)) - 5;
+// A possibility:
+// 0x5 is binary 0101.  We alternate 0 and 1 bits so that
+// we don't start particularly near high-bit changes that
+// require larger power-of-two-aligned bounding boxes
+// in order to encompass the world.  This isn't fundamentally
+// important; if it's more useful to the user we could start
+// at decimal 1000000000 instead (binary 111011100110101100101000000000).
+//const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 2)) - 5;//0x55555555;
+
 const vector3<tile_coordinate> world_center_tile_coords(world_center_tile_coord, world_center_tile_coord, world_center_tile_coord);
 const vector3<fine_scalar> world_center_fine_coords = lower_bound_in_fine_units(world_center_tile_coords);
 
