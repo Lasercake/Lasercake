@@ -427,6 +427,11 @@ public:
   // want to make sure to capture.
   template<typename Visitor> void visit_collidable_tiles(Visitor&& visitor);
 
+  // Include object_and_tile_iteration.hpp to use visit_collidable_tiles_and_objects.
+  // This function is a HACK because, among other things, it is not very precise
+  // in the ordering among objects (though tiles will all be in a correct order).
+  template<typename Visitor> void visit_collidable_tiles_and_objects(/*bounding_box bbox,*/ Visitor&& visitor);
+
 private:
   friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
   
