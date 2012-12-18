@@ -316,53 +316,6 @@ void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedro
   }
 }
 
-#if 0
-void add_when_point_is_within_planes(potential_running_into_a_polyhedron_info& inf, vector3<polygon_int_type> point, vector3<polygon_int_type> velocity, std::vector<plane_as_base_point_and_normal> const& planes) {
-  optional_rational min;
-  optional_rational max;
-  plane_as_base_point_and_normal arbitrary_plane_hit_first;
-  for (auto const& plane : planes) {
-    // We subtract base_point just to minimize integer size; the behavior should be the same either way.
-    const auto vel_dotprod = velocity.dot<polygon_int_type>(plane.normal);
-    const auto disp_dotprod = (plane.base_point - point).dot<polygon_int_type>(plane.normal);
-    if (vel_dotprod == 0) {
-      if (disp_dotprod < 0) {
-        // We're moving parallel to the plane and the point is outside the plane. So we will never be on the inside.
-        return;
-      }
-      // Otherwise we're moving parallel to the plane and we're on the INSIDE of the plane, so this plane will never restrict when the point is inside the polyhedron.
-    }
-    else {
-      const rational moment(disp_dotprod, vel_dotprod);
-      if (vel_dotprod > 0) {
-        //
-        if (!max || (moment < *max)) {
-          max = moment;
-        }
-      }
-      else {
-        if (!min || (moment > *min)) {
-          min = moment;
-          arbitrary_plane_hit_first = plane;
-        }
-      }
-      if (min && max && (*min > *max)) return;
-    }
-  }
-  
-  assert (min && max && (*min <= *max));
-  
-  if (!inf.is_anywhere || *min < inf.min) {
-    inf.min = *min;
-    inf.arbitrary_plane_hit_first = arbitrary_plane_hit_first;
-  }
-  if (!inf.is_anywhere || *max > inf.max) {
-    inf.max = *max;
-  }
-  inf.is_anywhere = true;
-}
-#endif
-
 potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_polyhedron const& p1, convex_polyhedron const& p2, vector3<polygon_int_type> velocity) {
   if (velocity == vector3<polygon_int_type>(0,0,0)) {
     // Hack - we don't have a way to indicate "At all times", which this might be.
