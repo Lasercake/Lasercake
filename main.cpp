@@ -335,15 +335,29 @@ int debug_test_sim_avoiding_qt(config_struct config) {
   std::cerr << "Constructing world\n";
   world w(worldgen);
   std::cerr << "Initing world\n";
-  init_test_world_and_return_our_robot(w, config.crazy_lasers);
+  const object_identifier robot_id = init_test_world_and_return_our_robot(w, config.crazy_lasers);
+  shared_ptr<view_on_the_world> view_ptr;
+  if(config.run_drawing_code) {
+    std::cerr << "Initing graphics-prep code\n";
+    view_ptr.reset(new view_on_the_world(world_center_fine_coords));
+    view_ptr->drawing_debug_stuff = config.initially_drawing_debug_stuff;
+  }
   std::cerr << "Beginning simulating\n";
   int64_t frame = 0;
   const unordered_map<object_identifier, input_news_t> there_aint_any_input;
-  while(true) {
+  while(config.exit_after_frames != frame) {
     ++frame;
     w.update(there_aint_any_input);
+    if(config.run_drawing_code) {
+      std::cerr << "end sim; " << std::flush;
+      {
+        gl_data_ptr_t gl_data_ptr(new gl_data_t());
+        view_ptr->prepare_gl_data(w, gl_data_preparation_config(config.view_radius, robot_id), *gl_data_ptr);
+      }
+    }
     std::cerr << "end frame " << frame << std::endl;
   }
+  std::cerr << "Ending simulating\n";
   return 0;
 }
 
@@ -375,7 +389,7 @@ int main(int argc, char *argv[])
       ("exit-after-frames,e", po::value<int64_t>(&config.exit_after_frames)->default_value(-1), "debug: exit after n frames (negative: never)")
       ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
       ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
-      ("sim-only-avoiding-qt", "debug: don't call Qt at all; just simulate")
+      ("avoid-qt,Q", "debug: don't call Qt at all (implies -n)")
 #if !LASERCAKE_NO_THREADS
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
@@ -419,7 +433,8 @@ int main(int argc, char *argv[])
       config.scenario = "default";
     }
 
-    if(vm.count("sim-only-avoiding-qt")) {
+    if(vm.count("avoid-qt")) {
+      config.have_gui = false;
       return debug_test_sim_avoiding_qt(config);
     }
   }

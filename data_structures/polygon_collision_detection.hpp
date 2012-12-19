@@ -174,6 +174,9 @@ struct line_segment {
   void translate(vector3<polygon_int_type> t);
   bounding_box bounds()const;
 };
+inline std::ostream& operator<<(std::ostream& os, line_segment const& l) {
+  return os << '[' << l.ends[0] << "--" << l.ends[1] << ']';
+}
 
 struct convex_polygon {
   // The structure simply trusts that you will provide a convex, coplanar sequence of points. Failure to do so will result in undefined behavior.
@@ -187,6 +190,13 @@ private:
   std::vector<vector3<polygon_int_type>> vertices_;
   mutable polygon_collision_info_cache cache_;
 };
+inline std::ostream& operator<<(std::ostream& os, convex_polygon const& p) {
+  os << '[';
+  for(auto const& vertex : p.get_vertices()) {
+    os << vertex << "--";
+  }
+  return os << ']';
+}
 
 struct convex_polyhedron {
 public:
@@ -220,6 +230,13 @@ private:
   std::vector<edge> edges_;
   std::vector<uint8_t> face_info_;
 };
+inline std::ostream& operator<<(std::ostream& os, convex_polyhedron const& p) {
+  os << "polyhedron-vertices:[";
+  for(auto const& vertex : p.vertices()) {
+    os << vertex << ", ";
+  }
+  return os << ']';
+}
 
 class shape {
 public:
@@ -254,6 +271,34 @@ private:
   lasercake_vector<convex_polyhedron>::type polyhedra_;
   lasercake_vector<     bounding_box>::type boxes_   ;
 };
+inline std::ostream& operator<<(std::ostream& os, shape const& sh) {
+  os << "shape:{";
+  if(sh.get_segments().size()) {
+    os << " segments:";
+    for(auto const& s : sh.get_segments()) {
+      os << s << ';';
+    }
+  }
+  if(sh.get_polygons().size()) {
+    os << " polygons:";
+    for(auto const& s : sh.get_polygons()) {
+      os << s << ';';
+    }
+  }
+  if(sh.get_polyhedra().size()) {
+    os << " polyhedra:";
+    for(auto const& s : sh.get_polyhedra()) {
+      os << s << ';';
+    }
+  }
+  if(sh.get_boxes().size()) {
+    os << " boxes:";
+    for(auto const& s : sh.get_boxes()) {
+      os << s << ';';
+    }
+  }
+  return os << '}';
+}
 
 // returns (was there an intersection?, what fraction of the length of the line segment was the first)
 optional_rational get_first_intersection(line_segment const& other, shape const& s);

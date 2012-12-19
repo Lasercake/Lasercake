@@ -123,6 +123,10 @@ struct tile_bounding_box {
       vector3<tile_coordinate> dereference()const { return data_.first; }
 
       explicit iterator(pair<vector3<tile_coordinate>, tile_bounding_box const*> data):data_(data){}
+
+      friend inline std::ostream& operator<<(std::ostream& os, tile_bounding_box::iterator const& it) {
+        return os << '{' << it.data_.second << "@" << it.data_.first << '}';
+      }
     private:
       friend class boost::iterator_core_access;
       friend struct tile_bounding_box;
@@ -224,6 +228,11 @@ public:
   static const uint8_t interior_bit_mask = (1<<interior_bit_position);
   static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask =
     (1<<there_is_an_object_here_that_affects_the_tile_based_physics_bit_position);
+
+  // As a debugging aid; it could certainly produce more human-transparent output!
+  friend inline std::ostream& operator<<(std::ostream& os, tile t) {
+    return os << std::hex << t.tile_data_ << std::dec;
+  }
 
 private:
   uint8_t tile_data_;

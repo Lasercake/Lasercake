@@ -176,6 +176,21 @@ public:
   virtual std::string player_instructions()const = 0;
 };
 
+#if 0
+// A possibility:
+class mind_controllable_object : virtual public object {
+public:
+  // These can be possessed as by a spirit so the player can
+  // control and see from it.  We may need to split this class
+  // in the future.
+  virtual void mind_control(input_representation::input_news_t const& input_news) {}
+  // Current assumption of this class: these have excellent eyes
+  // that a human can see from.
+  virtual vector3<fine_scalar> eye_location() const = 0;
+  virtual vector3<fine_scalar> eye_direction() const = 0;
+};
+#endif
+
 class tile_aligned_object : virtual public object {
 public:
   

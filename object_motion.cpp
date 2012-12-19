@@ -208,6 +208,11 @@ struct moving_object_info {
   int invalidation_counter;
   time_type last_time_updated;
 };
+inline std::ostream& operator<<(std::ostream& os, moving_object_info const& moi) {
+  return os << "moving_object_info:{"
+  << moi.invalidation_counter
+  << "; " << moi.last_time_updated << '}';
+}
 
 // Move the object physically, and update its caches.
 // NOTE: This does NOT change its entry in the world's collision detector!

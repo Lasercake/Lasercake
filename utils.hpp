@@ -248,6 +248,7 @@ typedef int8_t cardinal_direction;
 
 template <cardinal_direction Dir> struct cdir_info;
 template<> struct cdir_info<xminus> {
+  static const char* name() { return "-X"; }
   static const cardinal_direction opposite = xplus;
   static const int dimension = X;
   static const neighboring_tile_differential x_delta = -1;
@@ -257,6 +258,7 @@ template<> struct cdir_info<xminus> {
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { --t.x; }
 };
 template<> struct cdir_info<yminus> {
+  static const char* name() { return "-Y"; }
   static const cardinal_direction opposite = yplus;
   static const int dimension = Y;
   static const neighboring_tile_differential x_delta = 0;
@@ -266,6 +268,7 @@ template<> struct cdir_info<yminus> {
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { --t.y; }
 };
 template<> struct cdir_info<zminus> {
+  static const char* name() { return "-Z"; }
   static const cardinal_direction opposite = zplus;
   static const int dimension = Z;
   static const neighboring_tile_differential x_delta = 0;
@@ -275,6 +278,7 @@ template<> struct cdir_info<zminus> {
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { --t.z; }
 };
 template<> struct cdir_info<xplus> {
+  static const char* name() { return "+X"; }
   static const cardinal_direction opposite = xminus;
   static const int dimension = X;
   static const neighboring_tile_differential x_delta = 1;
@@ -284,6 +288,7 @@ template<> struct cdir_info<xplus> {
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { ++t.x; }
 };
 template<> struct cdir_info<yplus> {
+  static const char* name() { return "+Y"; }
   static const cardinal_direction opposite = yminus;
   static const int dimension = Y;
   static const neighboring_tile_differential x_delta = 0;
@@ -293,6 +298,7 @@ template<> struct cdir_info<yplus> {
   template<class ThingWithCoordinates> static void add_to(ThingWithCoordinates& t) { ++t.y; }
 };
 template<> struct cdir_info<zplus> {
+  static const char* name() { return "+Z"; }
   static const cardinal_direction opposite = zminus;
   static const int dimension = Z;
   static const neighboring_tile_differential x_delta = 0;
@@ -361,6 +367,22 @@ public:
 private:
   internal_array data;
 };
+template<cardinal_direction Dir, typename T>
+void ostream_direction_of_value_for_each_cardinal_direction(std::ostream& os,
+      value_for_each_cardinal_direction<T> const& vs) {
+  os << (Dir == 0 ? "" : ", ") << cdir_info<Dir>::name() << '=' << vs.template get<Dir>();
+}
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, value_for_each_cardinal_direction<T> const& vs) {
+  os << '[';
+  ostream_direction_of_value_for_each_cardinal_direction<0>(vs);
+  ostream_direction_of_value_for_each_cardinal_direction<1>(vs);
+  ostream_direction_of_value_for_each_cardinal_direction<2>(vs);
+  ostream_direction_of_value_for_each_cardinal_direction<3>(vs);
+  ostream_direction_of_value_for_each_cardinal_direction<4>(vs);
+  ostream_direction_of_value_for_each_cardinal_direction<5>(vs);
+  return os << ']';
+}
 
 typedef int8_t octant_number;
 #define LASERCAKE_MAKE_OCTANT(xpositive, ypositive, zpositive) \
