@@ -60,6 +60,20 @@ inline void debug_print_val_deterministically(std::pair<T1,T2> const& pair) {
   debug_print_val_deterministically(pair.second);
   debug_print_ostream() << ')';
 }
+#include <vector>
+template<typename T>
+inline void debug_print_val_deterministically(std::vector<T> const& v) {
+  const size_t MAX_SHOW = 8;
+  size_t max_show = MAX_SHOW;
+  if(max_show > v.size()) max_show = v.size();
+  debug_print_ostream() << '[';
+  for(size_t n = 0; n != max_show; ++n) {
+    if(n != 0) {debug_print_ostream() << ',';}
+    debug_print_ostream() << v[n];
+  }
+  if(v.size() > max_show) {debug_print_ostream() << ",...";}
+  debug_print_ostream() << ']';
+}
 /*
 class world;
 inline void debug_print_val_deterministically(world const& w) {
