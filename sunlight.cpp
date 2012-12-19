@@ -20,6 +20,7 @@
 */
 
 #include "world.hpp"
+#include "data_structures/borrowed_bitset.hpp"
 #include "object_and_tile_iteration.hpp"
 #include "data_structures/polygon_collision_detection.hpp"
 
@@ -27,10 +28,8 @@ const int SUN_AREA_SIZE = 5000;
 
 
 struct sunlight_visitor {
-  sunlight_visitor(world *w, vector3<fine_scalar> sun_direction): w(w),sun_direction(sun_direction) {
-    memset(packets,0,sizeof(bool)*SUN_AREA_SIZE*SUN_AREA_SIZE);
-  }
-  bool packets[SUN_AREA_SIZE][SUN_AREA_SIZE];
+  sunlight_visitor(world *w, vector3<fine_scalar> sun_direction): packets(SUN_AREA_SIZE*SUN_AREA_SIZE),w(w),sun_direction(sun_direction) {}
+  borrowed_bitset packets;
   octant_number octant()const { return vector_octant(sun_direction); }
   octant_number octant_; //e.g. from vector_octant()
 
@@ -63,8 +62,8 @@ struct sunlight_visitor {
 
     for (int x = min_x; x <= max_x; ++x) {
       for (int y = min_y; y <= max_y; ++y) {
-        if (!packets[x][y]) {
-          packets[x][y] = true;
+        if (!packets.test(x*SUN_AREA_SIZE + y)) {
+          packets.set(x*SUN_AREA_SIZE + y);
           ++result;
         }
       }
@@ -90,8 +89,8 @@ struct sunlight_visitor {
 
     for (int x = min_x; x <= max_x; ++x) {
       for (int y = min_y; y <= max_y; ++y) {
-        if (!packets[x][y]) {
-          packets[x][y] = true;
+        if (!packets.test(x*SUN_AREA_SIZE + y)) {
+          packets.set(x*SUN_AREA_SIZE + y);
           ++result;
         }
       }
