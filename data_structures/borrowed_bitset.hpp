@@ -349,24 +349,34 @@ public:
     bs_ = other.bs_; other.bs_ = nullptr;
     num_bits_borrowed_ = other.num_bits_borrowed_;
   }
-  bool test(bit_index_type which)const {
-    caller_correct_if(which < size(), "borrowed_bitset bounds overflow");
-    return bit_ops::test_bit(bs_->here.bits, which);
+  bool test(bit_index_type bit_index)const {
+    caller_correct_if(bit_index < size(), "borrowed_bitset bounds overflow");
+    return bit_ops::test_bit(bs_->here.bits, bit_index);
   }
-  bool set(bit_index_type which) {
-    bool was_already_set = test(which);
-    bit_ops::set_bit(bs_->here.bits, which);
+  bool set(bit_index_type bit_index) {
+    bool was_already_set = test(bit_index);
+    bit_ops::set_bit(bs_->here.bits, bit_index);
     return was_already_set;
   }
-  uint32_t get_block_32bit(size_t which)const {
+
+  // The lowest-order bit in the block is the first bit in the bit-ordering.
+  // (i.e., conceptually, it's little-endian, though this doesn't require
+  // processor endianness.)
+  //
+  // The index is specified by number of blocks from the beginning, not
+  // number of bits from the beginning.
+  //
+  // set_block *overwrites* all bits in the block to either 0 or 1 per
+  // the val argument.  To modify with e.g. |, get and then set.
+  uint32_t get_block_32bit(size_t block_index)const {
     static_assert(std::numeric_limits<bit_ops::block_type>::digits == 32, "bug");
-    caller_correct_if(which < num_blocks_borrowed_(), "borrowed_bitset bounds overflow");
-    return bit_ops::get_block(bs_->here.bits, which);
+    caller_correct_if(block_index < num_blocks_borrowed_(), "borrowed_bitset bounds overflow");
+    return bit_ops::get_block(bs_->here.bits, block_index);
   }
-  void set_block_32bit(size_t which, uint32_t val) {
+  void set_block_32bit(size_t block_index, uint32_t val) {
     static_assert(std::numeric_limits<bit_ops::block_type>::digits == 32, "bug");
-    caller_correct_if(which < num_blocks_borrowed_(), "borrowed_bitset bounds overflow");
-    bit_ops::set_block(bs_->here.bits, which, val);
+    caller_correct_if(block_index < num_blocks_borrowed_(), "borrowed_bitset bounds overflow");
+    bit_ops::set_block(bs_->here.bits, block_index, val);
   }
 
   bit_index_type size()const {
