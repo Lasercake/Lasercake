@@ -85,61 +85,52 @@ struct liststack : boost::noncopyable {
 // uint32_t appeared a bit faster than uint64_t as block-size for this.
 //
 // Block must be an unsigned integral type
+//
+// This struct is just used as a type-parametrized namespace;
+// don't instantiate it.
 template <typename Block = uint32_t>
-struct bitbuffer : boost::noncopyable {
+struct bitbuffer_ops {
   typedef Block block_type;
   typedef ::bit_index_type bit_index_type;
   typedef size_t block_index_type;
   typedef int32_t block_width_type;
   static const block_width_type bits_per_block = std::numeric_limits<Block>::digits;
-  block_type* buffer;
-  bitbuffer() : buffer(nullptr) {}
-  bitbuffer(bitbuffer&& other) {
-    buffer = other.buffer;
-    other.buffer = nullptr;
-  }
-  bitbuffer& operator=(bitbuffer&& other) {
-    buffer = other.buffer;
-    other.buffer = nullptr;
-  }
 
-  void new_zeroed_buffer_with_num_blocks(block_index_type num_blocks) {
-    buffer = new block_type[num_blocks];
-    reset_block_range(0, num_blocks);
+  static block_type* new_zeroed_buffer_with_num_blocks(block_index_type num_blocks) {
+    block_type* buffer = new block_type[num_blocks];
+    reset_block_range(buffer, 0, num_blocks);
+    return buffer;
   }
-  void delete_buffer() {
+  static void delete_buffer(block_type*& buffer) {
     if(buffer) {delete[] buffer;}
     buffer = nullptr;
   }
-  ~bitbuffer() {
-    delete_buffer();
-  }
 
-  void reset_block_range(block_index_type begin, block_index_type count) {
+  static void reset_block_range(block_type* buffer, block_index_type begin, block_index_type count) {
     memset(buffer + begin, 0, count * sizeof(block_type));
   }
 
-  void set_bit(bit_index_type pos) {
+  static void set_bit(block_type* buffer, bit_index_type pos) {
     buffer[block_index(pos)] |= bit_mask(pos);
   }
-  void reset_bit(bit_index_type pos) {
+  static void reset_bit(block_type* buffer, bit_index_type pos) {
     buffer[block_index(pos)] &= ~bit_mask(pos);
   }
-  void set_bit(bit_index_type pos, bool val) {
+  static void set_bit(block_type* buffer, bit_index_type pos, bool val) {
     buffer[block_index(pos)] |= bit_mask_if(pos, val);
     buffer[block_index(pos)] &= ~bit_mask_if(pos, !val);
   }
-  void flip_bit(bit_index_type pos) {
+  static void flip_bit(block_type* buffer, bit_index_type pos) {
     buffer[block_index(pos)] ^= bit_mask(pos);
   }
-  bool test_bit(bit_index_type pos)const {
+  static bool test_bit(block_type const* buffer, bit_index_type pos) {
     return bool(buffer[block_index(pos)] & bit_mask(pos));
   }
 
-  void set_block(block_index_type pos, block_type val) {
+  static void set_block(block_type* buffer, block_index_type pos, block_type val) {
     buffer[pos] = val;
   }
-  void get_block(block_index_type pos)const {
+  static void get_block(block_type const* buffer, block_index_type pos) {
     return buffer[pos];
   }
 
@@ -156,6 +147,11 @@ struct bitbuffer : boost::noncopyable {
   static block_type bit_mask_if(bit_index_type pos, bool val) {
     return block_type(val) << bit_index(pos);
   }
+
+  static size_t num_blocks_needed_to_contain_num_bits(bit_index_type num_bits) {
+    // Divide rounding up.
+    return (num_bits + (bits_per_block - 1)) / bits_per_block;
+  }
 };
 
 // Block must be an unsigned integral type
@@ -167,16 +163,20 @@ inline size_t num_blocks_needed_to_contain_num_bits(bit_index_type num_bits) {
 }
 
 struct zeroable_bitset {
-  typedef bitbuffer<> bitbuffer_type;
+  typedef bitbuffer_ops<> bit_ops;
   bit_index_type num_bits;
-  bitbuffer_type bits;
   std::vector<bit_index_type> bits_to_clear;
+  bit_ops::block_type* bits;
 
-  zeroable_bitset(bit_index_type num_bits) : num_bits(num_bits) {
-     bits.new_zeroed_buffer_with_num_blocks(num_blocks_allocated());
+  zeroable_bitset(bit_index_type num_bits)
+   : num_bits(num_bits),
+     bits(bit_ops::new_zeroed_buffer_with_num_blocks(num_blocks_allocated()))
+  {}
+  ~zeroable_bitset() {
+    bit_ops::delete_buffer(bits);
   }
   size_t num_blocks_allocated()const {
-    return num_blocks_needed_to_contain_num_bits<bitbuffer_type::block_type>(num_bits);
+    return bit_ops::num_blocks_needed_to_contain_num_bits(num_bits);
   }
 };
 
@@ -285,6 +285,7 @@ inline void return_bitset(zeroable_bitset_node* node) BOOST_NOEXCEPT {
 // than a constant factor). This is pretty good for something this much
 // faster at uniquing than an unordered_set<uint>.
 class borrowed_bitset : boost::noncopyable {
+  typedef zeroable_bitset::bit_ops bit_ops;
 public:
   explicit borrowed_bitset(bit_index_type num_bits_desired)
    : bs_(borrow_bitset(num_bits_desired)), num_bits_borrowed_(num_bits_desired) {}
@@ -295,14 +296,14 @@ public:
   }
   bool test(bit_index_type which)const {
     caller_correct_if(which < size(), "borrowed_bitset bounds overflow");
-    return bs_->here.bits.test_bit(which);
+    return bit_ops::test_bit(bs_->here.bits, which);
   }
   bool set(bit_index_type which) {
     bool was_already_set = test(which);
     if(!was_already_set && tracking_bits_individually_()) {
       bs_->here.bits_to_clear.push_back(which);
     }
-    bs_->here.bits.set_bit(which);
+    bit_ops::set_bit(bs_->here.bits, which);
     return was_already_set;
   }
   bit_index_type size()const {
@@ -312,11 +313,11 @@ public:
     if(!bs_) return;
     if(tracking_bits_individually_()) {
       for(bit_index_type which : bs_->here.bits_to_clear) {
-        bs_->here.bits.reset_bit(which);
+        bit_ops::reset_bit(bs_->here.bits, which);
       }
     }
     else {
-      bs_->here.bits.reset_block_range(0, num_blocks_borrowed_());
+      bit_ops::reset_block_range(bs_->here.bits, 0, num_blocks_borrowed_());
     }
     bs_->here.bits_to_clear.clear();
     return_bitset(bs_);
@@ -327,7 +328,7 @@ private:
          < (bs_->here.num_bits >> bit_exponent_below_which_its_worth_tracking_bits_individually);
   }
   size_t num_blocks_borrowed_()const {
-    return num_blocks_needed_to_contain_num_bits<zeroable_bitset::bitbuffer_type::block_type>(num_bits_borrowed_);
+    return bit_ops::num_blocks_needed_to_contain_num_bits(num_bits_borrowed_);
   }
   zeroable_bitset_node* bs_;
   bit_index_type num_bits_borrowed_;
@@ -338,6 +339,7 @@ private:
 // this will give a small constant-factor speed improvement over
 // borrowed_bitset.
 class borrowed_bitset_that_always_clears_using_memset : boost::noncopyable {
+  typedef zeroable_bitset::bit_ops bit_ops;
 public:
   explicit borrowed_bitset_that_always_clears_using_memset(bit_index_type num_bits_desired)
    : bs_(borrow_bitset(num_bits_desired)), num_bits_borrowed_(num_bits_desired) {}
@@ -349,11 +351,11 @@ public:
   }
   bool test(bit_index_type which)const {
     caller_correct_if(which < size(), "borrowed_bitset bounds overflow");
-    return bs_->here.bits.test_bit(which);
+    return bit_ops::test_bit(bs_->here.bits, which);
   }
   bool set(bit_index_type which) {
     bool was_already_set = test(which);
-    bs_->here.bits.set_bit(which);
+    bit_ops::set_bit(bs_->here.bits, which);
     return was_already_set;
   }
   bit_index_type size()const {
@@ -361,12 +363,12 @@ public:
   }
   ~borrowed_bitset_that_always_clears_using_memset() {
     if(!bs_) return;
-    bs_->here.bits.reset_block_range(0, num_blocks_borrowed_());
+    bit_ops::reset_block_range(bs_->here.bits, 0, num_blocks_borrowed_());
     return_bitset(bs_);
   }
 private:
   size_t num_blocks_borrowed_()const {
-    return num_blocks_needed_to_contain_num_bits<zeroable_bitset::bitbuffer_type::block_type>(num_bits_borrowed_);
+    return bit_ops::num_blocks_needed_to_contain_num_bits(num_bits_borrowed_);
   }
   zeroable_bitset_node* bs_;
   bit_index_type num_bits_borrowed_;
