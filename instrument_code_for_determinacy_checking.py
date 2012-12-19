@@ -2,7 +2,7 @@
 
 # Using regexps for parsing C++ is, of course, entirely a hack.
 
-import re, sys, subprocess
+import re, sys, subprocess, glob
 
 if len(sys.argv) < 1 or (sys.argv[1] != "for-real"):
 	print("Don't do this in a modified repo: it's dangerous! Also, read the code.")
@@ -21,7 +21,7 @@ find_functions = re.compile(
 	re.VERBOSE | re.DOTALL)
 	    # (?:(?:[^()]|\([^()]*\)))     #constructor filler matter
 
-filenames = ['tiles.hpp', 'main.cpp']
+filenames = ['tiles.hpp'] + glob.glob('*.cpp')
 
 subprocess.check_call(['git', 'checkout'] + filenames)
 
@@ -37,7 +37,7 @@ argname_re = re.compile(r"""
 		,            #comma between arguments (or for hack at end)
 		""",
 		re.VERBOSE | re.DOTALL)
-excluded_re = re.compile(r'\b(?:world|frame_output_t|gl_all_data)\b|\bQ[A-Z]|\bLasercake[A-Z]|function')
+excluded_re = re.compile(r'\b(?:world|frame_output_t|gl_all_data|gl_collection|gl_call_data|state_t|tile_physics_state_t|volume_calipers|active_fluids_t|water_groups_by_location_t|persistent_water_group_info|groupable_water_volume_calipers_t|persistent_water_groups_t|objects_map|object_shapes_t)\b|\bQ[A-Z]|\bLasercake[A-Z]|function|_map\b|_set\b|\bset\b|collision_detector|priority_queue')
 def get_arg_names(argstr):
 	#return re.findall(argname_re, argstr+',')
 	result = []
@@ -47,8 +47,14 @@ def get_arg_names(argstr):
 			result.append(m.group(2))
 	return result
 
+# Give up on parameter packs / vararg functions
+# rather than try hard to implement sensible things for uncommon functions.
+functions_to_give_up_on_re = re.compile(r"\.\.\.")
+
 def augment_functions(m):
 	if m.group(1) in {'if', 'while', 'switch', 'for', 'do'}:
+		return m.group(0)
+	if re.search(functions_to_give_up_on_re, m.group(0)):
 		return m.group(0)
 	fnname = m.group(1)
 	argnames = get_arg_names(m.group(2))
