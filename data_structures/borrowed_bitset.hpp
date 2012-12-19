@@ -83,6 +83,8 @@ struct liststack : boost::noncopyable {
 //
 // For bitset operations, on x86_64,
 // uint32_t appeared a bit faster than uint64_t as block-size for this.
+//
+// Block must be an unsigned integral type
 template <typename Block = uint32_t>
 struct bitbuffer : boost::noncopyable {
   typedef Block block_type;
@@ -156,6 +158,14 @@ struct bitbuffer : boost::noncopyable {
   }
 };
 
+// Block must be an unsigned integral type
+template<typename Block>
+inline size_t num_blocks_needed_to_contain_num_bits(bit_index_type num_bits) {
+  static const bit_index_type bits_per_block = std::numeric_limits<Block>::digits;
+  // Divide rounding up.
+  return (num_bits + (bits_per_block - 1)) / bits_per_block;
+}
+
 struct zeroable_bitset {
   typedef bitbuffer<> bitbuffer_type;
   bit_index_type num_bits;
@@ -166,8 +176,7 @@ struct zeroable_bitset {
      bits.new_zeroed_buffer_with_num_blocks(num_blocks_allocated());
   }
   size_t num_blocks_allocated()const {
-    // Divide rounding up.
-    return (num_bits + (bitbuffer_type::bits_per_block - 1)) / bitbuffer_type::bits_per_block;
+    return num_blocks_needed_to_contain_num_bits<bitbuffer_type::block_type>(num_bits);
   }
 };
 
@@ -277,9 +286,13 @@ inline void return_bitset(zeroable_bitset_node* node) BOOST_NOEXCEPT {
 // faster at uniquing than an unordered_set<uint>.
 class borrowed_bitset : boost::noncopyable {
 public:
-  explicit borrowed_bitset(bit_index_type num_bits_desired) : bs_(borrow_bitset(num_bits_desired)) {}
-  borrowed_bitset() : bs_(nullptr) {} //default-constructing invalid bitsets is okay
-  borrowed_bitset(borrowed_bitset&& other) { bs_ = other.bs_; other.bs_ = nullptr; }
+  explicit borrowed_bitset(bit_index_type num_bits_desired)
+   : bs_(borrow_bitset(num_bits_desired)), num_bits_borrowed_(num_bits_desired) {}
+  borrowed_bitset() : bs_(nullptr), num_bits_borrowed_(0) {} //default-constructing invalid bitsets is okay
+  borrowed_bitset(borrowed_bitset&& other) {
+    bs_ = other.bs_; other.bs_ = nullptr;
+    num_bits_borrowed_ = other.num_bits_borrowed_;
+  }
   bool test(bit_index_type which)const {
     caller_correct_if(which < size(), "borrowed_bitset bounds overflow");
     return bs_->here.bits.test_bit(which);
@@ -293,10 +306,7 @@ public:
     return was_already_set;
   }
   bit_index_type size()const {
-    // Implementation detail: this number might be greater than the number
-    // requested by the constructor.  We could store the requested number,
-    // but is it important to?
-    return bs_->here.num_bits;
+    return num_bits_borrowed_;
   }
   ~borrowed_bitset() {
     if(!bs_) return;
@@ -306,8 +316,7 @@ public:
       }
     }
     else {
-      // TODO optimization: store size of *this* buffer and only clear *that*.
-      bs_->here.bits.reset_block_range(0, bs_->here.num_blocks_allocated());
+      bs_->here.bits.reset_block_range(0, num_blocks_borrowed_());
     }
     bs_->here.bits_to_clear.clear();
     return_bitset(bs_);
@@ -317,7 +326,11 @@ private:
     return bs_->here.bits_to_clear.size()
          < (bs_->here.num_bits >> bit_exponent_below_which_its_worth_tracking_bits_individually);
   }
+  size_t num_blocks_borrowed_()const {
+    return num_blocks_needed_to_contain_num_bits<zeroable_bitset::bitbuffer_type::block_type>(num_bits_borrowed_);
+  }
   zeroable_bitset_node* bs_;
+  bit_index_type num_bits_borrowed_;
 };
 
 
@@ -327,11 +340,13 @@ private:
 class borrowed_bitset_that_always_clears_using_memset : boost::noncopyable {
 public:
   explicit borrowed_bitset_that_always_clears_using_memset(bit_index_type num_bits_desired)
-   : bs_(borrow_bitset(num_bits_desired)) {}
+   : bs_(borrow_bitset(num_bits_desired)), num_bits_borrowed_(num_bits_desired) {}
   borrowed_bitset_that_always_clears_using_memset()
-   : bs_(nullptr) {} //default-constructing invalid bitsets is okay
-  borrowed_bitset_that_always_clears_using_memset(borrowed_bitset_that_always_clears_using_memset&& other)
-    { bs_ = other.bs_; other.bs_ = nullptr; }
+   : bs_(nullptr), num_bits_borrowed_(0) {} //default-constructing invalid bitsets is okay
+  borrowed_bitset_that_always_clears_using_memset(borrowed_bitset_that_always_clears_using_memset&& other) {
+    bs_ = other.bs_; other.bs_ = nullptr;
+    num_bits_borrowed_ = other.num_bits_borrowed_;
+  }
   bool test(bit_index_type which)const {
     caller_correct_if(which < size(), "borrowed_bitset bounds overflow");
     return bs_->here.bits.test_bit(which);
@@ -342,18 +357,19 @@ public:
     return was_already_set;
   }
   bit_index_type size()const {
-    // Implementation detail: this number might be greater than the number
-    // requested by the constructor.  We could store the requested number,
-    // but is it important to?
-    return bs_->here.num_bits;
+    return num_bits_borrowed_;
   }
   ~borrowed_bitset_that_always_clears_using_memset() {
     if(!bs_) return;
-    bs_->here.bits.reset_block_range(0, bs_->here.num_blocks_allocated());
+    bs_->here.bits.reset_block_range(0, num_blocks_borrowed_());
     return_bitset(bs_);
   }
 private:
+  size_t num_blocks_borrowed_()const {
+    return num_blocks_needed_to_contain_num_bits<zeroable_bitset::bitbuffer_type::block_type>(num_bits_borrowed_);
+  }
   zeroable_bitset_node* bs_;
+  bit_index_type num_bits_borrowed_;
 };
 
 
