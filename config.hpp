@@ -151,4 +151,8 @@ inline void caller_correct_if(bool cond, const char* error) {
 
 #define constexpr_require_and_return(cond, str, ret) ((cond) ? (ret) : throw std::logic_error((str)))
 
+#if DEBUG_PRINT_DETERMINISTICALLY
+#include "debug_print_deterministically.hpp"
+#endif
+
 #endif

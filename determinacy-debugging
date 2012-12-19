@@ -1,0 +1,62 @@
+
+now see
+instrument_code_for_determinacy_checking.py
+and debug_print_deterministically.hpp
+
+
+
+early notes:
+
+hacks:
+functions:
+git grep -n --max-depth=1 '[)}] *\(const\)\? *{' | grep -Evw 'if|while|switch|for|do'
+all blocks:
+git grep -n --max-depth=1 '\(\<else\|[)}]\) *\(const\)\? *{'
+non-inline functions (approximately) (so as not to waste too much time/data instrumenting):
+git grep -n --max-depth=1 '[)}] *\(const\)\? *{' | grep -Evw 'if|while|switch|for|do|inline|(^[^:]*:[^:]*: )'
+possibly better (excludes all functions defined in .hpp files):
+git grep -n --max-depth=1 '[)}] *\(const\)\? *{' | grep -Evw 'if|while|switch|for|do|inline|(^[^:.]*\.hpp)'
+
+more restrictions, and estimating fn arg names:
+git grep -n --max-depth=1 '[)}] *\(const\)\? *{' \
+| grep -Ev '\<(if|while|switch|for|do|inline|BOOST_SCOPE_EXIT)\>|(^[^:.]*\.hpp)|(^[^:]*:[^:]*:.*:)' \
+| grep -E --color '\<[a-zA-Z0-9_]+ *[,)]'
+(excluding constructors just because they are hard to parse with regexps)
+
+hmm that's only 157 lines.  Maybe I should add a macro 'instrument' or 'LASERCAKE_INSTRUMENT'
+to make the arg-finding work better
+
+or simpler, only functions that have the { at end of line? {$
+
+
+instrument_code_for_determinacy_checking.py
+
+hmm 'this' - will we be able to tell whether to add it
+
+
+
+#if defined(DEBUG_PRINT_HACK)
+#include <iostream>
+#include <unordered_map>
+inline std::ostream& debug_print_ostream() {return std::cout;}
+template<typename T>
+inline void debug_print_val_deterministically(T const& t) {
+  debug_print_ostream() << t;
+}
+
+inline void debug_print_ptr_deterministically(void* p) {
+  //TODO prevent reuse of pointers from malloc/free: prevent freeing!?
+  typedef std::unordered_map<void*, size_t> ptrmap;
+  typedef typename ptrmap::value_type ptrmapelem;
+  static ptrmap ptr_names;
+  static size_t next_ptr_name = 0;
+  //const auto i = ptr_names.find(
+  const auto pair = ptr_names.insert(ptrmapelem(p, next_ptr_name));
+  next_ptr_name += pair.second;
+  debug_print_ostream() << "ptr:" << pair.first->second;
+}
+template<typename T>
+inline void debug_print_val_deterministically(T const* p) {
+  debug_print_ptr_deterministically(p);
+}
+#endif
