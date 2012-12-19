@@ -92,6 +92,7 @@ struct tile_visitor {
     const cost_type cost = cost_for(octant_, loc);
     while(obj_i_ != obj_end_ && obj_i_->cost < cost) {
       visitor_.found(obj_i_->object);
+      ++obj_i_;
     }
     visitor_.found(loc);
     return true;
@@ -127,6 +128,7 @@ void world::visit_collidable_tiles_and_objects(/*bounding_box bbox,*/ Visitor&& 
   this->visit_collidable_tiles(tile);
   while(tile.obj_i_ != tile.obj_end_) {
     visitor.found(tile.obj_i_->object);
+    ++tile.obj_i_;
   }
 }
 

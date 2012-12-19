@@ -224,8 +224,10 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
 }
 
 // Inlining into prepare_tile() is useful, so specify 'inline'.
-inline color compute_tile_color(tile_location const& loc) {
+inline color compute_tile_color(world const& w, tile_location const& loc) {
   vector3<tile_coordinate> const& coords = loc.coords();
+  auto foo = w.litnesses_.find(object_or_tile_identifier(loc));
+  if(foo != w.litnesses_.end() && foo->second > 0) return color(0x01010100 * std::min(foo->second * 2, 0xff) + 0x000000ff);
   switch (loc.stuff_at().contents()) {
     //prepare_tile() doesn't need this case, so omit it:
     //case AIR: return color(0x00000000);
@@ -250,7 +252,7 @@ inline color compute_tile_color(tile_location const& loc) {
 // draws them in
 // (not even in the hardest case, in which they're translucent so the
 // OpenGL depth buffer can't be used, and different colors).
-void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
+void prepare_tile(world const& w, gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
   vector3<tile_coordinate> const& coords = loc.coords();
   tile const& t = loc.stuff_at();
   const tile_contents contents = t.contents();
@@ -322,7 +324,7 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   coll.quads.reserve_new_slots(4 * (draw_x_close_side + draw_y_close_side + draw_z_close_side));
   vertex_with_color* base = coll.quads.vertices + original_count;
 
-  const color tile_color = compute_tile_color(loc);
+  const color tile_color = compute_tile_color(w, loc);
 
   const vertex_with_color gl_vertices[2][2][2] =
     { { { vertex_with_color(tile_gl_near.x, tile_gl_near.y, tile_gl_near.z, tile_color),
@@ -370,7 +372,7 @@ struct bbox_tile_prep_visitor {
     gl_collection& coll = gl_collections_by_distance.at(
       get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))
     );
-    prepare_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
+    prepare_tile(w, coll, loc, view_loc_double, view_tile_loc_rounded_down);
 
     if (view.drawing_debug_stuff && is_fluid(loc.stuff_at().contents())) {
       vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
@@ -593,7 +595,7 @@ void view_on_the_world::prepare_gl_data(
   for(auto coords : tiles_here) {
     const tile_location here = w.make_tile_location(coords, CONTENTS_AND_LOCAL_CACHES_ONLY);
     const color color_here = (here.stuff_at().contents() == AIR ?
-                                color(0x00000000) : compute_tile_color(here));
+                                color(0x00000000) : compute_tile_color(w,here));
     total_r += color_here.r;
     total_g += color_here.g;
     total_b += color_here.b;

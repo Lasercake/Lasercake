@@ -19,6 +19,7 @@
 
 */
 
+#include "world.hpp"
 #include "object_and_tile_iteration.hpp"
 #include "data_structures/polygon_collision_detection.hpp"
 
@@ -39,23 +40,31 @@ struct sunlight_visitor {
     int result = 0;
     int max_x, max_y, min_x, min_y;
     bool any = false;
-    for (vector3<fine_scalar> const& v : p.get_vertices()) {
+    for (vector3<fine_scalar> const& v : p.vertices()) {
       vector3<fine_scalar> projected_vertex = v;
-      projected_vertex[X] -= projected_vertex(Z) * sun_direction(X) / sun_direction(Z);
+      projected_vertex -= world_center_fine_coords;
+      /*projected_vertex[X] -= projected_vertex(Z) * sun_direction(X) / sun_direction(Z);
       projected_vertex[Y] -= projected_vertex(Z) * sun_direction(Y) / sun_direction(Z);
       projected_vertex[Z] = 0;
 
-      projected_vertex[X] = projected_vertex(X) * 10 / tile_width;
-      projected_vertex[Y] = projected_vertex(Y) * 10 / tile_width;
+      projected_vertex[X] = (projected_vertex(X) * 10 / tile_width) + (SUN_AREA_SIZE / 2);
+      projected_vertex[Y] = (projected_vertex(Y) * 10 / tile_width) + (SUN_AREA_SIZE / 2);*/
+      projected_vertex[X] = ((projected_vertex(X) * sun_direction(Z) - projected_vertex(Z) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+      projected_vertex[Y] = ((projected_vertex(Y) * sun_direction(Z) - projected_vertex(Z) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
       if (!any || projected_vertex(X) > max_x) max_x = projected_vertex(X);
       if (!any || projected_vertex(Y) > max_y) max_y = projected_vertex(Y);
       if (!any || projected_vertex(X) < min_x) min_x = projected_vertex(X);
-      if (!any || projected_vertex(Y) < min_y) max_y = projected_vertex(Y);
+      if (!any || projected_vertex(Y) < min_y) min_y = projected_vertex(Y);
       any = true;
     }
+    assert(any);
+    if (min_x < 0) min_x = 0;
+    if (min_y < 0) min_y = 0;
+    if (max_x >= SUN_AREA_SIZE-1) max_x = SUN_AREA_SIZE-1;
+    if (max_y >= SUN_AREA_SIZE-1) max_y = SUN_AREA_SIZE-1;
 
     for (int x = min_x; x <= max_x; ++x) {
-      for (int y = min_y; i <= max_y; ++i) {
+      for (int y = min_y; y <= max_y; ++y) {
         if (packets[x][y]) {
           packets[x][y] = false;
           ++result;
@@ -70,24 +79,26 @@ struct sunlight_visitor {
       result += do_poly(p);
     }
     for (bounding_box const& b : s.get_boxes()) {
-      result += do_poly(convex_polyhedron(p));
+      result += do_poly(convex_polyhedron(b));
     }
+    return result;
   }
   
   void found(tile_location const& loc) {
-    litnesses_[object_or_tile_identifier(loc)] += do_poly(convex_polyhedron(tile_shape(loc.coords())));
+    w->litnesses_.insert(std::pair<object_or_tile_identifier, int>(loc, 0)).first->second += do_shape(tile_shape(loc.coords()));
   }
   void found(object_identifier oid) {
-    litnesses_[object_or_tile_identifier(oid)] += do_shape(get_object_detail_shape(oid));
+    shape const* ods = find_as_pointer(w->get_object_detail_shapes(), oid); assert(ods);
+    w->litnesses_.insert(std::pair<object_or_tile_identifier, int>(oid, 0)).first->second += do_shape(*ods);
   }
 
-  vector3<fine_scalar> sun_direction;
   world *w;
+  vector3<fine_scalar> sun_direction;
 };
 
-void world::update_light(vector3<fine_scalar> sun_direction);
+void world::update_light(vector3<fine_scalar> sun_direction)
 {
   litnesses_.clear();
-  sunlight_visitor sv(this, sun_direction);
-  visit_collidable_tiles_and_objects(sv);
+  std::unique_ptr<sunlight_visitor> sv(new sunlight_visitor(this, sun_direction));
+  visit_collidable_tiles_and_objects(*sv);
 }
