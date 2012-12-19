@@ -29,7 +29,7 @@ const int SUN_AREA_SIZE = 5000;
 
 struct sunlight_visitor {
   sunlight_visitor(world *w, vector3<fine_scalar> sun_direction): packets(SUN_AREA_SIZE*SUN_AREA_SIZE),w(w),sun_direction(sun_direction) {}
-  borrowed_bitset packets;
+  borrowed_bitset_that_always_clears_using_memset packets;
   octant_number octant()const { return vector_octant(sun_direction); }
   octant_number octant_; //e.g. from vector_octant()
 
