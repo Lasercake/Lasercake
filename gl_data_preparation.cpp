@@ -227,8 +227,8 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
 inline color compute_tile_color(world const& w, tile_location const& loc) {
   vector3<tile_coordinate> const& coords = loc.coords();
   int illumination = 0;
-  auto foo = w.litnesses_.find(object_or_tile_identifier(loc));
-  if(foo != w.litnesses_.end()) illumination = foo->second;
+  auto foo = w.tile_litnesses_.find(coords);
+  if(foo != w.tile_litnesses_.end()) illumination = foo->second;
   illumination += 24;
   if (illumination > 128) illumination = 128;
   uint32_t r = 0;

@@ -356,7 +356,8 @@ using tile_physics_impl::tile_physics_state_t;
 class world {
 public:
   // lolhack. TODO: Replace this with a for-real thing
-std::unordered_map<object_or_tile_identifier, int> litnesses_;
+std::unordered_map<object_identifier, int> object_litnesses_;
+std::unordered_map<vector3<tile_coordinate>, int> tile_litnesses_;
 void update_light(vector3<fine_scalar> sun_direction, uint32_t sun_direction_z_shift);
 
   world(worldgen_function_t f);

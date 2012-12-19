@@ -159,11 +159,11 @@ struct sunlight_visitor {
   }
   
   void found(tile_location const& loc) {
-    w->litnesses_.insert(std::pair<object_or_tile_identifier, int>(loc, 0)).first->second += do_tile(loc.coords());
+    w->tile_litnesses_.insert(std::pair<vector3<tile_coordinate>, int>(loc.coords(), 0)).first->second += do_tile(loc.coords());
   }
   void found(object_identifier oid) {
     shape const* ods = find_as_pointer(w->get_object_detail_shapes(), oid); assert(ods);
-    w->litnesses_.insert(std::pair<object_or_tile_identifier, int>(oid, 0)).first->second += do_shape(*ods);
+    w->object_litnesses_.insert(std::pair<object_identifier, int>(oid, 0)).first->second += do_shape(*ods);
   }
 
   world *w;
@@ -176,7 +176,8 @@ struct sunlight_visitor {
 
 void world::update_light(vector3<fine_scalar> sun_direction, uint32_t sun_direction_z_shift)
 {
-  litnesses_.clear();
+  tile_litnesses_.clear();
+  object_litnesses_.clear();
   sunlight_visitor sv(this, sun_direction, sun_direction_z_shift);
   visit_collidable_tiles_and_objects(sv);
 }
