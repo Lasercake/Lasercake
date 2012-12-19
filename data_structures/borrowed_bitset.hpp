@@ -25,7 +25,7 @@
 #include <list>
 #include <stack>
 #include <boost/utility.hpp>
-#include <boost/dynamic_bitset.hpp>
+#include <cstring> // for memset
 
 #include "../utils.hpp"
 #if 0 && !LASERCAKE_NO_THREADS
@@ -74,15 +74,101 @@ struct liststack : boost::noncopyable {
   }
 };
 
-  
+// reminiscent of boost::dynamic_bitset
+// should Block be a union instead?
+// There is no checking for invalid indexes.
+// In fact, after construction, it doesn't even *know* how large it is.
+// It's for the other parts of the code to keep track of which parts of that
+// they want to.
+//
+// For bitset operations, on x86_64,
+// uint32_t appeared a bit faster than uint64_t as block-size for this.
+template <typename Block = uint32_t>
+struct bitbuffer : boost::noncopyable {
+  typedef Block block_type;
+  typedef ::bit_index_type bit_index_type;
+  typedef size_t block_index_type;
+  typedef int32_t block_width_type;
+  static const block_width_type bits_per_block = std::numeric_limits<Block>::digits;
+  block_type* buffer;
+  bitbuffer() : buffer(nullptr) {}
+  bitbuffer(bitbuffer&& other) {
+    buffer = other.buffer;
+    other.buffer = nullptr;
+  }
+  bitbuffer& operator=(bitbuffer&& other) {
+    buffer = other.buffer;
+    other.buffer = nullptr;
+  }
+
+  void new_zeroed_buffer_with_num_blocks(block_index_type num_blocks) {
+    buffer = new block_type[num_blocks];
+    reset_block_range(0, num_blocks);
+  }
+  void delete_buffer() {
+    if(buffer) {delete[] buffer;}
+    buffer = nullptr;
+  }
+  ~bitbuffer() {
+    delete_buffer();
+  }
+
+  void reset_block_range(block_index_type begin, block_index_type count) {
+    memset(buffer + begin, 0, count * sizeof(block_type));
+  }
+
+  void set_bit(bit_index_type pos) {
+    buffer[block_index(pos)] |= bit_mask(pos);
+  }
+  void reset_bit(bit_index_type pos) {
+    buffer[block_index(pos)] &= ~bit_mask(pos);
+  }
+  void set_bit(bit_index_type pos, bool val) {
+    buffer[block_index(pos)] |= bit_mask_if(pos, val);
+    buffer[block_index(pos)] &= ~bit_mask_if(pos, !val);
+  }
+  void flip_bit(bit_index_type pos) {
+    buffer[block_index(pos)] ^= bit_mask(pos);
+  }
+  bool test_bit(bit_index_type pos)const {
+    return bool(buffer[block_index(pos)] & bit_mask(pos));
+  }
+
+  void set_block(block_index_type pos, block_type val) {
+    buffer[pos] = val;
+  }
+  void get_block(block_index_type pos)const {
+    return buffer[pos];
+  }
+
+  static block_index_type block_index(bit_index_type pos) {
+    return pos / bits_per_block;
+
+  }
+  static block_width_type bit_index(bit_index_type pos) {
+    return static_cast<block_width_type>(pos % bits_per_block);
+  }
+  static block_type bit_mask(bit_index_type pos) {
+    return block_type(1) << bit_index(pos);
+  }
+  static block_type bit_mask_if(bit_index_type pos, bool val) {
+    return block_type(val) << bit_index(pos);
+  }
+};
+
 struct zeroable_bitset {
-  // until this implementation becomes profile-measurable, it's good enough.
+  typedef bitbuffer<> bitbuffer_type;
   bit_index_type num_bits;
-  boost::dynamic_bitset<> bits;
+  bitbuffer_type bits;
   std::vector<bit_index_type> bits_to_clear;
 
-  zeroable_bitset(bit_index_type num_bits)
-   : num_bits(num_bits), bits(num_bits), bits_to_clear() {}
+  zeroable_bitset(bit_index_type num_bits) : num_bits(num_bits) {
+     bits.new_zeroed_buffer_with_num_blocks(num_blocks_allocated());
+  }
+  size_t num_blocks_allocated()const {
+    // Divide rounding up.
+    return (num_bits + (bitbuffer_type::bits_per_block - 1)) / bitbuffer_type::bits_per_block;
+  }
 };
 
 typedef liststack<zeroable_bitset> zeroable_bitset_list;
@@ -196,14 +282,14 @@ public:
   borrowed_bitset(borrowed_bitset&& other) { bs_ = other.bs_; other.bs_ = nullptr; }
   bool test(bit_index_type which)const {
     caller_correct_if(which < size(), "borrowed_bitset bounds overflow");
-    return bs_->here.bits.test(which);
+    return bs_->here.bits.test_bit(which);
   }
   bool set(bit_index_type which) {
     bool was_already_set = test(which);
     if(!was_already_set && tracking_bits_individually_()) {
       bs_->here.bits_to_clear.push_back(which);
     }
-    bs_->here.bits.set(which);
+    bs_->here.bits.set_bit(which);
     return was_already_set;
   }
   bit_index_type size()const {
@@ -216,11 +302,12 @@ public:
     if(!bs_) return;
     if(tracking_bits_individually_()) {
       for(bit_index_type which : bs_->here.bits_to_clear) {
-        bs_->here.bits.reset(which);
+        bs_->here.bits.reset_bit(which);
       }
     }
     else {
-      bs_->here.bits.reset();
+      // TODO optimization: store size of *this* buffer and only clear *that*.
+      bs_->here.bits.reset_block_range(0, bs_->here.num_blocks_allocated());
     }
     bs_->here.bits_to_clear.clear();
     return_bitset(bs_);
@@ -247,11 +334,11 @@ public:
     { bs_ = other.bs_; other.bs_ = nullptr; }
   bool test(bit_index_type which)const {
     caller_correct_if(which < size(), "borrowed_bitset bounds overflow");
-    return bs_->here.bits.test(which);
+    return bs_->here.bits.test_bit(which);
   }
   bool set(bit_index_type which) {
     bool was_already_set = test(which);
-    bs_->here.bits.set(which);
+    bs_->here.bits.set_bit(which);
     return was_already_set;
   }
   bit_index_type size()const {
@@ -262,7 +349,7 @@ public:
   }
   ~borrowed_bitset_that_always_clears_using_memset() {
     if(!bs_) return;
-    bs_->here.bits.reset();
+    bs_->here.bits.reset_block_range(0, bs_->here.num_blocks_allocated());
     return_bitset(bs_);
   }
 private:
