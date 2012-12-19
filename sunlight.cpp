@@ -62,10 +62,8 @@ struct sunlight_visitor {
 
     for (int x = min_x; x <= max_x; ++x) {
       for (int y = min_y; y <= max_y; ++y) {
-        if (!packets.test(x*SUN_AREA_SIZE + y)) {
-          packets.set(x*SUN_AREA_SIZE + y);
-          ++result;
-        }
+        result += !packets.test(x*SUN_AREA_SIZE + y);
+        packets.set(x*SUN_AREA_SIZE + y);
       }
     }
     return result;
@@ -76,10 +74,10 @@ struct sunlight_visitor {
 
     bb.translate(-world_center_fine_coords);
     
-    int max_x = ((bb.max(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-    int min_x = ((bb.min(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-    int max_y = ((bb.max(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-    int min_y = ((bb.min(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    fine_scalar max_x = ((bb.max(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    fine_scalar min_x = ((bb.min(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    fine_scalar max_y = ((bb.max(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    fine_scalar min_y = ((bb.min(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
     
     if (min_x < 0) min_x = 0;
     if (min_y < 0) min_y = 0;
@@ -89,10 +87,8 @@ struct sunlight_visitor {
 
     for (int x = min_x; x <= max_x; ++x) {
       for (int y = min_y; y <= max_y; ++y) {
-        if (!packets.test(x*SUN_AREA_SIZE + y)) {
-          packets.set(x*SUN_AREA_SIZE + y);
-          ++result;
-        }
+        result += !packets.test(x*SUN_AREA_SIZE + y);
+        packets.set(x*SUN_AREA_SIZE + y);
       }
     }
     return result;
