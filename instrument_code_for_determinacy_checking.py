@@ -55,7 +55,7 @@ function_names_to_skip_re = re.compile(r"\b(in_old_box|compute_tile_color|collid
 
 # TODO find a way to print 'this', only for member functions?
 def augment_functions(filename, m):
-	if m.group(1) in {'if', 'while', 'switch', 'for', 'do'}:
+	if m.group(1) in set(['if', 'while', 'switch', 'for', 'do']):
 		return m.group(0)
 	if re.search(functions_to_give_up_on_re, m.group(0)):
 		return m.group(0)
