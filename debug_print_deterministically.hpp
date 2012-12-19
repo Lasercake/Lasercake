@@ -52,6 +52,11 @@ inline void debug_print_val_deterministically(T* p) {
 inline void debug_print_val_deterministically(char const* s) {
   debug_print_ostream() << s;
 }
+#include <boost/shared_ptr.hpp>
+template<typename T>
+inline void debug_print_val_deterministically(boost::shared_ptr<T> const& p) {
+  debug_print_ptr_deterministically(p.get());
+}
 template<typename T1, typename T2>
 inline void debug_print_val_deterministically(std::pair<T1,T2> const& pair) {
   debug_print_ostream() << '(';
