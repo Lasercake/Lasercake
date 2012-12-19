@@ -28,9 +28,7 @@ const int SUN_AREA_SIZE = 5000;
 
 struct sunlight_visitor {
   sunlight_visitor(world *w, vector3<fine_scalar> sun_direction): w(w),sun_direction(sun_direction) {
-    for (int i = 0; i < SUN_AREA_SIZE; ++i) { for (int j = 0; j < SUN_AREA_SIZE; ++j) {
-      packets[i][j] = true;
-    }}
+    memset(packets,0,sizeof(bool)*SUN_AREA_SIZE*SUN_AREA_SIZE);
   }
   bool packets[SUN_AREA_SIZE][SUN_AREA_SIZE];
   octant_number octant()const { return vector_octant(sun_direction); }
@@ -65,27 +63,55 @@ struct sunlight_visitor {
 
     for (int x = min_x; x <= max_x; ++x) {
       for (int y = min_y; y <= max_y; ++y) {
-        if (packets[x][y]) {
-          packets[x][y] = false;
+        if (!packets[x][y]) {
+          packets[x][y] = true;
           ++result;
         }
       }
     }
     return result;
   }
+  
+  int do_bbox(bounding_box bb) {
+    int result = 0;
+
+    bb.translate(-world_center_fine_coords);
+    
+    int max_x = ((bb.max(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    int min_x = ((bb.min(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    int max_y = ((bb.max(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    int min_y = ((bb.min(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    
+    if (min_x < 0) min_x = 0;
+    if (min_y < 0) min_y = 0;
+    if (max_x >= SUN_AREA_SIZE-1) max_x = SUN_AREA_SIZE-1;
+    if (max_y >= SUN_AREA_SIZE-1) max_y = SUN_AREA_SIZE-1;
+    //std::cerr << max_x - min_x << "\n" << max_y - min_y << "!\n";
+
+    for (int x = min_x; x <= max_x; ++x) {
+      for (int y = min_y; y <= max_y; ++y) {
+        if (!packets[x][y]) {
+          packets[x][y] = true;
+          ++result;
+        }
+      }
+    }
+    return result;
+  }
+  
   int do_shape(shape const& s) {
     int result = 0;
     for (convex_polyhedron const& p : s.get_polyhedra()) {
       result += do_poly(p);
     }
     for (bounding_box const& b : s.get_boxes()) {
-      result += do_poly(convex_polyhedron(b));
+      result += do_bbox(b);
     }
     return result;
   }
   
   void found(tile_location const& loc) {
-    w->litnesses_.insert(std::pair<object_or_tile_identifier, int>(loc, 0)).first->second += do_shape(tile_shape(loc.coords()));
+    w->litnesses_.insert(std::pair<object_or_tile_identifier, int>(loc, 0)).first->second += do_bbox(fine_bounding_box_of_tile(loc.coords()));
   }
   void found(object_identifier oid) {
     shape const* ods = find_as_pointer(w->get_object_detail_shapes(), oid); assert(ods);
