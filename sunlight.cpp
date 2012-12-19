@@ -110,13 +110,13 @@ struct sunlight_visitor {
 
   int do_tile(vector3<tile_coordinate> const& coords) {
     int result = 0;
-    fine_scalar base_x =
+    const fine_scalar base_x =
       ((((
             (((coords(X) - world_center_tile_coord) * tile_width ) << sun_direction_z_shift)
           + (((coords(Z) - world_center_tile_coord) * tile_height)  * sun_direction(X)     )
       ) * SUN_PACKETS_PER_TILE_WIDTH) / tile_width) >> sun_direction_z_shift)
       + (SUN_AREA_SIZE / 2);
-    fine_scalar base_y =
+    const fine_scalar base_y =
       ((((
             (((coords(Y) - world_center_tile_coord) * tile_width ) << sun_direction_z_shift)
           + (((coords(Z) - world_center_tile_coord) * tile_height)  * sun_direction(Y)     )
