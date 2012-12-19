@@ -25,6 +25,7 @@
 #include "data_structures/polygon_collision_detection.hpp"
 
 const int SUN_AREA_SIZE = 5000;
+const fine_scalar SUN_PACKETS_PER_TILE_WIDTH = 8;
 
 
 struct sunlight_visitor {
@@ -46,8 +47,8 @@ struct sunlight_visitor {
 
       projected_vertex[X] = (projected_vertex(X) * 10 / tile_width) + (SUN_AREA_SIZE / 2);
       projected_vertex[Y] = (projected_vertex(Y) * 10 / tile_width) + (SUN_AREA_SIZE / 2);*/
-      projected_vertex[X] = ((projected_vertex(X) * sun_direction(Z) - projected_vertex(Z) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-      projected_vertex[Y] = ((projected_vertex(Y) * sun_direction(Z) - projected_vertex(Z) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+      projected_vertex[X] = ((projected_vertex(X) * sun_direction(Z) - projected_vertex(Z) * sun_direction(X)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+      projected_vertex[Y] = ((projected_vertex(Y) * sun_direction(Z) - projected_vertex(Z) * sun_direction(Y)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
       if (!any || projected_vertex(X) > max_x) max_x = projected_vertex(X);
       if (!any || projected_vertex(Y) > max_y) max_y = projected_vertex(Y);
       if (!any || projected_vertex(X) < min_x) min_x = projected_vertex(X);
@@ -74,10 +75,10 @@ struct sunlight_visitor {
 
     bb.translate(-world_center_fine_coords);
     
-    fine_scalar max_x = ((bb.max(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-    fine_scalar min_x = ((bb.min(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(X)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-    fine_scalar max_y = ((bb.max(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-    fine_scalar min_y = ((bb.min(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(Y)) * 10 / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    fine_scalar max_x = ((bb.max(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(X)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    fine_scalar min_x = ((bb.min(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(X)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    fine_scalar max_y = ((bb.max(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(Y)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    fine_scalar min_y = ((bb.min(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(Y)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
     
     if (min_x < 0) min_x = 0;
     if (min_y < 0) min_y = 0;
