@@ -53,12 +53,16 @@ functions_to_give_up_on_re = re.compile(r"\.\.\.")
 # Avoid these specific functions for speed reasons.
 function_names_to_skip_re = re.compile(r"\bin_old_box\b")
 
-def augment_functions(m):
+def augment_functions(filename, m):
 	if m.group(1) in {'if', 'while', 'switch', 'for', 'do'}:
 		return m.group(0)
 	if re.search(functions_to_give_up_on_re, m.group(0)):
 		return m.group(0)
 	if re.search(function_names_to_skip_re, m.group(1)):
+		return m.group(0)
+	# This file is mostly time-critical functions:
+	if filename == 'the_decomposition_of_the_world_into_blocks.cpp' \
+			and m.group(1) != 'ensure_realization_impl':
 		return m.group(0)
 	fnname = m.group(1)
 	argnames = get_arg_names(m.group(2))
@@ -79,8 +83,10 @@ def augment_functions(m):
 
 filecontents_final = {}
 for filename in filenames:
-	filecontents_final[filename] = re.sub(find_functions,
-			augment_functions, filecontents_initial[filename])
+	filecontents_final[filename] = re.sub(
+			find_functions,
+			lambda m: augment_functions(filename, m),
+			filecontents_initial[filename])
 
 for filename in filenames:
 	with open(filename, 'w') as f:
