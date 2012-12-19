@@ -234,9 +234,46 @@ private:
 };
 
 
+// If you know ahead of time that you're going to set most of the bits,
+// this will give a small constant-factor speed improvement over
+// borrowed_bitset.
+class borrowed_bitset_that_always_clears_using_memset : boost::noncopyable {
+public:
+  explicit borrowed_bitset_that_always_clears_using_memset(bit_index_type num_bits_desired)
+   : bs_(borrow_bitset(num_bits_desired)) {}
+  borrowed_bitset_that_always_clears_using_memset()
+   : bs_(nullptr) {} //default-constructing invalid bitsets is okay
+  borrowed_bitset_that_always_clears_using_memset(borrowed_bitset_that_always_clears_using_memset&& other)
+    { bs_ = other.bs_; other.bs_ = nullptr; }
+  bool test(bit_index_type which)const {
+    caller_correct_if(which < size(), "borrowed_bitset bounds overflow");
+    return bs_->here.bits.test(which);
+  }
+  bool set(bit_index_type which) {
+    bool was_already_set = test(which);
+    bs_->here.bits.set(which);
+    return was_already_set;
+  }
+  bit_index_type size()const {
+    // Implementation detail: this number might be greater than the number
+    // requested by the constructor.  We could store the requested number,
+    // but is it important to?
+    return bs_->here.num_bits;
+  }
+  ~borrowed_bitset_that_always_clears_using_memset() {
+    if(!bs_) return;
+    bs_->here.bits.reset();
+    return_bitset(bs_);
+  }
+private:
+  zeroable_bitset_node* bs_;
+};
+
+
 }
 
 using borrowed_bitset_impl::borrowed_bitset;
+using borrowed_bitset_impl::borrowed_bitset_that_always_clears_using_memset;
 
 #endif
 
