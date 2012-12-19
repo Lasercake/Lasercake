@@ -615,6 +615,9 @@ void view_on_the_world::prepare_gl_data(
       view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
     );
   const tile_bounding_box tile_view_bounds = get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(fine_view_bounds);
+  //Uncomment this 'if' to see how inefficient the current (Dec 2012) implementation of
+  //world::ensure_realization_of_space() is for large spaces (e.g. lasercake -v200).
+  //if(w.game_time_elapsed() % (time_units_per_second/3) == 0)
   w.ensure_realization_of_space(tile_view_bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
 
   if (this->drawing_debug_stuff) {
