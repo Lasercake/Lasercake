@@ -130,7 +130,7 @@ struct bitbuffer_ops {
   static void set_block(block_type* buffer, block_index_type pos, block_type val) {
     buffer[pos] = val;
   }
-  static void get_block(block_type const* buffer, block_index_type pos) {
+  static block_type get_block(block_type const* buffer, block_index_type pos) {
     return buffer[pos];
   }
 
@@ -358,6 +358,17 @@ public:
     bit_ops::set_bit(bs_->here.bits, which);
     return was_already_set;
   }
+  uint32_t get_block_32bit(size_t which)const {
+    static_assert(std::numeric_limits<bit_ops::block_type>::digits == 32, "bug");
+    caller_correct_if(which < num_blocks_borrowed_(), "borrowed_bitset bounds overflow");
+    return bit_ops::get_block(bs_->here.bits, which);
+  }
+  void set_block_32bit(size_t which, uint32_t val) {
+    static_assert(std::numeric_limits<bit_ops::block_type>::digits == 32, "bug");
+    caller_correct_if(which < num_blocks_borrowed_(), "borrowed_bitset bounds overflow");
+    bit_ops::set_block(bs_->here.bits, which, val);
+  }
+
   bit_index_type size()const {
     return num_bits_borrowed_;
   }
