@@ -226,18 +226,32 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
 // Inlining into prepare_tile() is useful, so specify 'inline'.
 inline color compute_tile_color(world const& w, tile_location const& loc) {
   vector3<tile_coordinate> const& coords = loc.coords();
+  int illumination = 0;
   auto foo = w.litnesses_.find(object_or_tile_identifier(loc));
-  if(foo != w.litnesses_.end() && foo->second > 0) return color(0x01010100 * std::min(foo->second * 2, 0xff) + 0x000000ff);
+  if(foo != w.litnesses_.end()) illumination = foo->second;
+  illumination += 24;
+  if (illumination > 128) illumination = 128;
+  uint32_t r = 0;
+  uint32_t g = 0;
+  uint32_t b = 0;
+  uint32_t a = 0;
   switch (loc.stuff_at().contents()) {
     //prepare_tile() doesn't need this case, so omit it:
     //case AIR: return color(0x00000000);
-    case ROCK: return color(((((get_primitive<uint32_t>(coords.x) + get_primitive<uint32_t>(coords.y) + get_primitive<uint32_t>(coords.z)) % 3)
-                                                * 0x222222u + 0x333333u) << 8) + 0xffu);
-    case RUBBLE: return color(0xffbb5577);
-    case GROUPABLE_WATER: return color(0x0000ff77);
-    case UNGROUPABLE_WATER: return color(0x6666ff77);
+    case ROCK: {
+      const uint32_t pattern = ((get_primitive<uint32_t>(coords.x) + get_primitive<uint32_t>(coords.y) + get_primitive<uint32_t>(coords.z)) % 3);
+      r = g = b = 0x33 * pattern + 0x55;
+      a = 0xff;
+    } break;
+    case RUBBLE: r = 0xff; g = 0xbb; b = 0x55; a = 0x77; break;
+    case GROUPABLE_WATER: r = 0x00; g = 0x00; b = 0xff; a = 0x77; break;
+    case UNGROUPABLE_WATER: r = 0x66; g = 0x66; b = 0xff; a = 0x77; break;
     default: assert(false);
   }
+  r = r * illumination / 128;
+  g = g * illumination / 128;
+  b = b * illumination / 128;
+  return color((r << 24) + (g << 16) + (b << 8) + a);
 }
 
 
