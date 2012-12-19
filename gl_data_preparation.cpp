@@ -224,18 +224,34 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
 }
 
 // Inlining into prepare_tile() is useful, so specify 'inline'.
-inline color compute_tile_color(tile_location const& loc) {
+inline color compute_tile_color(world const& w, tile_location const& loc) {
   vector3<tile_coordinate> const& coords = loc.coords();
+  int illumination = 0;
+  auto foo = w.litnesses_.find(object_or_tile_identifier(loc));
+  if(foo != w.litnesses_.end()) illumination = foo->second;
+  illumination += 24;
+  if (illumination > 128) illumination = 128;
+  uint32_t r = 0;
+  uint32_t g = 0;
+  uint32_t b = 0;
+  uint32_t a = 0;
   switch (loc.stuff_at().contents()) {
     //prepare_tile() doesn't need this case, so omit it:
     //case AIR: return color(0x00000000);
-    case ROCK: return color(((((get_primitive<uint32_t>(coords.x) + get_primitive<uint32_t>(coords.y) + get_primitive<uint32_t>(coords.z)) % 3)
-                                                * 0x222222u + 0x333333u) << 8) + 0xffu);
-    case RUBBLE: return color(0xffbb5577);
-    case GROUPABLE_WATER: return color(0x0000ff77);
-    case UNGROUPABLE_WATER: return color(0x6666ff77);
+    case ROCK: {
+      const uint32_t pattern = ((get_primitive<uint32_t>(coords.x) + get_primitive<uint32_t>(coords.y) + get_primitive<uint32_t>(coords.z)) % 3);
+      r = g = b = 0x33 * pattern + 0x55;
+      a = 0xff;
+    } break;
+    case RUBBLE: r = 0xff; g = 0xbb; b = 0x55; a = 0x77; break;
+    case GROUPABLE_WATER: r = 0x00; g = 0x00; b = 0xff; a = 0x77; break;
+    case UNGROUPABLE_WATER: r = 0x66; g = 0x66; b = 0xff; a = 0x77; break;
     default: assert(false);
   }
+  r = r * illumination / 128;
+  g = g * illumination / 128;
+  b = b * illumination / 128;
+  return color((r << 24) + (g << 16) + (b << 8) + a);
 }
 
 
@@ -250,7 +266,7 @@ inline color compute_tile_color(tile_location const& loc) {
 // draws them in
 // (not even in the hardest case, in which they're translucent so the
 // OpenGL depth buffer can't be used, and different colors).
-void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
+void prepare_tile(world const& w, gl_collection& coll, tile_location const& loc, vector3<double> const& view_loc_double, vector3<tile_coordinate> view_tile_loc_rounded_down) {
   vector3<tile_coordinate> const& coords = loc.coords();
   tile const& t = loc.stuff_at();
   const tile_contents contents = t.contents();
@@ -322,7 +338,7 @@ void prepare_tile(gl_collection& coll, tile_location const& loc, vector3<double>
   coll.quads.reserve_new_slots(4 * (draw_x_close_side + draw_y_close_side + draw_z_close_side));
   vertex_with_color* base = coll.quads.vertices + original_count;
 
-  const color tile_color = compute_tile_color(loc);
+  const color tile_color = compute_tile_color(w, loc);
 
   const vertex_with_color gl_vertices[2][2][2] =
     { { { vertex_with_color(tile_gl_near.x, tile_gl_near.y, tile_gl_near.z, tile_color),
@@ -370,7 +386,7 @@ struct bbox_tile_prep_visitor {
     gl_collection& coll = gl_collections_by_distance.at(
       get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(loc.coords(), view_tile_loc_rounded_down))
     );
-    prepare_tile(coll, loc, view_loc_double, view_tile_loc_rounded_down);
+    prepare_tile(w, coll, loc, view_loc_double, view_tile_loc_rounded_down);
 
     if (view.drawing_debug_stuff && is_fluid(loc.stuff_at().contents())) {
       vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
@@ -593,7 +609,7 @@ void view_on_the_world::prepare_gl_data(
   for(auto coords : tiles_here) {
     const tile_location here = w.make_tile_location(coords, CONTENTS_AND_LOCAL_CACHES_ONLY);
     const color color_here = (here.stuff_at().contents() == AIR ?
-                                color(0x00000000) : compute_tile_color(here));
+                                color(0x00000000) : compute_tile_color(w,here));
     total_r += color_here.r;
     total_g += color_here.g;
     total_b += color_here.b;

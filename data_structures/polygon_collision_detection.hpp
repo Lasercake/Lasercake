@@ -121,6 +121,7 @@ public:
 
   bool contains(vect const& v)const;
   bool overlaps(bounding_box const& o)const;
+  bool volume_overlaps(bounding_box const& o)const;
   void combine_with(bounding_box const& o);
   void restrict_to(bounding_box const& o);
   void translate(vect t);
@@ -253,6 +254,7 @@ public:
   
   bool intersects(shape const& other)const;
   bool intersects(bounding_box const& other)const;
+  bool volume_intersects(shape const& other)const;
   bounding_box bounds()const;
   vector3<polygon_int_type> arbitrary_interior_point()const;
   

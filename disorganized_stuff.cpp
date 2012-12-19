@@ -37,6 +37,7 @@ void world::update(unordered_map<object_identifier, input_representation::input_
     obj.second->update(*this, *input_for_obj, obj.first);
   }
   update_moving_objects();
+  update_light(vector3<fine_scalar>(3,10,-999), 3);
   current_game_time_ += time_units_per_fixed_frame;
 }
 
@@ -46,10 +47,8 @@ object_identifier world::try_create_object(shared_ptr<object> obj) {
     vector<object_identifier> objects_this_could_collide_with;
     objects_exposed_to_collision_.get_objects_overlapping(objects_this_could_collide_with, obj_shape.bounds());
     for (auto oid : objects_this_could_collide_with) {
-      // TODO: allow a microscopic "tolerance", i.e. make it so that you're allowed to create an object that overlaps another object
-      // by a small amount.  We already have a way to compute "how much" two polyhedra are overlapping, but we need to work out a few
-      // details.  The tolerance is necessary so that tile aligned objects can be placed next to each other.
-      if (object_personal_space_shapes_.find(oid)->second.intersects(obj_shape)){
+      // We use volume_intersects so that tile aligned objects can be placed next to each other.
+      if (object_personal_space_shapes_.find(oid)->second.volume_intersects(obj_shape)){
         return NO_OBJECT;
       }
     }
