@@ -53,6 +53,7 @@ functions_to_give_up_on_re = re.compile(r"\.\.\.")
 # Avoid these specific functions for speed reasons.
 function_names_to_skip_re = re.compile(r"\bin_old_box\b")
 
+# TODO find a way to print 'this', only for member functions?
 def augment_functions(filename, m):
 	if m.group(1) in {'if', 'while', 'switch', 'for', 'do'}:
 		return m.group(0)
