@@ -24,14 +24,20 @@
 #include "object_and_tile_iteration.hpp"
 #include "data_structures/polygon_collision_detection.hpp"
 
-const int SUN_AREA_SIZE = 5000;
+const int SUN_AREA_SIZE = 1<<12;
 const fine_scalar SUN_PACKETS_PER_TILE_WIDTH = 8;
 
 
 struct sunlight_visitor {
   sunlight_visitor(world *w, vector3<fine_scalar> sun_direction, uint32_t sun_direction_z_shift): packets(SUN_AREA_SIZE*SUN_AREA_SIZE),w(w),sun_direction(sun_direction),sun_direction_z_shift(sun_direction_z_shift),
     tile_sunbitwidth_x(SUN_PACKETS_PER_TILE_WIDTH + (((std::abs(sun_direction(X)) * tile_height * SUN_PACKETS_PER_TILE_WIDTH + ((tile_width<<sun_direction_z_shift) - 1)) / tile_width) >> sun_direction_z_shift)),
-    tile_sunbitwidth_y(SUN_PACKETS_PER_TILE_WIDTH + (((std::abs(sun_direction(Y)) * tile_height * SUN_PACKETS_PER_TILE_WIDTH + ((tile_width<<sun_direction_z_shift) - 1)) / tile_width) >> sun_direction_z_shift)){}
+    tile_sunbitwidth_y(SUN_PACKETS_PER_TILE_WIDTH + (((std::abs(sun_direction(Y)) * tile_height * SUN_PACKETS_PER_TILE_WIDTH + ((tile_width<<sun_direction_z_shift) - 1)) / tile_width) >> sun_direction_z_shift)),
+    tile_yrow_mask(0x0)
+  {
+    for (int i = 0; i < tile_sunbitwidth_y; ++i) {
+      tile_yrow_mask |= (1 << (31 - i));
+    }
+  }
   borrowed_bitset_that_always_clears_using_memset packets;
   octant_number octant()const { return vector_octant(sun_direction); }
   octant_number octant_; //e.g. from vector_octant()
@@ -108,6 +114,13 @@ struct sunlight_visitor {
     return result;
   }
 
+  template<bool offset_is_positive> inline int do_tile_row_part(fine_scalar x, fine_scalar y_block, fine_scalar offset) {
+    const uint32_t y_block_contents = packets.get_block_32bit((x * (SUN_AREA_SIZE >> 5)) + y_block);
+    const uint32_t mask = (offset_is_positive) ? (tile_yrow_mask >> offset) : (tile_yrow_mask << -offset);
+    packets.set_block_32bit((x * (SUN_AREA_SIZE >> 5)) + y_block, y_block_contents | mask);
+    return popcount(mask & ~y_block_contents);
+  }
+
   int do_tile(vector3<tile_coordinate> const& coords) {
     int result = 0;
     const fine_scalar base_x =
@@ -124,12 +137,24 @@ struct sunlight_visitor {
       + (SUN_AREA_SIZE / 2);
     //std::cerr << base_x << "," << base_y << "," << SUN_AREA_SIZE << "," << sun_direction << "," << sun_direction_z_shift << "," << coords << "," << tile_sunbitwidth_x << "," << tile_sunbitwidth_y << "\n";
 
+    const fine_scalar base_y_block = base_y >> 5;
+    const fine_scalar offset = base_y - (base_y_block << 5);
+    const fine_scalar last_y_block = ((base_y + tile_sunbitwidth_x - 1) >> 5);
+    //std::cerr<<( last_y_block - base_y_block);
+
     for (int x = std::max(base_x, fine_scalar(0)); x < base_x + tile_sunbitwidth_x && x < SUN_AREA_SIZE; ++x) {
+      result += do_tile_row_part<true>(x, base_y_block, offset);
+      if (last_y_block != base_y_block) {
+        result += do_tile_row_part<false>(x, last_y_block, offset - 32);
+      }
+    }
+
+    /*for (int x = std::max(base_x, fine_scalar(0)); x < base_x + tile_sunbitwidth_x && x < SUN_AREA_SIZE; ++x) {
       for (int y = std::max(base_y, fine_scalar(0)); y < base_y + tile_sunbitwidth_y && y < SUN_AREA_SIZE; ++y) {
         result += !packets.test(x*SUN_AREA_SIZE + y);
         packets.set(x*SUN_AREA_SIZE + y);
       }
-    }
+    }*/
     return result;
   }
   
@@ -146,6 +171,7 @@ struct sunlight_visitor {
   uint32_t sun_direction_z_shift;
   fine_scalar tile_sunbitwidth_x;
   fine_scalar tile_sunbitwidth_y;
+  uint32_t tile_yrow_mask;
 };
 
 void world::update_light(vector3<fine_scalar> sun_direction, uint32_t sun_direction_z_shift)
