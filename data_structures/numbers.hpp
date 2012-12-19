@@ -146,6 +146,59 @@ inline ShiftedType safe_left_shift(ShiftedType const& a, ShiftValueType const& s
 }
 
 
+inline int32_t popcount(uint64_t argument)  {
+  static const uint64_t mask0 = 0x5555555555555555;
+  static const uint64_t mask1 = 0x3333333333333333;
+  static const uint64_t mask2 = 0x0f0f0f0f0f0f0f0f;
+  static const uint64_t mask3 = 0x00ff00ff00ff00ff;
+  static const uint64_t mask4 = 0x0000ffff0000ffff;
+  static const uint64_t mask5 = 0x00000000ffffffff;
+  uint64_t n = argument;
+  n = (n & mask0) + ((n >> (1<<0)) & mask0);
+  n = (n & mask1) + ((n >> (1<<1)) & mask1);
+  n = (n & mask2) + ((n >> (1<<2)) & mask2);
+  n = (n & mask3) + ((n >> (1<<3)) & mask3);
+  n = (n & mask4) + ((n >> (1<<4)) & mask4);
+  n = (n & mask5) + ((n >> (1<<5)) & mask5);
+  return int32_t(n);
+}
+inline int32_t popcount(uint32_t argument)  {
+  static const uint32_t mask0 = 0x55555555;
+  static const uint32_t mask1 = 0x33333333;
+  static const uint32_t mask2 = 0x0f0f0f0f;
+  static const uint32_t mask3 = 0x00ff00ff;
+  static const uint32_t mask4 = 0x0000ffff;
+  uint32_t n = argument;
+  n = (n & mask0) + ((n >> (1<<0)) & mask0);
+  n = (n & mask1) + ((n >> (1<<1)) & mask1);
+  n = (n & mask2) + ((n >> (1<<2)) & mask2);
+  n = (n & mask3) + ((n >> (1<<3)) & mask3);
+  n = (n & mask4) + ((n >> (1<<4)) & mask4);
+  return int32_t(n);
+}
+inline int32_t popcount(uint16_t argument)  {
+  static const uint32_t mask0 = 0x5555;
+  static const uint32_t mask1 = 0x3333;
+  static const uint32_t mask2 = 0x0f0f;
+  static const uint32_t mask3 = 0x00ff;
+  uint32_t n = argument;
+  n = (n & mask0) + ((n >> (1<<0)) & mask0);
+  n = (n & mask1) + ((n >> (1<<1)) & mask1);
+  n = (n & mask2) + ((n >> (1<<2)) & mask2);
+  n = (n & mask3) + ((n >> (1<<3)) & mask3);
+  return int32_t(n);
+}
+inline int32_t popcount(uint8_t argument)  {
+  static const uint32_t mask0 = 0x55;
+  static const uint32_t mask1 = 0x33;
+  static const uint32_t mask2 = 0x0f;
+  uint32_t n = argument;
+  n = (n & mask0) + ((n >> (1<<0)) & mask0);
+  n = (n & mask1) + ((n >> (1<<1)) & mask1);
+  n = (n & mask2) + ((n >> (1<<2)) & mask2);
+  return int32_t(n);
+}
+
 
 template<typename Int>
 inline int32_t ilog2(Int argument) {

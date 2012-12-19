@@ -29,6 +29,36 @@
 
 namespace /* anonymous */ {
 
+int32_t popcount_obvious(uint64_t number, size_t bits) {
+  size_t count = 0;
+  for(size_t i = 0; i != bits; ++i) {
+    count += bool(number & (uint64_t(1) << i));
+  }
+  return count;
+}
+
+void popcount_test(uint64_t number) {
+  BOOST_CHECK_EQUAL(popcount(uint64_t(number)), popcount_obvious(number, 64));
+  BOOST_CHECK_EQUAL(popcount(uint32_t(number)), popcount_obvious(number, 32));
+  BOOST_CHECK_EQUAL(popcount(uint16_t(number)), popcount_obvious(number, 16));
+  BOOST_CHECK_EQUAL(popcount(uint8_t(number)), popcount_obvious(number, 8));
+}
+
+BOOST_AUTO_TEST_CASE( my_popcount ) {
+  BOOST_CHECK_EQUAL(popcount(uint64_t(0xef)), 7);
+  BOOST_CHECK_EQUAL(popcount(uint32_t(0xef)), 7);
+  BOOST_CHECK_EQUAL(popcount(uint16_t(0xef)), 7);
+  BOOST_CHECK_EQUAL(popcount(uint8_t(0xef)), 7);
+
+  std::array<uint64_t, 20> numbers_to_test = {{ 0, 1, 2, 3, 4, 5, 17, 232, 500,
+    78978978, 8948954789789349789ull, 0xfffffffful, 0x100000000ull,
+    0x100000001ull, 0xffffffffffffffffull, 0xfffffffffffffffeull,
+    0xeeeeeeeeeeeeeeeeull, 0xfffffffe00000001ull, 0xfffffffe00000000ull,
+    0xffffffffffffffffull
+  }};
+  std::for_each(numbers_to_test.begin(), numbers_to_test.end(), &popcount_test);
+}
+
 void i64sqrt_test(uint64_t radicand) {
   uint64_t sqrt_result = i64sqrt(radicand); //implicit cast the result to 64 bits so we can square it
   BOOST_CHECK_LE(sqrt_result * sqrt_result, radicand);
