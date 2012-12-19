@@ -123,6 +123,10 @@ struct tile_bounding_box {
       vector3<tile_coordinate> dereference()const { return data_.first; }
 
       explicit iterator(pair<vector3<tile_coordinate>, tile_bounding_box const*> data):data_(data){}
+
+      friend inline std::ostream& operator<<(std::ostream& os, tile_bounding_box::iterator const& it) {
+        return os << '{' << it.data_.second << "@" << it.data_.first << '}';
+      }
     private:
       friend class boost::iterator_core_access;
       friend struct tile_bounding_box;

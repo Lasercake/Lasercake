@@ -62,6 +62,19 @@ struct config_struct {
   bool use_opengl_thread;
   bool use_simulation_thread;
 };
+inline std::ostream& operator<<(std::ostream& os, config_struct const& config) {
+  return os << '{'
+    << "scenario=" << config.scenario
+    << "; crazy_lasers=" << config.crazy_lasers
+    << "; view_radius=" << config.view_radius
+    << "; have_gui=" << config.have_gui
+    << "; run_drawing_code=" << config.run_drawing_code
+    << "; initially_drawing_debug_stuff=" << config.initially_drawing_debug_stuff
+    << "; exit_after_frames=" << config.exit_after_frames
+    << "; use_opengl_thread=" << config.use_opengl_thread
+    << "; use_simulation_thread=" << config.use_simulation_thread
+    << '}';
+}
 
 // for use in its own QThread
 class LasercakeSimulator : public QObject {

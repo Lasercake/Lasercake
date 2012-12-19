@@ -138,6 +138,21 @@ private:
   keys_currently_pressed_t keys_currently_pressed_;
   key_activity_t key_activity_since_last_frame_;
 };
+inline std::ostream& operator<<(std::ostream& os, input_news_t const& news) {
+  os << "{currently pressed:";
+  //bool first = true;
+  for(key_type key : news.keys_currently_pressed()) {
+    os << ' ' << key;
+    //if(!first) { os << ' '; }
+    //first = false;
+    //os << key;
+  }
+  os << "; activity:";
+  for(key_change_t change : news.key_activity_since_last_frame()) {
+    os << ' ' << change.first << ':' << (change.second == PRESSED ? "down" : "up");
+  }
+  return os << '}';
+}
 
 } //end namespace input_representation
 
