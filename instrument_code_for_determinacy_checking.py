@@ -21,7 +21,7 @@ find_functions = re.compile(
 	re.VERBOSE | re.DOTALL)
 	    # (?:(?:[^()]|\([^()]*\)))     #constructor filler matter
 
-filenames = ['tiles.hpp'] + glob.glob('*.cpp')
+filenames = glob.glob('*.cpp')
 
 subprocess.check_call(['git', 'checkout'] + filenames)
 
@@ -50,11 +50,15 @@ def get_arg_names(argstr):
 # Give up on parameter packs / vararg functions
 # rather than try hard to implement sensible things for uncommon functions.
 functions_to_give_up_on_re = re.compile(r"\.\.\.")
+# Avoid these specific functions for speed reasons.
+function_names_to_skip_re = re.compile(r"\bin_old_box\b")
 
 def augment_functions(m):
 	if m.group(1) in {'if', 'while', 'switch', 'for', 'do'}:
 		return m.group(0)
 	if re.search(functions_to_give_up_on_re, m.group(0)):
+		return m.group(0)
+	if re.search(function_names_to_skip_re, m.group(1)):
 		return m.group(0)
 	fnname = m.group(1)
 	argnames = get_arg_names(m.group(2))
