@@ -49,6 +49,10 @@ struct vertex {
   GLfloat x, y, z;
 };
 static_assert(sizeof(vertex) == 3*sizeof(GLfloat), "OpenGL needs this data layout.");
+inline std::ostream& operator<<(std::ostream& os, vertex const& v) {
+  // TODO does the float precision we output here matter?
+  return os << '(' << v.x << ", " << v.y << ", " << v.z << ')';
+}
 
 struct color {
   color() {}
@@ -67,6 +71,10 @@ struct color {
   GLubyte r, g, b, a;
 };
 static_assert(sizeof(color) == 4*sizeof(GLubyte), "OpenGL needs this data layout.");
+inline std::ostream& operator<<(std::ostream& os, color const& c) {
+  // TODO does the float precision we output here matter?
+  return os << "rgba(" << std::hex << c.r << c.g << c.b << c.a << std::dec << ')';
+}
 
 struct vertex_with_color {
   vertex_with_color() {}
@@ -77,6 +85,10 @@ struct vertex_with_color {
   vertex v;
 };
 static_assert(sizeof(vertex_with_color) == 16, "OpenGL needs this data layout.");
+inline std::ostream& operator<<(std::ostream& os, vertex_with_color const& vc) {
+  // TODO does the float precision we output here matter?
+  return os << vc.c << '~' << vc.v;
+}
 
 struct gl_call_data {
   typedef uint32_t size_type;
