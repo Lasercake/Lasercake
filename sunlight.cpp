@@ -29,7 +29,9 @@ const fine_scalar SUN_PACKETS_PER_TILE_WIDTH = 8;
 
 
 struct sunlight_visitor {
-  sunlight_visitor(world *w, vector3<fine_scalar> sun_direction): packets(SUN_AREA_SIZE*SUN_AREA_SIZE),w(w),sun_direction(sun_direction) {}
+  sunlight_visitor(world *w, vector3<fine_scalar> sun_direction, uint32_t sun_direction_z_shift): packets(SUN_AREA_SIZE*SUN_AREA_SIZE),w(w),sun_direction(sun_direction),sun_direction_z_shift(sun_direction_z_shift),
+    tile_sunbitwidth_x(SUN_PACKETS_PER_TILE_WIDTH + (((std::abs(sun_direction(X)) * tile_height * SUN_PACKETS_PER_TILE_WIDTH + ((tile_width<<sun_direction_z_shift) - 1)) / tile_width) >> sun_direction_z_shift)),
+    tile_sunbitwidth_y(SUN_PACKETS_PER_TILE_WIDTH + (((std::abs(sun_direction(Y)) * tile_height * SUN_PACKETS_PER_TILE_WIDTH + ((tile_width<<sun_direction_z_shift) - 1)) / tile_width) >> sun_direction_z_shift)){}
   borrowed_bitset_that_always_clears_using_memset packets;
   octant_number octant()const { return vector_octant(sun_direction); }
   octant_number octant_; //e.g. from vector_octant()
@@ -47,8 +49,8 @@ struct sunlight_visitor {
 
       projected_vertex[X] = (projected_vertex(X) * 10 / tile_width) + (SUN_AREA_SIZE / 2);
       projected_vertex[Y] = (projected_vertex(Y) * 10 / tile_width) + (SUN_AREA_SIZE / 2);*/
-      projected_vertex[X] = ((projected_vertex(X) * sun_direction(Z) - projected_vertex(Z) * sun_direction(X)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-      projected_vertex[Y] = ((projected_vertex(Y) * sun_direction(Z) - projected_vertex(Z) * sun_direction(Y)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+      projected_vertex[X] = ((((projected_vertex(X) << sun_direction_z_shift) + projected_vertex(Z) * sun_direction(X)) * SUN_PACKETS_PER_TILE_WIDTH / tile_width) >> sun_direction_z_shift) + (SUN_AREA_SIZE / 2);
+      projected_vertex[Y] = ((((projected_vertex(Y) << sun_direction_z_shift) + projected_vertex(Z) * sun_direction(Y)) * SUN_PACKETS_PER_TILE_WIDTH / tile_width) >> sun_direction_z_shift) + (SUN_AREA_SIZE / 2);
       if (!any || projected_vertex(X) > max_x) max_x = projected_vertex(X);
       if (!any || projected_vertex(Y) > max_y) max_y = projected_vertex(Y);
       if (!any || projected_vertex(X) < min_x) min_x = projected_vertex(X);
@@ -75,10 +77,10 @@ struct sunlight_visitor {
 
     bb.translate(-world_center_fine_coords);
     
-    fine_scalar max_x = ((bb.max(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(X)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-    fine_scalar min_x = ((bb.min(X) * sun_direction(Z) - (sun_direction(X) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(X)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-    fine_scalar max_y = ((bb.max(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(Y)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
-    fine_scalar min_y = ((bb.min(Y) * sun_direction(Z) - (sun_direction(Y) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(Y)) * SUN_PACKETS_PER_TILE_WIDTH / (tile_width * sun_direction(Z))) + (SUN_AREA_SIZE / 2);
+    fine_scalar max_x = ((((bb.max(X) << sun_direction_z_shift) + (sun_direction(X) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(X)) * SUN_PACKETS_PER_TILE_WIDTH / tile_width) >> sun_direction_z_shift) + (SUN_AREA_SIZE / 2);
+    fine_scalar min_x = ((((bb.min(X) << sun_direction_z_shift) + (sun_direction(X) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(X)) * SUN_PACKETS_PER_TILE_WIDTH / tile_width) >> sun_direction_z_shift) + (SUN_AREA_SIZE / 2);
+    fine_scalar max_y = ((((bb.max(Y) << sun_direction_z_shift) + (sun_direction(Y) > 0 ? bb.max(Z) : bb.min(Z)) * sun_direction(Y)) * SUN_PACKETS_PER_TILE_WIDTH / tile_width) >> sun_direction_z_shift) + (SUN_AREA_SIZE / 2);
+    fine_scalar min_y = ((((bb.min(Y) << sun_direction_z_shift) + (sun_direction(Y) > 0 ? bb.min(Z) : bb.max(Z)) * sun_direction(Y)) * SUN_PACKETS_PER_TILE_WIDTH / tile_width) >> sun_direction_z_shift) + (SUN_AREA_SIZE / 2);
     
     if (min_x < 0) min_x = 0;
     if (min_y < 0) min_y = 0;
@@ -105,9 +107,34 @@ struct sunlight_visitor {
     }
     return result;
   }
+
+  int do_tile(vector3<tile_coordinate> const& coords) {
+    int result = 0;
+    fine_scalar base_x =
+      ((((
+            (((coords(X) - world_center_tile_coord) * tile_width ) << sun_direction_z_shift)
+          + (((coords(Z) - world_center_tile_coord) * tile_height)  * sun_direction(X)     )
+      ) * SUN_PACKETS_PER_TILE_WIDTH) / tile_width) >> sun_direction_z_shift)
+      + (SUN_AREA_SIZE / 2);
+    fine_scalar base_y =
+      ((((
+            (((coords(Y) - world_center_tile_coord) * tile_width ) << sun_direction_z_shift)
+          + (((coords(Z) - world_center_tile_coord) * tile_height)  * sun_direction(Y)     )
+      ) * SUN_PACKETS_PER_TILE_WIDTH) / tile_width) >> sun_direction_z_shift)
+      + (SUN_AREA_SIZE / 2);
+    //std::cerr << base_x << "," << base_y << "," << SUN_AREA_SIZE << "," << sun_direction << "," << sun_direction_z_shift << "," << coords << "," << tile_sunbitwidth_x << "," << tile_sunbitwidth_y << "\n";
+
+    for (int x = std::max(base_x, fine_scalar(0)); x < base_x + tile_sunbitwidth_x && x < SUN_AREA_SIZE; ++x) {
+      for (int y = std::max(base_y, fine_scalar(0)); y < base_y + tile_sunbitwidth_y && y < SUN_AREA_SIZE; ++y) {
+        result += !packets.test(x*SUN_AREA_SIZE + y);
+        packets.set(x*SUN_AREA_SIZE + y);
+      }
+    }
+    return result;
+  }
   
   void found(tile_location const& loc) {
-    w->litnesses_.insert(std::pair<object_or_tile_identifier, int>(loc, 0)).first->second += do_bbox(fine_bounding_box_of_tile(loc.coords()));
+    w->litnesses_.insert(std::pair<object_or_tile_identifier, int>(loc, 0)).first->second += do_tile(loc.coords());
   }
   void found(object_identifier oid) {
     shape const* ods = find_as_pointer(w->get_object_detail_shapes(), oid); assert(ods);
@@ -116,11 +143,14 @@ struct sunlight_visitor {
 
   world *w;
   vector3<fine_scalar> sun_direction;
+  uint32_t sun_direction_z_shift;
+  fine_scalar tile_sunbitwidth_x;
+  fine_scalar tile_sunbitwidth_y;
 };
 
-void world::update_light(vector3<fine_scalar> sun_direction)
+void world::update_light(vector3<fine_scalar> sun_direction, uint32_t sun_direction_z_shift)
 {
   litnesses_.clear();
-  sunlight_visitor sv(this, sun_direction);
+  sunlight_visitor sv(this, sun_direction, sun_direction_z_shift);
   visit_collidable_tiles_and_objects(sv);
 }
