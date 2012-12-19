@@ -229,6 +229,11 @@ public:
   static const uint8_t there_is_an_object_here_that_affects_the_tile_based_physics_mask =
     (1<<there_is_an_object_here_that_affects_the_tile_based_physics_bit_position);
 
+  // As a debugging aid; it could certainly produce more human-transparent output!
+  friend inline std::ostream& operator<<(std::ostream& os, tile t) {
+    return os << std::hex << t.tile_data_ << std::dec;
+  }
+
 private:
   uint8_t tile_data_;
 };
