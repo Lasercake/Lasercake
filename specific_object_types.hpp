@@ -24,6 +24,33 @@
 
 #include "world.hpp"
 
+
+#if 0
+// Should all views be objects in the world?
+// (Dilemma: may, or may not, the view affect the simulation even a bit?)
+// If views from no particular robot were objects in the world,
+// they might look like this:
+
+class dull_ghost : public autonomous_object {
+public:
+  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
+private:
+  vector3<fine_scalar> location_;
+  vector3<fine_scalar> facing_;//double view_direction;
+};
+
+class circling_surveillance_ghost : public autonomous_object {
+public:
+  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
+private:
+  // circles a particular location at a distance
+  // currently, the angle of view is a function of the current time, lol;
+  // a trigonometric function, too, so we can't call it except in display code.
+  vector3<fine_scalar> surveilled_location_;
+  fine_scalar view_dist_;
+};
+#endif
+
 class robot : public mobile_object, public autonomous_object, public object_with_eye_direction, public object_with_player_instructions {
 public:
   robot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location_(location),facing_(facing),carrying_(false){}
