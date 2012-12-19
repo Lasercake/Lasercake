@@ -120,6 +120,6 @@ struct sunlight_visitor {
 void world::update_light(vector3<fine_scalar> sun_direction)
 {
   litnesses_.clear();
-  std::unique_ptr<sunlight_visitor> sv(new sunlight_visitor(this, sun_direction));
-  visit_collidable_tiles_and_objects(*sv);
+  sunlight_visitor sv(this, sun_direction);
+  visit_collidable_tiles_and_objects(sv);
 }
