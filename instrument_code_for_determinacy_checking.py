@@ -4,7 +4,7 @@
 
 import re, os, sys, subprocess, glob
 
-if len(sys.argv) < 1 or sys.argv[1] in set(['-h','-?','-help','--help']) \
+if len(sys.argv) < 2 or sys.argv[1] in set(['-h','-?','-help','--help']) \
 		or sys.argv[1] not in set(['instrument', 'restore']):
 	print("""
 Usage: %s [instrument|restore]
