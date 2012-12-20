@@ -76,6 +76,17 @@ template<typename T>
 inline void debug_print_val_deterministically(boost::shared_ptr<T> const& p) {
   debug_print_ptr_deterministically(p.get());
 }
+#include <memory>
+template<typename T, typename Del>
+inline void debug_print_val_deterministically(std::unique_ptr<T, Del> const& p) {
+  debug_print_ptr_deterministically(p.get());
+}
+#include <boost/scoped_ptr.hpp>
+template<typename T>
+inline void debug_print_val_deterministically(boost::scoped_ptr<T> const& p) {
+  debug_print_ptr_deterministically(p.get());
+}
+
 template<typename T1, typename T2>
 inline void debug_print_val_deterministically(std::pair<T1,T2> const& pair) {
   debug_print_ostream() << '(';
