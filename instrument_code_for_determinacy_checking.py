@@ -32,8 +32,14 @@ find_functions = re.compile(
 	    ([^()]*) #arguments
 	    \)       #end parenthesis
 	    \s*(?:const\s*)?  #filler matter
-	    (?::.*?[)\s])? # constructor filler matter, ending with ) or space
-	                   # right before the function begin curly brace
+	    (?::[^;]*?[)\s])? # constructor filler matter, ending with ) or
+	                      # space right before the function begin curly
+	                      # brace.
+	                      # Semicolons are excluded as a hack to keep the
+			      # ?: operator from occasionally looking like a
+			      # constructor definition e.g. non-function
+			      # result_type(*i) in:
+			      #   i ? result_type(*i) : result_type();
 	    {        #begin function body
 	 """,
 	re.VERBOSE | re.DOTALL)
