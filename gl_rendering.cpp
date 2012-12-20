@@ -76,9 +76,9 @@ void gl_renderer::output_gl_data_to_OpenGL(
       return;
     }
 
-    glGenBuffers(1, &state_->rect_VBO_name);
-    glBindBuffer(GL_ARRAY_BUFFER, state_->rect_VBO_name);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(rect_type), nullptr, GL_STREAM_DRAW);
+    glGenBuffersARB(1, &state_->rect_VBO_name);
+    glBindBufferARB(GL_ARRAY_BUFFER, state_->rect_VBO_name);
+    glBufferDataARB(GL_ARRAY_BUFFER, sizeof(rect_type), nullptr, GL_STREAM_DRAW);
   }
   // TODO Apparently atexit we should glDeleteBuffers, glDisable, and stuff?
 
@@ -112,7 +112,7 @@ void gl_renderer::output_gl_data_to_OpenGL(
     catch(std::bad_alloc const&) {
       return;
     }
-    glGenBuffers(num_new_buffers, &state_->by_distance_VBO_names[new_buffers_base]);
+    glGenBuffersARB(num_new_buffers, &state_->by_distance_VBO_names[new_buffers_base]);
     for(size_t i = 0; i != num_new_buffers; ++i) {
       state_->by_distance_VBO_sizes[new_buffers_base + i] = 0;
     }
@@ -136,13 +136,13 @@ void gl_renderer::output_gl_data_to_OpenGL(
       gl_call_data const& data = coll.*(type.gl_data_container_ptr_to_member);
       if(const size_t count = data.size()) {
         const size_t buf_name_idx = dist*DISTANCE_IDX_FACTOR + type.our_idx_adj;
-        glBindBuffer(GL_ARRAY_BUFFER, state_->by_distance_VBO_names[buf_name_idx]);
+        glBindBufferARB(GL_ARRAY_BUFFER, state_->by_distance_VBO_names[buf_name_idx]);
         if(state_->by_distance_VBO_sizes[buf_name_idx] < count) {
-          glBufferData(GL_ARRAY_BUFFER, count*sizeof(vertex_with_color), data.vertices, GL_STREAM_DRAW);
+          glBufferDataARB(GL_ARRAY_BUFFER, count*sizeof(vertex_with_color), data.vertices, GL_STREAM_DRAW);
           state_->by_distance_VBO_sizes[buf_name_idx] = count;
         }
         else {
-          glBufferSubData(GL_ARRAY_BUFFER, 0, count*sizeof(vertex_with_color), data.vertices);
+          glBufferSubDataARB(GL_ARRAY_BUFFER, 0, count*sizeof(vertex_with_color), data.vertices);
         }
         glInterleavedArrays(GL_C4UB_V3F, 0, BUFFER_OFFSET(0));
         glDrawArrays(type.gl_type, 0, count);
@@ -160,11 +160,11 @@ void gl_renderer::output_gl_data_to_OpenGL(
   }};
   glLoadIdentity();
   glOrtho(0, 1, 0, 1, -1, 1);
-  glBindBuffer(GL_ARRAY_BUFFER, state_->rect_VBO_name);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(rect), &rect[0]);
+  glBindBufferARB(GL_ARRAY_BUFFER, state_->rect_VBO_name);
+  glBufferSubDataARB(GL_ARRAY_BUFFER, 0, sizeof(rect), &rect[0]);
   glInterleavedArrays(GL_C4UB_V3F, 0, BUFFER_OFFSET(0));
   glDrawArrays(GL_QUADS, 0, 4);
-  glBindBuffer(GL_ARRAY_BUFFER, INVALID_BUFFER_ID);
+  glBindBufferARB(GL_ARRAY_BUFFER, INVALID_BUFFER_ID);
 
   render_2d_text_overlay_(gl_data, viewport_width, viewport_height, gl_widget);
 }
