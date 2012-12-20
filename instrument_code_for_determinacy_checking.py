@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 # Using regexps for parsing C++ is, of course, entirely a hack.
+# Configuration that you might want to change is in this file,
+# below the help message and above the trickier code.
 
 import re, os, sys, subprocess, glob
 
@@ -26,7 +28,57 @@ optimizer does.
 do_restore = True
 do_instrument = (sys.argv[1] == 'instrument')
 
-find_functions = re.compile(
+# Configuration that you might want to change:
+
+# Instrument functions in these files:
+# (Note: files not currently instrumented might not easily work
+# to instrument, because of regexp hacks doing the wrong thing
+# or argument types that can't easily be serialized.  To fix the
+# latter, add functions for your types similar to
+#     std::ostream& operator<<(std::ostream&, type)
+# , or put the troublesome argument's type name [in the form it's
+# used textually] in excluded_re below, or add an overload in
+# debug_print_deterministically.hpp.)
+filenames = glob.glob('*.cpp')
+
+# Any function argument type strings (as written) that contain
+# anything matching this regexp are omitted (not attempted to
+# be written to output).  This can be useful for large or
+# impossible-to-output data (though various tricky things *can*
+# be done for certain data; see debug_print_deterministically.hpp).
+excluded_re = re.compile(r"""
+  \b(?:
+    world|frame_output_t|gl_all_data|gl_collection|gl_call_data
+    |state_t|tile_physics_state_t|volume_calipers|active_fluids_t
+      |water_groups_by_location_t|persistent_water_group_info
+      |groupable_water_volume_calipers_t|persistent_water_groups_t
+    |objects_map|object_shapes_t
+  )\b
+  |\bQ[A-Z]|\bLasercake[A-Z]
+  |function|_map\b|_set\b|\bset\b|\bmap\b
+  |collision_detector|priority_queue|borrowed_bitset
+  """, re.VERBOSE)
+
+# Avoid these specific functions for speed reasons.
+# (Alternately, we could put e.g. /*noinstrument*/ immediately before
+# the function's begin curly brace and that would also prevent this code
+# from instrumenting that function.)
+function_names_to_skip_re = re.compile(r"""
+  \b(
+    in_old_box|compute_tile_color|collidable_tile|prepare_tile
+    |cast_vector3_to_float|cast_vector3_to_double|look_here
+    |tile_manhattan_distance_to_tile_bounding_box
+    |do_tile
+  )\b
+  """, re.VERBOSE)
+
+# The code below is closer to black magic, though it's somewhat commented.
+# If you can tweak the regexps or output, for your gain, without breaking
+# anything that currently works (instrument and recover on all the files
+# in the default value of 'filenames', and as much deterministicness of
+# Lasercake output as we can get), then go ahead!
+
+find_functions_re = re.compile(
 	r"""\b(\w+)  #function name
 	    \(       #begin parenthesis
 	    ([^()]*) #arguments
@@ -43,9 +95,6 @@ find_functions = re.compile(
 	    {        #begin function body
 	 """,
 	re.VERBOSE | re.DOTALL)
-	    # (?:(?:[^()]|\([^()]*\)))     #constructor filler matter
-
-filenames = glob.glob('*.cpp')
 
 filecontents_initial = {}
 for filename in filenames:
@@ -59,7 +108,6 @@ argname_re = re.compile(r"""
 		,            #comma between arguments (or for hack at end)
 		""",
 		re.VERBOSE | re.DOTALL)
-excluded_re = re.compile(r'\b(?:world|frame_output_t|gl_all_data|gl_collection|gl_call_data|state_t|tile_physics_state_t|volume_calipers|active_fluids_t|water_groups_by_location_t|persistent_water_group_info|groupable_water_volume_calipers_t|persistent_water_groups_t|objects_map|object_shapes_t)\b|\bQ[A-Z]|\bLasercake[A-Z]|function|_map\b|_set\b|\bset\b|\bmap\b|collision_detector|priority_queue|borrowed_bitset')
 def get_arg_names(argstr):
 	#return re.findall(argname_re, argstr+',')
 	result = []
@@ -72,8 +120,6 @@ def get_arg_names(argstr):
 # Give up on parameter packs / vararg functions
 # rather than try hard to implement sensible things for uncommon functions.
 functions_to_give_up_on_re = re.compile(r"\.\.\.")
-# Avoid these specific functions for speed reasons.
-function_names_to_skip_re = re.compile(r"\b(in_old_box|compute_tile_color|collidable_tile|prepare_tile|cast_vector3_to_float|cast_vector3_to_double|look_here|tile_manhattan_distance_to_tile_bounding_box|do_tile)\b")
 
 # These deal strangely with newlines/tabs/etc currently:
 escape_string_for_C_re = re.compile(r"""(["\\])""")
@@ -85,8 +131,13 @@ def make_string_for_C(string):
 	return '"' + escape_string_for_C(string) + '"'
 de_curly_re = re.compile(r'''\s+{$''')
 
+# These are placed directly into a regex; luckily they
+# don't contain any regex special characters:
 begin_debug_instrument_str = " {DEBUG_INSTRUMENT_BEGIN;"
 end_debug_instrument_str = "DEBUG_INSTRUMENT_END;}"
+# The regex that includes those lucky strings above:
+remove_instruments_re = re.compile(
+	begin_debug_instrument_str+'.*?'+end_debug_instrument_str)
 
 # TODO find a way to print 'this', only for member functions?
 def augment_functions(filename, m):
@@ -129,8 +180,6 @@ def augment_functions(filename, m):
 	result += end_debug_instrument_str
 	return result
 
-remove_instruments_re = re.compile(begin_debug_instrument_str+'.*?'+end_debug_instrument_str)
-
 filecontents_clean = {}
 filecontents_instrumented = {}
 filecontents_final = {}
@@ -140,7 +189,7 @@ for filename in filenames:
 		cont = filecontents_clean[filename] = re.sub(remove_instruments_re, '', cont)
 	if do_instrument:
 		cont = filecontents_instrumented[filename] = re.sub(
-			find_functions,
+			find_functions_re,
 			lambda m: augment_functions(filename, m),
 			cont)
 	filecontents_final[filename] = cont
