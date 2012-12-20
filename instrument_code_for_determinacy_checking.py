@@ -2,7 +2,7 @@
 
 # Using regexps for parsing C++ is, of course, entirely a hack.
 
-import re, sys, subprocess, glob
+import re, os, sys, subprocess, glob
 
 if len(sys.argv) < 1 or (sys.argv[1] != "for-real"):
 	print("Don't do this in a modified repo: it's dangerous! Also, read the code.")
@@ -22,6 +22,15 @@ find_functions = re.compile(
 	    # (?:(?:[^()]|\([^()]*\)))     #constructor filler matter
 
 filenames = glob.glob('*.cpp')
+
+temp_ext = '.instrument-prev'
+
+# To attempt to trigger recompilation checkers less:
+filecontents_prev = {}
+for filename in filenames:
+	with open(filename, 'r') as f:
+		filecontents_prev[filename] = f.read()
+	os.rename(filename, filename+temp_ext)
 
 subprocess.check_call(['git', 'checkout'] + filenames)
 
@@ -110,12 +119,18 @@ for filename in filenames:
 			filecontents_initial[filename])
 
 for filename in filenames:
-	with open(filename, 'w') as f:
-		f.write(filecontents_final[filename])
+	if filecontents_final[filename] == filecontents_prev[filename]:
+		os.rename(filename+temp_ext, filename)
+	else:
+		with open(filename, 'w') as f:
+			f.write(filecontents_final[filename])
 
 ch = 'config.hpp'
 with open(ch, 'r') as f:
-	config_contents = f.read()
-with open(ch, 'w') as f:
-	f.write(re.sub('#if DEBUG_PRINT_DETERMINISTICALLY', '#if 1', config_contents))
+	config_contents_initial = f.read()
+config_contents_final = re.sub('#if DEBUG_PRINT_DETERMINISTICALLY', '#if 1',
+		config_contents_initial)
+if config_contents_final != config_contents_initial:
+	with open(ch, 'w') as f:
+		f.write(config_contents_final)
 
