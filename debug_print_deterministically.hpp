@@ -32,6 +32,10 @@ inline void debug_print_val_deterministically(T const& t) {
   debug_print_ostream() << t;
 }
 
+#define DEBUG_INSTRUMENT_BEGIN
+#define DEBUG_INSTRUMENT_END
+
+
 // Pointers need special treatment because they vary from run to run
 // but their identity still holds interesting information.
 inline void debug_print_ptr_deterministically(void const* p) {

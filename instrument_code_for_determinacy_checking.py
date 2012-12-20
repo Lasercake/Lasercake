@@ -23,17 +23,6 @@ find_functions = re.compile(
 
 filenames = glob.glob('*.cpp')
 
-temp_ext = '.instrument-prev'
-
-# To attempt to trigger recompilation checkers less:
-filecontents_prev = {}
-for filename in filenames:
-	with open(filename, 'r') as f:
-		filecontents_prev[filename] = f.read()
-	os.rename(filename, filename+temp_ext)
-
-subprocess.check_call(['git', 'checkout'] + filenames)
-
 filecontents_initial = {}
 for filename in filenames:
 	with open(filename, 'r') as f:
@@ -72,6 +61,9 @@ def make_string_for_C(string):
 	return '"' + escape_string_for_C(string) + '"'
 de_curly_re = re.compile(r'''\s+{$''')
 
+begin_debug_instrument_str = " {DEBUG_INSTRUMENT_BEGIN;"
+end_debug_instrument_str = "DEBUG_INSTRUMENT_END;}"
+
 # TODO find a way to print 'this', only for member functions?
 def augment_functions(filename, m):
 	if m.group(1) in set(['if', 'while', 'switch', 'for', 'do', 'catch',
@@ -88,7 +80,8 @@ def augment_functions(filename, m):
 	fnname = m.group(1)
 	argnames = get_arg_names(m.group(2))
 	result = m.group(0)
-	result += (""" {debug_print_ostream() << "%s("; """ % (escape_string_for_C(fnname)))
+	result += begin_debug_instrument_str
+	result += (""" debug_print_ostream() << "%s("; """ % (escape_string_for_C(fnname)))
 	#result += """ {debug_print_ostream() << __func__ << '('; """
 	#result += """ {debug_print_ostream() << __FILE__ << ':' << __LINE__ << ':' << __PRETTY_FUNCTION__ << '('; """
 	#result += """ {debug_print_ostream() << __PRETTY_FUNCTION__ << "  ("; """
@@ -106,22 +99,26 @@ def augment_functions(filename, m):
 	# on two different platforms, so avoid __PRETTY_FUNCTION__.
 	# Hopefully __LINE__ is consistent; it'd be better to compute it here.
 	# Stringize it at preprocessor-time, anyway, to make it faster at runtime if possible.
-	result += r"""debug_print_ostream() << "): %s:" BOOST_PP_STRINGIZE(__LINE__) ": %s\n";}""" % \
+	result += r"""debug_print_ostream() << "): %s:" BOOST_PP_STRINGIZE(__LINE__) ": %s\n";""" % \
 			(escape_string_for_C(filename),
 			escape_string_for_C(fnfullish))
+	result += end_debug_instrument_str
 	return result
 
+remove_instruments_re = re.compile(begin_debug_instrument_str+'.*?'+end_debug_instrument_str)
+
+filecontents_clean = {}
 filecontents_final = {}
 for filename in filenames:
+	filecontents_clean[filename] = re.sub(remove_instruments_re, '',
+			filecontents_initial[filename])
 	filecontents_final[filename] = re.sub(
 			find_functions,
 			lambda m: augment_functions(filename, m),
-			filecontents_initial[filename])
+			filecontents_clean[filename])
 
 for filename in filenames:
-	if filecontents_final[filename] == filecontents_prev[filename]:
-		os.rename(filename+temp_ext, filename)
-	else:
+	if filecontents_final[filename] != filecontents_initial[filename]:
 		with open(filename, 'w') as f:
 			f.write(filecontents_final[filename])
 
