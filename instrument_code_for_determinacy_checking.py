@@ -51,7 +51,7 @@ def get_arg_names(argstr):
 # rather than try hard to implement sensible things for uncommon functions.
 functions_to_give_up_on_re = re.compile(r"\.\.\.")
 # Avoid these specific functions for speed reasons.
-function_names_to_skip_re = re.compile(r"\b(in_old_box|compute_tile_color|collidable_tile|prepare_tile|cast_vector3_to_float|cast_vector3_to_double|look_here|tile_manhattan_distance_to_tile_bounding_box)\b")
+function_names_to_skip_re = re.compile(r"\b(in_old_box|compute_tile_color|collidable_tile|prepare_tile|cast_vector3_to_float|cast_vector3_to_double|look_here|tile_manhattan_distance_to_tile_bounding_box|do_tile)\b")
 
 # These deal strangely with newlines/tabs/etc currently:
 escape_string_for_C_re = re.compile(r"""(["\\])""")
