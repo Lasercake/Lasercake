@@ -64,7 +64,7 @@ inline void debug_print_val_deterministically(int8_t c) {
   debug_print_ostream() << int(c);
 }
 inline void debug_print_val_deterministically(uint8_t c) {
-  debug_print_ostream() << unsigned int(c);
+  debug_print_ostream() << unsigned(c);
 }
 
 #include <boost/shared_ptr.hpp>
