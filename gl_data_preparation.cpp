@@ -251,6 +251,9 @@ inline color compute_tile_color(world const& w, tile_location const& loc) {
   r = r * illumination / 128;
   g = g * illumination / 128;
   b = b * illumination / 128;
+  if (illumination == 24) {
+    r = 0;
+  }
   return color((r << 24) + (g << 16) + (b << 8) + a);
 }
 
