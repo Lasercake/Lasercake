@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_DEBUG_PRINT_DETERMINISTICALLY_HPP__
 #define LASERCAKE_DEBUG_PRINT_DETERMINISTICALLY_HPP__
 
+#include <boost/preprocessor/stringize.hpp>
+
 #include <iostream>
 #include <unordered_map>
 inline std::ostream& debug_print_ostream() {return std::cout;}

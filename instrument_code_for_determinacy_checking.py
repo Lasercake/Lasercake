@@ -53,6 +53,16 @@ functions_to_give_up_on_re = re.compile(r"\.\.\.")
 # Avoid these specific functions for speed reasons.
 function_names_to_skip_re = re.compile(r"\b(in_old_box|compute_tile_color|collidable_tile|prepare_tile|cast_vector3_to_float|cast_vector3_to_double|look_here|tile_manhattan_distance_to_tile_bounding_box)\b")
 
+# These deal strangely with newlines/tabs/etc currently:
+escape_string_for_C_re = re.compile(r"""(["\\])""")
+collapse_whitespace_re = re.compile(r"""\s+""")
+def escape_string_for_C(string):
+	return re.sub(escape_string_for_C_re, r'\\\1',
+			re.sub(collapse_whitespace_re, r' ', string))
+def make_string_for_C(string):
+	return '"' + escape_string_for_C(string) + '"'
+de_curly_re = re.compile(r'''\s+{$''')
+
 # TODO find a way to print 'this', only for member functions?
 def augment_functions(filename, m):
 	if m.group(1) in set(['if', 'while', 'switch', 'for', 'do', 'catch',
@@ -69,7 +79,8 @@ def augment_functions(filename, m):
 	fnname = m.group(1)
 	argnames = get_arg_names(m.group(2))
 	result = m.group(0)
-	result += """ {debug_print_ostream() << __func__ << '('; """
+	result += (""" {debug_print_ostream() << "%s("; """ % (escape_string_for_C(fnname)))
+	#result += """ {debug_print_ostream() << __func__ << '('; """
 	#result += """ {debug_print_ostream() << __FILE__ << ':' << __LINE__ << ':' << __PRETTY_FUNCTION__ << '('; """
 	#result += """ {debug_print_ostream() << __PRETTY_FUNCTION__ << "  ("; """
 	first = True
@@ -79,8 +90,16 @@ def augment_functions(filename, m):
 		else:
 			result += """debug_print_ostream() << ", "; """
 		result += """debug_print_val_deterministically("""+argname+"); "
+	fnfullish = re.sub(de_curly_re, '', m.group(0))
 	#result += r"""debug_print_ostream() << ")\n";}"""
-	result += r"""debug_print_ostream() << "): " << __PRETTY_FUNCTION__ << '\n';}"""
+	#result += r"""debug_print_ostream() << "): " << __PRETTY_FUNCTION__ << '\n';}"""
+	# There was a difference between 'long int' and 'long long int' meaning int64_t
+	# on two different platforms, so avoid __PRETTY_FUNCTION__.
+	# Hopefully __LINE__ is consistent; it'd be better to compute it here.
+	# Stringize it at preprocessor-time, anyway, to make it faster at runtime if possible.
+	result += r"""debug_print_ostream() << "): %s:" BOOST_PP_STRINGIZE(__LINE__) ": %s\n";}""" % \
+			(escape_string_for_C(filename),
+			escape_string_for_C(fnfullish))
 	return result
 
 filecontents_final = {}
