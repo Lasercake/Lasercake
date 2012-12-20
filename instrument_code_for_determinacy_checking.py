@@ -59,7 +59,7 @@ argname_re = re.compile(r"""
 		,            #comma between arguments (or for hack at end)
 		""",
 		re.VERBOSE | re.DOTALL)
-excluded_re = re.compile(r'\b(?:world|frame_output_t|gl_all_data|gl_collection|gl_call_data|state_t|tile_physics_state_t|volume_calipers|active_fluids_t|water_groups_by_location_t|persistent_water_group_info|groupable_water_volume_calipers_t|persistent_water_groups_t|objects_map|object_shapes_t)\b|\bQ[A-Z]|\bLasercake[A-Z]|function|_map\b|_set\b|\bset\b|collision_detector|priority_queue')
+excluded_re = re.compile(r'\b(?:world|frame_output_t|gl_all_data|gl_collection|gl_call_data|state_t|tile_physics_state_t|volume_calipers|active_fluids_t|water_groups_by_location_t|persistent_water_group_info|groupable_water_volume_calipers_t|persistent_water_groups_t|objects_map|object_shapes_t)\b|\bQ[A-Z]|\bLasercake[A-Z]|function|_map\b|_set\b|\bset\b|\bmap\b|collision_detector|priority_queue')
 def get_arg_names(argstr):
 	#return re.findall(argname_re, argstr+',')
 	result = []
