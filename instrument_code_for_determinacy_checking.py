@@ -4,9 +4,27 @@
 
 import re, os, sys, subprocess, glob
 
-if len(sys.argv) < 1 or (sys.argv[1] != "for-real"):
-	print("Don't do this in a modified repo: it's dangerous! Also, read the code.")
-	sys.exit(1)
+if len(sys.argv) < 1 or sys.argv[1] in set(['-h','-?','-help','--help']) \
+		or sys.argv[1] not in set(['instrument', 'restore']):
+	print("""
+Usage: %s [instrument|restore]
+  'instrument' adds/updates instrumentation; 'restore' deletes it.
+
+Instrumentation is just additions to Lasercake code that send
+debug message info to stdout upon entering most Lasercake functions.
+
+It can be useful combined with -Q or such to help debug whether two
+different compilations or runs of Lasercake that *should* be doing
+the exact same thing in fact *are* doing the exact same thing.
+
+If there's a problem with buggy optimizers, this might be unhelpful,
+because the instrumentation will quite likely change what the compiler's
+optimizer does.
+""" % sys.argv[0])
+	sys.exit(0)
+
+do_restore = True
+do_instrument = (sys.argv[1] == 'instrument')
 
 find_functions = re.compile(
 	r"""\b(\w+)  #function name
@@ -108,14 +126,18 @@ def augment_functions(filename, m):
 remove_instruments_re = re.compile(begin_debug_instrument_str+'.*?'+end_debug_instrument_str)
 
 filecontents_clean = {}
+filecontents_instrumented = {}
 filecontents_final = {}
 for filename in filenames:
-	filecontents_clean[filename] = re.sub(remove_instruments_re, '',
-			filecontents_initial[filename])
-	filecontents_final[filename] = re.sub(
+	cont = filecontents_initial[filename]
+	if do_restore:
+		cont = filecontents_clean[filename] = re.sub(remove_instruments_re, '', cont)
+	if do_instrument:
+		cont = filecontents_instrumented[filename] = re.sub(
 			find_functions,
 			lambda m: augment_functions(filename, m),
-			filecontents_clean[filename])
+			cont)
+	filecontents_final[filename] = cont
 
 for filename in filenames:
 	if filecontents_final[filename] != filecontents_initial[filename]:
@@ -125,8 +147,14 @@ for filename in filenames:
 ch = 'config.hpp'
 with open(ch, 'r') as f:
 	config_contents_initial = f.read()
-config_contents_final = re.sub('#if DEBUG_PRINT_DETERMINISTICALLY', '#if 1',
-		config_contents_initial)
+
+cont = config_contents_initial
+if do_restore:
+	cont = re.sub('#if 1\|\|DEBUG_PRINT_DETERMINISTICALLY', '#if DEBUG_PRINT_DETERMINISTICALLY', cont)
+if do_instrument:
+	cont = re.sub('#if DEBUG_PRINT_DETERMINISTICALLY', '#if 1||DEBUG_PRINT_DETERMINISTICALLY', cont)
+config_contents_final = cont
+
 if config_contents_final != config_contents_initial:
 	with open(ch, 'w') as f:
 		f.write(config_contents_final)
