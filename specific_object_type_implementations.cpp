@@ -521,7 +521,7 @@ random_walk_rocket::random_walk_rocket(vector3<fine_scalar> location, vector3<fi
   velocity_ = (facing * tile_width * velocity_scale_factor * 4) / facing.magnitude_within_32_bits();
 }
 
-void random_walk_rocket::update(world& w, input_representation::input_news_t const&, object_identifier my_id) {
+void random_walk_rocket::update(world& w, input_representation::input_news_t const&, object_identifier) {
   auto& rng = w.get_rng();
   if (velocity_.magnitude_within_32_bits_is_greater_than(tile_width * velocity_scale_factor / 100)) {
     velocity_ -= velocity_ * tile_width * velocity_scale_factor / (100 * velocity_.magnitude_within_32_bits());
