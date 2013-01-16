@@ -69,8 +69,12 @@ def main():
 	build_dir = 'build/'+name_for_this_config
 	try: os.remove('CMakeCache.txt')
 	except OSError: pass
-	try: os.makedirs(build_dir)
-	except OSError: pass
+	try:
+		os.makedirs(build_dir)
+	except OSError:
+		say(ansi_green+'This build dir already exists!'+ansi_end+'\n')
+		# TODO make sure the flags are *exactly* the same
+		cmake_args = []
 	to_call_cmake = ['cmake', '../../'] + cmake_args
 	say_we_are_calling('cd '+build_dir+'; '+'   '.join(to_call_cmake))
 	say(ansi_cyan+'''  (^^ not escaped properly in these info messages - doin' it right in python)'''+ansi_end+'\n')
