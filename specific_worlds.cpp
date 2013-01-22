@@ -91,6 +91,10 @@ namespace std {
       return result;
     }
   };
+  template<typename...Types>
+  inline size_t hash_value(std::tuple<Types...> const& tup) {
+    return std::hash<std::tuple<Types...>>()(tup);
+  }
 }
 
 namespace std {
@@ -160,7 +164,7 @@ typedef boost::random::ranlux3 memo_rng;
 template<typename...HashableArguments>
 inline memo_rng make_rng(HashableArguments&&... args) {
   typedef std::tuple<HashableArguments...> arguments_tuple_type;
-  const size_t hash = boost::hash<arguments_tuple_type>()(arguments_tuple_type(args...));
+  const size_t hash = hash_value(arguments_tuple_type(args...));
   // ranlux3 uses a 32-bit seed.
   // (Don't ">> 32" to avoid silly compiler warnings on 32-bit.)
   const uint32_t seed = ((sizeof(hash) == 4) ? hash : (hash ^ (hash >> 16 >> 16)));
