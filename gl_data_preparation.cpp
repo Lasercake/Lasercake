@@ -194,24 +194,32 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
     }
   }
   if (view_type == LOCAL) {
-    if (input_news.is_currently_pressed("u")) {
+    const bool fwdback = input_news.is_currently_pressed("5") || input_news.is_currently_pressed("s");
+    const bool fwd = fwdback && !input_news.is_currently_pressed("shift");
+    const bool back = fwdback && input_news.is_currently_pressed("shift");
+    const bool left = input_news.is_currently_pressed("left") || input_news.is_currently_pressed("a");
+    const bool right = input_news.is_currently_pressed("right") || input_news.is_currently_pressed("d");
+    const bool up = input_news.is_currently_pressed("up") || input_news.is_currently_pressed("w");
+    const bool down = input_news.is_currently_pressed("down") || input_news.is_currently_pressed("x");
+
+    if (fwd) {
       view_loc_for_local_display += vector3<fine_scalar>(
         fine_scalar(get_primitive_double(tile_width) * std::cos(local_view_direction)) / 10,
         fine_scalar(get_primitive_double(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
-    if (input_news.is_currently_pressed("j")) {
+    if (back) {
       view_loc_for_local_display -= vector3<fine_scalar>(
         fine_scalar(get_primitive_double(tile_width) * std::cos(local_view_direction)) / 10,
         fine_scalar(get_primitive_double(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
-    if (input_news.is_currently_pressed("h")) { local_view_direction += 0.06; }
-    if (input_news.is_currently_pressed("k")) { local_view_direction -= 0.06; }
-    if (input_news.is_currently_pressed("y")) { view_loc_for_local_display.z += tile_width / 10; }
-    if (input_news.is_currently_pressed("n")) { view_loc_for_local_display.z -= tile_width / 10; }
+    if (left) { local_view_direction += 0.06; }
+    if (right) { local_view_direction -= 0.06; }
+    if (up) { view_loc_for_local_display.z += tile_width / 10; }
+    if (down) { view_loc_for_local_display.z -= tile_width / 10; }
   }
   if (view_type == view_on_the_world::GLOBAL) {
     if (input_news.is_currently_pressed("q")) { surveilled_by_global_display.x += tile_width; }
@@ -589,7 +597,7 @@ void view_on_the_world::prepare_gl_data(
     }
     else if (view_type == LOCAL) {
       heads_up_display_text useful_hud_text = everywhere_hud_text;
-      useful_hud_text.text = "ujhkyn: navigate local view\n\n"
+      useful_hud_text.text = "s/S/5 left/right/up/down a/w/d/x: navigate local view\n\n"
           + useful_hud_text.text;
       gl_data.hud_text = useful_hud_text;
     }
