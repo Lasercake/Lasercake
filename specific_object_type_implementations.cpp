@@ -216,6 +216,7 @@ std::string robot::player_instructions()const {
     "m: make digging robot that goes towards the current facing"
     " and leaves rubble at the current location\n"
     "s: create solar panel\n"
+    "r: fire rockets\n"
     //"(c, v: commented-out ability to pick up things, too bad.)\n"
     ;
   return instructions;
@@ -328,6 +329,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   if (input_news.num_times_pressed("s")) {
     const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w)));
     w.try_create_object(sol);
+  }
+  if (input_news.is_currently_pressed("r")) {
+    const shared_ptr<random_walk_rocket> roc (new random_walk_rocket(location_ + facing_ * 2, facing_));
+    w.try_create_object(roc);
   }
 }
 
@@ -497,6 +502,40 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
       }
     }
   }
+}
+
+
+
+shape random_walk_rocket::get_initial_personal_space_shape()const {
+  return shape(convex_polyhedron(bounding_box::min_and_max(
+    initial_location_ - vector3<fine_scalar>(tile_width * 2 / 15, tile_width * 2 / 15, tile_width * 2 / 15),
+    initial_location_ + vector3<fine_scalar>(tile_width * 2 / 15, tile_width * 2 / 15, tile_width * 2 / 15)
+  )));
+}
+
+shape random_walk_rocket::get_initial_detail_shape()const {
+  return get_initial_personal_space_shape();
+}
+
+random_walk_rocket::random_walk_rocket(vector3<fine_scalar> location, vector3<fine_scalar> facing):initial_location_(location){
+  velocity_ = (facing * tile_width * velocity_scale_factor * 4) / facing.magnitude_within_32_bits();
+}
+
+void random_walk_rocket::update(world& w, input_representation::input_news_t const&, object_identifier my_id) {
+  auto& rng = w.get_rng();
+  if (velocity_.magnitude_within_32_bits_is_greater_than(tile_width * velocity_scale_factor / 100)) {
+    velocity_ -= velocity_ * tile_width * velocity_scale_factor / (100 * velocity_.magnitude_within_32_bits());
+  }
+  else {
+    velocity_[X] = 0;
+    velocity_[Y] = 0;
+    velocity_[Z] = 0;
+  }
+
+  const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type> random_delta(-tile_width * velocity_scale_factor / 30, tile_width * velocity_scale_factor / 30);
+  velocity_[X] += random_delta(rng);
+  velocity_[Y] += random_delta(rng);
+  velocity_[Z] += random_delta(rng);
 }
 
 
