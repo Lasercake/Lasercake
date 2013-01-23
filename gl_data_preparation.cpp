@@ -191,16 +191,6 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
       if(k == "l") view_type = view_on_the_world::LOCAL;
       if(k == "o") view_type = view_on_the_world::GLOBAL;
       if(k == "i") view_type = view_on_the_world::ROBOT;
-      if(view_type == view_on_the_world::GLOBAL) {
-        if(k == "q") surveilled_by_global_display.x += tile_width;
-        if(k == "a") surveilled_by_global_display.x -= tile_width;
-        if(k == "w") surveilled_by_global_display.y += tile_width;
-        if(k == "s") surveilled_by_global_display.y -= tile_width;
-        if(k == "e") surveilled_by_global_display.z += tile_width;
-        if(k == "d") surveilled_by_global_display.z -= tile_width;
-        if(k == "r") global_view_dist += tile_width;
-        if(k == "f") global_view_dist -= tile_width;
-      }
     }
   }
   if (view_type == LOCAL) {
@@ -222,6 +212,16 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
     if (input_news.is_currently_pressed("k")) { local_view_direction -= 0.06; }
     if (input_news.is_currently_pressed("y")) { view_loc_for_local_display.z += tile_width / 10; }
     if (input_news.is_currently_pressed("n")) { view_loc_for_local_display.z -= tile_width / 10; }
+  }
+  if (view_type == view_on_the_world::GLOBAL) {
+    if (input_news.is_currently_pressed("q")) { surveilled_by_global_display.x += tile_width; }
+    if (input_news.is_currently_pressed("a")) { surveilled_by_global_display.x -= tile_width; }
+    if (input_news.is_currently_pressed("w")) { surveilled_by_global_display.y += tile_width; }
+    if (input_news.is_currently_pressed("s")) { surveilled_by_global_display.y -= tile_width; }
+    if (input_news.is_currently_pressed("e")) { surveilled_by_global_display.z += tile_width; }
+    if (input_news.is_currently_pressed("d")) { surveilled_by_global_display.z -= tile_width; }
+    if (input_news.is_currently_pressed("r")) { global_view_dist += tile_width; }
+    if (input_news.is_currently_pressed("f")) { global_view_dist -= tile_width; }
   }
 }
 
