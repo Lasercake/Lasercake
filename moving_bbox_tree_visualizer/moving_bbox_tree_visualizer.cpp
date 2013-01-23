@@ -167,7 +167,8 @@ struct tree_node {
         return;
       }
     }
-    //else {
+
+    if (stuff_here.size() > MIN_NICE_NODE_SIZE) {
       std::vector<int> pulled_stuffs;
       tree_node child_attempt;
       child_attempt.stuff_here.push_back(o);
@@ -185,12 +186,11 @@ struct tree_node {
         }
         //std::cerr << "PULL! Woot!\n";
         children.push_back(child_attempt);
+        return;
       }
-      else {
-        //std::cerr << "plunk\n";
-        stuff_here.push_back(o);
-      }
-    //}
+    }
+    //std::cerr << "plunk\n";
+    stuff_here.push_back(o);
   }
 
   void search(std::vector<object_id>& results,
@@ -297,14 +297,15 @@ struct tree_node {
       // The object's trajectory overlaps some part of this box. Check our stuff-here and children.
       
       for (auto const& o2 : stuff_here) {
+       if (o2.id != o.id) {
         time_type first_collision_moment = first_possible_overlap;
         time_type  last_collision_moment =  last_possible_overlap;
         for (int dim = 0; dim < NumDimensions; ++dim) {
           const int64_t max_num = (o2.phys_bounds.max[dim] - o.phys_bounds.min[dim]);
           const int64_t min_num = (o2.phys_bounds.min[dim] - o.phys_bounds.max[dim]);
-          const int64_t denom = (o2.vel[dim + NumDimensions] - o.vel[dim]);
+          const int64_t denom = (o2.vel[dim] - o.vel[dim]);
           if (denom == 0) {
-            if ((max_num > 0) || (min_num < 0)) {
+            if ((min_num > 0) || (max_num < 0)) {
               // Same speed, never overlap - hack : never colliding
               first_collision_moment = time_type(1);
                last_collision_moment = time_type(0);
@@ -322,6 +323,7 @@ struct tree_node {
           // Note - not returning the time of collision
           results.push_back(o2.id);
         }
+       }
       }
 
       for (auto const& c : children) c.search(results, o, start_time, end_time);
@@ -492,6 +494,8 @@ void do_2d_test_scenario(tree_node<2>& root) {
       o.vel[1] = rand_vel(rng);
 
       objects.push_back(o);
+      //o.id = next_id++;
+      //objects.push_back(o);
     }
   }
 
