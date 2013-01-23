@@ -188,17 +188,19 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
       key_type const& k = c.first;
       if(k == "z") drawing_regular_stuff = !drawing_regular_stuff;
       if(k == "t") drawing_debug_stuff = !drawing_debug_stuff;
-      if(k == "q") surveilled_by_global_display.x += tile_width;
-      if(k == "a") surveilled_by_global_display.x -= tile_width;
-      if(k == "w") surveilled_by_global_display.y += tile_width;
-      if(k == "s") surveilled_by_global_display.y -= tile_width;
-      if(k == "e") surveilled_by_global_display.z += tile_width;
-      if(k == "d") surveilled_by_global_display.z -= tile_width;
-      if(k == "r") global_view_dist += tile_width;
-      if(k == "f") global_view_dist -= tile_width;
       if(k == "l") view_type = view_on_the_world::LOCAL;
       if(k == "o") view_type = view_on_the_world::GLOBAL;
       if(k == "i") view_type = view_on_the_world::ROBOT;
+      if(view_type == view_on_the_world::GLOBAL) {
+        if(k == "q") surveilled_by_global_display.x += tile_width;
+        if(k == "a") surveilled_by_global_display.x -= tile_width;
+        if(k == "w") surveilled_by_global_display.y += tile_width;
+        if(k == "s") surveilled_by_global_display.y -= tile_width;
+        if(k == "e") surveilled_by_global_display.z += tile_width;
+        if(k == "d") surveilled_by_global_display.z -= tile_width;
+        if(k == "r") global_view_dist += tile_width;
+        if(k == "f") global_view_dist -= tile_width;
+      }
     }
   }
   if (view_type == LOCAL) {
