@@ -260,30 +260,20 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   vector3<fine_scalar> beam_delta = facing_ * 3 / 2;
   
   if (input_news.is_currently_pressed("c") || input_news.is_currently_pressed("v")) {
-    #if 0
-    beam_first_contact_finder finder(w, line_segment(location_, location_ + beam_delta), my_id);
-    if(auto hit = w.get_things_exposed_to_collision().find_least(finder)) {
-      // TODO do I have to worry about overflow?
-      w.add_laser_sfx(location_, multiply_rational_into(beam_delta, hit->cost));
-      if(tile_location const* locp = hit->object.get_tile_location()) {
-        if (input_news.is_currently_pressed("c") && (carrying_ < robot_max_carrying_capacity) && (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
+    const object_or_tile_identifier hit_thing = laser_find(w, my_id, location_, beam_delta, true);
+    if (input_news.is_currently_pressed("c")) {
+      if (tile_location const* locp = hit_thing.get_tile_location()) {
+        if ((carrying_ < robot_max_carrying_capacity) &&
+            (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
           ++carrying_;
           w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
         }
-        /*if (carrying && locp->stuff_at().contents() == ROCK) {
-          w.replace_substance(*locp, ROCK, RUBBLE);
-        }*/
       }
     }
-    else
-    #endif
-    {
-      w.add_laser_sfx(location_, beam_delta);
-      if (input_news.is_currently_pressed("v") && (carrying_ > 0)) {
-        --carrying_;
-        const tile_location target_loc = w.make_tile_location(get_random_containing_tile_coordinates(location_ + beam_delta, w.get_rng()), FULL_REALIZATION);
-        w.replace_substance(target_loc, AIR, RUBBLE);
-      }
+    else if (input_news.is_currently_pressed("v") && (carrying_ > 0)) {
+      --carrying_;
+      const tile_location target_loc = w.make_tile_location(get_random_containing_tile_coordinates(location_ + beam_delta, w.get_rng()), FULL_REALIZATION);
+      w.replace_substance(target_loc, AIR, RUBBLE);
     }
   }
   if (input_news.is_currently_pressed("l")) {
