@@ -179,8 +179,8 @@ struct tree_node {
       // If it crosses zero, then there's no min or max.
       const int64_t max_num = (bounds.max[dim] - o.phys_bounds.min[dim]);
       const int64_t min_num = (bounds.min[dim] - o.phys_bounds.max[dim]);
-      const int64_t max_denom = (bounds.max[dim + NumDimensions] - o.velocity[dim]);
-      const int64_t min_denom = (bounds.min[dim + NumDimensions] - o.velocity[dim]);
+      const int64_t max_denom = (bounds.max[dim + NumDimensions] - o.vel[dim]);
+      const int64_t min_denom = (bounds.min[dim + NumDimensions] - o.vel[dim]);
            if (min_denom > 0) {
         const time_type max_time(max_num, min_denom);
         const time_type min_time(min_num, max_denom);
@@ -271,7 +271,7 @@ struct tree_node {
         for (int dim = 0; dim < NumDimensions; ++dim) {
           const int64_t max_num = (o2.phys_bounds.max[dim] - o.phys_bounds.min[dim]);
           const int64_t min_num = (o2.phys_bounds.min[dim] - o.phys_bounds.max[dim]);
-          const int64_t denom = (o2.velocity[dim + NumDimensions] - o.velocity[dim]);
+          const int64_t denom = (o2.vel[dim + NumDimensions] - o.vel[dim]);
           if (denom == 0) {
             if ((max_num > 0) || (min_num < 0)) {
               // Same speed, never overlap - hack : never colliding
@@ -289,11 +289,11 @@ struct tree_node {
         }
         if (first_collision_moment <= last_collision_moment) {
           // Note - not returning the time of collision
-          results.insert(o2.object_id);
+          results.push_back(o2.id);
         }
       }
 
-      for (auto const& c : children) c.search(results, start_time, end_time);
+      for (auto const& c : children) c.search(results, o, start_time, end_time);
     }
   }
 };
@@ -426,6 +426,8 @@ void print_nodecount(tree_node<2> const& root) {
 }
 
 void do_2d_test_scenario(tree_node<2>& root) {
+  std::vector<moving_object<2>> objects;
+  
   object_id next_id = 0;
   root.children.clear();
   root.stuff_here.clear();
@@ -458,7 +460,7 @@ void do_2d_test_scenario(tree_node<2>& root) {
       o.vel[0] = rand_vel(rng);
       o.vel[1] = rand_vel(rng);
 
-      root.insert(o);
+      objects.push_back(o);
     }
   }
 
@@ -478,11 +480,20 @@ void do_2d_test_scenario(tree_node<2>& root) {
     o.vel[0] = rand_vel(rng);
     o.vel[1] = rand_vel(rng);
 
-    root.insert(o);
+    objects.push_back(o);
+  }
+
+  for (auto const& o : objects) root.insert(o);
+
+  for (auto const& o : objects) {
+    std::vector<object_id> unused_results;
+    root.search(unused_results, o, time_type(0), time_type(1));
   }
 }
 
 void do_3d_test_scenario(tree_node<3>& root) {
+  std::vector<moving_object<3>> objects;
+  
   object_id next_id = 0;
   root.children.clear();
   root.stuff_here.clear();
@@ -523,7 +534,7 @@ void do_3d_test_scenario(tree_node<3>& root) {
       o.vel[1] = rand_vel(rng);
       o.vel[2] = rand_vel(rng);
       
-      root.insert(o);
+      objects.push_back(o);
     }
   }
 
@@ -548,7 +559,14 @@ void do_3d_test_scenario(tree_node<3>& root) {
     o.vel[1] = rand_vel(rng);
     o.vel[2] = rand_vel(rng);
     
-    root.insert(o);
+    objects.push_back(o);
+  }
+
+  for (auto const& o : objects) root.insert(o);
+  
+  for (auto const& o : objects) {
+    std::vector<object_id> unused_results;
+    root.search(unused_results, o, time_type(0), time_type(1));
   }
 }
 
