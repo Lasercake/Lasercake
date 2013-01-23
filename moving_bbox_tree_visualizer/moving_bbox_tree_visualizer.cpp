@@ -35,8 +35,39 @@
 #include <array>
 #include <vector>
 
+
+#if !LASERCAKE_NO_TIMING
+#ifdef LASERCAKE_HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
+
+//#ifdef LASERCAKE_USE_BOOSTBCP
+#define BOOST_CHRONO_HEADER_ONLY
+//#endif
+#include <boost/chrono.hpp>
+#include <boost/chrono/process_cpu_clocks.hpp>
+#include <boost/chrono/thread_clock.hpp>
+#endif
+
+
 #include "../utils.hpp"
 //#include "../data_structures/polygon_collision_detection.hpp"
+
+
+#if !LASERCAKE_NO_TIMING
+namespace chrono = boost::chrono;
+#endif
+
+typedef int64_t microseconds_t;
+
+microseconds_t get_this_thread_microseconds() {
+#if !LASERCAKE_NO_TIMING && defined(BOOST_CHRONO_HAS_THREAD_CLOCK)
+  return chrono::duration_cast<chrono::microseconds>(chrono::thread_clock::now().time_since_epoch()).count();
+#else
+  return 0;
+#endif
+}
+
 
 const size_t MIN_NICE_NODE_SIZE = 4;
 
@@ -483,12 +514,25 @@ void do_2d_test_scenario(tree_node<2>& root) {
     objects.push_back(o);
   }
 
+  const microseconds_t microseconds_before_inserting = get_this_thread_microseconds();
   for (auto const& o : objects) root.insert(o);
 
+  const microseconds_t microseconds_before_searching = get_this_thread_microseconds();
+  std::vector<int> counts;
   for (auto const& o : objects) {
     std::vector<object_id> unused_results;
     root.search(unused_results, o, time_type(0), time_type(1));
+    
+    while (counts.size() <= unused_results.size()) counts.push_back(0);
+    ++counts[unused_results.size()];
   }
+  const microseconds_t microseconds_after_searching = get_this_thread_microseconds();
+  for (size_t level = 0; level < counts.size(); ++level) {
+    std::cerr << "Objects with " << level << " overlaps: " << counts[level] << "\n";
+  }
+
+  std::cerr << microseconds_before_searching - microseconds_before_inserting << " microseconds to insert\n";
+  std::cerr << microseconds_after_searching - microseconds_before_searching << " microseconds to search\n";
 }
 
 void do_3d_test_scenario(tree_node<3>& root) {
@@ -563,10 +607,17 @@ void do_3d_test_scenario(tree_node<3>& root) {
   }
 
   for (auto const& o : objects) root.insert(o);
-  
+
+  std::vector<int> counts;
   for (auto const& o : objects) {
     std::vector<object_id> unused_results;
     root.search(unused_results, o, time_type(0), time_type(1));
+
+    while (counts.size() <= unused_results.size()) counts.push_back(0);
+    ++counts[unused_results.size()];
+  }
+  for (size_t level = 0; level < counts.size(); ++level) {
+    std::cerr << "Objects with " << level << " overlaps: " << counts[level] << "\n";
   }
 }
 
@@ -714,7 +765,7 @@ int main(int argc, char *argv[])
     
     // Draw, get events...
     if (argc < 2) {
-      std::cerr << "You didn't give an argument saying which scenario to use! Using default value...";
+      std::cerr << "You didn't give an argument saying which scenario to use! Using default value...\n";
       mainLoop ("default");
     }
     else mainLoop (argv[1]);
