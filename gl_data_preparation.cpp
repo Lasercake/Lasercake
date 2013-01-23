@@ -186,11 +186,11 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
   for(key_change_t const& c : input_news.key_activity_since_last_frame()) {
     if(c.second == PRESSED) {
       key_type const& k = c.first;
-      if(k == "z") drawing_regular_stuff = !drawing_regular_stuff;
-      if(k == "t") drawing_debug_stuff = !drawing_debug_stuff;
-      if(k == "l") view_type = view_on_the_world::LOCAL;
-      if(k == "o") view_type = view_on_the_world::GLOBAL;
-      if(k == "i") view_type = view_on_the_world::ROBOT;
+      if(k == "1") view_type = view_on_the_world::ROBOT;
+      if(k == "2") view_type = view_on_the_world::LOCAL;
+      if(k == "3") view_type = view_on_the_world::GLOBAL;
+      if(k == "8") drawing_regular_stuff = !drawing_regular_stuff;
+      if(k == "9") drawing_debug_stuff = !drawing_debug_stuff;
     }
   }
   if (view_type == LOCAL) {

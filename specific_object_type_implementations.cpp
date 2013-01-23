@@ -205,17 +205,17 @@ shape robot::get_initial_detail_shape()const {
 
 std::string robot::player_instructions()const {
   static const std::string instructions =
-    "x: go forward; "
+    "5, s: go forward; "
     //friction: implicit, we don't mention it, i guess.
-    "0 (zero): jump\n" //hmm should we have a jump and have it do this
-    "right: turn right; "
-    "left: turn left\n"
-    "up: look up; "
-    "down: look down\n"
-    "b: fire dual lasers\n"
+    "left, a: turn left; "
+    "right, d: turn right\n"
+    "up, w: look up; "
+    "down, x: look down\n"
+    "space: jump\n" //hmm should we have a jump and have it do this
+    "l: fire dual lasers\n"
     "m: make digging robot that goes towards the current facing"
     " and leaves rubble at the current location\n"
-    "s: create solar panel\n"
+    "p: create solar panel\n"
     "r: fire rockets\n"
     //"(c, v: commented-out ability to pick up things, too bad.)\n"
     ;
@@ -229,25 +229,29 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   velocity_.x = divide_rounding_towards_zero(velocity_.x, 2);
   velocity_.y = divide_rounding_towards_zero(velocity_.y, 2);
   const fine_scalar xymag = i64sqrt(facing_.x*facing_.x + facing_.y*facing_.y);
-  if (input_news.is_currently_pressed("x")) {
+  if (input_news.is_currently_pressed("5") || input_news.is_currently_pressed("s")) {
     velocity_.x = facing_.x * tile_width * velocity_scale_factor / 8 / xymag;
     velocity_.y = facing_.y * tile_width * velocity_scale_factor / 8 / xymag;
   }
-  if (input_news.is_currently_pressed("0")) {
+  if (input_news.is_currently_pressed("space")) {
     velocity_.z = tile_width * velocity_scale_factor / 8;
   }
-  if (input_news.is_currently_pressed("right")) {
+  const bool turn_right = input_news.is_currently_pressed("right") || input_news.is_currently_pressed("d");
+  const bool turn_left = input_news.is_currently_pressed("left") || input_news.is_currently_pressed("a");
+  const bool turn_up = input_news.is_currently_pressed("up") || input_news.is_currently_pressed("w");
+  const bool turn_down = input_news.is_currently_pressed("down") || input_news.is_currently_pressed("x");
+  if (turn_right && !turn_left) {
     fine_scalar new_facing_x = facing_.x + facing_.y / 20;
     fine_scalar new_facing_y = facing_.y - facing_.x / 20;
     facing_.x = new_facing_x; facing_.y = new_facing_y;
   }
-  if (input_news.is_currently_pressed("left")) {
+  if (turn_left && !turn_right) {
     fine_scalar new_facing_x = facing_.x - facing_.y / 20;
     fine_scalar new_facing_y = facing_.y + facing_.x / 20;
     facing_.x = new_facing_x; facing_.y = new_facing_y;
   }
-  if (input_news.is_currently_pressed("up") != input_news.is_currently_pressed("down")) {
-    const fine_scalar which_way = (input_news.is_currently_pressed("up") ? 1 : -1);
+  if (turn_up != turn_down) {
+    const fine_scalar which_way = (turn_up ? 1 : -1);
     const fine_scalar new_xymag = xymag - (which_way * facing_.z / 20);
     if (new_xymag > tile_width / 8) {
       facing_.z += which_way * xymag / 20;
@@ -286,7 +290,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
       }
     }
   }
-  if (input_news.is_currently_pressed("b")) {
+  if (input_news.is_currently_pressed("l")) {
     const vector3<fine_scalar> offset(-facing_.y / 4, facing_.x / 4, 0);
     const vector3<fine_scalar> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
     {
@@ -326,7 +330,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     const shared_ptr<autorobot> aur (new autorobot(location_ + facing_ * 2, facing_));
     w.try_create_object(aur);
   }
-  if (input_news.num_times_pressed("s")) {
+  if (input_news.num_times_pressed("p")) {
     const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w)));
     w.try_create_object(sol);
   }
