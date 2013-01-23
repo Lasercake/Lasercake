@@ -240,14 +240,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   const bool turn_left = input_news.is_currently_pressed("left") || input_news.is_currently_pressed("a");
   const bool turn_up = input_news.is_currently_pressed("up") || input_news.is_currently_pressed("w");
   const bool turn_down = input_news.is_currently_pressed("down") || input_news.is_currently_pressed("x");
-  if (turn_right && !turn_left) {
-    fine_scalar new_facing_x = facing_.x + facing_.y / 20;
-    fine_scalar new_facing_y = facing_.y - facing_.x / 20;
-    facing_.x = new_facing_x; facing_.y = new_facing_y;
-  }
-  if (turn_left && !turn_right) {
-    fine_scalar new_facing_x = facing_.x - facing_.y / 20;
-    fine_scalar new_facing_y = facing_.y + facing_.x / 20;
+  if (turn_right != turn_left) {
+    const fine_scalar which_way = (turn_right ? 1 : -1);
+    const fine_scalar new_facing_x = facing_.x + which_way * facing_.y / 20;
+    const fine_scalar new_facing_y = facing_.y - which_way * facing_.x / 20;
     facing_.x = new_facing_x; facing_.y = new_facing_y;
   }
   if (turn_up != turn_down) {
