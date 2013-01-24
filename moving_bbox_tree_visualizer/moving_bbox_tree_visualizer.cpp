@@ -633,9 +633,11 @@ void do_3d_test_scenario(tree_node<3>& root) {
     
     objects.push_back(o);
   }
-
+  
+  const microseconds_t microseconds_before_inserting = get_this_thread_microseconds();
   for (auto const& o : objects) root.insert(o);
 
+  const microseconds_t microseconds_before_searching = get_this_thread_microseconds();
   std::vector<int> counts;
   for (auto const& o : objects) {
     std::vector<object_id> unused_results;
@@ -644,9 +646,15 @@ void do_3d_test_scenario(tree_node<3>& root) {
     while (counts.size() <= unused_results.size()) counts.push_back(0);
     ++counts[unused_results.size()];
   }
+  const microseconds_t microseconds_after_searching = get_this_thread_microseconds();
   for (size_t level = 0; level < counts.size(); ++level) {
     std::cerr << "Objects with " << level << " overlaps: " << counts[level] << "\n";
   }
+
+  std::cerr << microseconds_before_searching - microseconds_before_inserting << " microseconds to insert\n";
+  std::cerr << microseconds_after_searching - microseconds_before_searching << " microseconds to search\n";
+
+  print_nodecount(root);
 }
 
 
@@ -666,6 +674,7 @@ large_fast_noncrypto_rng rng(time(NULL));
 int frame = 0;
 
   tree_node<2> root;
+  tree_node<3> root3d;
   for (int dim = 0; dim < 4; ++dim) {
     root.bounds.min[dim] = 0;
     root.bounds.max[dim] = 1;
@@ -696,6 +705,7 @@ int frame = 0;
           if(event.key.keysym.sym == SDLK_x) insert_objects += 50;
           if(event.key.keysym.sym == SDLK_c) insert_objects += 2500;
           if(event.key.keysym.sym == SDLK_a) do_2d_test_scenario(root);
+          if(event.key.keysym.sym == SDLK_s) do_3d_test_scenario(root3d);
           //if(event.key.keysym.sym == SDLK_z) draw_poly = !draw_poly;
           //if(event.key.keysym.sym == SDLK_x) draw_normals = !draw_normals;
           //if(event.key.keysym.sym == SDLK_c) draw_endp = !draw_endp;
