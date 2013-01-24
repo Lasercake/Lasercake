@@ -321,8 +321,11 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     w.try_create_object(sol);
   }
   if (input_news.is_currently_pressed("r")) {
-    const shared_ptr<random_walk_rocket> roc (new random_walk_rocket(location_ + facing_ * 2, facing_));
-    w.try_create_object(roc);
+    const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type> random_delta(-tile_width, tile_width);
+    for (int i = 0; i < 20; ++i) {
+      const shared_ptr<random_walk_rocket> roc (new random_walk_rocket(location_ + facing_ * 2 + vector3<fine_scalar>(random_delta(w.get_rng()), random_delta(w.get_rng()), random_delta(w.get_rng())), facing_));
+      w.try_create_object(roc);
+    }
   }
 }
 
@@ -511,7 +514,7 @@ random_walk_rocket::random_walk_rocket(vector3<fine_scalar> location, vector3<fi
   velocity_ = (facing * tile_width * velocity_scale_factor * 4) / facing.magnitude_within_32_bits();
 }
 
-void random_walk_rocket::update(world& w, input_representation::input_news_t const&, object_identifier my_id) {
+void random_walk_rocket::update(world& w, input_representation::input_news_t const&, object_identifier) {
   auto& rng = w.get_rng();
   if (velocity_.magnitude_within_32_bits_is_greater_than(tile_width * velocity_scale_factor / 100)) {
     velocity_ -= velocity_ * tile_width * velocity_scale_factor / (100 * velocity_.magnitude_within_32_bits());
