@@ -108,6 +108,13 @@ struct bbox {
     return true;*/
     return (maxdim() << 1) <= o.maxdim();
   }
+
+  bool contains(bbox const& o)const {
+    for (int dim = 0; dim < NumDimensions; ++dim) {
+      if ((min[dim] > o.min[dim]) || (max[dim] < o.max[dim])) return false;
+    }
+    return true;
+  }
 };
 
 template <int NumDimensions>
@@ -185,6 +192,7 @@ struct tree_node {
           stuff_here[pulled_stuffs[i]] = stuff_here.back(); stuff_here.pop_back();
         }
         //std::cerr << "PULL! Woot!\n";
+        assert(bounds.contains(child_attempt.bounds));
         children.push_back(child_attempt);
         return;
       }
@@ -265,7 +273,7 @@ struct tree_node {
 
         if (min_num > 0) {
           const time_type    exit_time(min_num, min_denom);
-          const time_type reentry_time(max_num, max_denom);
+          const time_type reentry_time(min_num, max_denom);
           assert(exit_time < reentry_time);
 
           // Duplicate code!!!
@@ -277,7 +285,7 @@ struct tree_node {
           }
         }
         else if (max_num < 0) {
-          const time_type    exit_time(min_num, max_denom);
+          const time_type    exit_time(max_num, max_denom);
           const time_type reentry_time(max_num, min_denom);
           assert(exit_time < reentry_time);
 
@@ -298,8 +306,8 @@ struct tree_node {
       
       for (auto const& o2 : stuff_here) {
        if (o2.id != o.id) {
-        time_type first_collision_moment = first_possible_overlap;
-        time_type  last_collision_moment =  last_possible_overlap;
+        time_type first_collision_moment = start_time;
+        time_type  last_collision_moment =  end_time;
         for (int dim = 0; dim < NumDimensions; ++dim) {
           const int64_t max_num = (o2.phys_bounds.max[dim] - o.phys_bounds.min[dim]);
           const int64_t min_num = (o2.phys_bounds.min[dim] - o.phys_bounds.max[dim]);
@@ -314,7 +322,7 @@ struct tree_node {
           }
           else {
             const time_type min_time(denom > 0 ? min_num : max_num, denom);
-            const time_type max_time(denom > 0 ? min_num : max_num, denom);
+            const time_type max_time(denom > 0 ? max_num : min_num, denom);
             if (max_time <  last_collision_moment)  last_collision_moment = max_time; // Duplicate code!!!
             if (min_time > first_collision_moment) first_collision_moment = min_time; // Duplicate code!!!
           }
@@ -439,23 +447,37 @@ void draw_node(tree_node<2> const& node) {
   }
 }
 
-void nodecount_search(std::vector<int>& counts, std::vector<int>& objcounts, tree_node<2> const& node, size_t level) {
+template <int NumDimensions>
+void nodecount_search(std::vector<int>& counts, std::vector<int>& objcounts, tree_node<NumDimensions> const& node, size_t level) {
   while (counts.size() <= level) counts.push_back(0);
   while (objcounts.size() <= level) objcounts.push_back(0);
   ++counts[level];
   objcounts[level] += node.stuff_here.size();
-  for (auto const& c : node.children) nodecount_search(counts, objcounts, c, level + 1);
+  for (auto const& c : node.stuff_here) {
+    assert(node.bounds.contains(c.bounds()));
+  }
+  for (auto const& c : node.children) {
+    assert(node.bounds.contains(c.bounds));
+    nodecount_search(counts, objcounts, c, level + 1);
+  }
 }
 
-void print_nodecount(tree_node<2> const& root) {
+template <int NumDimensions>
+void print_nodecount(tree_node<NumDimensions> const& root) {
   std::cerr << "\n=========== NODECOUNT =============\n";
   std::vector<int> counts;
   std::vector<int> objcounts;
   nodecount_search(counts, objcounts, root, 0);
+  int total_nodes = 0;
+  int total_objects = 0;
   for (size_t level = 0; level < counts.size(); ++level) {
+    total_nodes += counts[level];
+    total_objects += objcounts[level];
     std::cerr << "Nodes at level " << level << ": " << counts[level] << "\n";
     std::cerr << "Objects stored at level " << level << ": " << objcounts[level] << "\n";
   }
+  std::cerr << "Total nodes: " << total_nodes << "\n";
+  std::cerr << "Total objects: " << total_objects << "\n";
 }
 
 void do_2d_test_scenario(tree_node<2>& root) {
@@ -537,6 +559,8 @@ void do_2d_test_scenario(tree_node<2>& root) {
 
   std::cerr << microseconds_before_searching - microseconds_before_inserting << " microseconds to insert\n";
   std::cerr << microseconds_after_searching - microseconds_before_searching << " microseconds to search\n";
+
+  print_nodecount(root);
 }
 
 void do_3d_test_scenario(tree_node<3>& root) {
