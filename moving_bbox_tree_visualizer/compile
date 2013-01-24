@@ -2,5 +2,5 @@
 
 printf '\n\n\n'
 g++ -std=c++0x -o sim -ggdb -Wall -Wextra -Wno-unknown-pragmas -O0 -fmax-errors=15 \
-	-I/usr/include/SDL/ -I../boostbcp/ -lSDL -lGL -lGLU \
+	-I/usr/include/SDL/ -I../boostbcp/ -lboost_system -lSDL -lGL -lGLU \
 	*.cpp "$@"
