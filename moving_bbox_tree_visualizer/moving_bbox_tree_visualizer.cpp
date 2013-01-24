@@ -321,8 +321,8 @@ struct tree_node {
             // else { They are moving at the same speed so they overlap forever. Restrict nothing. }
           }
           else {
-            const time_type min_time(denom > 0 ? min_num : max_num, denom);
-            const time_type max_time(denom > 0 ? max_num : min_num, denom);
+            const time_type min_time((denom > 0) ? min_num : max_num, denom);
+            const time_type max_time((denom > 0) ? max_num : min_num, denom);
             if (max_time <  last_collision_moment)  last_collision_moment = max_time; // Duplicate code!!!
             if (min_time > first_collision_moment) first_collision_moment = min_time; // Duplicate code!!!
           }
