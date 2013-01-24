@@ -26,8 +26,27 @@
 #include <limits>
 #include <array>
 #include <algorithm>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int.hpp>
 
 namespace /* anonymous */ {
+
+// Test case from https://svn.boost.org/trac/boost/ticket/6189
+class MGen {
+public:
+    typedef boost::mt19937::result_type result_type;
+    result_type min() const { return impl_.min(); }
+    result_type max() const { return impl_.max(); }
+    result_type operator()() { return 2114502989; }
+private:
+    boost::mt19937 impl_;
+};
+BOOST_AUTO_TEST_CASE( boost_before_1_50_bug ) {
+  MGen gen;
+  const int64_t val = boost::uniform_int<int64_t>(-50, 50)(gen);
+  BOOST_CHECK_GE(val, -50);
+  BOOST_CHECK_LE(val, 50);
+}
 
 int32_t popcount_obvious(uint64_t number, size_t bits) {
   size_t count = 0;

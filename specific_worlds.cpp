@@ -22,6 +22,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <boost/random/ranlux.hpp>
+#include <boost/preprocessor/cat.hpp>
 
 #include "world.hpp"
 #include "worldgen.hpp"
@@ -90,6 +91,10 @@ namespace std {
       return result;
     }
   };
+  template<typename...Types>
+  inline size_t hash_value(std::tuple<Types...> const& tup) {
+    return std::hash<std::tuple<Types...>>()(tup);
+  }
 }
 
 namespace std {
@@ -159,7 +164,7 @@ typedef boost::random::ranlux3 memo_rng;
 template<typename...HashableArguments>
 inline memo_rng make_rng(HashableArguments&&... args) {
   typedef std::tuple<HashableArguments...> arguments_tuple_type;
-  const size_t hash = boost::hash<arguments_tuple_type>()(arguments_tuple_type(args...));
+  const size_t hash = hash_value(arguments_tuple_type(args...));
   // ranlux3 uses a 32-bit seed.
   // (Don't ">> 32" to avoid silly compiler warnings on 32-bit.)
   const uint32_t seed = ((sizeof(hash) == 4) ? hash : (hash ^ (hash >> 16 >> 16)));
@@ -495,66 +500,81 @@ struct twisty {
 
 
 typedef worldgen_function_t (*worldgen_function_creator)();
-const std::pair<std::string, worldgen_function_creator> world_builders[] = {
-  {
-  "vacuum", []() {
+
+std::vector<std::pair<std::string, worldgen_function_creator> > world_builder_list;
+std::map<std::string, worldgen_function_creator> world_builder_table;
+
+#define SCENARIO_NAMED(name) \
+  worldgen_function_t BOOST_PP_CAT(scen__, __LINE__)(); \
+  struct BOOST_PP_CAT(scen_init__, __LINE__) { \
+    BOOST_PP_CAT(scen_init__, __LINE__)() { \
+      const std::pair<std::string, worldgen_function_creator> elem( \
+                      name, BOOST_PP_CAT(scen__, __LINE__)); \
+      world_builder_list.push_back(elem); \
+      world_builder_table.insert(elem); \
+    } \
+  } BOOST_PP_CAT(scen_init__, __LINE__); \
+  worldgen_function_t BOOST_PP_CAT(scen__, __LINE__)()
+
+
+SCENARIO_NAMED("vacuum") {
     return worldgen_from_tilespec([](coords) {
       return AIR;
     });
-  }}, {
-  "flat", []() {
+}
+SCENARIO_NAMED("flat") {
     return worldgen_from_tilespec([](coords l) {
       return
         (l.z < wcc) ? ROCK : AIR;
     });
-  }}, {
-  "flat2", []() {
+}
+SCENARIO_NAMED("flat2") {
     return worldgen_from_column_spec([](world_column_builder& b, coord, coord, coord, coord) {
       b.specify_lowest(ROCK);
       b.specify(wcc, AIR);
     });
-  }}, {
+}
 
-  "plane", []() {
+SCENARIO_NAMED("plane") {
     return worldgen_from_tilespec([](coords l) {
       return
         (l.z == wcc) ? ROCK : AIR;
     });
-  }}, {
-  "ceiling", []() {
+}
+SCENARIO_NAMED("ceiling") {
     return worldgen_from_tilespec([](coords l) {
       return
         (l.z > wcc + 100) ? ROCK : AIR;
     });
-  }}, {
-  "low_ceiling", []() {
+}
+SCENARIO_NAMED("low_ceiling") {
     return worldgen_from_tilespec([](coords l) {
       return
         (l.z > wcc) ? ROCK : AIR;
     });
-  }}, {
-  "simple_hills", []() {
+}
+SCENARIO_NAMED("simple_hills") {
     return worldgen_from_column_spec(simple_hills());
-  }}, {
-  "spiky1", []() {
+}
+SCENARIO_NAMED("spiky1") {
     return worldgen_from_tilespec(with_state<spiky1>());
-  }}, {
-  "spiky2", []() {
+}
+SCENARIO_NAMED("spiky2") {
     return worldgen_from_column_spec(with_state<spiky2>());
-  }}, {
-  "spiky", []() {
+}
+SCENARIO_NAMED("spiky") {
     return worldgen_from_column_spec(spiky3());
-  }}, {
-  "spiky3", []() {
+}
+SCENARIO_NAMED("spiky3") {
     return worldgen_from_column_spec(spiky3());
-  }}, {
-  "pressure_tunnel", []() {
+}
+SCENARIO_NAMED("pressure_tunnel") {
     return pressure_tunnel(false);
-  }}, {
-  "pressure_tunnel_ground", []() {
+}
+SCENARIO_NAMED("pressure_tunnel_ground") {
     return pressure_tunnel(true);
-  }}, {
-  "stepped_pools", []() {
+}
+SCENARIO_NAMED("stepped_pools") {
     return worldgen_from_tilespec([](coords l)->tile_contents {
       typedef lasercake_int<int64_t>::type number;
       const number block_width = 30;
@@ -588,18 +608,18 @@ const std::pair<std::string, worldgen_function_creator> world_builders[] = {
         }
       }
     });
-  }}, {
+}
 
 
-  "default", []() {
+SCENARIO_NAMED("default") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
         (is_old_box(l)) ? ROCK :
         AIR;
     });
-  }}, {
-  "tower", []() {
+}
+SCENARIO_NAMED("tower") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -607,8 +627,8 @@ const std::pair<std::string, worldgen_function_creator> world_builders[] = {
         (in_old_water_tower(l)) ? GROUPABLE_WATER :
         AIR;
     });
-  }}, {
-  "tower2", []() {
+}
+SCENARIO_NAMED("tower2") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -617,8 +637,8 @@ const std::pair<std::string, worldgen_function_creator> world_builders[] = {
         (around_old_water_tower(l)) ? ROCK :
         AIR;
     });
-  }}, {
-  "tower3", []() {
+}
+SCENARIO_NAMED("tower3") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -628,9 +648,9 @@ const std::pair<std::string, worldgen_function_creator> world_builders[] = {
         (dike_surrounding_old_water_tower(l)) ? ROCK :
         AIR;
     });
-  }}, {
+}
 
-  "shallow", []() {
+SCENARIO_NAMED("shallow") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -641,8 +661,8 @@ const std::pair<std::string, worldgen_function_creator> world_builders[] = {
         (l.x == wcc+19) ? GROUPABLE_WATER :
         AIR;
     });
-  }}, {
-  "steep", []() {
+}
+SCENARIO_NAMED("steep") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -651,8 +671,8 @@ const std::pair<std::string, worldgen_function_creator> world_builders[] = {
         (l.z >= wcc+15 && (wcc + 20 - l.x) >= 15) ? GROUPABLE_WATER :
         AIR;
     });
-  }}, {
-  "tank", []() {
+}
+SCENARIO_NAMED("tank") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -664,8 +684,8 @@ const std::pair<std::string, worldgen_function_creator> world_builders[] = {
         (l.x > wcc+10) ? GROUPABLE_WATER :
         AIR;
     });
-  }}, {
-  "tank2", []() {
+}
+SCENARIO_NAMED("tank2") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -677,17 +697,13 @@ const std::pair<std::string, worldgen_function_creator> world_builders[] = {
         (l.x > wcc+10) ? GROUPABLE_WATER :
         AIR;
     });
-  }}, {
-  "twisty", []() {
+}
+SCENARIO_NAMED("twisty") {
     return worldgen_from_tilespec(twisty<ROCK>());
-  }}, {
-  "twistyrubble", []() {
+}
+SCENARIO_NAMED("twistyrubble") {
     return worldgen_from_tilespec(twisty<RUBBLE>());
-  }}
-};
-const size_t num_world_builders = sizeof(world_builders)/sizeof(*world_builders);
-const std::map<std::string, worldgen_function_creator> world_builder_table
-  (world_builders + 0, world_builders + sizeof(world_builders)/sizeof(*world_builders));
+}
 
 worldgen_function_t make_world_building_func(std::string scenario) {
   if(auto const* worldgen = find_as_pointer(world_builder_table, scenario)) {
@@ -700,9 +716,10 @@ worldgen_function_t make_world_building_func(std::string scenario) {
 
 std::vector<std::string> scenario_names() {
   std::vector<std::string> result;
+  const size_t num_world_builders = world_builder_list.size();
   result.reserve(num_world_builders);
   for(size_t i = 0; i != num_world_builders; ++i) {
-    result.push_back(world_builders[i].first);
+    result.push_back(world_builder_list[i].first);
   }
   return result;
 }

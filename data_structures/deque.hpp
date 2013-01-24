@@ -23,7 +23,7 @@
 #define LASERCAKE_DEQUE_HPP__
 
 #include <boost/iterator/iterator_facade.hpp>
-#include "../config.hpp"
+#include "numbers.hpp"
 
 // This is a double-ended queue that
 // (1) is like std::vector in memory-efficiency and insertion complexity

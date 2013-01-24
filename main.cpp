@@ -145,7 +145,8 @@ std::string show_microseconds_per_frame_as_fps(microseconds_t monotonic_microsec
 
 
 
-object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lasers) {
+object_identifier init_test_world_and_return_our_robot(
+      world& w, bool crazy_lasers, bool log_microseconds = true) {
   const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(10LL*tile_width+2, 10LL*tile_width+2, 10LL*tile_width+2);
   const shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
@@ -168,7 +169,9 @@ object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lase
   // which helps us e.g. start with a pillar of water in the air that's about to fall,
   // so we can test how that physics works.
   {
-    std::cerr << "\nInit: ";
+    if(log_microseconds) {
+      std::cerr << "\nInit: ";
+    }
     const microseconds_t microseconds_before_init = get_this_process_microseconds();
 
     vector<tile_location> tiles_near_start;
@@ -191,7 +194,9 @@ object_identifier init_test_world_and_return_our_robot(world& w, bool crazy_lase
 
     const microseconds_t microseconds_after_init = get_this_process_microseconds();
     const microseconds_t microseconds_for_init = microseconds_after_init - microseconds_before_init;
-    std::cerr << show_microseconds(microseconds_for_init) << " ms\n";
+    if(log_microseconds) {
+      std::cerr << show_microseconds(microseconds_for_init) << " ms\n";
+    }
   }
 
   return robot_id;
@@ -328,14 +333,14 @@ void gl_renderer::render_2d_text_overlay_(
   painter.end();
 }
 
-int debug_test_sim_avoiding_qt(config_struct config) {
+int debug_test_sim_avoiding_qt_and_trying_to_be_very_deterministic(config_struct config) {
   std::cerr << "Constructing worldgen\n";
   const worldgen_function_t worldgen = make_world_building_func(config.scenario);
   assert(worldgen);
   std::cerr << "Constructing world\n";
   world w(worldgen);
   std::cerr << "Initing world\n";
-  const object_identifier robot_id = init_test_world_and_return_our_robot(w, config.crazy_lasers);
+  const object_identifier robot_id = init_test_world_and_return_our_robot(w, config.crazy_lasers, false);
   shared_ptr<view_on_the_world> view_ptr;
   if(config.run_drawing_code) {
     std::cerr << "Initing graphics-prep code\n";
@@ -389,7 +394,7 @@ int main(int argc, char *argv[])
       ("exit-after-frames,e", po::value<int64_t>(&config.exit_after_frames)->default_value(-1), "debug: exit after n frames (negative: never)")
       ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
       ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
-      ("avoid-qt,Q", "debug: don't call Qt at all (implies -n)")
+      ("avoid-qt,Q", "debug: don't call Qt at all (implies --no-gui and --no-threads; attempts to be even more deterministic than normal)")
 #if !LASERCAKE_NO_THREADS
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
@@ -435,7 +440,7 @@ int main(int argc, char *argv[])
 
     if(vm.count("avoid-qt")) {
       config.have_gui = false;
-      return debug_test_sim_avoiding_qt(config);
+      return debug_test_sim_avoiding_qt_and_trying_to_be_very_deterministic (config);
     }
   }
 

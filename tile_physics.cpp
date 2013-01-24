@@ -19,11 +19,10 @@
 
 */
 
-#include <queue>
-
 #include "world.hpp"
 #include "tile_physics.hpp"
 #include "data_structures/deque.hpp"
+#include <queue>
 
 /*
 
@@ -218,6 +217,16 @@ dividing two infinite oceans.)
 
 
 using namespace tile_physics_impl;
+
+// This synonym is not in utils.hpp because libc++ (Clang-affiliated std C++ lib)
+// needed std::queue and its argument types to be included at the time of
+// synonym definition (or similar), which we don't want to do in utils.hpp
+// because it costs compilation time for the majority of our .cpp files, which
+// don't use this.
+template<typename T>
+struct lasercake_queue {
+  typedef std::queue<T, deque<T, typename lasercake_nice_allocator<T>::type> > type;
+};
 
 ////////////////////////////////////////////
 // Miscellaneous helpful stuff.

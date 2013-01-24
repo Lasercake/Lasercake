@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_DEBUG_PRINT_DETERMINISTICALLY_HPP__
 #define LASERCAKE_DEBUG_PRINT_DETERMINISTICALLY_HPP__
 
+#include <boost/preprocessor/stringize.hpp>
+
 #include <iostream>
 #include <unordered_map>
 inline std::ostream& debug_print_ostream() {return std::cout;}
@@ -30,6 +32,12 @@ inline void debug_print_val_deterministically(T const& t) {
   debug_print_ostream() << t;
 }
 
+#define DEBUG_INSTRUMENT_BEGIN
+#define DEBUG_INSTRUMENT_END
+
+
+// Pointers need special treatment because they vary from run to run
+// but their identity still holds interesting information.
 inline void debug_print_ptr_deterministically(void const* p) {
   //TODO prevent reuse of pointers from malloc/free: prevent freeing!?
   typedef std::unordered_map<void const*, size_t> ptrmap;
@@ -52,11 +60,33 @@ inline void debug_print_val_deterministically(T* p) {
 inline void debug_print_val_deterministically(char const* s) {
   debug_print_ostream() << s;
 }
+// Lasercake has more int8_t and uint8_t's than chars;
+// make sure to print them numerically as they deserve
+// (not, as would be likely to happen, as \0 or a control character).
+// (If they're meant to be chars, ascii tables are easy to look up.)
+inline void debug_print_val_deterministically(int8_t c) {
+  debug_print_ostream() << int(c);
+}
+inline void debug_print_val_deterministically(uint8_t c) {
+  debug_print_ostream() << unsigned(c);
+}
+
 #include <boost/shared_ptr.hpp>
 template<typename T>
 inline void debug_print_val_deterministically(boost::shared_ptr<T> const& p) {
   debug_print_ptr_deterministically(p.get());
 }
+#include <memory>
+template<typename T, typename Del>
+inline void debug_print_val_deterministically(std::unique_ptr<T, Del> const& p) {
+  debug_print_ptr_deterministically(p.get());
+}
+#include <boost/scoped_ptr.hpp>
+template<typename T>
+inline void debug_print_val_deterministically(boost::scoped_ptr<T> const& p) {
+  debug_print_ptr_deterministically(p.get());
+}
+
 template<typename T1, typename T2>
 inline void debug_print_val_deterministically(std::pair<T1,T2> const& pair) {
   debug_print_ostream() << '(';

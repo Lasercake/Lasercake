@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys, subprocess, re, shutil
+import os, sys, subprocess, re, shutil, hashlib
 
 MAKE_PARALLEL_JOBS = 3
 
@@ -27,6 +27,9 @@ def escaped_control_characters(string):
 
 def say_we_are_calling(string):
 	say(ansi_cyan+'% '+escaped_control_characters(string)+ansi_end+'\n')
+
+def hash_list(l):
+	return hashlib.sha256(b''.join(hashlib.sha256().digest() for arg in l)).hexdigest()
 
 def main():
 	try: subprocess.call(['cmake', '--version'])
@@ -65,12 +68,18 @@ def main():
 			cmake_args.append(arg)
 		if arg == '-DBUILD_SELF_TESTS=OFF':
 			running_tests = False
-	name_for_this_config = ','.join([re.sub(r'[^-+.a-zA-Z0-9]', r'_', arg) for arg in cmake_args]) or 'default'
+	# Make it more likely the directories are named non-conflictingly
+	# even though we delete some special characters from their paths.
+	hash_for_this_config = hash_list(cmake_args)
+	name_for_this_config = hash_for_this_config[:10] + '_' + (','.join([re.sub(r'[^-+.a-zA-Z0-9]', r'_', arg) for arg in cmake_args]) or 'default')
 	build_dir = 'build/'+name_for_this_config
 	try: os.remove('CMakeCache.txt')
 	except OSError: pass
-	try: os.makedirs(build_dir)
-	except OSError: pass
+	try:
+		os.makedirs(build_dir)
+	except OSError:
+		say(ansi_green+'This build dir already exists!'+ansi_end+'\n')
+		cmake_args = []
 	to_call_cmake = ['cmake', '../../'] + cmake_args
 	say_we_are_calling('cd '+build_dir+'; '+'   '.join(to_call_cmake))
 	say(ansi_cyan+'''  (^^ not escaped properly in these info messages - doin' it right in python)'''+ansi_end+'\n')
