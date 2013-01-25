@@ -258,9 +258,9 @@ struct tree_node {
         
         // Note - not returning the time of collision
         results.push_back(o2.id);
-        
-        breakcontinue:;
       }
+
+      breakcontinue:;
     }
   }
 
