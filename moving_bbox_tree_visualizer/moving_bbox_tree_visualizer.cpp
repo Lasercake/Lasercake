@@ -72,7 +72,8 @@ microseconds_t get_this_thread_microseconds() {
 const size_t MIN_NICE_NODE_SIZE = 4;
 
 typedef int object_id;
-typedef lasercake_int<int64_t>::type time_int_type;
+//typedef lasercake_int<int64_t>::type time_int_type;
+typedef lasercake_int<int32_t>::type time_int_type;
 typedef non_normalized_rational<time_int_type> time_type;
 //typedef faux_optional<time_type> optional_time;
 typedef boost::random::uniform_int_distribution<int64_t> uniform_random;
@@ -201,6 +202,42 @@ struct tree_node {
     stuff_here.push_back(o);
   }
 
+  void search_collect_stuff(std::vector<object_id>& results,
+        moving_object<NumDimensions> const& o,
+        time_type start_time,
+        time_type end_time)const __attribute__((__noinline__))
+  {
+    for (auto const& o2 : stuff_here) {
+      if (o2.id != o.id) {
+        time_type first_collision_moment = start_time;
+        time_type  last_collision_moment =  end_time;
+        for (int dim = 0; dim < NumDimensions; ++dim) {
+          const int32_t max_num = (o2.phys_bounds.max[dim] - o.phys_bounds.min[dim]);
+          const int32_t min_num = (o2.phys_bounds.min[dim] - o.phys_bounds.max[dim]);
+          const int32_t denom = (o2.vel[dim] - o.vel[dim]);
+          if (denom == 0) {
+            if ((min_num > 0) || (max_num < 0)) {
+              // Same speed, never overlap - hack : never colliding
+              first_collision_moment = time_type(1);
+               last_collision_moment = time_type(0);
+            }
+            // else { They are moving at the same speed so they overlap forever. Restrict nothing. }
+          }
+          else {
+            const time_type min_time((denom > 0) ? min_num : max_num, denom);
+            const time_type max_time((denom > 0) ? max_num : min_num, denom);
+            if (max_time <  last_collision_moment)  last_collision_moment = max_time; // Duplicate code!!!
+            if (min_time > first_collision_moment) first_collision_moment = min_time; // Duplicate code!!!
+          }
+        }
+        if (first_collision_moment <= last_collision_moment) {
+          // Note - not returning the time of collision
+          results.push_back(o2.id);
+        }
+      }
+    }
+  }
+
   void search(std::vector<object_id>& results,
         moving_object<NumDimensions> const& o,
         time_type start_time,
@@ -216,10 +253,13 @@ struct tree_node {
       // Three of those have multiple possibilities. We're looking for the min and max time.
       // If the denominator is always positive or always negative, it's easy to compute min/max times.
       // If it crosses zero, then there's no min or max.
-      const int64_t max_num = (bounds.max[dim] - o.phys_bounds.min[dim]);
-      const int64_t min_num = (bounds.min[dim] - o.phys_bounds.max[dim]);
-      const int64_t max_denom = (bounds.max[dim + NumDimensions] - o.vel[dim]);
-      const int64_t min_denom = (bounds.min[dim + NumDimensions] - o.vel[dim]);
+      const int32_t max_num = (bounds.max[dim] - o.phys_bounds.min[dim]);
+      const int32_t min_num = (bounds.min[dim] - o.phys_bounds.max[dim]);
+      //const int32_t max_denom = (bounds.max[dim + NumDimensions] - o.vel[dim]);
+      //const int32_t min_denom = (bounds.min[dim + NumDimensions] - o.vel[dim]);
+      const int32_t maxmin_denom[2] = {(int32_t)(bounds.max[dim + NumDimensions] - o.vel[dim]), (int32_t)(bounds.min[dim + NumDimensions] - o.vel[dim])};
+      int32_t const& max_denom = maxmin_denom[0];
+      int32_t const& min_denom = maxmin_denom[1];
            if (min_denom > 0) {
         const time_type max_time(max_num, (max_num > 0) ? min_denom : max_denom);
         const time_type min_time(min_num, (min_num > 0) ? max_denom : min_denom);
@@ -303,36 +343,7 @@ struct tree_node {
 
     if (first_possible_overlap <= last_possible_overlap) {
       // The object's trajectory overlaps some part of this box. Check our stuff-here and children.
-      
-      for (auto const& o2 : stuff_here) {
-       if (o2.id != o.id) {
-        time_type first_collision_moment = start_time;
-        time_type  last_collision_moment =  end_time;
-        for (int dim = 0; dim < NumDimensions; ++dim) {
-          const int64_t max_num = (o2.phys_bounds.max[dim] - o.phys_bounds.min[dim]);
-          const int64_t min_num = (o2.phys_bounds.min[dim] - o.phys_bounds.max[dim]);
-          const int64_t denom = (o2.vel[dim] - o.vel[dim]);
-          if (denom == 0) {
-            if ((min_num > 0) || (max_num < 0)) {
-              // Same speed, never overlap - hack : never colliding
-              first_collision_moment = time_type(1);
-               last_collision_moment = time_type(0);
-            }
-            // else { They are moving at the same speed so they overlap forever. Restrict nothing. }
-          }
-          else {
-            const time_type min_time((denom > 0) ? min_num : max_num, denom);
-            const time_type max_time((denom > 0) ? max_num : min_num, denom);
-            if (max_time <  last_collision_moment)  last_collision_moment = max_time; // Duplicate code!!!
-            if (min_time > first_collision_moment) first_collision_moment = min_time; // Duplicate code!!!
-          }
-        }
-        if (first_collision_moment <= last_collision_moment) {
-          // Note - not returning the time of collision
-          results.push_back(o2.id);
-        }
-       }
-      }
+      search_collect_stuff(results, o, start_time, end_time);
 
       for (auto const& c : children) c.search(results, o, start_time, end_time);
     }
