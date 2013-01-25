@@ -234,7 +234,7 @@ struct tree_node {
     for (auto const& o2 : stuff_here) {
       if (o2.id != o.id) {
         time_type first_collision_moment = start_time;
-        time_type  last_collision_moment =  end_time;
+        time_type  last_collision_moment =   end_time;
         for (int dim = 0; dim < NumDimensions; ++dim) {
           const int32_t max_num = (o2.phys_bounds.max[dim] - o.phys_bounds.min[dim]);
           const int32_t min_num = (o2.phys_bounds.min[dim] - o.phys_bounds.max[dim]);
