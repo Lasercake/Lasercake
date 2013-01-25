@@ -631,8 +631,12 @@ void do_2d_test_scenario(tree_node<2>& root) {
     std::cerr << "Objects with " << level << " overlaps: " << counts[level] << "\n";
   }
 
-  std::cerr << microseconds_before_searching - microseconds_before_inserting << " microseconds to insert\n";
-  std::cerr << microseconds_after_searching - microseconds_before_searching << " microseconds to search\n";
+  const microseconds_t microseconds_to_insert = microseconds_before_searching - microseconds_before_inserting;
+  const microseconds_t microseconds_to_search = microseconds_after_searching - microseconds_before_searching;
+  std::cerr << microseconds_to_insert << " microseconds to insert\n";
+  std::cerr << microseconds_to_search << " microseconds to search\n";
+  std::cerr << microseconds_to_insert * 1000 / objects.size() << " ns/insertion\n";
+  std::cerr << microseconds_to_search * 1000 / objects.size() << " ns/search\n";
 
   print_nodecount(root);
 }
@@ -727,8 +731,12 @@ void do_3d_test_scenario(tree_node<3>& root) {
     std::cerr << "Objects with " << level << " overlaps: " << counts[level] << "\n";
   }
 
-  std::cerr << microseconds_before_searching - microseconds_before_inserting << " microseconds to insert\n";
-  std::cerr << microseconds_after_searching - microseconds_before_searching << " microseconds to search\n";
+  const microseconds_t microseconds_to_insert = microseconds_before_searching - microseconds_before_inserting;
+  const microseconds_t microseconds_to_search = microseconds_after_searching - microseconds_before_searching;
+  std::cerr << microseconds_to_insert << " microseconds to insert\n";
+  std::cerr << microseconds_to_search << " microseconds to search\n";
+  std::cerr << microseconds_to_insert * 1000 / objects.size() << " ns/insertion\n";
+  std::cerr << microseconds_to_search * 1000 / objects.size() << " ns/search\n";
 
   print_nodecount(root);
 }
