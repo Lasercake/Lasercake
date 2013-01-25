@@ -398,14 +398,14 @@ struct tree_node {
         }
         // else { The boxes overlap and could be going at relative speed zero, so they could overlap at any time, so restrict nothing }
       }
+      
+      if (first_possible_overlap > last_possible_overlap) return;
     }
 
-    if (first_possible_overlap <= last_possible_overlap) {
-      // The object's trajectory overlaps some part of this box. Check our stuff-here and children.
-      search_collect_stuff(results, o, start_time, end_time);
+    // The object's trajectory overlaps some part of this box. Check our stuff-here and children.
+    search_collect_stuff(results, o, start_time, end_time);
 
-      for (auto const& c : children) c.search(results, o, start_time, end_time);
-    }
+    for (auto const& c : children) c.search(results, o, start_time, end_time);
   }
 };
 
