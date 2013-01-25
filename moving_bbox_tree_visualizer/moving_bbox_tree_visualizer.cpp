@@ -69,7 +69,7 @@ microseconds_t get_this_thread_microseconds() {
 }
 
 
-const size_t MIN_NICE_NODE_SIZE = 4;
+const size_t MIN_NICE_NODE_SIZE = 2;
 
 typedef int object_id;
 //typedef lasercake_int<int64_t>::type time_int_type;
