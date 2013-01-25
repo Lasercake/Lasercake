@@ -253,6 +253,39 @@ struct tree_node {
       // Three of those have multiple possibilities. We're looking for the min and max time.
       // If the denominator is always positive or always negative, it's easy to compute min/max times.
       // If it crosses zero, then there's no min or max.
+
+#if 0
+      const int32_t plah[4] = {
+        (int32_t)(bounds.max[dim] - o.phys_bounds.min[dim]),
+        (int32_t)(bounds.min[dim] - o.phys_bounds.max[dim]),
+        (int32_t)(bounds.max[dim + NumDimensions] - o.vel[dim]),
+        (int32_t)(bounds.min[dim + NumDimensions] - o.vel[dim])
+      };
+      int32_t const& max_num = plah[0];
+      int32_t const& min_num = plah[1];
+      int32_t const& max_denom = plah[2];
+      int32_t const& min_denom = plah[3];
+
+      if (denom crosses zero and num crosses zero) {
+          // any time is possible
+      }
+      else {
+        const bool max_first = min_denom > 0;
+        const int32_t max_time_num = (((min_num > 0) ? min_denom : max_denom) > 0) ? max_num : min_num;
+        const int32_t max_time_denom = (max_time_num > 0) ? min_denom : max_denom;
+        const int32_t min_time_num = (((min_num > 0) ? max_denom : min_denom) > 0) ? min_num : max_num;
+        const int32_t min_time_denom = (min_time_num > 0) ? max_denom : min_denom;
+        if (max_time_num *  last_possible_overlap.denominator <  last_possible_overlap.numerator * max_time_denom) {
+           last_possible_overlap.numerator   = max_time_num  ;
+           last_possible_overlap.denominator = max_time_denom;
+        }
+        if (min_time_num * first_possible_overlap.denominator > first_possible_overlap.numerator * min_time_denom) {
+          first_possible_overlap.numerator   = min_time_num  ;
+          first_possible_overlap.denominator = min_time_denom;
+        }
+      }
+#endif
+
       const int32_t max_num = (bounds.max[dim] - o.phys_bounds.min[dim]);
       const int32_t min_num = (bounds.min[dim] - o.phys_bounds.max[dim]);
       //const int32_t max_denom = (bounds.max[dim + NumDimensions] - o.vel[dim]);
