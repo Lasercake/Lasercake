@@ -229,7 +229,7 @@ struct tree_node {
   void search_collect_stuff(std::vector<object_id>& results,
         moving_object<NumDimensions> const& o,
         time_type start_time,
-        time_type end_time)const __attribute__((__noinline__))
+        time_type end_time)const //__attribute__((__noinline__))
   {
     for (auto const& o2 : stuff_here) {
       if (o2.id != o.id) {
@@ -319,16 +319,15 @@ struct tree_node {
       const int32_t maxmin_denom[2] = {(int32_t)(bounds.max[dim + NumDimensions] - o.vel[dim]), (int32_t)(bounds.min[dim + NumDimensions] - o.vel[dim])};
       int32_t const& max_denom = maxmin_denom[0];
       int32_t const& min_denom = maxmin_denom[1];
-#if 0
       if ((min_denom > 0) || (max_denom < 0)) {
-        const int32_t max_time_num = (max_denom < 0) ? min_num : max_num;
+        const int32_t max_time_num = ((max_denom < 0) ? min_num : max_num);
         const time_type max_time(max_time_num, (max_time_num < 0) ? max_denom : min_denom);
-        const int32_t min_time_num = (max_denom < 0) ? max_num : min_num;
-        const time_type min_time(min_time_num, (min_time_num < 0) ? min_denom : max_denom);
+        const int32_t min_time_num = ((max_denom < 0) ? max_num : min_num);
+        const time_type min_time(min_time_num, (min_time_num < 0) ? max_denom : min_denom);
         if (max_time <  last_possible_overlap)  last_possible_overlap = max_time; // Duplicate code!!!
         if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
       }
-#endif
+#if 0
            if (min_denom > 0) {
         const time_type max_time(max_num, (max_num <  0) ? max_denom : min_denom);
         const time_type min_time(min_num, (min_num >  0) ? max_denom : min_denom);
@@ -343,6 +342,7 @@ struct tree_node {
         if (max_time <  last_possible_overlap)  last_possible_overlap = max_time; // Duplicate code!!!
         if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
       }
+#endif
 #if 0
       else if (min_denom == 0) {
         if (max_denom == 0) {
