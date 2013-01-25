@@ -91,6 +91,22 @@ struct bbox {
     }
     return result;
   }
+  bbox plus_nontrivially_including(bbox const& o)const {
+    bbox result;
+    for (int dim = 0; dim < NumDimensions; ++dim) {
+      result.max[dim] = std::max(max[dim], o.max[dim] + 1);
+      result.min[dim] = std::min(min[dim], o.min[dim] - 1);
+    }
+    return result;
+  }
+  bbox outset()const {
+    bbox result;
+    for (int dim = 0; dim < NumDimensions; ++dim) {
+      result.max[dim] = max[dim] + 1;
+      result.min[dim] = min[dim] - 1;
+    }
+    return result;
+  }
   int64_t size(int dim)const { return max[dim] - min[dim]; }
   int64_t maxdim()const {
     int64_t result = 0;
@@ -134,6 +150,14 @@ struct moving_object {
     }
     return result;
   }
+
+  void double_coords() {
+    for (int dim = 0; dim < NumDimensions; ++dim) {
+      phys_bounds.max[dim] <<= 1;
+      phys_bounds.min[dim] <<= 1;
+      vel[dim] <<= 1;
+    }
+  }
 };
 
 template <int NumDimensions>
@@ -143,7 +167,7 @@ struct tree_node {
   std::vector<moving_object<NumDimensions>> stuff_here;
   
   int64_t strain(moving_object<NumDimensions> const& o)const {
-    bbox<NumDimensions*2> combined = bounds.combined_with(o.bounds());
+    bbox<NumDimensions*2> combined = bounds.plus_nontrivially_including(o.bounds());
     int64_t result = 100 * (combined.maxdim() - bounds.maxdim());
     for (int dim = 0; dim < NumDimensions*2; ++dim) result += combined.size(dim) - bounds.size(dim);
     return result;
@@ -151,7 +175,7 @@ struct tree_node {
 
   void insert(moving_object<NumDimensions> const& o) {
     //    std::cerr << "Insert attempt:\n";
-    bounds = bounds.combined_with(o.bounds());
+    bounds = bounds.plus_nontrivially_including(o.bounds());
     if (!o.bounds().fitsnicely(bounds)) {
       stuff_here.push_back(o);
       //  std::cerr << "BZX\n";
@@ -169,7 +193,7 @@ struct tree_node {
     if (best_child != -1) {
       //std::cerr << least_strain << "\n";
       tree_node& bc = children[best_child];
-      if (bc.bounds.combined_with(o.bounds()).fitsnicely(bounds)) {
+      if (bc.bounds.plus_nontrivially_including(o.bounds()).fitsnicely(bounds)) {
         //std::cerr << "foo\n";
         bc.insert(o);
         return;
@@ -180,10 +204,10 @@ struct tree_node {
       std::vector<int> pulled_stuffs;
       tree_node child_attempt;
       child_attempt.stuff_here.push_back(o);
-      child_attempt.bounds = o.bounds();
+      child_attempt.bounds = o.bounds().outset();
       for (size_t i = 0; i < stuff_here.size(); ++i) {
-        if (child_attempt.bounds.combined_with(stuff_here[i].bounds()).fitsnicely(bounds)) {
-          child_attempt.bounds = child_attempt.bounds.combined_with(stuff_here[i].bounds());
+        if (child_attempt.bounds.plus_nontrivially_including(stuff_here[i].bounds()).fitsnicely(bounds)) {
+          child_attempt.bounds = child_attempt.bounds.plus_nontrivially_including(stuff_here[i].bounds());
           pulled_stuffs.push_back(i);
         }
       }
@@ -307,6 +331,7 @@ struct tree_node {
         if (max_time <  last_possible_overlap)  last_possible_overlap = max_time; // Duplicate code!!!
         if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
       }
+#if 0
       else if (min_denom == 0) {
         if (max_denom == 0) {
           if ((min_num > 0) || (max_num < 0)) {
@@ -339,6 +364,7 @@ struct tree_node {
           if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
         }
       }
+#endif
       else {
         // This is what we call a "split node"; it could be going in either direction,
         // and so its possible overlaps are not an interval, but the complement of an interval
@@ -583,6 +609,8 @@ void do_2d_test_scenario(tree_node<2>& root) {
 
     objects.push_back(o);
   }
+  
+  for (auto & o : objects) o.double_coords();
 
   const microseconds_t microseconds_before_inserting = get_this_thread_microseconds();
   for (auto const& o : objects) root.insert(o);
@@ -677,6 +705,8 @@ void do_3d_test_scenario(tree_node<3>& root) {
     
     objects.push_back(o);
   }
+  
+  for (auto & o : objects) o.double_coords();
   
   const microseconds_t microseconds_before_inserting = get_this_thread_microseconds();
   for (auto const& o : objects) root.insert(o);
