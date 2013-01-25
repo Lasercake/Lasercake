@@ -241,9 +241,8 @@ struct tree_node {
           const int32_t denom = (o2.vel[dim] - o.vel[dim]);
           if (denom == 0) {
             if ((min_num > 0) || (max_num < 0)) {
-              // Same speed, never overlap - hack : never colliding
-              first_collision_moment = time_type(1);
-               last_collision_moment = time_type(0);
+              // Same speed, never overlap - never colliding
+              goto breakcontinue;
             }
             // else { They are moving at the same speed so they overlap forever. Restrict nothing. }
           }
