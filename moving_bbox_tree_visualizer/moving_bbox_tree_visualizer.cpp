@@ -253,11 +253,14 @@ struct tree_node {
             if (max_time <  last_collision_moment)  last_collision_moment = max_time; // Duplicate code!!!
             if (min_time > first_collision_moment) first_collision_moment = min_time; // Duplicate code!!!
           }
+          
+          if (first_collision_moment > last_collision_moment) goto breakcontinue;
         }
-        if (first_collision_moment <= last_collision_moment) {
-          // Note - not returning the time of collision
-          results.push_back(o2.id);
-        }
+        
+        // Note - not returning the time of collision
+        results.push_back(o2.id);
+        
+        breakcontinue:;
       }
     }
   }
