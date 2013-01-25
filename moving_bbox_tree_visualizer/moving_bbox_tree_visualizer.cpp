@@ -261,15 +261,15 @@ struct tree_node {
       int32_t const& max_denom = maxmin_denom[0];
       int32_t const& min_denom = maxmin_denom[1];
            if (min_denom > 0) {
-        const time_type max_time(max_num, (max_num > 0) ? min_denom : max_denom);
-        const time_type min_time(min_num, (min_num > 0) ? max_denom : min_denom);
+        const time_type max_time(max_num, (max_num >= 0) ? min_denom : max_denom);
+        const time_type min_time(min_num, (min_num >  0) ? max_denom : min_denom);
         assert(min_time < max_time);
         if (max_time <  last_possible_overlap)  last_possible_overlap = max_time; // Duplicate code!!!
         if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
       }
       else if (max_denom < 0) {
-        const time_type max_time(min_num, (min_num > 0) ? min_denom : max_denom);
-        const time_type min_time(max_num, (max_num > 0) ? max_denom : min_denom);
+        const time_type max_time(min_num, (min_num >  0) ? min_denom : max_denom);
+        const time_type min_time(max_num, (max_num >= 0) ? max_denom : min_denom);
         assert(min_time < max_time);
         if (max_time <  last_possible_overlap)  last_possible_overlap = max_time; // Duplicate code!!!
         if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
