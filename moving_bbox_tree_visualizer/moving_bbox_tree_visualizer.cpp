@@ -435,11 +435,17 @@ struct tree_node {
     }
 
     // The object's trajectory overlaps some part of this box. Check our stuff-here and children.
-    
-    for (auto const& c : children) c.search(results, o, start_time, end_time);
+
+    for (auto const& c : children) {
+      c.search(results, o,
+               // Odd behavior - passing the computed values improves 2D, but hurts 3D.
+               // (Note that this check takes no time because it's templated.)
+               (NumDimensions == 2) ? first_possible_overlap : start_time,
+               (NumDimensions == 2) ? last_possible_overlap : end_time);
+    }
     
     // Passing first_possible_overlap and last_possible_overlap instead of start_time and end_time would be equivalent,
-    // but in practice I found it to be marginally slower (why?)
+    // but in practice I found it to be marginally slower in both 2D and 3D (why?)
     search_collect_stuff(results, o, start_time, end_time);
   }
 };
