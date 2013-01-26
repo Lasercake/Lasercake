@@ -252,7 +252,9 @@ struct tree_node {
             if (max_time <  last_collision_moment)  last_collision_moment = max_time; // Duplicate code!!!
             if (min_time > first_collision_moment) first_collision_moment = min_time; // Duplicate code!!!
           }
-          
+
+          // This line should logically be inside the else{} block because we don't need to do this check otherwise,
+          // but when I put it in there, it became slower!
           if (first_collision_moment > last_collision_moment) goto breakcontinue;
         }
         
