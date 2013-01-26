@@ -236,6 +236,7 @@ struct tree_node {
         time_type first_collision_moment = start_time;
         time_type  last_collision_moment =   end_time;
         for (int dim = 0; dim < NumDimensions; ++dim) {
+          // putting the denom line above these two consistently made it a bit faster in 2D, but a bunch slower in 3D
           const int32_t max_num = (o2.phys_bounds.max[dim] - o.phys_bounds.min[dim]);
           const int32_t min_num = (o2.phys_bounds.min[dim] - o.phys_bounds.max[dim]);
           const int32_t denom = (o2.vel[dim] - o.vel[dim]);
