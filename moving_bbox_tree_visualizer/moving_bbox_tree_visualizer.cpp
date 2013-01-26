@@ -426,9 +426,12 @@ struct tree_node {
     }
 
     // The object's trajectory overlaps some part of this box. Check our stuff-here and children.
-    search_collect_stuff(results, o, start_time, end_time);
-
+    
     for (auto const& c : children) c.search(results, o, start_time, end_time);
+    
+    // Passing first_possible_overlap and last_possible_overlap instead of start_time and end_time would be equivalent,
+    // but in practice I found it to be marginally slower (why?)
+    search_collect_stuff(results, o, start_time, end_time);
   }
 };
 
