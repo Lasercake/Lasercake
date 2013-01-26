@@ -322,6 +322,7 @@ struct tree_node {
       int32_t const& max_denom = maxmin_denom[0];
       int32_t const& min_denom = maxmin_denom[1];
 #if 0
+      // These assertions should be successful. We omit them only because they cause significant slowdown.
       assert(max_num & 1);
       assert(min_num & 1);
       assert(max_denom & 1);
