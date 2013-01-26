@@ -330,6 +330,8 @@ struct tree_node {
         if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
       }
 #if 0
+      // This block is equivalent to the above, and indistinguishable in speed.
+      // It's worse because it has more duplicate code.
            if (min_denom > 0) {
         const time_type max_time(max_num, (max_num <  0) ? max_denom : min_denom);
         const time_type min_time(min_num, (min_num >  0) ? max_denom : min_denom);
@@ -346,6 +348,9 @@ struct tree_node {
       }
 #endif
 #if 0
+      // This block would handle cases when one of the denominator edges is zero.
+      // In order to avoid having to make these checks, we require that they never be zero
+      // by making all objects have even coordinates and all nodes have odd coordinates.
       else if (min_denom == 0) {
         if (max_denom == 0) {
           if ((min_num > 0) || (max_num < 0)) {
