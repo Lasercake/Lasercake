@@ -328,6 +328,7 @@ struct tree_node {
         const time_type min_time(min_time_num, (min_time_num < 0) ? max_denom : min_denom);
         if (max_time <  last_possible_overlap)  last_possible_overlap = max_time; // Duplicate code!!!
         if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
+        if (first_possible_overlap > last_possible_overlap) return;
       }
 #if 0
       // This block is equivalent to the above, and indistinguishable in speed.
@@ -338,6 +339,7 @@ struct tree_node {
         assert(min_time < max_time);
         if (max_time <  last_possible_overlap)  last_possible_overlap = max_time; // Duplicate code!!!
         if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
+        if (first_possible_overlap > last_possible_overlap) return;
       }
       else if (max_denom < 0) {
         const time_type max_time(min_num, (min_num <= 0) ? max_denom : min_denom);
@@ -345,6 +347,7 @@ struct tree_node {
         assert(min_time < max_time);
         if (max_time <  last_possible_overlap)  last_possible_overlap = max_time; // Duplicate code!!!
         if (min_time > first_possible_overlap) first_possible_overlap = min_time; // Duplicate code!!!
+        if (first_possible_overlap > last_possible_overlap) return;
       }
 #endif
 #if 0
@@ -401,6 +404,7 @@ struct tree_node {
             // In this situation, the proper resulting shape would be not one interval, but TWO intervals.
             // To keep it simple, we just leave it as a single contiguous interval.
           }
+          if (first_possible_overlap > last_possible_overlap) return;
         }
         else if (max_num < 0) {
           const time_type    exit_time(max_num, max_denom);
@@ -414,11 +418,11 @@ struct tree_node {
             // In this situation, the proper resulting shape would be not one interval, but TWO intervals.
             // To keep it simple, we just leave it as a single contiguous interval.
           }
+          if (first_possible_overlap > last_possible_overlap) return;
         }
         // else { The boxes overlap and could be going at relative speed zero, so they could overlap at any time, so restrict nothing }
       }
       
-      if (first_possible_overlap > last_possible_overlap) return;
     }
 
     // The object's trajectory overlaps some part of this box. Check our stuff-here and children.
