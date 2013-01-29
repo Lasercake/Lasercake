@@ -37,12 +37,8 @@
 
 typedef int32_t unit_exponent_type;
 
-//template<int bits, bool isSigned, typename Ratio
 template<
-  typename Int, //the base type that this mimics.
-  // Imagine multiplying the numeric value of that int by all of the below
-  // in order to get the conceptual value of the contained number.
-  typename Ratio,
+  typename Ratio, // a boost::ratio
   // or should we name the template parameters m, g, s, A, K, for nicer error msgs?
   // Is there any need to support non-integer exponents?
   unit_exponent_type Tau, // 2pi, listed here because
@@ -54,6 +50,25 @@ template<
   unit_exponent_type Second,
   unit_exponent_type Ampere,
   unit_exponent_type Kelvin
+>
+struct units {
+  typedef units<boost::ratio<Ratio::den, Ratio::num>,
+    -Tau, -Meter, -Gram, -Second, -Ampere, -Kelvin> reciprocal_type;
+
+  typedef Ratio ratio;
+  static const unit_exponent_type tau = Tau;
+  static const unit_exponent_type meter = Meter;
+  static const unit_exponent_type gram = Gram;
+  static const unit_exponent_type second = Second;
+  static const unit_exponent_type ampere = Ampere;
+  static const unit_exponent_type kelvin = Kelvin;
+};
+
+template<
+  typename Int, //the base type that this mimics.
+  // Imagine multiplying the numeric value of that int by all of the below
+  // in order to get the conceptual value of the contained number.
+  typename Units //a 'units'
 > 
 class unit {
 private:
@@ -65,6 +80,7 @@ private:
   base_type val_;
 public:
 
+#if 0
   // trivial: dimensionless and unscaled; conceptually equivalent
   // (and implicitly convertable with) the underlying type.
   static const bool has_physical_dimension =
@@ -73,24 +89,20 @@ public:
   static const bool is_trivial =
     boost::ratio_equal<Ratio, boost::ratio<1>>::value
     && Tau == 0 && !has_physical_dimension;
- //TODO static_assert ratio is normalized? do i need that currently?
+ //TODO static_assert ratio is normalized? do i need that currently? nope.
+#endif
 
-  typedef unit<Int, boost::ratio<Ratio::den, Ratio::num>,
-    -Tau, -Meter, -Gram, -Second, -Ampere, -Kelvin> reciprocal_type;
+  typedef unit<Int, typename Units::reciprocal_type> reciprocal_type;
 
   template<typename OtherInt>
   struct rebase {
-    typedef unit<typename get_primitive_int_type<OtherInt>::type,
-                 Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> type;
+    typedef unit<typename get_primitive_int_type<OtherInt>::type, Units> type;
   };
   // This partial specialization allows SFINAE to exclude the
-  // operator*(unit, AnyInt) and similar overloads when "AnyInt"
-  // is actually not an int but a unit:
-  template<typename OtherInt,
-    typename RatioB, unit_exponent_type TauB, unit_exponent_type MeterB,
-    unit_exponent_type GramB, unit_exponent_type SecondB, unit_exponent_type AmpereB,
-    unit_exponent_type KelvinB>
-  struct rebase<unit<OtherInt, RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>>;
+  // operator*(unit, AnyInt) and similar overloads when their "AnyInt"
+  // is actually not an int but a unit.
+  template<typename AnyInt, typename AnyUnits>
+  struct rebase<unit<AnyInt, AnyUnits>>;
 
   // Default-construction is the same as the base type.
   unit() = default;
@@ -129,7 +141,7 @@ public:
   // Implicit conversion from unit with same dimensions but smaller
   // representation type.
   template<typename SmallerInt>
-  unit(unit<SmallerInt, Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> a,
+  unit(unit<SmallerInt, Units> a,
        typename boost::enable_if_c<
            bounds_checked_int_impl::superior_to<Int, SmallerInt>::value
          >::type* = 0) : val_(a.val_) {}
@@ -140,14 +152,14 @@ public:
     os << a.val_;
     //also nvm utf8 for now although tau and exponents would benefit
     // oh micro- prefix hmm. (mu)
-    if(!boost::ratio_equal<Ratio, boost::ratio<1>>::value) {
-      os << '*' << boost::ratio_string<Ratio, char>::short_name();
+    if(!boost::ratio_equal<typename Units::ratio, boost::ratio<1>>::value) {
+      os << '*' << boost::ratio_string<typename Units::ratio, char>::short_name();
     }
-    if(Tau) { os << '*' << "tau"; if(Tau != 1) { os << '^' << Tau; } }
-    if(Gram) { os << '*' << 'g'; if(Gram != 1) { os << '^' << Gram; } }
-    if(Meter) { os << '*' << 'm'; if(Meter != 1) { os << '^' << Meter; } }
-    if(Kelvin) { os << '*' << 'K'; if(Kelvin != 1) { os << '^' << Kelvin; } }
-    if(Ampere) { os << '*' << 'A'; if(Ampere != 1) { os << '^' << Ampere; } }
+    if(Units::tau) { os << '*' << "tau"; if(Units::tau != 1) { os << '^' << Units::tau; } }
+    if(Units::gram) { os << '*' << 'g'; if(Units::gram != 1) { os << '^' << Units::gram; } }
+    if(Units::meter) { os << '*' << 'm'; if(Units::meter != 1) { os << '^' << Units::meter; } }
+    if(Units::kelvin) { os << '*' << 'K'; if(Units::kelvin != 1) { os << '^' << Units::kelvin; } }
+    if(Units::ampere) { os << '*' << 'A'; if(Units::ampere != 1) { os << '^' << Units::ampere; } }
 #if 0
     // short or programmable output? hm. i'll go with short
     // Note that e.g. k(m^2) and (km)^2 are different
@@ -244,94 +256,60 @@ struct unit_muldiv {
     static inline type construct(typename type::base_type i) { return type::construct_(i); }
   };
   template<typename Int>
-  struct reduce<unit<Int, boost::ratio<1>, 0, 0, 0, 0, 0, 0>> {
-    typedef typename unit<Int, boost::ratio<1>, 0, 0, 0, 0, 0, 0>::base_type type;
+  struct reduce<unit<Int, units<boost::ratio<1>, 0, 0, 0, 0, 0, 0>>> {
+    typedef typename unit<Int, units<boost::ratio<1>, 0, 0, 0, 0, 0, 0>>::base_type type;
     static inline type construct(type i) { return i; }
   };
 
-  template<
-    typename Int,
-    typename RatioA, unit_exponent_type TauA, unit_exponent_type MeterA,
-    unit_exponent_type GramA, unit_exponent_type SecondA, unit_exponent_type AmpereA,
-    unit_exponent_type KelvinA,
-    typename RatioB, unit_exponent_type TauB, unit_exponent_type MeterB,
-    unit_exponent_type GramB, unit_exponent_type SecondB, unit_exponent_type AmpereB,
-    unit_exponent_type KelvinB>
+  template<typename Int, typename UnitsA, typename UnitsB>
   struct mul {
-    typedef unit<Int, typename boost::ratio_multiply<RatioA,RatioB>::type,
-                 TauA+TauB, MeterA+MeterB, GramA+GramB,
-                 SecondA+SecondB, AmpereA+AmpereB, KelvinA+KelvinB> unit_type;
+    typedef unit<Int,
+      units<typename boost::ratio_multiply<typename UnitsA::ratio,
+                                           typename UnitsB::ratio>::type,
+            UnitsA::tau    + UnitsB::tau,
+            UnitsA::meter  + UnitsB::meter,
+            UnitsA::gram   + UnitsB::gram,
+            UnitsA::second + UnitsB::second,
+            UnitsA::ampere + UnitsB::ampere,
+            UnitsA::kelvin + UnitsB::kelvin
+           > > unit_type;
     typedef typename reduce<unit_type>::type result_type;
     static inline result_type multiply(
-      unit<Int, RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA> a,
-      unit<Int, RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB> b
+      unit<Int, UnitsA> a, unit<Int, UnitsB> b
     ) { return reduce<unit_type>::construct(a.val_ * b.val_); }
   };
 
-  template<
-    typename Int,
-    typename RatioA, unit_exponent_type TauA, unit_exponent_type MeterA,
-    unit_exponent_type GramA, unit_exponent_type SecondA, unit_exponent_type AmpereA,
-    unit_exponent_type KelvinA,
-    typename RatioB, unit_exponent_type TauB, unit_exponent_type MeterB,
-    unit_exponent_type GramB, unit_exponent_type SecondB, unit_exponent_type AmpereB,
-    unit_exponent_type KelvinB>
+  template<typename Int, typename UnitsA, typename UnitsB>
   struct div {
-    typedef unit<Int, typename boost::ratio_divide<RatioA,RatioB>::type,
-                 TauA-TauB, MeterA-MeterB, GramA-GramB,
-                 SecondA-SecondB, AmpereA-AmpereB, KelvinA-KelvinB> unit_type;
+    typedef unit<Int,
+      units<typename boost::ratio_divide<typename UnitsA::ratio,
+                                           typename UnitsB::ratio>::type,
+            UnitsA::tau    - UnitsB::tau,
+            UnitsA::meter  - UnitsB::meter,
+            UnitsA::gram   - UnitsB::gram,
+            UnitsA::second - UnitsB::second,
+            UnitsA::ampere - UnitsB::ampere,
+            UnitsA::kelvin - UnitsB::kelvin
+           > > unit_type;
     typedef typename reduce<unit_type>::type result_type;
     static inline result_type divide(
-      unit<Int, RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA> a,
-      unit<Int, RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB> b
+      unit<Int, UnitsA> a, unit<Int, UnitsB> b
     ) { return reduce<unit_type>::construct(a.val_ / b.val_); }
   };
 };
 
-template<
-  typename Int,
-  typename RatioA, unit_exponent_type TauA, unit_exponent_type MeterA,
-  unit_exponent_type GramA, unit_exponent_type SecondA, unit_exponent_type AmpereA,
-  unit_exponent_type KelvinA,
-  typename RatioB, unit_exponent_type TauB, unit_exponent_type MeterB,
-  unit_exponent_type GramB, unit_exponent_type SecondB, unit_exponent_type AmpereB,
-  unit_exponent_type KelvinB>
-inline typename unit_muldiv::mul<
-    Int,
-    RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA,
-    RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB
-  >::result_type
-operator*(
-  unit<Int, RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA> a,
-  unit<Int, RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB> b
-) { return unit_muldiv::mul<
-       Int,
-       RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA,
-       RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB
-      >::multiply(a, b); }
+template<typename Int, typename UnitsA, typename UnitsB>
+inline typename unit_muldiv::mul<Int, UnitsA, UnitsB>::result_type
+operator*(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
+  return unit_muldiv::mul<Int, UnitsA, UnitsB>::multiply(a, b);
+}
 
 
-template<
-  typename Int,
-  typename RatioA, unit_exponent_type TauA, unit_exponent_type MeterA,
-  unit_exponent_type GramA, unit_exponent_type SecondA, unit_exponent_type AmpereA,
-  unit_exponent_type KelvinA,
-  typename RatioB, unit_exponent_type TauB, unit_exponent_type MeterB,
-  unit_exponent_type GramB, unit_exponent_type SecondB, unit_exponent_type AmpereB,
-  unit_exponent_type KelvinB>
-inline typename unit_muldiv::div<
-    Int,
-    RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA,
-    RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB
-  >::result_type
-operator/(
-  unit<Int, RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA> a,
-  unit<Int, RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB> b
-) { return unit_muldiv::div<
-       Int,
-       RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA,
-       RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB
-      >::divide(a, b); }
+template<typename Int, typename UnitsA, typename UnitsB>
+inline typename unit_muldiv::div<Int, UnitsA, UnitsB>::result_type
+operator/(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
+  return unit_muldiv::div<Int, UnitsA, UnitsB>::divide(a, b);
+}
 
 
 //class coordinate 

@@ -23,11 +23,11 @@
 
 #include "../units.hpp"
 
-typedef unit<int32_t, boost::ratio<1>, 0, 1, 0, 0, 0, 0> meter;
-typedef unit<int32_t, boost::ratio<1>, 0, 0, 1, 0, 0, 0> gram;
-typedef unit<int32_t, boost::ratio<1000>, 0, 0, 1, 0, 0, 0> kilogram;
-typedef unit<int32_t, boost::ratio<1>, 0, 0, 0, 1, 0, 0> second;
-typedef unit<int32_t, boost::ratio<1, 360>, 1, 0, 0, 0, 0, 0> degree;
+typedef unit<int32_t, units<boost::ratio<1>, 0, 1, 0, 0, 0, 0>> meter;
+typedef unit<int32_t, units<boost::ratio<1>, 0, 0, 1, 0, 0, 0>> gram;
+typedef unit<int32_t, units<boost::ratio<1000>, 0, 0, 1, 0, 0, 0>> kilogram;
+typedef unit<int32_t, units<boost::ratio<1>, 0, 0, 0, 1, 0, 0>> second;
+typedef unit<int32_t, units<boost::ratio<1, 360>, 1, 0, 0, 0, 0, 0>> degree;
 
 BOOST_AUTO_TEST_CASE( unitses ) {
   meter foo;
