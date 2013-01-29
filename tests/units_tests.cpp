@@ -24,6 +24,7 @@
 #include "../units.hpp"
 
 typedef units<boost::ratio<1>, 0, 1, 0, 0, 0, 0> meter;
+constexpr meter meters = meter();
 typedef units<boost::ratio<1>, 0, 0, 1, 0, 0, 0> gram;
 typedef units<boost::ratio<1000>, 0, 0, 1, 0, 0, 0> kilogram;
 typedef units<boost::ratio<1>, 0, 0, 0, 1, 0, 0> second;
@@ -31,6 +32,8 @@ typedef units<boost::ratio<1, 360>, 1, 0, 0, 0, 0, 0> degree;
 
 BOOST_AUTO_TEST_CASE( unitses ) {
   unit<int32_t, meter> foo = 1 * meter();
+  unit<int32_t, meter> foo1 = 3 * meter();
+  unit<int32_t, meter> foo2 = 5 * meters;
   foo + foo;
   auto bfoo = foo * foo;
   bfoo = bfoo * 3;
@@ -44,4 +47,9 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 #endif
 
   volatile auto what = bfoo;
+
+  BOOST_CHECK_EQUAL(foo2 + foo1, 8*meters);
+  BOOST_CHECK_EQUAL(foo2 - foo1, 2*meters);
+  BOOST_CHECK_EQUAL(foo2 / foo1, 1);
+  BOOST_CHECK_EQUAL(foo2 * foo1, 15*meters*meters);
 }
