@@ -64,6 +64,33 @@ struct units {
   static const unit_exponent_type kelvin = Kelvin;
 };
 
+template<typename UnitsA, typename UnitsB>
+struct multiply_units {
+  typedef units<
+            typename boost::ratio_multiply<typename UnitsA::ratio,
+                                           typename UnitsB::ratio>::type,
+            UnitsA::tau    + UnitsB::tau,
+            UnitsA::meter  + UnitsB::meter,
+            UnitsA::gram   + UnitsB::gram,
+            UnitsA::second + UnitsB::second,
+            UnitsA::ampere + UnitsB::ampere,
+            UnitsA::kelvin + UnitsB::kelvin>
+          type;
+};
+template<typename UnitsA, typename UnitsB>
+struct divide_units {
+  typedef units<
+            typename boost::ratio_divide<typename UnitsA::ratio,
+                                         typename UnitsB::ratio>::type,
+            UnitsA::tau    - UnitsB::tau,
+            UnitsA::meter  - UnitsB::meter,
+            UnitsA::gram   - UnitsB::gram,
+            UnitsA::second - UnitsB::second,
+            UnitsA::ampere - UnitsB::ampere,
+            UnitsA::kelvin - UnitsB::kelvin>
+          type;
+};
+
 template<
   typename Int, //the base type that this mimics.
   // Imagine multiplying the numeric value of that int by all of the below
@@ -263,16 +290,7 @@ struct unit_muldiv {
 
   template<typename Int, typename UnitsA, typename UnitsB>
   struct mul {
-    typedef unit<Int,
-      units<typename boost::ratio_multiply<typename UnitsA::ratio,
-                                           typename UnitsB::ratio>::type,
-            UnitsA::tau    + UnitsB::tau,
-            UnitsA::meter  + UnitsB::meter,
-            UnitsA::gram   + UnitsB::gram,
-            UnitsA::second + UnitsB::second,
-            UnitsA::ampere + UnitsB::ampere,
-            UnitsA::kelvin + UnitsB::kelvin
-           > > unit_type;
+    typedef unit<Int, typename multiply_units<UnitsA, UnitsB>::type> unit_type;
     typedef typename reduce<unit_type>::type result_type;
     static inline result_type multiply(
       unit<Int, UnitsA> a, unit<Int, UnitsB> b
@@ -281,16 +299,7 @@ struct unit_muldiv {
 
   template<typename Int, typename UnitsA, typename UnitsB>
   struct div {
-    typedef unit<Int,
-      units<typename boost::ratio_divide<typename UnitsA::ratio,
-                                           typename UnitsB::ratio>::type,
-            UnitsA::tau    - UnitsB::tau,
-            UnitsA::meter  - UnitsB::meter,
-            UnitsA::gram   - UnitsB::gram,
-            UnitsA::second - UnitsB::second,
-            UnitsA::ampere - UnitsB::ampere,
-            UnitsA::kelvin - UnitsB::kelvin
-           > > unit_type;
+    typedef unit<Int, typename divide_units<UnitsA, UnitsB>::type> unit_type;
     typedef typename reduce<unit_type>::type result_type;
     static inline result_type divide(
       unit<Int, UnitsA> a, unit<Int, UnitsB> b
