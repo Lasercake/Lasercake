@@ -23,6 +23,7 @@
 #define LASERCAKE_UNITS_HPP__
 
 #include <ostream>
+#include <sstream>
 #include <boost/utility/enable_if.hpp>
 #include <boost/ratio/ratio.hpp>
 #include <boost/ratio/ratio_io.hpp>
@@ -35,7 +36,23 @@
 // Oh hmm neat I can rely on bounds_checked_int to enforce signed/unsigned
 // although the error messages will be ugly.
 
+// units<> * T not supported, but T * units<> is.  unit<> can be on either side.
+
 typedef int32_t unit_exponent_type;
+
+template<
+  typename Ratio,
+  unit_exponent_type Tau,
+  unit_exponent_type Meter,
+  unit_exponent_type Gram,
+  unit_exponent_type Second,
+  unit_exponent_type Ampere,
+  unit_exponent_type Kelvin
+> struct units;
+
+typedef units<boost::ratio<1>, 0, 0, 0, 0, 0, 0> trivial_units;
+template<typename Units> struct is_trivial_units : boost::false_type {};
+template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
 template<
   typename Ratio, // a boost::ratio
@@ -54,6 +71,7 @@ template<
 struct units {
   typedef units<boost::ratio<Ratio::den, Ratio::num>,
     -Tau, -Meter, -Gram, -Second, -Ampere, -Kelvin> reciprocal_type;
+  static reciprocal_type reciprocal() { return reciprocal_type(); }
 
   typedef Ratio ratio;
   static const unit_exponent_type tau = Tau;
@@ -62,10 +80,44 @@ struct units {
   static const unit_exponent_type second = Second;
   static const unit_exponent_type ampere = Ampere;
   static const unit_exponent_type kelvin = Kelvin;
+
+  friend inline bool operator==(units, units) { return true; }
+  friend inline bool operator!=(units, units) { return false; }
+
+  // The string is notionally a compile-time constant value;
+  // can we make it be one?
+
+  // UTF-8?  Tau and exponents would benefit.
+  // We might also get a non-ASCII character if ratio
+  // is 1/1000000 (micro-, mu).  Do our ostreams and terminals
+  // get the encoding right?
+  // Conciseness?
+  // Note that e.g. k(m^2) and (km)^2 are different
+  // and this output represents the former!
+  static std::string suffix_repr() {
+    std::stringstream os;
+    if(!boost::ratio_equal<ratio, boost::ratio<1>>::value) {
+      os << '*' << boost::ratio_string<ratio, char>::short_name();
+    }
+    if(tau) { os << '*' << "tau"; if(tau != 1) { os << '^' << tau; } }
+    if(gram) { os << '*' << 'g'; if(gram != 1) { os << '^' << gram; } }
+    if(meter) { os << '*' << 'm'; if(meter != 1) { os << '^' << meter; } }
+    if(kelvin) { os << '*' << 'K'; if(kelvin != 1) { os << '^' << kelvin; } }
+    if(ampere) { os << '*' << 'A'; if(ampere != 1) { os << '^' << ampere; } }
+    return os.str();
+  }
+  static std::string repr() {
+    if(is_trivial_units<units>::value) {
+      return "[1]";
+    }
+    else {
+      return suffix_repr().substr(1);
+    }
+  }
+  friend inline std::ostream& operator<<(std::ostream& os, units) {
+    return os << repr();
+  }
 };
-typedef units<boost::ratio<1>, 0, 0, 0, 0, 0, 0> trivial_units;
-template<typename Units> struct is_trivial_units : boost::false_type {};
-template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
 template<typename UnitsA, typename UnitsB>
 struct multiply_units {
@@ -225,33 +277,7 @@ public:
   operator unspecified_bool_type() const { return val_ ? &unspecified_bool_::member : nullptr; }
 
   friend inline std::ostream& operator<<(std::ostream& os, unit a) {
-    os << a.val_;
-    //also nvm utf8 for now although tau and exponents would benefit
-    // oh micro- prefix hmm. (mu)
-    if(!boost::ratio_equal<typename Units::ratio, boost::ratio<1>>::value) {
-      os << '*' << boost::ratio_string<typename Units::ratio, char>::short_name();
-    }
-    if(Units::tau) { os << '*' << "tau"; if(Units::tau != 1) { os << '^' << Units::tau; } }
-    if(Units::gram) { os << '*' << 'g'; if(Units::gram != 1) { os << '^' << Units::gram; } }
-    if(Units::meter) { os << '*' << 'm'; if(Units::meter != 1) { os << '^' << Units::meter; } }
-    if(Units::kelvin) { os << '*' << 'K'; if(Units::kelvin != 1) { os << '^' << Units::kelvin; } }
-    if(Units::ampere) { os << '*' << 'A'; if(Units::ampere != 1) { os << '^' << Units::ampere; } }
-#if 0
-    // short or programmable output? hm. i'll go with short
-    // Note that e.g. k(m^2) and (km)^2 are different
-    // and I am outputing the former!! hm so:
-    if(!boost::ratio_equal<Ratio, boost::ratio<1>>::value) {
-      os << boost::ratio_string<Ratio, char>::short_name();
-    }
-#endif
-#if 0
-    if(!is_trivial) {
-      os << boost::ratio_string<Ratio, char>::long_name();
-      if(Tau) {
-        *tau
-      }
-    }
-#endif
+    os << a.val_ << Units::suffix_repr();
     return os;
   }
 
@@ -302,7 +328,7 @@ public:
     base_type() * typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type()
   )>::type
   operator*(unit a, AnyInt factor)
-  { return rebase<decltype(a.val_ * factor)>::type::construct_(a.val_ * factor); }
+  { return typename rebase<decltype(a.val_ * factor)>::type(a.val_ * factor, Units()); }
 
   template<typename AnyInt>
   friend inline
@@ -310,7 +336,7 @@ public:
     typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type() * base_type()
   )>::type
   operator*(AnyInt factor, unit b)
-  { return rebase<decltype(factor * b.val_)>::type::construct_(factor * b.val_); }
+  { return typename rebase<decltype(factor * b.val_)>::type(factor * b.val_, Units()); }
 
   template<typename AnyInt>
   friend inline
@@ -318,7 +344,7 @@ public:
     base_type() / typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type()
   )>::type
   operator/(unit a, AnyInt divisor)
-  { return rebase<decltype(a.val_ / divisor)>::type::construct_(a.val_ / divisor); }
+  { return typename rebase<decltype(a.val_ / divisor)>::type(a.val_ / divisor, Units()); }
 
   template<typename AnyInt>
   friend inline
@@ -326,7 +352,8 @@ public:
     typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type() / base_type()
   )>::type::reciprocal_type
   operator/(AnyInt dividend, unit b)
-  { return rebase<decltype(dividend / b.val_)>::type::reciprocal_type::construct_(dividend / b.val_); }
+  { return typename rebase<decltype(dividend / b.val_)>::type::reciprocal_type(
+      dividend / b.val_, Units::reciprocal()); }
 
 
   friend struct unit_muldiv;
@@ -535,7 +562,7 @@ operator/(unit<Int, UnitsA> a, units<RatioB, TauB, MeterB, GramB, SecondB, Amper
   return
     make_unit_type<
       Int,
-      typename multiply_units<
+      typename divide_units<
           UnitsA,
           units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
         >::type

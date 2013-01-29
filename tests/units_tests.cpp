@@ -27,15 +27,16 @@ typedef units<boost::ratio<1>, 0, 1, 0, 0, 0, 0> meter;
 constexpr meter meters = meter();
 typedef units<boost::ratio<1>, 0, 0, 1, 0, 0, 0> gram;
 typedef units<boost::ratio<1000>, 0, 0, 1, 0, 0, 0> kilogram;
+constexpr kilogram kilograms = kilogram();
 typedef units<boost::ratio<1>, 0, 0, 0, 1, 0, 0> second;
 constexpr second seconds = second();
 typedef units<boost::ratio<1, 360>, 1, 0, 0, 0, 0, 0> degree;
 
 BOOST_AUTO_TEST_CASE( unitses ) {
-  unit<int32_t, meter> foo = 1 * meter();
-  unit<int64_t, meter> foo64 = foo;
-  unit<int32_t, meter> foo1 = 3 * meter();
-  unit<int32_t, meter> foo2 = 5 * meters;
+  const unit<int32_t, meter> foo = 1 * meter();
+  const unit<int64_t, meter> foo64 = foo;
+  const unit<int32_t, meter> foo3 = 3 * meter();
+  const unit<int32_t, meter> foo5 = 5 * meters;
   foo + foo;
   auto bfoo = foo * foo;
   bfoo = bfoo * 3;
@@ -57,8 +58,48 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   2*(meters*meters);
   ((2*meters)*meters) + (2*(meters*meters));
 
-  BOOST_CHECK_EQUAL(foo2 + foo1, 8*meters);
-  BOOST_CHECK_EQUAL(foo2 - foo1, 2*meters);
-  BOOST_CHECK_EQUAL(foo2 / foo1, 1);
-  BOOST_CHECK_EQUAL(foo2 * foo1, 15*meters*meters);
+  BOOST_CHECK_EQUAL(foo5 + foo3, 8*meters);
+  BOOST_CHECK_EQUAL(foo5 - foo3, 2*meters);
+  BOOST_CHECK_EQUAL(foo5 % foo3, 2*meters);
+  BOOST_CHECK_EQUAL(foo3 % foo5, 3*meters);
+  BOOST_CHECK_EQUAL((13*meters) % (5*meters), 3*meters);
+  BOOST_CHECK_EQUAL(!!foo3, true);
+  BOOST_CHECK_EQUAL(+foo3, 3*meters);
+  BOOST_CHECK_EQUAL(-foo3, -3*meters);
+  BOOST_CHECK_EQUAL(abs(foo3), 3*meters);
+  BOOST_CHECK_EQUAL(abs(-foo3), 3*meters);
+  BOOST_CHECK_EQUAL(foo5 == foo3, false);
+  BOOST_CHECK_EQUAL(foo5 != foo3, true);
+  BOOST_CHECK_EQUAL(foo5 > foo3, true);
+  BOOST_CHECK_EQUAL(foo5 < foo3, false);
+  BOOST_CHECK_EQUAL(foo5 <= foo3, false);
+  BOOST_CHECK_EQUAL(foo5 >= foo3, true);
+  BOOST_CHECK_EQUAL(foo5 << 3, 40*meters);
+  BOOST_CHECK_EQUAL(foo5 >> 1, 2*meters);
+
+  BOOST_CHECK_EQUAL(foo5 * foo3, 15*meters*meters);
+  BOOST_CHECK_EQUAL(foo5 * 3, 15*meters);
+  BOOST_CHECK_EQUAL(3 * foo5, 15*meters);
+  BOOST_CHECK_EQUAL(foo5 * meters, 5*meters*meters);
+  BOOST_CHECK_EQUAL(7 * meters, 7*meters);
+  BOOST_CHECK_EQUAL(kilograms * meters, meters*kilograms);
+
+  BOOST_CHECK_EQUAL(foo5 / foo3, 1);
+  BOOST_CHECK_EQUAL(foo5 / 3, 1*meters);
+  BOOST_CHECK_EQUAL(13 / foo5, 2/meters);
+  BOOST_CHECK_EQUAL(foo5 / meters, 5);
+  BOOST_CHECK_EQUAL(7 / meters, 7/meters);
+  BOOST_CHECK_EQUAL(kilograms / meters, meters.reciprocal()*kilograms);
+
+
+  unit<int32_t, meter> mutfoo = 0;
+  BOOST_CHECK_EQUAL(mutfoo, 0*meters);
+  BOOST_CHECK_EQUAL(mutfoo += foo3, 3*meters);
+  BOOST_CHECK_EQUAL(mutfoo += foo3, 6*meters);
+  BOOST_CHECK_EQUAL(mutfoo -= foo3, 3*meters);
+  BOOST_CHECK_EQUAL(mutfoo *= 7, 21*meters);
+  BOOST_CHECK_EQUAL(mutfoo /= 2, 10*meters);
+  BOOST_CHECK_EQUAL(mutfoo <<= 2, 40*meters);
+  BOOST_CHECK_EQUAL(mutfoo >>= 2, 10*meters);
+  BOOST_CHECK_EQUAL(mutfoo %= foo3, 1*meters);
 }
