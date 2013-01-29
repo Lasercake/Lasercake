@@ -329,9 +329,7 @@ public:
 
 private:
   static inline unit construct_(base_type i) {
-    unit result;
-    result.val_ = i;
-    return result;
+    return unit(i, Units());
   }
 };
 
