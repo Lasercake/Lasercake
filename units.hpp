@@ -234,34 +234,6 @@ public:
 
   // (Implicit copy and move construction and assignment.)
 
-  // Implicit conversion from plain ints to the dimensionless, unscaled
-  // 'unit' type, and vice versa.
-  // (oh hmm the vice versa will make comparisons/ops with plain ints ambiguous, darn)
-//  template<typename = typename boost::enable_if_c<is_trivial>::type*>
-//  unit(Int i) : val_(i) {}
-//  template<typename = typename boost::enable_if_c<is_trivial>::type*>
-//  operator Int() { return val_; }
-#if 0
-  // Implicit conversion from plain ints to the dimensionless, unscaled
-  // 'unit' type,
-  template<typename AnInt>
-  unit(AnInt i,
-       typename boost::enable_if_c<is_trivial>::type* = 0
-  ) : val_(i) {}
-  // and vice versa.
-  operator
-  //will implicit conversions work??
-  //friend inline auto operator+(unit a, unit b) -> decltype(a+b)
-#endif
-#if 0
-  // the only time it's useful, with * and /, compiler can't
-  // work out *which* unit<> instantiation to try!
-  // so i think this means overloading * and /.
-  template<typename AnInt>
-  unit(AnInt i//,
-       //typename boost::enable_if_c<is_trivial, AnInt>::type* = 0
-  ) : val_(i) {}
-#endif
 
   // Implicit conversion from unit with same dimensions but smaller
   // representation type.
@@ -283,12 +255,12 @@ public:
   // Of the many operators, only * and / have the ability to modify
   // dimensions.
   friend inline unit operator+(unit a) { return a; }
-  friend inline unit operator-(unit a) { return construct_(-a.val_); }
+  friend inline unit operator-(unit a) { return unit(-a.val_, Units()); }
   friend inline unit abs(unit a) { return (a.val_ < 0) ? -a : a; }
   friend inline size_t hash_value(unit a) { return std::hash<base_type>()(a.val_); }
-  friend inline unit operator+(unit a, unit b) { return construct_(a.val_ + b.val_); }
-  friend inline unit operator-(unit a, unit b) { return construct_(a.val_ - b.val_); }
-  friend inline unit operator%(unit a, unit b) { return construct_(a.val_ % b.val_); }
+  friend inline unit operator+(unit a, unit b) { return unit(a.val_ + b.val_, Units()); }
+  friend inline unit operator-(unit a, unit b) { return unit(a.val_ - b.val_, Units()); }
+  friend inline unit operator%(unit a, unit b) { return unit(a.val_ % b.val_, Units()); }
   friend inline bool operator==(unit a, unit b) { return a.val_ == b.val_; }
   friend inline bool operator!=(unit a, unit b) { return a.val_ != b.val_; }
   friend inline bool operator>(unit a, unit b) { return a.val_ > b.val_; }
@@ -296,9 +268,9 @@ public:
   friend inline bool operator<=(unit a, unit b) { return a.val_ <= b.val_; }
   friend inline bool operator>=(unit a, unit b) { return a.val_ >= b.val_; }
   template<typename AnyInt>
-  friend inline unit operator<<(unit a, AnyInt shift) { return construct_(a.val_ << shift); }
+  friend inline unit operator<<(unit a, AnyInt shift) { return unit(a.val_ << shift, Units()); }
   template<typename AnyInt>
-  friend inline unit operator>>(unit a, AnyInt shift) { return construct_(a.val_ >> shift); }
+  friend inline unit operator>>(unit a, AnyInt shift) { return unit(a.val_ >> shift, Units()); }
 
   friend inline unit& operator+=(unit& a, unit b) { a.val_ += b.val_; return a; }
   friend inline unit& operator-=(unit& a, unit b) { a.val_ -= b.val_; return a; }
@@ -351,14 +323,6 @@ public:
   operator/(AnyInt dividend, unit b)
   { return typename rebase<decltype(dividend / b.val_)>::type::reciprocal_type(
       dividend / b.val_, Units::reciprocal()); }
-
-
-  friend struct unit_muldiv;
-
-private:
-  static inline unit construct_(base_type i) {
-    return unit(i, Units());
-  }
 };
 
 template<typename Int, typename Units>
