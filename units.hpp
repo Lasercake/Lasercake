@@ -64,6 +64,8 @@ struct units {
   static const unit_exponent_type kelvin = Kelvin;
 };
 typedef units<boost::ratio<1>, 0, 0, 0, 0, 0, 0> trivial_units;
+template<typename Units> struct is_trivial_units : boost::false_type {};
+template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
 template<typename UnitsA, typename UnitsB>
 struct multiply_units {
@@ -90,6 +92,36 @@ struct divide_units {
             UnitsA::ampere - UnitsB::ampere,
             UnitsA::kelvin - UnitsB::kelvin>
           type;
+};
+
+
+template<typename Int, typename Units> class unit;
+
+template<typename Int, typename Units>
+struct get_primitive_int_type< unit<Int, Units> > { typedef Int type; };
+
+template<typename T>
+struct get_units {
+  typedef trivial_units type;
+  static const bool is_nonunit_type = true;
+};
+template<typename Int, typename Units>
+struct get_units< unit<Int, Units> > {
+  typedef Units type;
+  static const bool is_nonunit_type = false;
+};
+template<
+  typename Ratio,
+  unit_exponent_type Tau,
+  unit_exponent_type Meter,
+  unit_exponent_type Gram,
+  unit_exponent_type Second,
+  unit_exponent_type Ampere,
+  unit_exponent_type Kelvin
+>
+struct get_units< units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > {
+  typedef units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> type;
+  static const bool is_nonunit_type = false;
 };
 
 template<
@@ -126,11 +158,6 @@ public:
   struct rebase {
     typedef unit<typename get_primitive_int_type<OtherInt>::type, Units> type;
   };
-  // This partial specialization allows SFINAE to exclude the
-  // operator*(unit, AnyInt) and similar overloads when their "AnyInt"
-  // is actually not an int but a unit.
-  template<typename AnyInt, typename AnyUnits>
-  struct rebase<unit<AnyInt, AnyUnits>>;
 
   // Default-construction is the same as the base type.
   unit() = default;
@@ -249,20 +276,35 @@ public:
   // as it would (via implicit conversions) when combining two unit<>
   // types.
   template<typename AnyInt>
-  friend inline auto operator*(unit a, AnyInt factor)
-  -> typename rebase<decltype(base_type() * factor)>::type
+  friend inline
+  typename rebase<decltype(
+    base_type() * typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type()
+  )>::type
+  operator*(unit a, AnyInt factor)
   { return rebase<decltype(a.val_ * factor)>::type::construct_(a.val_ * factor); }
+
   template<typename AnyInt>
-  friend inline auto operator*(AnyInt factor, unit b)
-  -> typename rebase<decltype(factor * base_type())>::type
+  friend inline
+  typename rebase<decltype(
+    typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type() * base_type()
+  )>::type
+  operator*(AnyInt factor, unit b)
   { return rebase<decltype(factor * b.val_)>::type::construct_(factor * b.val_); }
+
   template<typename AnyInt>
-  friend inline auto operator/(unit a, AnyInt divisor)
-  -> typename rebase<decltype(base_type() / divisor)>::type
+  friend inline
+  typename rebase<decltype(
+    base_type() / typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type()
+  )>::type
+  operator/(unit a, AnyInt divisor)
   { return rebase<decltype(a.val_ / divisor)>::type::construct_(a.val_ / divisor); }
+
   template<typename AnyInt>
-  friend inline auto operator/(AnyInt dividend, unit b)
-  -> typename rebase<decltype(dividend / base_type())>::type::reciprocal_type
+  friend inline
+  typename rebase<decltype(
+    typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type() / base_type()
+  )>::type::reciprocal_type
+  operator/(AnyInt dividend, unit b)
   { return rebase<decltype(dividend / b.val_)>::type::reciprocal_type::construct_(dividend / b.val_); }
 
 
@@ -334,30 +376,6 @@ operator/(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
 }
 
 
-template<typename Int, typename Units>
-struct get_primitive_int_type< unit<Int, Units> > { typedef Int type; };
-
-template<typename T>
-struct get_units {
-  typedef trivial_units type;
-};
-template<typename Int, typename Units>
-struct get_units< unit<Int, Units> > {
-  typedef Units type;
-};
-
-template<
-  typename Ratio,
-  unit_exponent_type Tau,
-  unit_exponent_type Meter,
-  unit_exponent_type Gram,
-  unit_exponent_type Second,
-  unit_exponent_type Ampere,
-  unit_exponent_type Kelvin
->
-struct get_units< units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > {
-  typedef units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> type;
-};
 
 template<
   typename T,
