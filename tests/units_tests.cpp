@@ -33,6 +33,7 @@ typedef units<boost::ratio<1, 360>, 1, 0, 0, 0, 0, 0> degree;
 
 BOOST_AUTO_TEST_CASE( unitses ) {
   unit<int32_t, meter> foo = 1 * meter();
+  unit<int64_t, meter> foo64 = foo;
   unit<int32_t, meter> foo1 = 3 * meter();
   unit<int32_t, meter> foo2 = 5 * meters;
   foo + foo;

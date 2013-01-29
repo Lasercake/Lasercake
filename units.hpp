@@ -216,7 +216,7 @@ public:
   unit(unit<SmallerInt, Units> a,
        typename boost::enable_if_c<
            bounds_checked_int_impl::superior_to<Int, SmallerInt>::value
-         >::type* = 0) : val_(a.val_) {}
+         >::type* = 0) : val_(a.get(Units())) {}
 
   operator unspecified_bool_type() const { return val_ ? &unspecified_bool_::member : nullptr; }
 
