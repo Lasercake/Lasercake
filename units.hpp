@@ -346,76 +346,22 @@ struct make_unit_type<Int, trivial_units> {
   static inline type construct(type i) { return i; }
 };
 
-template<typename Unit>
-struct reduce_unit_type {
-  typedef Unit type;
-  static inline type construct(typename type::base_type i) { return type::construct_(i); }
-};
-template<typename Int>
-struct reduce_unit_type<unit<Int, trivial_units>> {
-  typedef typename unit<Int, trivial_units>::base_type type;
-  static inline type construct(type i) { return i; }
-};
-
-// impl:
-struct unit_muldiv {
-  template<typename Unit>
-  struct reduce {
-    typedef Unit type;
-    static inline type construct(typename type::base_type i) { return type::construct_(i); }
-  };
-  template<typename Int>
-  struct reduce<unit<Int, trivial_units>> {
-    typedef typename unit<Int, trivial_units>::base_type type;
-    static inline type construct(type i) { return i; }
-  };
-
-  template<typename Int, typename UnitsA, typename UnitsB>
-  struct mul {
-    typedef typename multiply_units<UnitsA, UnitsB>::type result_units;
-    typedef unit<Int, result_units> unit_type;
-    typedef typename reduce<unit_type>::type result_type;
-    static inline result_type multiply(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
-      return reduce<unit_type>::construct(a.val_ * b.val_);
-    }
-    static inline result_type be(unit<Int, UnitsA> a) {
-      return reduce<unit_type>::construct(a.val_);
-    }
-    static inline result_type be(UnitsA a) {
-      return reduce<unit_type>::construct(a.val_);
-    }
-    template<typename T> static inline result_type be(T a) {
-      return reduce<unit_type>::construct(a);
-    }
-  };
-
-  template<typename Int, typename UnitsA, typename UnitsB>
-  struct div {
-    typedef unit<Int, typename divide_units<UnitsA, UnitsB>::type> unit_type;
-    typedef typename reduce<unit_type>::type result_type;
-    static inline result_type divide(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
-      return reduce<unit_type>::construct(a.val_ / b.val_);
-    }
-    static inline result_type be(unit<Int, UnitsA> a) {
-      return reduce<unit_type>::construct(a.val_);
-    }
-    template<typename T> static inline result_type be(T a) {
-      return reduce<unit_type>::construct(a);
-    }
-  };
-};
-
 template<typename Int, typename UnitsA, typename UnitsB>
-inline typename unit_muldiv::mul<Int, UnitsA, UnitsB>::result_type
+inline typename
+make_unit_type<Int, typename multiply_units<UnitsA, UnitsB>::type>::type
 operator*(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
-  return unit_muldiv::mul<Int, UnitsA, UnitsB>::multiply(a, b);
+  return
+    make_unit_type<Int, typename multiply_units<UnitsA, UnitsB>::type>
+      ::construct(a.get(UnitsA()) * b.get(UnitsB()));
 }
 
-
 template<typename Int, typename UnitsA, typename UnitsB>
-inline typename unit_muldiv::div<Int, UnitsA, UnitsB>::result_type
+inline typename
+make_unit_type<Int, typename divide_units<UnitsA, UnitsB>::type>::type
 operator/(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
-  return unit_muldiv::div<Int, UnitsA, UnitsB>::divide(a, b);
+  return
+    make_unit_type<Int, typename divide_units<UnitsA, UnitsB>::type>
+      ::construct(a.get(UnitsA()) / b.get(UnitsB()));
 }
 
 
