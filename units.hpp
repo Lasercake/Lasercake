@@ -71,7 +71,7 @@ template<
 struct units {
   typedef units<boost::ratio<Ratio::den, Ratio::num>,
     -Tau, -Meter, -Gram, -Second, -Ampere, -Kelvin> reciprocal_type;
-  static reciprocal_type reciprocal() { return reciprocal_type(); }
+  static constexpr reciprocal_type reciprocal() { return reciprocal_type(); }
 
   typedef Ratio ratio;
   static const unit_exponent_type tau = Tau;

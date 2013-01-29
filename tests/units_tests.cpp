@@ -77,6 +77,9 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK_EQUAL(foo5 << 3, 40*meters);
   BOOST_CHECK_EQUAL(foo5 >> 1, 2*meters);
 
+  constexpr auto recipmeters = meters.reciprocal();
+  const auto recipfoo3 = 9 / foo3;
+  
   BOOST_CHECK_EQUAL(foo5 * foo3, 15*meters*meters);
   BOOST_CHECK_EQUAL(foo5 * 3, 15*meters);
   BOOST_CHECK_EQUAL(3 * foo5, 15*meters);
@@ -90,6 +93,14 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK_EQUAL(foo5 / meters, 5);
   BOOST_CHECK_EQUAL(7 / meters, 7/meters);
   BOOST_CHECK_EQUAL(kilograms / meters, meters.reciprocal()*kilograms);
+
+  BOOST_CHECK_EQUAL(foo5 * recipfoo3, 15);
+  BOOST_CHECK_EQUAL(foo5 * recipmeters, 5);
+  BOOST_CHECK_EQUAL(meters * recipmeters, trivial_units());
+
+  BOOST_CHECK_EQUAL(foo5 / recipfoo3, 1*meters*meters);
+  BOOST_CHECK_EQUAL(foo5 / recipmeters, 5*meters*meters);
+  BOOST_CHECK_EQUAL(seconds / seconds, trivial_units());
 
 
   unit<int32_t, meter> mutfoo = 0;
