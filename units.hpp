@@ -100,6 +100,17 @@ template<typename Int, typename Units> class unit;
 template<typename Int, typename Units>
 struct get_primitive_int_type< unit<Int, Units> > { typedef Int type; };
 
+template<
+  typename Ratio,
+  unit_exponent_type Tau,
+  unit_exponent_type Meter,
+  unit_exponent_type Gram,
+  unit_exponent_type Second,
+  unit_exponent_type Ampere,
+  unit_exponent_type Kelvin
+>
+struct get_primitive_int_type< units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > { typedef void type; };
+
 template<typename T>
 struct get_units {
   typedef trivial_units type;
@@ -161,6 +172,12 @@ public:
 
   // Default-construction is the same as the base type.
   unit() = default;
+
+  // If you provide the correct units, you're free to construct one
+  // out of a number.
+  unit(base_type i, Units) : val_(i) {}
+  // Or to retrieve one.
+  base_type get(Units)const { return val_; }
 
   // (Implicit copy and move construction and assignment.)
 
@@ -318,6 +335,28 @@ private:
   }
 };
 
+template<typename Int, typename Units>
+struct make_unit_type {
+  typedef unit<Int, Units> type;
+  static inline type construct(typename type::base_type i) { return type(i, Units()); }
+};
+template<typename Int>
+struct make_unit_type<Int, trivial_units> {
+  typedef typename unit<Int, trivial_units>::base_type type;
+  static inline type construct(type i) { return i; }
+};
+
+template<typename Unit>
+struct reduce_unit_type {
+  typedef Unit type;
+  static inline type construct(typename type::base_type i) { return type::construct_(i); }
+};
+template<typename Int>
+struct reduce_unit_type<unit<Int, trivial_units>> {
+  typedef typename unit<Int, trivial_units>::base_type type;
+  static inline type construct(type i) { return i; }
+};
+
 // impl:
 struct unit_muldiv {
   template<typename Unit>
@@ -333,12 +372,16 @@ struct unit_muldiv {
 
   template<typename Int, typename UnitsA, typename UnitsB>
   struct mul {
-    typedef unit<Int, typename multiply_units<UnitsA, UnitsB>::type> unit_type;
+    typedef typename multiply_units<UnitsA, UnitsB>::type result_units;
+    typedef unit<Int, result_units> unit_type;
     typedef typename reduce<unit_type>::type result_type;
     static inline result_type multiply(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
       return reduce<unit_type>::construct(a.val_ * b.val_);
     }
     static inline result_type be(unit<Int, UnitsA> a) {
+      return reduce<unit_type>::construct(a.val_);
+    }
+    static inline result_type be(UnitsA a) {
       return reduce<unit_type>::construct(a.val_);
     }
     template<typename T> static inline result_type be(T a) {
@@ -378,30 +421,38 @@ operator/(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
 
 
 template<
-  typename T,
-  typename Ratio,
-  unit_exponent_type Tau,
-  unit_exponent_type Meter,
-  unit_exponent_type Gram,
-  unit_exponent_type Second,
-  unit_exponent_type Ampere,
-  unit_exponent_type Kelvin
+  typename RatioA,
+  unit_exponent_type TauA,
+  unit_exponent_type MeterA,
+  unit_exponent_type GramA,
+  unit_exponent_type SecondA,
+  unit_exponent_type AmpereA,
+  unit_exponent_type KelvinA,
+  typename RatioB,
+  unit_exponent_type TauB,
+  unit_exponent_type MeterB,
+  unit_exponent_type GramB,
+  unit_exponent_type SecondB,
+  unit_exponent_type AmpereB,
+  unit_exponent_type KelvinB
 >
-inline typename unit_muldiv::mul<
-  typename get_primitive_int_type<T>::type,
-  typename get_units<T>::type,
-  units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>
->::result_type
-operator*(T a, units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>) {
-  return unit_muldiv::mul<
-    typename get_primitive_int_type<T>::type,
-    typename get_units<T>::type,
-    units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>
-  >::be(a);
+inline
+typename multiply_units<
+  units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
+  units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+>::type
+operator*(
+  units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
+  units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+) {
+  return typename multiply_units<
+    units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
+    units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+  >::type();
 }
 
 template<
-  typename T,
+  typename Int,
   typename Ratio,
   unit_exponent_type Tau,
   unit_exponent_type Meter,
@@ -410,18 +461,142 @@ template<
   unit_exponent_type Ampere,
   unit_exponent_type Kelvin
 >
-inline typename unit_muldiv::div<
-  typename get_primitive_int_type<T>::type,
-  typename get_units<T>::type,
+inline
+typename make_unit_type<
+  typename boost::enable_if_c<get_units<Int>::is_nonunit_type,
+                              typename get_primitive_int_type<Int>::type>::type,
   units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>
->::result_type
-operator/(T a, units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>) {
-  return unit_muldiv::div<
-    typename get_primitive_int_type<T>::type,
-    typename get_units<T>::type,
-    units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>
-  >::be(a);
+>::type
+operator*(Int a, units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>) {
+  return
+    make_unit_type<
+      typename get_primitive_int_type<Int>::type,
+      units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>
+    >::construct(a);
 }
+
+template<
+  typename Int,
+  typename UnitsA,
+  typename RatioB,
+  unit_exponent_type TauB,
+  unit_exponent_type MeterB,
+  unit_exponent_type GramB,
+  unit_exponent_type SecondB,
+  unit_exponent_type AmpereB,
+  unit_exponent_type KelvinB
+>
+inline
+typename make_unit_type<
+  Int,
+  typename multiply_units<
+      UnitsA,
+      units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+    >::type
+>::type
+operator*(unit<Int, UnitsA> a, units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>) {
+  return
+    make_unit_type<
+      Int,
+      typename multiply_units<
+          UnitsA,
+          units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+        >::type
+    >::construct(a.get(UnitsA()));
+}
+
+
+
+
+
+template<
+  typename RatioA,
+  unit_exponent_type TauA,
+  unit_exponent_type MeterA,
+  unit_exponent_type GramA,
+  unit_exponent_type SecondA,
+  unit_exponent_type AmpereA,
+  unit_exponent_type KelvinA,
+  typename RatioB,
+  unit_exponent_type TauB,
+  unit_exponent_type MeterB,
+  unit_exponent_type GramB,
+  unit_exponent_type SecondB,
+  unit_exponent_type AmpereB,
+  unit_exponent_type KelvinB
+>
+inline
+typename divide_units<
+  units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
+  units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+>::type
+operator/(
+  units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
+  units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+) {
+  return typename divide_units<
+    units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
+    units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+  >::type();
+}
+
+template<
+  typename Int,
+  typename Ratio,
+  unit_exponent_type Tau,
+  unit_exponent_type Meter,
+  unit_exponent_type Gram,
+  unit_exponent_type Second,
+  unit_exponent_type Ampere,
+  unit_exponent_type Kelvin
+>
+inline
+typename make_unit_type<
+  typename boost::enable_if_c<get_units<Int>::is_nonunit_type,
+                              typename get_primitive_int_type<Int>::type>::type,
+  typename units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>::reciprocal_type
+>::type
+operator/(Int a, units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>) {
+  return
+    make_unit_type<
+      typename get_primitive_int_type<Int>::type,
+      typename units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>::reciprocal_type
+    >::construct(a);
+}
+
+template<
+  typename Int,
+  typename UnitsA,
+  typename RatioB,
+  unit_exponent_type TauB,
+  unit_exponent_type MeterB,
+  unit_exponent_type GramB,
+  unit_exponent_type SecondB,
+  unit_exponent_type AmpereB,
+  unit_exponent_type KelvinB
+>
+inline
+typename make_unit_type<
+  Int,
+  typename divide_units<
+      UnitsA,
+      units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+    >::type
+>::type
+operator/(unit<Int, UnitsA> a, units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>) {
+  return
+    make_unit_type<
+      Int,
+      typename multiply_units<
+          UnitsA,
+          units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
+        >::type
+    >::construct(a.get(UnitsA()));
+}
+
+
+
+
 
 //class coordinate 
 #endif

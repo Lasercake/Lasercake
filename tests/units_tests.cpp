@@ -28,6 +28,7 @@ constexpr meter meters = meter();
 typedef units<boost::ratio<1>, 0, 0, 1, 0, 0, 0> gram;
 typedef units<boost::ratio<1000>, 0, 0, 1, 0, 0, 0> kilogram;
 typedef units<boost::ratio<1>, 0, 0, 0, 1, 0, 0> second;
+constexpr second seconds = second();
 typedef units<boost::ratio<1, 360>, 1, 0, 0, 0, 0, 0> degree;
 
 BOOST_AUTO_TEST_CASE( unitses ) {
@@ -47,6 +48,13 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 #endif
 
   volatile auto what = bfoo;
+
+  meters*meters;
+  units<boost::ratio<1>, 0, 2, 0, 0, 0, 0> foofoo = meters*meters;
+  meters/seconds;
+  2*(meters/meters);
+  2*(meters*meters);
+  ((2*meters)*meters) + (2*(meters*meters));
 
   BOOST_CHECK_EQUAL(foo2 + foo1, 8*meters);
   BOOST_CHECK_EQUAL(foo2 - foo1, 2*meters);
