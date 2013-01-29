@@ -194,9 +194,6 @@ template<
   typename Units //a 'units'
 > 
 class unit {
-private:
-  struct unspecified_bool_{int member; private:unspecified_bool_();};
-  typedef int unspecified_bool_::* unspecified_bool_type;
 public:
   typedef typename lasercake_int<Int>::type base_type;
 private:
@@ -274,7 +271,7 @@ public:
            bounds_checked_int_impl::superior_to<Int, SmallerInt>::value
          >::type* = 0) : val_(a.get(Units())) {}
 
-  operator unspecified_bool_type() const { return val_ ? &unspecified_bool_::member : nullptr; }
+  explicit operator bool() const { return bool(val_); }
 
   friend inline std::ostream& operator<<(std::ostream& os, unit a) {
     os << a.val_ << Units::suffix_repr();
@@ -292,12 +289,12 @@ public:
   friend inline unit operator+(unit a, unit b) { return construct_(a.val_ + b.val_); }
   friend inline unit operator-(unit a, unit b) { return construct_(a.val_ - b.val_); }
   friend inline unit operator%(unit a, unit b) { return construct_(a.val_ % b.val_); }
-  friend inline bool operator==(unit a, unit b) { return construct_(a.val_ == b.val_); }
-  friend inline bool operator!=(unit a, unit b) { return construct_(a.val_ != b.val_); }
-  friend inline bool operator>(unit a, unit b) { return construct_(a.val_ > b.val_); }
-  friend inline bool operator<(unit a, unit b) { return construct_(a.val_ < b.val_); }
-  friend inline bool operator<=(unit a, unit b) { return construct_(a.val_ <= b.val_); }
-  friend inline bool operator>=(unit a, unit b) { return construct_(a.val_ >= b.val_); }
+  friend inline bool operator==(unit a, unit b) { return a.val_ == b.val_; }
+  friend inline bool operator!=(unit a, unit b) { return a.val_ != b.val_; }
+  friend inline bool operator>(unit a, unit b) { return a.val_ > b.val_; }
+  friend inline bool operator<(unit a, unit b) { return a.val_ < b.val_; }
+  friend inline bool operator<=(unit a, unit b) { return a.val_ <= b.val_; }
+  friend inline bool operator>=(unit a, unit b) { return a.val_ >= b.val_; }
   template<typename AnyInt>
   friend inline unit operator<<(unit a, AnyInt shift) { return construct_(a.val_ << shift); }
   template<typename AnyInt>

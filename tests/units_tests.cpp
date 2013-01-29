@@ -113,4 +113,27 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK_EQUAL(mutfoo <<= 2, 40*meters);
   BOOST_CHECK_EQUAL(mutfoo >>= 2, 10*meters);
   BOOST_CHECK_EQUAL(mutfoo %= foo3, 1*meters);
+
+  BOOST_CHECK_EQUAL(0*foo, 0*meters);
+  BOOST_CHECK_EQUAL(foo*0, 0*meters);
+  BOOST_CHECK(0*foo == 0);
+  BOOST_CHECK(foo*0 == 0);
+  BOOST_CHECK(!(foo == 0));
+  BOOST_CHECK(foo != 0);
+  BOOST_CHECK(-foo != 0);
+  BOOST_CHECK(foo > 0);
+  BOOST_CHECK(foo >= 0);
+  BOOST_CHECK(-foo < 0);
+  BOOST_CHECK(-foo <= 0);
+  BOOST_CHECK(!(-foo > 0));
+  BOOST_CHECK(0*foo >= 0);
+  BOOST_CHECK(0*foo <= 0);
+  BOOST_CHECK(!(0*foo > 0));
+  BOOST_CHECK(!(0*foo < 0));
+  BOOST_CHECK(0 != foo);
+  BOOST_CHECK(0 != -foo);
+  BOOST_CHECK(0 < foo);
+  BOOST_CHECK(0 <= foo);
+  BOOST_CHECK(0 > -foo);
+  BOOST_CHECK(0 >= -foo);
 }
