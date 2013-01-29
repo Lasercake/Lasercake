@@ -29,7 +29,8 @@ def say_we_are_calling(string):
 	say(ansi_cyan+'% '+escaped_control_characters(string)+ansi_end+'\n')
 
 def hash_list(l):
-	return hashlib.sha256(b''.join(hashlib.sha256(arg.encode('utf8')).digest() for arg in l)).hexdigest()
+	hashes = (hashlib.sha256(arg.encode('utf8')).digest() for arg in l)
+	return hashlib.sha256(b''.join(hashes)).hexdigest()
 
 def main():
 	try: subprocess.call(['cmake', '--version'])
