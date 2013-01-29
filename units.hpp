@@ -173,6 +173,10 @@ public:
   // Default-construction is the same as the base type.
   unit() = default;
 
+  // Implicit conversion from literal 0,
+  // because zero is meaningful at every unit.
+  unit(decltype(nullptr)) : val_(0) {}
+
   // If you provide the correct units, you're free to construct one
   // out of a number.
   unit(base_type i, Units) : val_(i) {}
