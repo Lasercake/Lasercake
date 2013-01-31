@@ -36,7 +36,14 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   bfoo = bfoo * 3;
 
   foo64 + foo;
-  const unit<double, meter> foofloating = foo;
+
+  // TODO consider whether to relax bounds_checked_int to make this work,
+  // or provide conversion functions, or such.
+  // const unit<double, meter> foofloating = foo;
+  // Also this doesn't work because unit<> tries to wrap
+  // its data type in a bounds checked int, heh.  That'd
+  // be fairly easy to fix for floating point.
+  // const unit<double, meter> foofloating = 1.0*meters;
 
   // Deliberately avoid get_primitive_int() to make sure
   // that it is returning the correct type in both cases.

@@ -23,7 +23,7 @@
 #include "data_structures/borrowed_bitset.hpp"
 #include "object_and_tile_iteration.hpp"
 #include "data_structures/polygon_collision_detection.hpp"
-
+#if 0
 const int SUN_AREA_SIZE = 1<<12;
 const fine_scalar SUN_PACKETS_PER_TILE_WIDTH = 8;
 
@@ -173,11 +173,11 @@ struct sunlight_visitor {
   fine_scalar tile_sunbitwidth_y;
   uint32_t tile_yrow_mask;
 };
-
+#endif
 void world::update_light(vector3<fine_scalar> sun_direction, uint32_t sun_direction_z_shift)
 {
   tile_litnesses_.clear();
   object_litnesses_.clear();
-  sunlight_visitor sv(this, sun_direction, sun_direction_z_shift);
-  visit_collidable_tiles_and_objects(sv);
+//  sunlight_visitor sv(this, sun_direction, sun_direction_z_shift);
+//  visit_collidable_tiles_and_objects(sv);
 }

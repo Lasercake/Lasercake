@@ -371,8 +371,9 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
   // If we start out intersecting them, find the plane across which we could most quickly exit.
   // The movement code uses this: if the movement is INTO this plane then it's blocked, if it's
   // OUT OF this plane then it's fudged by allowing it not to collide.
-  if (result.min <= 0 && result.max >= 0) {
-    rational closest_excl_dist = -1;
+  if (result.min <= rational(0) && result.max >= rational(0)) {
+    const rational no_excl_dist(-1);
+    rational closest_excl_dist = no_excl_dist;
     for (auto const& plane : relating_planes) {
       // NOTE: The magnitude calculation seems unavoidable here,
       // because the rule is "if we went directly outwards through the plane", i.e. in the direction of the normal,
@@ -385,7 +386,7 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
           .dot<polygon_int_type>(plane.p1_to_p2_normal),
           // divided by
           plane.p1_to_p2_normal.magnitude_within_32_bits());
-      if (closest_excl_dist == -1 || this_excl_dist < closest_excl_dist) {
+      if (closest_excl_dist == no_excl_dist || this_excl_dist < closest_excl_dist) {
         closest_excl_dist = this_excl_dist;
         result.arbitrary_plane_of_closest_exclusion = plane_as_base_point_and_normal(plane.p1_base_point, plane.p1_to_p2_normal);
       }
@@ -399,7 +400,10 @@ bool polyhedra_volume_intersect (convex_polyhedron const& p1, convex_polyhedron 
   std::vector<pair_of_parallel_supporting_planes> relating_planes;
   populate_with_relating_planes(p1, p2, relating_planes);
   for (auto const& plane : relating_planes) {
-    if ((plane.p2_base_point - plane.p1_base_point).dot<polygon_int_type>(plane.p1_to_p2_normal) >= 0) return false;
+    if ((plane.p2_base_point - plane.p1_base_point)
+          .dot<polygon_int_type>(plane.p1_to_p2_normal) >= polygon_int_type(0)) {
+      return false;
+    }
   }
   return true;
 }

@@ -542,8 +542,8 @@ void view_on_the_world::prepare_gl_data(
   else if (view_type == LOCAL) {
     view_loc = view_loc_for_local_display;
     view_towards = view_loc + vector3<fine_scalar>(
-      (100*tile_width) * std::cos(local_view_direction),
-      (100*tile_width) * std::sin(local_view_direction),
+      (100*get_primitive_double(tile_width)) * std::cos(local_view_direction),
+      (100*get_primitive_double(tile_width)) * std::sin(local_view_direction),
       0
     );
   }

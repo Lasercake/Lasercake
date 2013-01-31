@@ -166,10 +166,10 @@ get_first_moment_of_intersection_results get_first_moment_of_intersection(shape 
   for (auto const& p1 : p1s) {
     for (auto const& p2 : p2s) {
       auto coll_info = when_do_polyhedra_intersect(p1,p2,relative_velocity / velocity_scale_factor);
-      if ((coll_info.is_anywhere) && (coll_info.max >= 0) && (coll_info.min <= (time_type(1) - s1_last_time_updated))) {
-        if ((coll_info.min >= 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<fine_scalar>(relative_velocity) > 0)) {
+      if ((coll_info.is_anywhere) && (coll_info.max >= polygon_rational_type(0)) && (coll_info.min <= (time_type(1) - s1_last_time_updated))) {
+        if ((coll_info.min >= polygon_rational_type(0)) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<fine_scalar>(relative_velocity) > 0)) {
           if (!results.time || (coll_info.min < *results.time)) {
-            results.time = ((coll_info.min > 0) ? coll_info.min : 0);
+            results.time = ((coll_info.min > polygon_rational_type(0)) ? coll_info.min : polygon_rational_type(0));
             // TODO: Make it so that it prefers axis-aligned normals again in order to avoid
             // hitting the sides of elements of flat surfaces, or solve that problem in another way?
             results.normal = coll_info.arbitrary_plane_hit_first.normal;

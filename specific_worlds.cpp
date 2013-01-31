@@ -319,7 +319,7 @@ public:
           coord block_min_y = (j+base_block_y) << max_simple_hill_width_shift;
           auto const& hills = hill_blocks[hill_block].init(block_min_x, block_min_y);
           for(auto hill : hills.hills) {
-            height += std::max(0, hill.height - get_primitive<int>(i64sqrt((hill.x-x)*(hill.x-x) + (hill.y-y)*(hill.y-y))));
+            height += std::max(coord(0), hill.height - coord(i64sqrt((hill.x-x)*(hill.x-x) + (hill.y-y)*(hill.y-y))));
           }
         }
       }
