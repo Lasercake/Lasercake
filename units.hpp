@@ -24,6 +24,7 @@
 
 #include <ostream>
 #include <sstream>
+#include <utility>
 #include <boost/utility/enable_if.hpp>
 #include <boost/ratio/ratio.hpp>
 #include <boost/ratio/ratio_io.hpp>
@@ -294,7 +295,8 @@ public:
   template<typename AnyInt>
   friend inline
   typename rebase<decltype(
-    base_type() * typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type()
+    std::declval<base_type>() *
+     std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type>()
   )>::type
   operator*(unit a, AnyInt factor)
   { return typename rebase<decltype(a.val_ * factor)>::type(a.val_ * factor, Units()); }
@@ -302,7 +304,8 @@ public:
   template<typename AnyInt>
   friend inline
   typename rebase<decltype(
-    typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type() * base_type()
+    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type>()
+     * std::declval<base_type>()
   )>::type
   operator*(AnyInt factor, unit b)
   { return typename rebase<decltype(factor * b.val_)>::type(factor * b.val_, Units()); }
@@ -310,7 +313,8 @@ public:
   template<typename AnyInt>
   friend inline
   typename rebase<decltype(
-    base_type() / typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type()
+    std::declval<base_type>()
+     / std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type>()
   )>::type
   operator/(unit a, AnyInt divisor)
   { return typename rebase<decltype(a.val_ / divisor)>::type(a.val_ / divisor, Units()); }
@@ -318,7 +322,8 @@ public:
   template<typename AnyInt>
   friend inline
   typename rebase<decltype(
-    typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type() / base_type()
+    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type>()
+     / std::declval<base_type>()
   )>::type::reciprocal_type
   operator/(AnyInt dividend, unit b)
   { return typename rebase<decltype(dividend / b.val_)>::type::reciprocal_type(
