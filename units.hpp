@@ -41,28 +41,29 @@
 
 typedef int32_t unit_exponent_type;
 
+
 template<
-  typename Ratio,
-  unit_exponent_type Tau,
-  unit_exponent_type Meter,
-  unit_exponent_type Gram,
-  unit_exponent_type Second,
-  unit_exponent_type Ampere,
-  unit_exponent_type Kelvin
+  typename Ratio = boost::ratio<1>, // a boost::ratio
+  // or should we name the template parameters m, g, s, A, K, for nicer error msgs?
+  // Is there any need to support non-integer exponents?
+  unit_exponent_type Tau = 0, // 2pi, listed here because
+  // it can't be expressed as a ratio and because the mathematically natural
+  // unit of angle is the radian yet it's more important to us to be able to
+  // represent 1 full circle as an exact number.
+  unit_exponent_type Meter = 0,
+  unit_exponent_type Gram = 0,
+  unit_exponent_type Second = 0,
+  unit_exponent_type Ampere = 0,
+  unit_exponent_type Kelvin = 0
 > struct units;
 
-typedef units<boost::ratio<1>, 0, 0, 0, 0, 0, 0> trivial_units;
+typedef units<> trivial_units;
 template<typename Units> struct is_trivial_units : boost::false_type {};
 template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
 template<
-  typename Ratio, // a boost::ratio
-  // or should we name the template parameters m, g, s, A, K, for nicer error msgs?
-  // Is there any need to support non-integer exponents?
-  unit_exponent_type Tau, // 2pi, listed here because
-  // it can't be expressed as a ratio and because the mathematically natural
-  // unit of angle is the radian yet it's more important to us to be able to
-  // represent 1 full circle as an exact number.
+  typename Ratio,
+  unit_exponent_type Tau,
   unit_exponent_type Meter,
   unit_exponent_type Gram,
   unit_exponent_type Second,
