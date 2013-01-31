@@ -23,14 +23,8 @@
 
 #include "../units.hpp"
 
-typedef units<boost::ratio<1>, 0, 1, 0, 0, 0, 0> meter;
-constexpr meter meters = meter();
-typedef units<boost::ratio<1>, 0, 0, 1, 0, 0, 0> gram;
-typedef units<boost::ratio<1000>, 0, 0, 1, 0, 0, 0> kilogram;
-constexpr kilogram kilograms = kilogram();
-typedef units<boost::ratio<1>, 0, 0, 0, 1, 0, 0> second;
-constexpr second seconds = second();
-typedef units<boost::ratio<1, 360>, 1, 0, 0, 0, 0, 0> degree;
+typedef UNITS(meters) meter;
+constexpr auto kilograms = kilo*grams;
 
 BOOST_AUTO_TEST_CASE( unitses ) {
   const unit<int32_t, meter> foo = 1 * meter();

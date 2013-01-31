@@ -536,6 +536,38 @@ operator/(unit<Int, UnitsA> a, units<RatioB, TauB, MeterB, GramB, SecondB, Amper
     >::construct(a.get(UnitsA()));
 }
 
+template<typename T> T imaginary_copy(T arg); // unimplemented
+#define UNITS(units_val) decltype(::imaginary_copy((units_val)))
+
+template<intmax_t Num, intmax_t Den = 1>
+constexpr inline units<boost::ratio<Num, Den> > units_ratio() {
+  return units<boost::ratio<Num, Den> >();
+}
+
+// https://en.wikipedia.org/wiki/Turn_%28geometry%29
+constexpr auto full_circles = units<boost::ratio<1>, 1>();
+constexpr auto meters       = units<boost::ratio<1>, 0, 1>();
+constexpr auto grams        = units<boost::ratio<1>, 0, 0, 1>();
+constexpr auto seconds      = units<boost::ratio<1>, 0, 0, 0, 1>();
+constexpr auto amperes      = units<boost::ratio<1>, 0, 0, 0, 0, 1>();
+constexpr auto kelvins      = units<boost::ratio<1>, 0, 0, 0, 0, 0, 1>();
+
+constexpr auto degrees      = full_circles / units_ratio<1, 360>();
+
+constexpr auto kilo = units<boost::kilo>();
+constexpr auto mega = units<boost::mega>();
+constexpr auto giga = units<boost::giga>();
+constexpr auto tera = units<boost::tera>();
+constexpr auto peta = units<boost::peta>();
+constexpr auto exa  = units<boost::exa>();
+
+constexpr auto milli = units<boost::milli>();
+constexpr auto micro = units<boost::micro>();
+constexpr auto nano  = units<boost::nano>();
+constexpr auto pico  = units<boost::pico>();
+constexpr auto femto = units<boost::femto>();
+constexpr auto atto  = units<boost::atto>();
+
 
 
 
