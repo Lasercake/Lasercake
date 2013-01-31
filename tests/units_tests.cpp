@@ -41,6 +41,9 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   auto bfoo = foo * foo;
   bfoo = bfoo * 3;
 
+  foo64 + foo;
+  const unit<double, meter> foofloating = foo;
+
   // Deliberately avoid get_primitive_int() to make sure
   // that it is returning the correct type in both cases.
 #if USE_BOUNDS_CHECKED_INTS
