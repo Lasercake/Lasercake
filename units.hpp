@@ -377,7 +377,7 @@ template<
   unit_exponent_type AmpereB,
   unit_exponent_type KelvinB
 >
-inline
+inline constexpr
 typename multiply_units<
   units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
   units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
@@ -466,7 +466,7 @@ template<
   unit_exponent_type AmpereB,
   unit_exponent_type KelvinB
 >
-inline
+inline constexpr
 typename divide_units<
   units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
   units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
