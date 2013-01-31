@@ -61,6 +61,48 @@ typedef units<> trivial_units;
 template<typename Units> struct is_trivial_units : boost::false_type {};
 template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
+
+// Writing even a decent sqrt algorithm with templates is hard,
+// so I'm going to punt and say that you have to define all answers
+// we need as explicit specializations here.
+template<typename BaseRatio, typename ExponentRatio> struct static_pow;
+
+// Integer exponents are relatively easy:
+template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<0> > {
+  typedef boost::ratio<1> type; };
+template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<1> > {
+  typedef BaseRatio type; };
+template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<-1> > {
+  typedef boost::ratio<BaseRatio::den, BaseRatio::num> type; };
+template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<2> > {
+  typedef typename boost::ratio_multiply<BaseRatio, BaseRatio>::type type; };
+
+// Fractional exponents are harder.
+template<> struct static_pow<boost::mega , boost::ratio<1, 2> > { typedef boost::kilo  type; };
+template<> struct static_pow<boost::tera , boost::ratio<1, 2> > { typedef boost::mega  type; };
+template<> struct static_pow<boost::exa  , boost::ratio<1, 2> > { typedef boost::giga  type; };
+
+template<> struct static_pow<boost::micro, boost::ratio<1, 2> > { typedef boost::milli type; };
+template<> struct static_pow<boost::pico , boost::ratio<1, 2> > { typedef boost::micro type; };
+template<> struct static_pow<boost::atto , boost::ratio<1, 2> > { typedef boost::nano  type; };
+
+template<> struct static_pow<boost::giga , boost::ratio<1, 3> > { typedef boost::kilo  type; };
+template<> struct static_pow<boost::exa  , boost::ratio<1, 3> > { typedef boost::mega  type; };
+
+template<> struct static_pow<boost::nano , boost::ratio<1, 3> > { typedef boost::milli type; };
+template<> struct static_pow<boost::atto , boost::ratio<1, 3> > { typedef boost::micro type; };
+
+
+#if 0
+template<typename BaseRatio, intmax_t N> struct static_pow<BaseRatio, boost::ratio<N> >
+  : boost::mpl::if_c<(N > 0),
+      boost::ratio_multiply<BaseRatio, static_pow<BaseRatio, boost::ratio<N-1>> {
+  typedef typename boost::ratio_multiply<boost::ratio_multiply<BaseRatio, BaseRatio>, BaseRatio>::type type;
+};
+
+template<> struct static_pow<boost::ratio<1>, boost::ratio<0>;
+#endif
+
 template<
   typename Ratio,
   unit_exponent_type Tau,
@@ -82,6 +124,30 @@ struct units {
   static const unit_exponent_type second = Second;
   static const unit_exponent_type ampere = Ampere;
   static const unit_exponent_type kelvin = Kelvin;
+
+  template<intmax_t Num, intmax_t Den = 1>
+  struct units_pow {
+    typedef boost::ratio<Num, Den> exponent;
+    static const intmax_t num = exponent::num;
+    static const intmax_t den = exponent::den;
+    static_assert(tau    % den == 0, "units<> does not presently support fractional powers of base units");
+    static_assert(meter  % den == 0, "units<> does not presently support fractional powers of base units");
+    static_assert(gram   % den == 0, "units<> does not presently support fractional powers of base units");
+    static_assert(second % den == 0, "units<> does not presently support fractional powers of base units");
+    static_assert(ampere % den == 0, "units<> does not presently support fractional powers of base units");
+    static_assert(kelvin % den == 0, "units<> does not presently support fractional powers of base units");
+    typedef units<
+        typename static_pow<ratio, exponent>::type,
+        tau*num/den, meter*num/den, gram*num/den,
+        second*num/den, ampere*num/den, kelvin*num/den>
+      type;
+  };
+  template<intmax_t Num, intmax_t Den = 1>
+  static constexpr
+  typename units::template units_pow<Num, Den>::type
+  pow() {
+    return typename units::template units_pow<Num, Den>::type();
+  }
 
   friend inline bool operator==(units, units) { return true; }
   friend inline bool operator!=(units, units) { return false; }

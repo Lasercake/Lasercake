@@ -55,6 +55,8 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   2*(meters*meters);
   ((2*meters)*meters) + (2*(meters*meters));
 
+  1*meters*meters + 1*meters.pow<2>();
+
   BOOST_CHECK_EQUAL(foo5 + foo3, 8*meters);
   BOOST_CHECK_EQUAL(foo5 - foo3, 2*meters);
   BOOST_CHECK_EQUAL(foo5 % foo3, 2*meters);
