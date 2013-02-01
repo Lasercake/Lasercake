@@ -468,14 +468,12 @@ template<
 >
 inline
 typename make_unit_type<
-  typename boost::enable_if_c<get_units<Int>::is_nonunit_type,
-                              typename get_primitive_int_type<Int>::type>::type,
+  typename boost::enable_if_c<get_units<Int>::is_nonunit_type, Int>::type,
   units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>
 >::type
 operator*(Int a, units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>) {
   return
-    make_unit_type<
-      typename get_primitive_int_type<Int>::type,
+    make_unit_type<Int,
       units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>
     >::construct(a);
 }
