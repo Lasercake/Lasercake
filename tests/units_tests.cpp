@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   volatile auto what = bfoo;
 
   meters*meters;
-  units<boost::ratio<1>, 0, 2, 0, 0, 0, 0> foofoo = meters*meters;
+  units< u_v_t<boost::ratio<1>, 0, 2> > foofoo = meters*meters;
   meters/seconds;
   2*(meters/meters);
   2*(meters*meters);

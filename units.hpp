@@ -55,12 +55,12 @@ template<
   unit_exponent_type Second = 0,
   unit_exponent_type Ampere = 0,
   unit_exponent_type Kelvin = 0
-> struct units;
+> struct u_v_t {}; //units_vector_type (compile-time vector)
+template<typename U_V_T> struct units;
 
-typedef units<> trivial_units;
+typedef units<u_v_t<>> trivial_units;
 template<typename Units> struct is_trivial_units : boost::false_type {};
 template<> struct is_trivial_units<trivial_units> : boost::true_type {};
-
 
 // Writing even a decent sqrt algorithm with templates is hard,
 // so I'm going to punt and say that you have to define all answers
@@ -112,7 +112,7 @@ template<
   unit_exponent_type Ampere,
   unit_exponent_type Kelvin
 >
-struct units {
+struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > {
   typedef Ratio ratio;
   static const unit_exponent_type tau = Tau;
   static const unit_exponent_type meter = Meter;
@@ -139,10 +139,10 @@ struct units {
     static_assert(second % den == 0, "units<> does not presently support fractional powers of base units");
     static_assert(ampere % den == 0, "units<> does not presently support fractional powers of base units");
     static_assert(kelvin % den == 0, "units<> does not presently support fractional powers of base units");
-    typedef units<
+    typedef units<u_v_t<
         typename static_pow<ratio, exponent>::type,
         tau*num/den, meter*num/den, gram*num/den,
-        second*num/den, ampere*num/den, kelvin*num/den>
+        second*num/den, ampere*num/den, kelvin*num/den> >
       type;
   };
   template<intmax_t Num, intmax_t Den = 1>
@@ -192,7 +192,7 @@ struct units {
 
 template<typename UnitsA, typename UnitsB>
 struct multiply_units {
-  typedef units<
+  typedef units<u_v_t<
             typename boost::ratio_multiply<typename UnitsA::ratio,
                                            typename UnitsB::ratio>::type,
             UnitsA::tau    + UnitsB::tau,
@@ -200,12 +200,12 @@ struct multiply_units {
             UnitsA::gram   + UnitsB::gram,
             UnitsA::second + UnitsB::second,
             UnitsA::ampere + UnitsB::ampere,
-            UnitsA::kelvin + UnitsB::kelvin>
+            UnitsA::kelvin + UnitsB::kelvin> >
           type;
 };
 template<typename UnitsA, typename UnitsB>
 struct divide_units {
-  typedef units<
+  typedef units<u_v_t<
             typename boost::ratio_divide<typename UnitsA::ratio,
                                          typename UnitsB::ratio>::type,
             UnitsA::tau    - UnitsB::tau,
@@ -213,7 +213,7 @@ struct divide_units {
             UnitsA::gram   - UnitsB::gram,
             UnitsA::second - UnitsB::second,
             UnitsA::ampere - UnitsB::ampere,
-            UnitsA::kelvin - UnitsB::kelvin>
+            UnitsA::kelvin - UnitsB::kelvin> >
           type;
 };
 
@@ -223,16 +223,8 @@ template<typename Int, typename Units> class unit;
 template<typename Int, typename Units>
 struct get_primitive_int_type< unit<Int, Units> > { typedef Int type; };
 
-template<
-  typename Ratio,
-  unit_exponent_type Tau,
-  unit_exponent_type Meter,
-  unit_exponent_type Gram,
-  unit_exponent_type Second,
-  unit_exponent_type Ampere,
-  unit_exponent_type Kelvin
->
-struct get_primitive_int_type< units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > { typedef void type; };
+template<typename U>
+struct get_primitive_int_type< units<U> > { typedef void type; };
 
 template<typename T>
 struct get_units {
@@ -244,17 +236,9 @@ struct get_units< unit<Int, Units> > {
   typedef Units type;
   static const bool is_nonunit_type = false;
 };
-template<
-  typename Ratio,
-  unit_exponent_type Tau,
-  unit_exponent_type Meter,
-  unit_exponent_type Gram,
-  unit_exponent_type Second,
-  unit_exponent_type Ampere,
-  unit_exponent_type Kelvin
->
-struct get_units< units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > {
-  typedef units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> type;
+template<typename U>
+struct get_units< units<U> > {
+  typedef units<U> type;
   static const bool is_nonunit_type = false;
 };
 
@@ -428,86 +412,29 @@ operator/(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
 
 
 
-template<
-  typename RatioA,
-  unit_exponent_type TauA,
-  unit_exponent_type MeterA,
-  unit_exponent_type GramA,
-  unit_exponent_type SecondA,
-  unit_exponent_type AmpereA,
-  unit_exponent_type KelvinA,
-  typename RatioB,
-  unit_exponent_type TauB,
-  unit_exponent_type MeterB,
-  unit_exponent_type GramB,
-  unit_exponent_type SecondB,
-  unit_exponent_type AmpereB,
-  unit_exponent_type KelvinB
->
+template<typename UA, typename UB>
 inline constexpr
-typename multiply_units<
-  units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
-  units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
->::type
-operator*(
-  units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
-  units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
-) {
-  return typename multiply_units<
-    units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
-    units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
-  >::type();
+typename multiply_units<units<UA>, units<UB>>::type
+operator*(units<UA>, units<UB>) {
+  return typename multiply_units<units<UA>, units<UB>>::type();
 }
 
-template<
-  typename Int,
-  typename Ratio,
-  unit_exponent_type Tau,
-  unit_exponent_type Meter,
-  unit_exponent_type Gram,
-  unit_exponent_type Second,
-  unit_exponent_type Ampere,
-  unit_exponent_type Kelvin
->
+template<typename Int, typename U>
 inline
 typename make_unit_type<
   typename boost::enable_if_c<get_units<Int>::is_nonunit_type, Int>::type,
-  units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>
+  units<U>
 >::type
-operator*(Int a, units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>) {
-  return
-    make_unit_type<Int,
-      units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>
-    >::construct(a);
+operator*(Int a, units<U>) {
+  return make_unit_type<Int, units<U>>::construct(a);
 }
 
-template<
-  typename Int,
-  typename UnitsA,
-  typename RatioB,
-  unit_exponent_type TauB,
-  unit_exponent_type MeterB,
-  unit_exponent_type GramB,
-  unit_exponent_type SecondB,
-  unit_exponent_type AmpereB,
-  unit_exponent_type KelvinB
->
-inline
-typename make_unit_type<
-  Int,
-  typename multiply_units<
-      UnitsA,
-      units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
-    >::type
->::type
-operator*(unit<Int, UnitsA> a, units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>) {
-  return
-    make_unit_type<
-      Int,
-      typename multiply_units<
-          UnitsA,
-          units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
-        >::type
+template<typename Int, typename UnitsA, typename UB>
+inline typename
+make_unit_type<Int, typename multiply_units<UnitsA, units<UB>>::type>::type
+operator*(unit<Int, UnitsA> a, units<UB>) {
+  return make_unit_type<
+            Int, typename multiply_units<UnitsA, units<UB>>::type
     >::construct(a.get(UnitsA()));
 }
 
@@ -515,87 +442,32 @@ operator*(unit<Int, UnitsA> a, units<RatioB, TauB, MeterB, GramB, SecondB, Amper
 
 
 
-template<
-  typename RatioA,
-  unit_exponent_type TauA,
-  unit_exponent_type MeterA,
-  unit_exponent_type GramA,
-  unit_exponent_type SecondA,
-  unit_exponent_type AmpereA,
-  unit_exponent_type KelvinA,
-  typename RatioB,
-  unit_exponent_type TauB,
-  unit_exponent_type MeterB,
-  unit_exponent_type GramB,
-  unit_exponent_type SecondB,
-  unit_exponent_type AmpereB,
-  unit_exponent_type KelvinB
->
-inline constexpr
-typename divide_units<
-  units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
-  units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
->::type
-operator/(
-  units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
-  units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
-) {
-  return typename divide_units<
-    units<RatioA, TauA, MeterA, GramA, SecondA, AmpereA, KelvinA>,
-    units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
-  >::type();
+template<typename UA, typename UB>
+inline constexpr typename divide_units<units<UA>, units<UB>>::type
+operator/(units<UA>, units<UB>) {
+  return typename divide_units<units<UA>, units<UB>>::type();
 }
 
-template<
-  typename Int,
-  typename Ratio,
-  unit_exponent_type Tau,
-  unit_exponent_type Meter,
-  unit_exponent_type Gram,
-  unit_exponent_type Second,
-  unit_exponent_type Ampere,
-  unit_exponent_type Kelvin
->
+template<typename Int, typename U>
 inline
 typename make_unit_type<
   typename boost::enable_if_c<get_units<Int>::is_nonunit_type, Int>::type,
-  typename units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>::reciprocal_type
+  typename units<U>::reciprocal_type
 >::type
-operator/(Int a, units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>) {
-  return
-    make_unit_type<
-      Int,
-      typename units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>::reciprocal_type
+operator/(Int a, units<U>) {
+  return make_unit_type<
+            Int, typename units<U>::reciprocal_type
     >::construct(a);
 }
 
-template<
-  typename Int,
-  typename UnitsA,
-  typename RatioB,
-  unit_exponent_type TauB,
-  unit_exponent_type MeterB,
-  unit_exponent_type GramB,
-  unit_exponent_type SecondB,
-  unit_exponent_type AmpereB,
-  unit_exponent_type KelvinB
->
+template<typename Int, typename UnitsA, typename UB>
 inline
 typename make_unit_type<
-  Int,
-  typename divide_units<
-      UnitsA,
-      units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
-    >::type
+  Int, typename divide_units<UnitsA, units<UB>>::type
 >::type
-operator/(unit<Int, UnitsA> a, units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>) {
-  return
-    make_unit_type<
-      Int,
-      typename divide_units<
-          UnitsA,
-          units<RatioB, TauB, MeterB, GramB, SecondB, AmpereB, KelvinB>
-        >::type
+operator/(unit<Int, UnitsA> a, units<UB>) {
+  return make_unit_type<
+            Int, typename divide_units<UnitsA, units<UB>>::type
     >::construct(a.get(UnitsA()));
 }
 
@@ -603,33 +475,37 @@ template<typename T> T imaginary_copy(T arg); // unimplemented
 #define UNITS(units_val) decltype(::imaginary_copy((units_val)))
 
 template<intmax_t Num, intmax_t Den = 1>
-constexpr inline units<boost::ratio<Num, Den> > units_ratio() {
-  return units<boost::ratio<Num, Den> >();
+constexpr inline units<u_v_t<boost::ratio<Num, Den>>> units_factor() {
+  return units<u_v_t<boost::ratio<Num, Den>>>();
+}
+template<typename BoostRatio>
+constexpr inline units<u_v_t<BoostRatio>> units_factor() {
+  return units<u_v_t<BoostRatio>>();
 }
 
 // https://en.wikipedia.org/wiki/Turn_%28geometry%29
-constexpr auto full_circles = units<boost::ratio<1>, 1>();
-constexpr auto meters       = units<boost::ratio<1>, 0, 1>();
-constexpr auto grams        = units<boost::ratio<1>, 0, 0, 1>();
-constexpr auto seconds      = units<boost::ratio<1>, 0, 0, 0, 1>();
-constexpr auto amperes      = units<boost::ratio<1>, 0, 0, 0, 0, 1>();
-constexpr auto kelvins      = units<boost::ratio<1>, 0, 0, 0, 0, 0, 1>();
+constexpr auto full_circles = units<u_v_t<boost::ratio<1>, 1> >();
+constexpr auto meters       = units<u_v_t<boost::ratio<1>, 0, 1> >();
+constexpr auto grams        = units<u_v_t<boost::ratio<1>, 0, 0, 1> >();
+constexpr auto seconds      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 1> >();
+constexpr auto amperes      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 1> >();
+constexpr auto kelvins      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 0, 1> >();
 
-constexpr auto degrees      = full_circles / units_ratio<1, 360>();
+constexpr auto degrees      = full_circles / units_factor<1, 360>();
 
-constexpr auto kilo = units<boost::kilo>();
-constexpr auto mega = units<boost::mega>();
-constexpr auto giga = units<boost::giga>();
-constexpr auto tera = units<boost::tera>();
-constexpr auto peta = units<boost::peta>();
-constexpr auto exa  = units<boost::exa>();
+constexpr auto kilo = units_factor<boost::kilo>();
+constexpr auto mega = units_factor<boost::mega>();
+constexpr auto giga = units_factor<boost::giga>();
+constexpr auto tera = units_factor<boost::tera>();
+constexpr auto peta = units_factor<boost::peta>();
+constexpr auto exa  = units_factor<boost::exa>();
 
-constexpr auto milli = units<boost::milli>();
-constexpr auto micro = units<boost::micro>();
-constexpr auto nano  = units<boost::nano>();
-constexpr auto pico  = units<boost::pico>();
-constexpr auto femto = units<boost::femto>();
-constexpr auto atto  = units<boost::atto>();
+constexpr auto milli = units_factor<boost::milli>();
+constexpr auto micro = units_factor<boost::micro>();
+constexpr auto nano  = units_factor<boost::nano>();
+constexpr auto pico  = units_factor<boost::pico>();
+constexpr auto femto = units_factor<boost::femto>();
+constexpr auto atto  = units_factor<boost::atto>();
 
 
 // Avoid using the macro here because it confuses my IDE (KDevelop).
