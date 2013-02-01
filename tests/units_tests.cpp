@@ -52,6 +52,9 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 #else
   int yay = (bfoo / foo / foo);
 #endif
+  int okayy1 = get(bfoo, meters*meters);
+  int okayy2 = bfoo.get(meters*meters);
+  BOOST_CHECK_EQUAL(okayy1, okayy2);
 
   volatile auto what = bfoo;
 

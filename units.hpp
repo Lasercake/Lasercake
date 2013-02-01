@@ -287,6 +287,7 @@ public:
   unit(base_type i, Units) : val_(i) {}
   // Or to retrieve one.
   base_type get(Units)const { return val_; }
+  friend inline base_type get(unit a, Units u) { return a.get(u); }
 
   // (Implicit copy and move construction and assignment.)
 
