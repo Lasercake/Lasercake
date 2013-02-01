@@ -121,6 +121,9 @@ struct units {
   static const unit_exponent_type ampere = Ampere;
   static const unit_exponent_type kelvin = Kelvin;
 
+  static const bool nonidentity_ratio = !boost::ratio_equal<ratio, boost::ratio<1>>::value;
+  static const bool nontrivial_units = !is_trivial_units<units>::value;
+
   typedef units<u_v_t<boost::ratio<ratio::den, ratio::num>,
     -tau, -meter, -gram, -second, -ampere, -kelvin> > reciprocal_type;
   static constexpr reciprocal_type reciprocal() { return reciprocal_type(); }
@@ -164,7 +167,7 @@ struct units {
   // and this output represents the former!
   static std::string suffix_repr() {
     std::stringstream os;
-    if(!boost::ratio_equal<ratio, boost::ratio<1>>::value) {
+    if(nonidentity_ratio) {
       os << '*' << boost::ratio_string<ratio, char>::short_name();
     }
     if(tau) { os << '*' << "tau"; if(tau != 1) { os << '^' << tau; } }
@@ -175,11 +178,11 @@ struct units {
     return os.str();
   }
   static std::string repr() {
-    if(is_trivial_units<units>::value) {
-      return "[1]";
+    if(nontrivial_units) {
+      return suffix_repr().substr(1);
     }
     else {
-      return suffix_repr().substr(1);
+      return "[1]";
     }
   }
   friend inline std::ostream& operator<<(std::ostream& os, units) {
