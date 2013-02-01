@@ -268,18 +268,6 @@ private:
   base_type val_;
 public:
 
-#if 0
-  // trivial: dimensionless and unscaled; conceptually equivalent
-  // (and implicitly convertable with) the underlying type.
-  static const bool has_physical_dimension =
-    !(Meter == 0 && Gram == 0 && Second == 0
-      && Ampere == 0 && Kelvin == 0);
-  static const bool is_trivial =
-    boost::ratio_equal<Ratio, boost::ratio<1>>::value
-    && Tau == 0 && !has_physical_dimension;
- //TODO static_assert ratio is normalized? do i need that currently? nope.
-#endif
-
   typedef unit<Int, typename Units::reciprocal_type> reciprocal_type;
 
   template<typename OtherInt>
