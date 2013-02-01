@@ -642,6 +642,14 @@ constexpr auto femto = units<boost::femto>();
 constexpr auto atto  = units<boost::atto>();
 
 
+// Avoid using the macro here because it confuses my IDE (KDevelop).
+typedef decltype(imaginary_copy(full_circles)) full_circles_t;
+typedef decltype(imaginary_copy(meters)) meters_t;
+typedef decltype(imaginary_copy(grams)) grams_t;
+typedef decltype(imaginary_copy(seconds)) seconds_t;
+typedef decltype(imaginary_copy(amperes)) amperes_t;
+typedef decltype(imaginary_copy(kelvins)) kelvins_t;
+typedef decltype(imaginary_copy(degrees)) degrees_t;
 
 
 
