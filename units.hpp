@@ -113,10 +113,6 @@ template<
   unit_exponent_type Kelvin
 >
 struct units {
-  typedef units<boost::ratio<Ratio::den, Ratio::num>,
-    -Tau, -Meter, -Gram, -Second, -Ampere, -Kelvin> reciprocal_type;
-  static constexpr reciprocal_type reciprocal() { return reciprocal_type(); }
-
   typedef Ratio ratio;
   static const unit_exponent_type tau = Tau;
   static const unit_exponent_type meter = Meter;
@@ -124,6 +120,10 @@ struct units {
   static const unit_exponent_type second = Second;
   static const unit_exponent_type ampere = Ampere;
   static const unit_exponent_type kelvin = Kelvin;
+
+  typedef units<u_v_t<boost::ratio<ratio::den, ratio::num>,
+    -tau, -meter, -gram, -second, -ampere, -kelvin> > reciprocal_type;
+  static constexpr reciprocal_type reciprocal() { return reciprocal_type(); }
 
   template<intmax_t Num, intmax_t Den = 1>
   struct units_pow {
