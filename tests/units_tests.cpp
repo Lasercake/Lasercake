@@ -67,6 +67,14 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   1*meters*meters + 1*meters.pow<2>();
 
+  auto scalar = 4*meters;
+  auto pseudoscalar = scalar*pseudo;
+  scalar = pseudoscalar * pseudo;
+  scalar = pseudoscalar / pseudo;
+  pseudoscalar = scalar * pseudo;
+  pseudoscalar = scalar / pseudo;
+  pseudoscalar = pseudoscalar + pseudoscalar;
+
   BOOST_CHECK_EQUAL(foo5 + foo3, 8*meters);
   BOOST_CHECK_EQUAL(foo5 - foo3, 2*meters);
   BOOST_CHECK_EQUAL(foo5 % foo3, 2*meters);

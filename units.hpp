@@ -55,7 +55,14 @@ template<
   unit_exponent_type Gram = 0,
   unit_exponent_type Second = 0,
   unit_exponent_type Ampere = 0,
-  unit_exponent_type Kelvin = 0
+  unit_exponent_type Kelvin = 0,
+  bool Pseudo = false // pseudovectors, pseudoscalars
+  //when mul/div they add mod 2, aka they xor.
+  //unit_with_Pseudo pseudo_subtract(unit_without_Pseudo, unit_without_Pseudo)
+  // it should be generally flipping the Pseudo, as deduced from
+  // https://en.wikipedia.org/wiki/Pseudovector#Behavior_under_cross_products
+  // and the crossproduct definition
+  // (& what about abs()?)
 > struct u_v_t {}; //units_vector_type (compile-time vector)
 template<typename U_V_T> struct units;
 
@@ -111,9 +118,10 @@ template<
   unit_exponent_type Gram,
   unit_exponent_type Second,
   unit_exponent_type Ampere,
-  unit_exponent_type Kelvin
+  unit_exponent_type Kelvin,
+  bool Pseudo
 >
-struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > {
+struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin, Pseudo> > {
   typedef Ratio ratio;
   static const unit_exponent_type tau = Tau;
   static const unit_exponent_type meter = Meter;
@@ -121,12 +129,13 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > {
   static const unit_exponent_type second = Second;
   static const unit_exponent_type ampere = Ampere;
   static const unit_exponent_type kelvin = Kelvin;
+  static const bool pseudo = Pseudo;
 
   static const bool nonidentity_ratio = !boost::ratio_equal<ratio, boost::ratio<1>>::value;
   static const bool nontrivial_units = !is_trivial_units<units>::value;
 
   typedef units<u_v_t<boost::ratio<ratio::den, ratio::num>,
-    -tau, -meter, -gram, -second, -ampere, -kelvin> > reciprocal_type;
+    -tau, -meter, -gram, -second, -ampere, -kelvin, pseudo> > reciprocal_type;
   static constexpr reciprocal_type reciprocal() { return reciprocal_type(); }
 
   template<intmax_t Num, intmax_t Den = 1>
@@ -140,10 +149,12 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > {
     static_assert(second % den == 0, "units<> does not presently support fractional powers of base units");
     static_assert(ampere % den == 0, "units<> does not presently support fractional powers of base units");
     static_assert(kelvin % den == 0, "units<> does not presently support fractional powers of base units");
+    static_assert(pseudo % den == 0, "units<> does not presently support fractional powers of base units");
     typedef units<u_v_t<
         typename static_pow<ratio, exponent>::type,
         tau*num/den, meter*num/den, gram*num/den,
-        second*num/den, ampere*num/den, kelvin*num/den> >
+        second*num/den, ampere*num/den, kelvin*num/den,
+        (pseudo*num/den) & 1> >
       type;
   };
   template<intmax_t Num, intmax_t Den = 1>
@@ -176,6 +187,7 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin> > {
     if(meter) { os << '*' << 'm'; if(meter != 1) { os << '^' << meter; } }
     if(kelvin) { os << '*' << 'K'; if(kelvin != 1) { os << '^' << kelvin; } }
     if(ampere) { os << '*' << 'A'; if(ampere != 1) { os << '^' << ampere; } }
+    if(pseudo) { os << "[pseudo]"; }
     return os.str();
   }
   static std::string repr() {
@@ -201,7 +213,8 @@ struct multiply_units {
             UnitsA::gram   + UnitsB::gram,
             UnitsA::second + UnitsB::second,
             UnitsA::ampere + UnitsB::ampere,
-            UnitsA::kelvin + UnitsB::kelvin> >
+            UnitsA::kelvin + UnitsB::kelvin,
+            UnitsA::pseudo ^ UnitsB::pseudo> >
           type;
 };
 template<typename UnitsA, typename UnitsB>
@@ -214,7 +227,8 @@ struct divide_units {
             UnitsA::gram   - UnitsB::gram,
             UnitsA::second - UnitsB::second,
             UnitsA::ampere - UnitsB::ampere,
-            UnitsA::kelvin - UnitsB::kelvin> >
+            UnitsA::kelvin - UnitsB::kelvin,
+            UnitsA::pseudo ^ UnitsB::pseudo> >
           type;
 };
 
@@ -507,6 +521,9 @@ constexpr auto seconds      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 1> >();
 constexpr auto amperes      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 1> >();
 constexpr auto kelvins      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 0, 1> >();
 
+// for pseudovectors, pseudoscalars, etc:
+constexpr auto pseudo       = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 0, 0, true> >();
+
 constexpr auto degrees      = full_circles / units_factor<1, 360>();
 
 constexpr auto kilo = units_factor<boost::kilo>();
@@ -531,6 +548,7 @@ typedef decltype(imaginary_copy(grams)) grams_t;
 typedef decltype(imaginary_copy(seconds)) seconds_t;
 typedef decltype(imaginary_copy(amperes)) amperes_t;
 typedef decltype(imaginary_copy(kelvins)) kelvins_t;
+typedef decltype(imaginary_copy(pseudo)) pseudo_t;
 typedef decltype(imaginary_copy(degrees)) degrees_t;
 
 
