@@ -28,6 +28,7 @@
 #include <boost/utility/enable_if.hpp>
 #include <boost/ratio/ratio.hpp>
 #include <boost/ratio/ratio_io.hpp>
+#include <boost/integer.hpp>
 
 #include "utils.hpp"
 
@@ -470,6 +471,21 @@ operator/(unit<Int, UnitsA> a, units<UB>) {
             Int, typename divide_units<UnitsA, units<UB>>::type
     >::construct(a.get(UnitsA()));
 }
+
+template<intmax_t N>
+struct identity_units {
+  typedef unit<
+      typename boost::int_max_value_t<(N >= 0 ? N : ~N)>::least,
+      units<u_v_t<boost::ratio<1, N>>>
+    > type;
+};
+
+template<intmax_t N>
+inline typename identity_units<N>::type
+identity(units<u_v_t<boost::ratio<1, N>>> u) {
+  return typename identity_units<N>::type(N, u);
+}
+
 
 template<typename T> T imaginary_copy(T arg); // unimplemented
 #define UNITS(units_val) decltype(::imaginary_copy((units_val)))

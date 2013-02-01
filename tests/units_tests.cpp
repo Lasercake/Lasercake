@@ -145,4 +145,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK(0 <= foo);
   BOOST_CHECK(0 > -foo);
   BOOST_CHECK(0 >= -foo);
+
+  BOOST_CHECK_EQUAL(identity(grams / kilograms), (1000*units_factor<1, 1000>()));
+  BOOST_CHECK_EQUAL(identity(grams / kilograms)*units_factor<1000>(), 1000);
 }
