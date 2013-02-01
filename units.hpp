@@ -399,31 +399,39 @@ public:
 
 template<typename Int, typename Units>
 struct make_unit_type {
-  typedef unit<Int, Units> type;
+  typedef unit<typename get_primitive_int_type<Int>::type, Units> type;
   static inline type construct(typename type::base_type i) { return type(i, Units()); }
 };
 template<typename Int>
 struct make_unit_type<Int, trivial_units> {
-  typedef typename unit<Int, trivial_units>::base_type type;
+  typedef typename unit<typename get_primitive_int_type<Int>::type, trivial_units>::base_type type;
   static inline type construct(type i) { return i; }
 };
 
-template<typename Int, typename UnitsA, typename UnitsB>
+template<typename IntA, typename IntB, typename UnitsA, typename UnitsB>
 inline typename
-make_unit_type<Int, typename multiply_units<UnitsA, UnitsB>::type>::type
-operator*(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
-  return
-    make_unit_type<Int, typename multiply_units<UnitsA, UnitsB>::type>
-      ::construct(a.get(UnitsA()) * b.get(UnitsB()));
+make_unit_type<
+    decltype(std::declval<IntA>() * std::declval<IntB>()),
+    typename multiply_units<UnitsA, UnitsB>::type
+  >::type
+operator*(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
+  return make_unit_type<
+          decltype(std::declval<IntA>() * std::declval<IntB>()),
+          typename multiply_units<UnitsA, UnitsB>::type
+      >::construct(a.get(UnitsA()) * b.get(UnitsB()));
 }
 
-template<typename Int, typename UnitsA, typename UnitsB>
+template<typename IntA, typename IntB, typename UnitsA, typename UnitsB>
 inline typename
-make_unit_type<Int, typename divide_units<UnitsA, UnitsB>::type>::type
-operator/(unit<Int, UnitsA> a, unit<Int, UnitsB> b) {
-  return
-    make_unit_type<Int, typename divide_units<UnitsA, UnitsB>::type>
-      ::construct(a.get(UnitsA()) / b.get(UnitsB()));
+make_unit_type<
+    decltype(std::declval<IntA>() / std::declval<IntB>()),
+    typename divide_units<UnitsA, UnitsB>::type
+  >::type
+operator/(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
+  return make_unit_type<
+          decltype(std::declval<IntA>() / std::declval<IntB>()),
+          typename divide_units<UnitsA, UnitsB>::type
+      >::construct(a.get(UnitsA()) / b.get(UnitsB()));
 }
 
 
@@ -560,14 +568,13 @@ template<
 >
 inline
 typename make_unit_type<
-  typename boost::enable_if_c<get_units<Int>::is_nonunit_type,
-                              typename get_primitive_int_type<Int>::type>::type,
+  typename boost::enable_if_c<get_units<Int>::is_nonunit_type, Int>::type,
   typename units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>::reciprocal_type
 >::type
 operator/(Int a, units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>) {
   return
     make_unit_type<
-      typename get_primitive_int_type<Int>::type,
+      Int,
       typename units<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin>::reciprocal_type
     >::construct(a);
 }
