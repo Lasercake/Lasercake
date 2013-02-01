@@ -84,6 +84,9 @@ template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<-1> > {
   typedef boost::ratio<BaseRatio::den, BaseRatio::num> type; };
 template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<2> > {
   typedef typename boost::ratio_multiply<BaseRatio, BaseRatio>::type type; };
+template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<-2> > {
+  typedef boost::ratio<BaseRatio::den, BaseRatio::num> recip;
+  typedef typename boost::ratio_multiply<recip, recip>::type type; };
 
 // Fractional exponents are harder.
 template<> struct static_pow<boost::mega , boost::ratio<1, 2> > { typedef boost::kilo  type; };
@@ -230,6 +233,13 @@ struct divide_units {
             UnitsA::kelvin - UnitsB::kelvin,
             UnitsA::pseudo ^ UnitsB::pseudo> >
           type;
+};
+
+template<typename... Unitses> struct units_prod;
+template<> struct units_prod<> { typedef trivial_units type; };
+template<typename Units> struct units_prod<Units> { typedef Units type; };
+template<typename Units, typename... Unitses> struct units_prod<Units, Unitses...> {
+  typedef typename multiply_units<Units, typename units_prod<Unitses...>::type>::type type;
 };
 
 
@@ -551,6 +561,19 @@ typedef decltype(imaginary_copy(kelvins)) kelvins_t;
 typedef decltype(imaginary_copy(pseudo)) pseudo_t;
 typedef decltype(imaginary_copy(degrees)) degrees_t;
 
+typedef decltype(imaginary_copy(kilo)) kilo_t;
+typedef decltype(imaginary_copy(mega)) mega_t;
+typedef decltype(imaginary_copy(giga)) giga_t;
+typedef decltype(imaginary_copy(tera)) tera_t;
+typedef decltype(imaginary_copy(peta)) peta_t;
+typedef decltype(imaginary_copy(exa )) exa_t;
+
+typedef decltype(imaginary_copy(milli)) milli_t;
+typedef decltype(imaginary_copy(micro)) micro_t;
+typedef decltype(imaginary_copy(nano )) nano_t;
+typedef decltype(imaginary_copy(pico )) pico_t;
+typedef decltype(imaginary_copy(femto)) femto_t;
+typedef decltype(imaginary_copy(atto )) atto_t;
 
 
 //class coordinate 

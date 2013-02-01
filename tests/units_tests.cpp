@@ -26,6 +26,10 @@
 typedef UNITS(meters) meter;
 constexpr auto kilograms = kilo*grams;
 
+typedef typename units_prod<kilo_t, grams_t>::type kilograms_t;
+typedef typename units_prod<kilograms_t, meters_t,
+  typename seconds_t::units_pow<-2>::type>::type newtons_t;
+
 BOOST_AUTO_TEST_CASE( unitses ) {
   const unit<int32_t, meter> foo = 1 * meter();
   const unit<int64_t, meter> foo64 = foo;
