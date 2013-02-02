@@ -92,6 +92,8 @@ template<typename ScalarType> class vector3 {
 public:
   ScalarType x, y, z;
   vector3():x(0),y(0),z(0){}
+  // implicit conversion from literal 0, so you can write 0 for any zero vector.
+  vector3(decltype(nullptr)):x(0),y(0),z(0){}
   vector3(ScalarType x, ScalarType y, ScalarType z):x(x),y(y),z(z){}
   template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
     x(other.x),y(other.y),z(other.z){}
