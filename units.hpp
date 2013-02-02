@@ -259,14 +259,6 @@ struct divide_units {
           type;
 };
 
-template<typename... Unitses> struct units_prod;
-template<> struct units_prod<> { typedef trivial_units type; };
-template<typename Units> struct units_prod<Units> { typedef Units type; };
-template<typename Units, typename... Unitses> struct units_prod<Units, Unitses...> {
-  typedef typename multiply_units<Units, typename units_prod<Unitses...>::type>::type type;
-};
-
-
 template<typename Int, typename Units> class unit;
 
 template<typename Int, typename Units>
@@ -275,21 +267,134 @@ struct get_primitive_int_type< unit<Int, Units> > { typedef Int type; };
 template<typename U>
 struct get_primitive_int_type< units<U> > { typedef void type; };
 
+template<typename Int>
+struct unit_representation_type {
+  typedef typename lasercake_int<Int>::type type;
+};
+
 template<typename T>
 struct get_units {
   typedef trivial_units type;
+  typedef T representation_type;
   static const bool is_nonunit_type = true;
 };
 template<typename Int, typename Units>
 struct get_units< unit<Int, Units> > {
   typedef Units type;
+  typedef typename unit_representation_type<Int>::type representation_type;
   static const bool is_nonunit_type = false;
 };
 template<typename U>
 struct get_units< units<U> > {
   typedef units<U> type;
+  typedef void representation_type;
   static const bool is_nonunit_type = false;
 };
+
+template<typename... Unitses> struct units_prod;
+template<> struct units_prod<> { typedef trivial_units type; };
+template<typename Units> struct units_prod<Units> { typedef Units type; };
+template<typename Units, typename... Unitses> struct units_prod<Units, Unitses...> {
+  typedef typename multiply_units<Units, typename units_prod<Unitses...>::type>::type type;
+};
+
+
+template<typename Int, typename Units>
+struct make_unit_type {
+  typedef unit<typename get_primitive_int_type<Int>::type, Units> type;
+  static inline type construct(typename type::base_type i) { return type(i, Units()); }
+};
+template<typename Int>
+struct make_unit_type<Int, trivial_units> {
+  typedef typename unit_representation_type<typename get_primitive_int_type<Int>::type>::type type;
+  static inline type construct(type i) { return i; }
+};
+
+
+
+template<typename UA, typename UB>
+inline constexpr
+typename multiply_units<units<UA>, units<UB>>::type
+operator*(units<UA>, units<UB>) {
+  return typename multiply_units<units<UA>, units<UB>>::type();
+}
+
+template<typename UA, typename UB>
+inline constexpr typename divide_units<units<UA>, units<UB>>::type
+operator/(units<UA>, units<UB>) {
+  return typename divide_units<units<UA>, units<UB>>::type();
+}
+
+template<typename T> T imaginary_copy(T arg); // unimplemented
+#define UNITS(units_val) decltype(::imaginary_copy((units_val)))
+
+
+template<intmax_t Num, intmax_t Den = 1>
+struct make_units_factor {
+
+};
+
+template<intmax_t Num, intmax_t Den = 1>
+constexpr inline units<u_v_t<boost::ratio<Num, Den>>> units_factor() {
+  return units<u_v_t<boost::ratio<Num, Den>>>();
+}
+template<typename BoostRatio>
+constexpr inline units<u_v_t<BoostRatio>> units_factor() {
+  return units<u_v_t<BoostRatio>>();
+}
+
+// https://en.wikipedia.org/wiki/Turn_%28geometry%29
+constexpr auto full_circles = units<u_v_t<boost::ratio<1>, 1> >();
+constexpr auto meters       = units<u_v_t<boost::ratio<1>, 0, 1> >();
+constexpr auto grams        = units<u_v_t<boost::ratio<1>, 0, 0, 1> >();
+constexpr auto seconds      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 1> >();
+constexpr auto amperes      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 1> >();
+constexpr auto kelvins      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 0, 1> >();
+
+// for pseudovectors, pseudoscalars, etc:
+constexpr auto pseudo       = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 0, 0, true> >();
+
+constexpr auto degrees      = full_circles / units_factor<1, 360>();
+
+constexpr auto kilo = units_factor<boost::kilo>();
+constexpr auto mega = units_factor<boost::mega>();
+constexpr auto giga = units_factor<boost::giga>();
+constexpr auto tera = units_factor<boost::tera>();
+constexpr auto peta = units_factor<boost::peta>();
+constexpr auto exa  = units_factor<boost::exa>();
+
+constexpr auto milli = units_factor<boost::milli>();
+constexpr auto micro = units_factor<boost::micro>();
+constexpr auto nano  = units_factor<boost::nano>();
+constexpr auto pico  = units_factor<boost::pico>();
+constexpr auto femto = units_factor<boost::femto>();
+constexpr auto atto  = units_factor<boost::atto>();
+
+
+// Avoid using the macro here because it confuses my IDE (KDevelop).
+typedef decltype(imaginary_copy(full_circles)) full_circles_t;
+typedef decltype(imaginary_copy(meters)) meters_t;
+typedef decltype(imaginary_copy(grams)) grams_t;
+typedef decltype(imaginary_copy(seconds)) seconds_t;
+typedef decltype(imaginary_copy(amperes)) amperes_t;
+typedef decltype(imaginary_copy(kelvins)) kelvins_t;
+typedef decltype(imaginary_copy(pseudo)) pseudo_t;
+typedef decltype(imaginary_copy(degrees)) degrees_t;
+
+typedef decltype(imaginary_copy(kilo)) kilo_t;
+typedef decltype(imaginary_copy(mega)) mega_t;
+typedef decltype(imaginary_copy(giga)) giga_t;
+typedef decltype(imaginary_copy(tera)) tera_t;
+typedef decltype(imaginary_copy(peta)) peta_t;
+typedef decltype(imaginary_copy(exa )) exa_t;
+
+typedef decltype(imaginary_copy(milli)) milli_t;
+typedef decltype(imaginary_copy(micro)) micro_t;
+typedef decltype(imaginary_copy(nano )) nano_t;
+typedef decltype(imaginary_copy(pico )) pico_t;
+typedef decltype(imaginary_copy(femto)) femto_t;
+typedef decltype(imaginary_copy(atto )) atto_t;
+
 
 template<
   typename Int, //the base type that this mimics.
@@ -299,7 +404,7 @@ template<
 > 
 class unit {
 public:
-  typedef typename lasercake_int<Int>::type base_type;
+  typedef typename unit_representation_type<Int>::type base_type;
 private:
   base_type val_;
 public:
@@ -422,16 +527,6 @@ public:
       dividend / b.val_, Units::reciprocal()); }
 };
 
-template<typename Int, typename Units>
-struct make_unit_type {
-  typedef unit<typename get_primitive_int_type<Int>::type, Units> type;
-  static inline type construct(typename type::base_type i) { return type(i, Units()); }
-};
-template<typename Int>
-struct make_unit_type<Int, trivial_units> {
-  typedef typename unit<typename get_primitive_int_type<Int>::type, trivial_units>::base_type type;
-  static inline type construct(type i) { return i; }
-};
 
 template<typename IntA, typename IntB, typename UnitsA, typename UnitsB>
 inline typename
@@ -461,12 +556,6 @@ operator/(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
 
 
 
-template<typename UA, typename UB>
-inline constexpr
-typename multiply_units<units<UA>, units<UB>>::type
-operator*(units<UA>, units<UB>) {
-  return typename multiply_units<units<UA>, units<UB>>::type();
-}
 
 template<typename Int, typename U>
 inline
@@ -490,12 +579,6 @@ operator*(unit<Int, UnitsA> a, units<UB>) {
 
 
 
-
-template<typename UA, typename UB>
-inline constexpr typename divide_units<units<UA>, units<UB>>::type
-operator/(units<UA>, units<UB>) {
-  return typename divide_units<units<UA>, units<UB>>::type();
-}
 
 template<typename Int, typename U>
 inline
@@ -533,71 +616,6 @@ inline typename identity_units<N>::type
 identity(units<u_v_t<boost::ratio<1, N>>> u) {
   return typename identity_units<N>::type(N, u);
 }
-
-
-template<typename T> T imaginary_copy(T arg); // unimplemented
-#define UNITS(units_val) decltype(::imaginary_copy((units_val)))
-
-template<intmax_t Num, intmax_t Den = 1>
-constexpr inline units<u_v_t<boost::ratio<Num, Den>>> units_factor() {
-  return units<u_v_t<boost::ratio<Num, Den>>>();
-}
-template<typename BoostRatio>
-constexpr inline units<u_v_t<BoostRatio>> units_factor() {
-  return units<u_v_t<BoostRatio>>();
-}
-
-// https://en.wikipedia.org/wiki/Turn_%28geometry%29
-constexpr auto full_circles = units<u_v_t<boost::ratio<1>, 1> >();
-constexpr auto meters       = units<u_v_t<boost::ratio<1>, 0, 1> >();
-constexpr auto grams        = units<u_v_t<boost::ratio<1>, 0, 0, 1> >();
-constexpr auto seconds      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 1> >();
-constexpr auto amperes      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 1> >();
-constexpr auto kelvins      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 0, 1> >();
-
-// for pseudovectors, pseudoscalars, etc:
-constexpr auto pseudo       = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 0, 0, true> >();
-
-constexpr auto degrees      = full_circles / units_factor<1, 360>();
-
-constexpr auto kilo = units_factor<boost::kilo>();
-constexpr auto mega = units_factor<boost::mega>();
-constexpr auto giga = units_factor<boost::giga>();
-constexpr auto tera = units_factor<boost::tera>();
-constexpr auto peta = units_factor<boost::peta>();
-constexpr auto exa  = units_factor<boost::exa>();
-
-constexpr auto milli = units_factor<boost::milli>();
-constexpr auto micro = units_factor<boost::micro>();
-constexpr auto nano  = units_factor<boost::nano>();
-constexpr auto pico  = units_factor<boost::pico>();
-constexpr auto femto = units_factor<boost::femto>();
-constexpr auto atto  = units_factor<boost::atto>();
-
-
-// Avoid using the macro here because it confuses my IDE (KDevelop).
-typedef decltype(imaginary_copy(full_circles)) full_circles_t;
-typedef decltype(imaginary_copy(meters)) meters_t;
-typedef decltype(imaginary_copy(grams)) grams_t;
-typedef decltype(imaginary_copy(seconds)) seconds_t;
-typedef decltype(imaginary_copy(amperes)) amperes_t;
-typedef decltype(imaginary_copy(kelvins)) kelvins_t;
-typedef decltype(imaginary_copy(pseudo)) pseudo_t;
-typedef decltype(imaginary_copy(degrees)) degrees_t;
-
-typedef decltype(imaginary_copy(kilo)) kilo_t;
-typedef decltype(imaginary_copy(mega)) mega_t;
-typedef decltype(imaginary_copy(giga)) giga_t;
-typedef decltype(imaginary_copy(tera)) tera_t;
-typedef decltype(imaginary_copy(peta)) peta_t;
-typedef decltype(imaginary_copy(exa )) exa_t;
-
-typedef decltype(imaginary_copy(milli)) milli_t;
-typedef decltype(imaginary_copy(micro)) micro_t;
-typedef decltype(imaginary_copy(nano )) nano_t;
-typedef decltype(imaginary_copy(pico )) pico_t;
-typedef decltype(imaginary_copy(femto)) femto_t;
-typedef decltype(imaginary_copy(atto )) atto_t;
 
 
 //class coordinate 
