@@ -212,6 +212,12 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin, Pseudo> > {
   }
 };
 
+// So that people who have a template-argument-dependent units<>
+// type don't have to say "::template units_pow" to take a power
+// of it:
+template<typename Units, intmax_t Num, intmax_t Den = 1>
+struct units_pow : Units::template units_pow<Num, Den> {};
+
 template<typename UnitsA, typename UnitsB>
 struct multiply_units {
   typedef units<u_v_t<
