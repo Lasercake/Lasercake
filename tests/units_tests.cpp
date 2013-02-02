@@ -35,6 +35,8 @@ typedef typename kilometers_t::units_pow<6>::type kilometers6_t;
 typedef typename kilometers6_t::units_pow<-2, 3>::type inverse_kilometers4_t;
 typedef typename meters_t::units_pow<-4>::type inverse_meters4_t;
 
+constexpr auto kilometers = kilometers_t();
+
 BOOST_AUTO_TEST_CASE( unitses ) {
   const unit<int32_t, meter> foo = 1 * meter();
   const unit<int64_t, meter> foo64 = foo;
@@ -76,9 +78,12 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   1*meters*meters + 1*meters.pow<2>();
 
-  // TODO make identity() actually be able to return 32 bits
+  // 1000*1000*1000*1000 doesn't fit into 32 bits, so this identity()
+  // returns a 64 bit quantity.
   const unit<int64_t, inverse_kilometers4_t> invfoo4 = 1/foo/foo/foo/foo
     * identity(inverse_kilometers4_t() / inverse_meters4_t());
+  // This fits within fewer bits:
+  const unit<int32_t, meters_t> thirtytwobits = 1 * kilometers * identity(meters / kilometers);
 
   auto scalar = 4*meters;
   auto pseudoscalar = scalar*pseudo;
