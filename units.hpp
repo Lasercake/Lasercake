@@ -651,5 +651,38 @@ i64sqrt(unit<Int, Units> const& radicand) {
   return unit<Int, sqrt_units>(i64sqrt(get(radicand, Units())), sqrt_units());
 }
 
+
+template<typename TypeIfWeDivided>
+struct make_non_normalized_rational_unit_info {
+  typedef typename get_units<TypeIfWeDivided>::representation_type int_type;
+  typedef non_normalized_rational<int_type> rational_number_type;
+  typedef typename get_units<TypeIfWeDivided>::type units;
+  typedef typename make_unit_type<rational_number_type, units>::type type;
+};
+
+template<typename Num, typename Den>
+inline typename
+make_non_normalized_rational_unit_info<decltype(std::declval<Num>() / std::declval<Den>())>::type
+make_non_normalized_rational_unit(Num num, Den den) {
+  typedef make_non_normalized_rational_unit_info<decltype(std::declval<Num>() / std::declval<Den>())> info;
+  return make(
+    typename info::rational_number_type(
+      get(num, typename get_units<Num>::type()),
+      get(den, typename get_units<Den>::type())),
+    typename info::units());
+}
+
+template<typename Num>
+inline typename
+make_non_normalized_rational_unit_info<Num>::type
+make_non_normalized_rational_unit(Num num) {
+  typedef make_non_normalized_rational_unit_info<Num> info;
+  return make(
+    typename info::rational_number_type(
+      get(num, typename get_units<Num>::type()),
+      typename info::int_type(1)),
+    typename info::units());
+}
+
 //class coordinate 
 #endif
