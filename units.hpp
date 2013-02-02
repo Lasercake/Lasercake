@@ -425,6 +425,18 @@ typedef decltype(imaginary_copy(femto)) femto_t;
 typedef decltype(imaginary_copy(atto )) atto_t;
 
 
+
+template<typename Int>
+inline Int make(Int i, trivial_units) { return i; }
+template<typename Int>
+inline Int get(Int i, trivial_units) { return i; }
+
+template<typename Int, typename U>
+inline unit<typename get_primitive_int_type<Int>::type, units<U>>
+make(Int i, units<U> u) {
+  return unit<typename get_primitive_int_type<Int>::type, units<U>>(i, u);
+}
+
 template<
   typename Int, //the base type that this mimics.
   // Imagine multiplying the numeric value of that int by all of the below
