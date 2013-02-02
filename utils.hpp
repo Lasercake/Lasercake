@@ -154,7 +154,10 @@ public:
     return vector3(x * other.x, y * other.y, z * other.z);
   }
   template<typename OtherType> vector3 divide_piecewise_by(vector3<OtherType> const& other)const {
-    return vector3(x / other.x, y / other.y, z / other.z);
+    return vector3(
+      divide_rounding_towards_zero(x, other.x),
+      divide_rounding_towards_zero(y, other.y),
+      divide_rounding_towards_zero(z, other.z));
   }
   // Careful, shift operators on builtin types (ScalarType?) are only
   // defined for shift >= 0 && shift < bits_in_type
