@@ -300,7 +300,7 @@ void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedro
         }
         if (dotprod1 == 0) {
           auto dotprod2 = proposed_normal.dot<polygon_int_type>(e1f2_discriminant);
-          if (dotprod1 < 0) {
+          if (dotprod2 < 0) {
             proposed_normal = -proposed_normal;
           }
           assert(dotprod2 != 0);
