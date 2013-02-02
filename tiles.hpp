@@ -438,8 +438,8 @@ inline tile_coordinate get_max_containing_tile_coordinate(fine_scalar c, which_d
   if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
     return get_min_containing_tile_coordinate(c, which_coordinate);
   }
-  if (which_coordinate == Z) return tile_coordinate((c + 1) / tile_height);
-  else                       return tile_coordinate((c + 1) / tile_width);
+  if (which_coordinate == Z) return tile_coordinate((c + 1*fine_units) / tile_height);
+  else                       return tile_coordinate((c + 1*fine_units) / tile_width);
 }
 inline vector3<tile_coordinate> get_min_containing_tile_coordinates(vector3<fine_scalar> v) {
   return vector3<tile_coordinate>(
@@ -488,9 +488,9 @@ inline vector3<tile_coordinate> get_random_containing_tile_coordinates(vector3<f
   }
   const boost::random::uniform_int_distribution<int32_t> random_bits(0, 7);
   const int32_t three_random_bits = random_bits(rng);
-  const tile_coordinate xplus = !!(three_random_bits & 1);
-  const tile_coordinate yplus = !!(three_random_bits & 2);
-  const tile_coordinate zplus = !!(three_random_bits & 4);
+  const fine_scalar xplus = !!(three_random_bits & 1);
+  const fine_scalar yplus = !!(three_random_bits & 2);
+  const fine_scalar zplus = !!(three_random_bits & 4);
   return vector3<tile_coordinate>(
     tile_coordinate((v.x + xplus) / tile_width),
     tile_coordinate((v.y + yplus) / tile_width),
@@ -498,17 +498,17 @@ inline vector3<tile_coordinate> get_random_containing_tile_coordinates(vector3<f
   );
 }
 inline fine_scalar lower_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
-  if (which_coordinate == Z) return fine_scalar(c) * tile_height;
-  else                       return fine_scalar(c) * tile_width;
+  if (which_coordinate == Z) return c * tile_height;
+  else                       return c * tile_width;
 }
 inline fine_scalar upper_bound_in_fine_units(tile_coordinate c, which_dimension_type which_coordinate) {
   if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
-    if (which_coordinate == Z) return fine_scalar(c) * tile_height + (tile_height-1);
-    else                       return fine_scalar(c) * tile_width + (tile_width-1);
+    if (which_coordinate == Z) return c * tile_height + (tile_height - 1*fine_units);
+    else                       return c * tile_width + (tile_width - 1*fine_units);
   }
   else {
-    if (which_coordinate == Z) return fine_scalar(c) * tile_height + tile_height;
-    else                       return fine_scalar(c) * tile_width + tile_width;
+    if (which_coordinate == Z) return c * tile_height + tile_height;
+    else                       return c * tile_width + tile_width;
   }
 }
 inline vector3<fine_scalar> lower_bound_in_fine_units(vector3<tile_coordinate> v) {

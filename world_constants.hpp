@@ -23,16 +23,44 @@
 #define LASERCAKE_WORLD_CONSTANTS_HPP__
 
 #include "utils.hpp"
+#include "units.hpp"
 
-typedef lasercake_int<int64_t>::type fine_scalar; // Fine as opposed to coarse, that is.
-typedef lasercake_int<int32_t>::type sub_tile_distance; // We can fit it within 32 bits, so we might as well do faster math
-typedef lasercake_int<int64_t>::type large_sub_tile_distance;
+// TODO: conciser names?
+// make_units<[num[, den]], meter<3>, per, kilogram> ?
+constexpr auto tile_widths = units_factor<10>() * meters;
+constexpr auto tile_heights = units_factor<2>() * meters;
+constexpr auto fine_units = tile_widths * units_factor<1, 2000>();
 
-typedef lasercake_int<int64_t>::type time_unit;
+typedef decltype(imaginary_copy(tile_widths)) tile_widths_t;
+typedef decltype(imaginary_copy(tile_heights)) tile_heights_t;
+typedef decltype(imaginary_copy(fine_units)) fine_units_t;
+
+typedef unit<int64_t, fine_units_t> fine_scalar; // Fine as opposed to coarse, that is.
+
+
+constexpr auto velocity_units = fine_units / /* units_factor<30>() / ? */ seconds;
+constexpr auto tile_physics_sub_tile_units = fine_units / units_factor<30>();
+
+typedef decltype(imaginary_copy(velocity_units)) velocity_units_t;
+typedef decltype(imaginary_copy(tile_physics_sub_tile_units)) tile_physics_sub_tile_units_t;
+
+typedef unit<int32_t, tile_physics_sub_tile_units_t> sub_tile_distance; // We can fit it within 32 bits, so we might as well do faster math
+typedef unit<int64_t, tile_physics_sub_tile_units_t> large_sub_tile_distance;
+
+
 // Choose a number that makes lots of frames-per-second values multiply in evenly.
 // TODO if we use this more and want a different representation, that would be fine too.
 // TODO where it doesn't already, code should refer to some kind of time unit more,
 //        rather than implicitly relying on frames being a fixed duration.
+
+constexpr auto time_units = seconds * units_factor<1, (2*2*2*2 * 3*3*3 * 5*5 * 7 * 11)>();
+typedef decltype(imaginary_copy(time_units)) time_units_t;
+typedef unit<int64_t, time_units_t> time_unit;
+
+//ok...
+const fine_scalar tile_width = 1 * tile_widths * identity(fine_units / tile_widths);
+const fine_scalar tile_height = 1 * tile_heights * identity(fine_units / tile_heights);
+#if 0
 const time_unit time_units_per_second = 2*2*2*2 * 3*3*3 * 5*5 * 7 * 11;
 // delete these if we make frames variable length:
 const time_unit fixed_frames_per_second = 30;
@@ -60,5 +88,6 @@ const sub_tile_distance idle_progress_reduction_rate = 20 * velocity_scale_facto
 const vector3<sub_tile_distance> inactive_fluid_velocity(0, 0, -min_convincing_speed);
 
 const fine_scalar max_object_speed_through_water = tile_width * velocity_scale_factor / 16;
+#endif
 
 #endif
