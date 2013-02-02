@@ -277,18 +277,22 @@ struct get_units {
   typedef trivial_units type;
   typedef T representation_type;
   static const bool is_nonunit_type = true;
+  // This is an approximation...
+  static const bool is_nonunit_scalar = std::numeric_limits<T>::is_specialized;
 };
 template<typename Int, typename Units>
 struct get_units< unit<Int, Units> > {
   typedef Units type;
   typedef typename unit_representation_type<Int>::type representation_type;
   static const bool is_nonunit_type = false;
+  static const bool is_nonunit_scalar = false;
 };
 template<typename U>
 struct get_units< units<U> > {
   typedef units<U> type;
   typedef void representation_type;
   static const bool is_nonunit_type = false;
+  static const bool is_nonunit_scalar = false;
 };
 
 template<typename... Unitses> struct units_prod;
@@ -496,7 +500,7 @@ public:
   friend inline
   typename rebase<decltype(
     std::declval<base_type>() *
-     std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type>()
+     std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
   )>::type
   operator*(unit a, AnyInt factor)
   { return typename rebase<decltype(a.val_ * factor)>::type(a.val_ * factor, Units()); }
@@ -504,7 +508,7 @@ public:
   template<typename AnyInt>
   friend inline
   typename rebase<decltype(
-    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type>()
+    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
      * std::declval<base_type>()
   )>::type
   operator*(AnyInt factor, unit b)
@@ -514,7 +518,7 @@ public:
   friend inline
   typename rebase<decltype(
     std::declval<base_type>()
-     / std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type>()
+     / std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
   )>::type
   operator/(unit a, AnyInt divisor)
   { return typename rebase<decltype(a.val_ / divisor)>::type(a.val_ / divisor, Units()); }
@@ -522,7 +526,7 @@ public:
   template<typename AnyInt>
   friend inline
   typename rebase<decltype(
-    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_type, AnyInt>::type>()
+    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
      / std::declval<base_type>()
   )>::type::reciprocal_type
   operator/(AnyInt dividend, unit b)
@@ -563,7 +567,7 @@ operator/(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
 template<typename Int, typename U>
 inline
 typename make_unit_type<
-  typename boost::enable_if_c<get_units<Int>::is_nonunit_type, Int>::type,
+  typename boost::enable_if_c<get_units<Int>::is_nonunit_scalar, Int>::type,
   units<U>
 >::type
 operator*(Int a, units<U>) {
@@ -586,7 +590,7 @@ operator*(unit<Int, UnitsA> a, units<UB>) {
 template<typename Int, typename U>
 inline
 typename make_unit_type<
-  typename boost::enable_if_c<get_units<Int>::is_nonunit_type, Int>::type,
+  typename boost::enable_if_c<get_units<Int>::is_nonunit_scalar, Int>::type,
   typename units<U>::reciprocal_type
 >::type
 operator/(Int a, units<U>) {
