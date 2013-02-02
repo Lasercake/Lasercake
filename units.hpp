@@ -45,7 +45,8 @@
 
 typedef int32_t unit_exponent_type;
 
-
+// TODO UNITS make sure all the abs/sign/imbue_sign have consistent
+// result units with each other.
 template<
   typename Ratio = boost::ratio<1>, // a boost::ratio
   // or should we name the template parameters m, g, s, A, K, for nicer error msgs?
@@ -211,6 +212,12 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin, Pseudo> > {
   }
 };
 
+// So that people who have a template-argument-dependent units<>
+// type don't have to say "::template units_pow" to take a power
+// of it:
+template<typename Units, intmax_t Num, intmax_t Den = 1>
+struct units_pow : Units::template units_pow<Num, Den> {};
+
 template<typename UnitsA, typename UnitsB>
 struct multiply_units {
   typedef units<u_v_t<
@@ -281,9 +288,14 @@ struct get_units< units<U> > {
 
 template<typename... Unitses> struct units_prod;
 template<> struct units_prod<> { typedef trivial_units type; };
-template<typename Units> struct units_prod<Units> { typedef Units type; };
-template<typename Units, typename... Unitses> struct units_prod<Units, Unitses...> {
-  typedef typename multiply_units<Units, typename units_prod<Unitses...>::type>::type type;
+template<typename U> struct units_prod<units<U>> { typedef units<U> type; };
+template<typename U, typename... Unitses> struct units_prod<units<U>, Unitses...> {
+  typedef typename multiply_units<units<U>, typename units_prod<Unitses...>::type>::type type;
+};
+template<typename CouldBeMetafunctionContainingAUnits, typename... Unitses>
+struct units_prod<CouldBeMetafunctionContainingAUnits, Unitses...> {
+  typedef typename CouldBeMetafunctionContainingAUnits::type Units;
+  typedef typename units_prod<Units, Unitses...>::type type;
 };
 
 
@@ -317,18 +329,22 @@ template<typename T> T imaginary_copy(T arg); // unimplemented
 #define UNITS(units_val) decltype(::imaginary_copy((units_val)))
 
 
-template<intmax_t Num, intmax_t Den = 1>
-struct make_units_factor {
-
+template<typename Ratio>
+struct units_ratio_t {
+  // Re-make the ratio here to ensure that the units<> will be structurally
+  // equal to all other equal units<>es (i.e. reduced to lowest terms).
+  typedef units<u_v_t<boost::ratio<Ratio::num, Ratio::den>>> type;
 };
+template<intmax_t Num, intmax_t Den = 1>
+struct units_factor_t : units_ratio_t<boost::ratio<Num, Den>> {};
 
 template<intmax_t Num, intmax_t Den = 1>
-constexpr inline units<u_v_t<boost::ratio<Num, Den>>> units_factor() {
-  return units<u_v_t<boost::ratio<Num, Den>>>();
+constexpr inline typename units_factor_t<Num, Den>::type units_factor() {
+  return typename units_factor_t<Num, Den>::type();
 }
-template<typename BoostRatio>
-constexpr inline units<u_v_t<BoostRatio>> units_factor() {
-  return units<u_v_t<BoostRatio>>();
+template<typename Ratio>
+constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
+  return typename units_ratio_t<Ratio>::type();
 }
 
 // https://en.wikipedia.org/wiki/Turn_%28geometry%29
