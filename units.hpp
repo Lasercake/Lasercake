@@ -198,8 +198,26 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin, Pseudo> > {
     return typename units::template units_pow<Num, Den>::type();
   }
 
+  // A units is positive and equal to itself.
   friend inline bool operator==(units, units) { return true; }
   friend inline bool operator!=(units, units) { return false; }
+
+  friend inline bool operator==(units, decltype(nullptr)) { return false; }
+  friend inline bool operator!=(units, decltype(nullptr)) { return true; }
+  friend inline bool operator==(decltype(nullptr), units) { return false; }
+  friend inline bool operator!=(decltype(nullptr), units) { return true; }
+
+  friend inline bool operator>(units, decltype(nullptr)) { return true; }
+  friend inline bool operator>=(units, decltype(nullptr)) { return true; }
+  friend inline bool operator<(decltype(nullptr), units) { return true; }
+  friend inline bool operator<=(decltype(nullptr), units) { return true; }
+  friend inline bool operator<(units, decltype(nullptr)) { return false; }
+  friend inline bool operator<=(units, decltype(nullptr)) { return false; }
+  friend inline bool operator>(decltype(nullptr), units) { return false; }
+  friend inline bool operator>=(decltype(nullptr), units) { return false; }
+
+  friend inline units abs(units a) { return a; }
+  friend inline int sign(units) { return 1; }
 
   // The string is notionally a compile-time constant value;
   // can we make it be one?
