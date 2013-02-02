@@ -606,6 +606,24 @@ operator/(unit<Int, UnitsA> a, units<UB>) {
     >::construct(a.get(UnitsA()));
 }
 
+
+// Multiplies the sign of arg 1 into the (signed) value of arg 2.
+template<typename T1, typename T2>
+inline auto
+imbue_sign(T1 signum, T2 base_val)
+-> decltype(base_val
+    * pseudo.pow<get_units<T1>::type::pseudo>()
+    * units_factor<(get_units<T1>::type::ratio::num < 0 ? -1 : 1)>())
+{
+  static_assert(get_units<T1>::type::ratio::num != 0, "imbuing an ambiguous sign");
+  caller_error_if(signum == 0, "imbuing an ambiguous sign");
+  return
+    ((signum < 0) ? -base_val : base_val)
+    * pseudo.pow<get_units<T1>::type::pseudo>()
+    * units_factor<(get_units<T1>::type::ratio::num < 0 ? -1 : 1)>();
+}
+
+
 template<intmax_t N>
 struct identity_units {
   typedef unit<
