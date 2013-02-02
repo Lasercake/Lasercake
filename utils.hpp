@@ -123,38 +123,46 @@ public:
   BOOST_FORCEINLINE ScalarType operator()(which_dimension_type index)const { return (*this)[index]; }
   BOOST_FORCEINLINE void set(which_dimension_type index, ScalarType value) { (*this)[index] = value; }
 
-  // Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
-  template<typename OtherType> vector3 operator+(vector3<OtherType> const& other)const {
-    return vector3(x + other.x, y + other.y, z + other.z);
+  template<typename OtherType> auto operator+(vector3<OtherType> const& other)const
+  -> vector3<decltype(x + other.x)> {
+    return vector3<decltype(x + other.x)>(x + other.x, y + other.y, z + other.z);
   }
   template<typename OtherType> vector3& operator+=(vector3<OtherType> const& other) {
     x += other.x; y += other.y; z += other.z; return *this;
   }
-  template<typename OtherType> vector3 operator-(vector3<OtherType> const& other)const {
-    return vector3(x - other.x, y - other.y, z - other.z);
+  template<typename OtherType> auto operator-(vector3<OtherType> const& other)const
+  -> vector3<decltype(x - other.x)> {
+    return vector3<decltype(x - other.x)>(x - other.x, y - other.y, z - other.z);
   }
   template<typename OtherType> vector3& operator-=(vector3<OtherType> const& other) {
     x -= other.x; y -= other.y; z -= other.z; return *this;
   }
-  vector3 operator*(ScalarType other)const {
-    return vector3(x * other, y * other, z * other);
+  template<typename OtherType> auto operator*(OtherType const& other)const
+  -> vector3<decltype(x * other)> {
+    return vector3<decltype(x * other)>(x * other, y * other, z * other);
   }
   vector3& operator*=(ScalarType other) {
     x *= other; y *= other; z *= other; return *this;
   }
-  vector3 operator/(ScalarType other)const {
-    return vector3(divide_rounding_towards_zero(x, other), divide_rounding_towards_zero(y, other), divide_rounding_towards_zero(z, other));
+  template<typename OtherType> auto operator/(OtherType const& other)const
+  -> vector3<decltype(x / other)> {
+    return vector3<decltype(x / other)>(
+      divide_rounding_towards_zero(x, other),
+      divide_rounding_towards_zero(y, other),
+      divide_rounding_towards_zero(z, other));
   }
   vector3& operator/=(ScalarType other) {
     x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other); return *this;
   }
   // Multiplying two vectors is usually a type-error mistake, so
   // you have to say you're doing it in words:
-  template<typename OtherType> vector3 multiply_piecewise_by(vector3<OtherType> const& other)const {
-    return vector3(x * other.x, y * other.y, z * other.z);
+  template<typename OtherType> auto multiply_piecewise_by(vector3<OtherType> const& other)const
+  -> vector3<decltype(x * other.x)> {
+    return vector3<decltype(x * other.x)>(x * other.x, y * other.y, z * other.z);
   }
-  template<typename OtherType> vector3 divide_piecewise_by(vector3<OtherType> const& other)const {
-    return vector3(
+  template<typename OtherType> auto divide_piecewise_by(vector3<OtherType> const& other)const
+  -> vector3<decltype(x / other.x)> {
+    return vector3<decltype(x / other.x)>(
       divide_rounding_towards_zero(x, other.x),
       divide_rounding_towards_zero(y, other.y),
       divide_rounding_towards_zero(z, other.z));
