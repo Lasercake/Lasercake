@@ -305,6 +305,9 @@ struct get_units {
   // This is an approximation...
   static const bool is_nonunit_scalar = std::numeric_limits<T>::is_specialized;
 };
+template<typename T>
+struct get_units<bounds_checked_int<T>> : get_units<T> {};
+
 template<typename Int, typename Units>
 struct get_units< unit<Int, Units> > {
   typedef Units type;

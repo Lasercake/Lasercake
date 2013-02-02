@@ -63,8 +63,8 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 #else
   int yay = (bfoo / foo / foo);
 #endif
-  int okayy1 = get(bfoo, meters*meters);
-  int okayy2 = bfoo.get(meters*meters);
+  const typename lasercake_int<int32_t>::type okayy1 = get(bfoo, meters*meters);
+  const typename lasercake_int<int32_t>::type okayy2 = bfoo.get(meters*meters);
   BOOST_CHECK_EQUAL(okayy1, okayy2);
 
   volatile auto what = bfoo;
@@ -176,5 +176,5 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK(0 >= -foo);
 
   BOOST_CHECK_EQUAL(identity(grams / kilograms), (1000*units_factor<1, 1000>()));
-  BOOST_CHECK_EQUAL(identity(grams / kilograms)*units_factor<1000>(), 1000);
+  BOOST_CHECK_EQUAL(identity(grams / kilograms)*units_factor<1000>(), short(1000));
 }
