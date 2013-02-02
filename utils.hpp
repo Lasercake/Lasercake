@@ -204,24 +204,37 @@ public:
   bool operator==(vector3 const& other)const {return x == other.x && y == other.y && z == other.z; }
   bool operator!=(vector3 const& other)const {return x != other.x || y != other.y || z != other.z; }
   
-  // Do not try to use this if either vector has an unsigned ScalarType. It might work in some situations, but why would you ever do that anyway?
-  // You are required to specify an output type, because of the risk of overflow. Make sure to choose one that can fit the squares of the numbers you're dealing with.
-  template<typename OutputType, typename OtherType> OutputType dot(vector3<OtherType> const& other)const {
-    return (OutputType)x * (OutputType)other.x +
-           (OutputType)y * (OutputType)other.y +
-           (OutputType)z * (OutputType)other.z;
+  // Do not try to use this if either vector has an unsigned ScalarType.
+  // It might work in some situations, but why would you ever do that anyway?
+  //
+  // You are required to specify an output representation type, because of the
+  // risk of overflow. Make sure to choose one that can fit the squares of the
+  // numbers you're dealing with.
+  template<typename OutputRepr, typename OtherType>
+  auto dot(vector3<OtherType> const& other)const
+  -> decltype(numeric_representation_cast<OutputRepr>(x) * numeric_representation_cast<OutputRepr>(other.x)) {
+    return
+      numeric_representation_cast<OutputRepr>(x) * numeric_representation_cast<OutputRepr>(other.x) +
+      numeric_representation_cast<OutputRepr>(y) * numeric_representation_cast<OutputRepr>(other.y) +
+      numeric_representation_cast<OutputRepr>(z) * numeric_representation_cast<OutputRepr>(other.z);
   }
 
   typedef lasercake_int<int64_t>::type int64_type_to_use_with_dot;
-  ScalarType magnitude_within_32_bits()const { return ScalarType(get_primitive_int(i64sqrt(dot<int64_type_to_use_with_dot>(*this)))); }
+  ScalarType magnitude_within_32_bits()const {
+    return ScalarType(i64sqrt(dot<int64_type_to_use_with_dot>(*this)));
+  }
   
   // Choose these the way you'd choose dot's output type (see the comment above)
   // we had trouble making these templates, so now they just always use int64_t
   bool magnitude_within_32_bits_is_less_than(ScalarType amount)const {
-    return dot<int64_type_to_use_with_dot>(*this) < (int64_type_to_use_with_dot)amount * (int64_type_to_use_with_dot)amount;
+    return dot<int64_type_to_use_with_dot>(*this) <
+          numeric_representation_cast<int64_type_to_use_with_dot>(amount)
+        * numeric_representation_cast<int64_type_to_use_with_dot>(amount);
   }
   bool magnitude_within_32_bits_is_greater_than(ScalarType amount)const {
-    return dot<int64_type_to_use_with_dot>(*this) > (int64_type_to_use_with_dot)amount * (int64_type_to_use_with_dot)amount;
+    return dot<int64_type_to_use_with_dot>(*this) >
+          numeric_representation_cast<int64_type_to_use_with_dot>(amount)
+        * numeric_representation_cast<int64_type_to_use_with_dot>(amount);
   }
   bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
 

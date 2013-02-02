@@ -561,4 +561,9 @@ inline auto multiply_rational_into(Num n, non_normalized_rational<IntType> rat)
   return n * rat.numerator / rat.denominator;
 }
 
+template<typename Target, typename Num>
+inline Target numeric_representation_cast(Num const& num) {
+  return num;
+}
+
 #endif

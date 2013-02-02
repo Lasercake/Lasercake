@@ -664,6 +664,18 @@ identity(units<u_v_t<boost::ratio<1, N>>> u) {
   return typename identity_units<N>::type(N, u);
 }
 
+template<typename Target, typename Int, typename Units>
+inline unit<typename get_primitive_int_type<Target>::type, Units>
+numeric_representation_cast(unit<Int, Units> const& num) {
+  return num;
+}
+
+template<typename Int, typename Units>
+inline unit<Int, typename Units::template units_pow<1, 2>::type>
+i64sqrt(unit<Int, Units> const& radicand) {
+  typedef typename Units::template units_pow<1, 2>::type sqrt_units;
+  return unit<Int, sqrt_units>(i64sqrt(get(radicand, Units())), sqrt_units());
+}
 
 //class coordinate 
 #endif
