@@ -28,7 +28,9 @@ constexpr auto kilograms = kilo*grams;
 
 typedef typename units_prod<kilo_t, grams_t>::type kilograms_t;
 typedef typename units_prod<kilograms_t, meters_t,
-  typename seconds_t::units_pow<-2>::type>::type newtons_t;
+  typename seconds_t::units_pow<-2>::type>::type newtons_t_A;
+typedef typename units_prod<kilograms_t, meters_t, seconds_t::units_pow<-2>
+  >::type newtons_t_B;
 
 typedef typename units_prod<kilo_t, meters_t>::type kilometers_t;
 typedef typename kilometers_t::units_pow<6>::type kilometers6_t;
@@ -84,6 +86,9 @@ BOOST_AUTO_TEST_CASE( unitses ) {
     * identity(inverse_kilometers4_t() / inverse_meters4_t());
   // This fits within fewer bits:
   const unit<int32_t, meters_t> thirtytwobits = 1 * kilometers * identity(meters / kilometers);
+
+  const unit<int, newtons_t_A> newtonz = 7 * kilograms * meters / seconds / seconds;
+  newtonz + 1*newtons_t_B();
 
   auto scalar = 4*meters;
   auto pseudoscalar = scalar*pseudo;

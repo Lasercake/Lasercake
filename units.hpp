@@ -282,9 +282,14 @@ struct get_units< units<U> > {
 
 template<typename... Unitses> struct units_prod;
 template<> struct units_prod<> { typedef trivial_units type; };
-template<typename Units> struct units_prod<Units> { typedef Units type; };
-template<typename Units, typename... Unitses> struct units_prod<Units, Unitses...> {
-  typedef typename multiply_units<Units, typename units_prod<Unitses...>::type>::type type;
+template<typename U> struct units_prod<units<U>> { typedef units<U> type; };
+template<typename U, typename... Unitses> struct units_prod<units<U>, Unitses...> {
+  typedef typename multiply_units<units<U>, typename units_prod<Unitses...>::type>::type type;
+};
+template<typename CouldBeMetafunctionContainingAUnits, typename... Unitses>
+struct units_prod<CouldBeMetafunctionContainingAUnits, Unitses...> {
+  typedef typename CouldBeMetafunctionContainingAUnits::type Units;
+  typedef typename units_prod<Units, Unitses...>::type type;
 };
 
 
