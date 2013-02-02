@@ -240,6 +240,50 @@ inline int32_t count_trailing_zeroes_64(uint64_t argument) {
 #endif
 }
 
+
+template<uintmax_t Base, uintmax_t Exponent>
+struct static_pow_nonnegative_integer {
+  static const uintmax_t recur = static_pow_nonnegative_integer<Base, Exponent-1>::value;
+  static const uintmax_t value = Base * recur;
+  static_assert(value / Base == recur && value / recur == Base, "overflow");
+};
+template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 0> {
+  static const uintmax_t value = 1; };
+template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 1> {
+  static const uintmax_t value = Base; };
+
+template<uintmax_t Radicand, uintmax_t Root = 2>
+struct static_root_nonnegative_integer {
+  // Newton-Raphson method.
+  template<uintmax_t LowerBound, uintmax_t UpperBound, bool Done>
+  struct recur {
+    static const uintmax_t mid = ((LowerBound + UpperBound) >> 1);
+    static const bool mid_is_upper_bound =
+      static_pow_nonnegative_integer<mid, Root>::value > Radicand;
+    static const uintmax_t new_lower_bound = mid_is_upper_bound ? LowerBound : mid;
+    static const uintmax_t new_upper_bound = mid_is_upper_bound ? mid : UpperBound;
+    static const bool done = new_lower_bound >= new_upper_bound - 1;
+    static const uintmax_t value = recur<new_lower_bound, new_upper_bound, done>::value;
+  };
+  template<uintmax_t LowerBound, uintmax_t UpperBound>
+  struct recur<LowerBound, UpperBound, true> {
+    static const uintmax_t value = LowerBound;
+  };
+  static const uintmax_t shift = boost::static_log2<Radicand>::value;
+  static const uintmax_t initial_lower_bound = uintmax_t(1) << (shift / Root);
+  static const uintmax_t initial_upper_bound = initial_lower_bound * Root;
+  static const uintmax_t value = recur<initial_lower_bound, initial_upper_bound, false>::value;
+  static const uintmax_t remainder = Radicand - static_pow_nonnegative_integer<value, Root>::value;
+};
+template<uintmax_t Radicand>
+struct static_root_nonnegative_integer<Radicand, 1> {
+  static const uintmax_t value = Radicand;
+  static const uintmax_t remainder = 0;
+};
+template<uintmax_t Radicand>
+struct static_root_nonnegative_integer<Radicand, 0> {};
+
+
 // TODO rename to isqrt or similar?
 inline uint32_t i64sqrt(uint64_t radicand)
 {
