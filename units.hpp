@@ -70,38 +70,56 @@ typedef units<u_v_t<>> trivial_units;
 template<typename Units> struct is_trivial_units : boost::false_type {};
 template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
+
+
+// Integer exponents are relatively easy:
+template<typename BaseRatio, intmax_t Exponent>
+struct static_pow_nonnegative_integer :
+  boost::ratio_multiply<BaseRatio, static_pow_nonnegative_integer<BaseRatio, Exponent-1>> {};
+template<typename BaseRatio> struct static_pow_nonnegative_integer<BaseRatio, 0> {
+  typedef boost::ratio<1> type; };
+template<typename BaseRatio> struct static_pow_nonnegative_integer<BaseRatio, 1> {
+  typedef BaseRatio type; };
+template<typename BaseRatio> struct static_pow_nonnegative_integer<BaseRatio, 2> :
+  boost::ratio_multiply<BaseRatio, BaseRatio> {};
+
+template<typename BaseRatio, intmax_t Exponent, bool Negative = (Exponent < 0)>
+struct static_pow_integer :
+  static_pow_nonnegative_integer<BaseRatio, Exponent> {};
+template<typename BaseRatio, intmax_t Exponent>
+struct static_pow_integer<BaseRatio, Exponent, true> :
+  static_pow_nonnegative_integer<
+    boost::ratio<BaseRatio::den, BaseRatio::num>, -Exponent> {};
+
+// Fractional exponents are harder.
 // Writing even a decent sqrt algorithm with templates is hard,
 // so I'm going to punt and say that you have to define all answers
 // we need as explicit specializations here.
-template<typename BaseRatio, typename ExponentRatio> struct static_pow;
+template<typename BaseRatio, intmax_t Root>
+struct static_root;
+template<typename BaseRatio> struct static_root<BaseRatio, 1> { typedef BaseRatio type; };
 
-// Integer exponents are relatively easy:
-template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<0> > {
-  typedef boost::ratio<1> type; };
-template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<1> > {
-  typedef BaseRatio type; };
-template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<-1> > {
-  typedef boost::ratio<BaseRatio::den, BaseRatio::num> type; };
-template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<2> > {
-  typedef typename boost::ratio_multiply<BaseRatio, BaseRatio>::type type; };
-template<typename BaseRatio> struct static_pow<BaseRatio, boost::ratio<-2> > {
-  typedef boost::ratio<BaseRatio::den, BaseRatio::num> recip;
-  typedef typename boost::ratio_multiply<recip, recip>::type type; };
+template<> struct static_root<boost::mega , 2> { typedef boost::kilo  type; };
+template<> struct static_root<boost::tera , 2> { typedef boost::mega  type; };
+template<> struct static_root<boost::exa  , 2> { typedef boost::giga  type; };
 
-// Fractional exponents are harder.
-template<> struct static_pow<boost::mega , boost::ratio<1, 2> > { typedef boost::kilo  type; };
-template<> struct static_pow<boost::tera , boost::ratio<1, 2> > { typedef boost::mega  type; };
-template<> struct static_pow<boost::exa  , boost::ratio<1, 2> > { typedef boost::giga  type; };
+template<> struct static_root<boost::micro, 2> { typedef boost::milli type; };
+template<> struct static_root<boost::pico , 2> { typedef boost::micro type; };
+template<> struct static_root<boost::atto , 2> { typedef boost::nano  type; };
 
-template<> struct static_pow<boost::micro, boost::ratio<1, 2> > { typedef boost::milli type; };
-template<> struct static_pow<boost::pico , boost::ratio<1, 2> > { typedef boost::micro type; };
-template<> struct static_pow<boost::atto , boost::ratio<1, 2> > { typedef boost::nano  type; };
+template<> struct static_root<boost::giga , 3> { typedef boost::kilo  type; };
+template<> struct static_root<boost::exa  , 3> { typedef boost::mega  type; };
 
-template<> struct static_pow<boost::giga , boost::ratio<1, 3> > { typedef boost::kilo  type; };
-template<> struct static_pow<boost::exa  , boost::ratio<1, 3> > { typedef boost::mega  type; };
+template<> struct static_root<boost::nano , 3> { typedef boost::milli type; };
+template<> struct static_root<boost::atto , 3> { typedef boost::micro type; };
 
-template<> struct static_pow<boost::nano , boost::ratio<1, 3> > { typedef boost::milli type; };
-template<> struct static_pow<boost::atto , boost::ratio<1, 3> > { typedef boost::micro type; };
+template<typename BaseRatio, typename ExponentRatio>
+struct static_pow :
+  static_root<
+    typename static_pow_integer<BaseRatio, ExponentRatio::num>::type,
+    ExponentRatio::den> {};
+
+
 
 
 #if 0

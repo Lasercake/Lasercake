@@ -30,6 +30,13 @@ typedef typename units_prod<kilo_t, grams_t>::type kilograms_t;
 typedef typename units_prod<kilograms_t, meters_t,
   typename seconds_t::units_pow<-2>::type>::type newtons_t;
 
+typedef typename units_prod<kilo_t, meters_t>::type kilometers_t;
+typedef typename kilometers_t::units_pow<6>::type kilometers6_t;
+// TODO make units_pow smart enough not to overflow here
+//typedef typename kilometers6_t::units_pow<-2, 3>::type inverse_kilometers4_t;
+typedef typename kilometers6_t::units_pow<-1, 3>::type::units_pow<2>::type inverse_kilometers4_t;
+typedef typename meters_t::units_pow<-4>::type inverse_meters4_t;
+
 BOOST_AUTO_TEST_CASE( unitses ) {
   const unit<int32_t, meter> foo = 1 * meter();
   const unit<int64_t, meter> foo64 = foo;
@@ -70,6 +77,10 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   ((2*meters)*meters) + (2*(meters*meters));
 
   1*meters*meters + 1*meters.pow<2>();
+
+  // TODO make identity() actually be able to return 32 bits
+  const unit<int64_t, inverse_kilometers4_t> invfoo4 = 1/foo/foo/foo/foo
+    * identity(inverse_kilometers4_t() / inverse_meters4_t());
 
   auto scalar = 4*meters;
   auto pseudoscalar = scalar*pseudo;
