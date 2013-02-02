@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_UNITS_HPP__
 #define LASERCAKE_UNITS_HPP__
 
+#define BOOST_RATIO_EXTENSIONS
+
 #include <ostream>
 #include <sstream>
 #include <utility>
@@ -29,6 +31,7 @@
 #include <boost/ratio/ratio.hpp>
 #include <boost/ratio/ratio_io.hpp>
 #include <boost/integer.hpp>
+#include <boost/type_traits/conditional.hpp>
 
 #include "utils.hpp"
 
@@ -72,71 +75,75 @@ template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
 
 
-// Integer exponents are relatively easy:
-template<typename BaseRatio, intmax_t Exponent>
-struct static_pow_nonnegative_integer :
-  boost::ratio_multiply<BaseRatio, static_pow_nonnegative_integer<BaseRatio, Exponent-1>> {};
-template<typename BaseRatio> struct static_pow_nonnegative_integer<BaseRatio, 0> {
-  typedef boost::ratio<1> type; };
-template<typename BaseRatio> struct static_pow_nonnegative_integer<BaseRatio, 1> {
-  typedef BaseRatio type; };
-template<typename BaseRatio> struct static_pow_nonnegative_integer<BaseRatio, 2> :
-  boost::ratio_multiply<BaseRatio, BaseRatio> {};
+template<uintmax_t Base, uintmax_t Exponent>
+struct static_pow_nonnegative_integer {
+  static const uintmax_t recur = static_pow_nonnegative_integer<Base, Exponent-1>::value;
+  static const uintmax_t value = Base * recur;
+  static_assert(value / Base == recur && value / recur == Base, "overflow");
+};
+template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 0> {
+  static const uintmax_t value = 1; };
+template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 1> {
+  static const uintmax_t value = Base; };
 
-template<typename BaseRatio, intmax_t Exponent, bool Negative = (Exponent < 0)>
-struct static_pow_integer :
-  static_pow_nonnegative_integer<BaseRatio, Exponent> {};
-template<typename BaseRatio, intmax_t Exponent>
-struct static_pow_integer<BaseRatio, Exponent, true> :
-  static_pow_nonnegative_integer<
-    boost::ratio<BaseRatio::den, BaseRatio::num>, -Exponent> {};
+template<uintmax_t Radicand, uintmax_t Root = 2>
+struct static_root_nonnegative_integer {
+  // Newton-Raphson method.
+  template<uintmax_t LowerBound, uintmax_t UpperBound, bool Done>
+  struct recur {
+    static const uintmax_t mid = ((LowerBound + UpperBound) >> 1);
+    static const bool mid_is_upper_bound =
+      static_pow_nonnegative_integer<mid, Root>::value > Radicand;
+    static const uintmax_t new_lower_bound = mid_is_upper_bound ? LowerBound : mid;
+    static const uintmax_t new_upper_bound = mid_is_upper_bound ? mid : UpperBound;
+    static const bool done = new_lower_bound >= new_upper_bound - 1;
+    static const uintmax_t value = recur<new_lower_bound, new_upper_bound, done>::value;
+  };
+  template<uintmax_t LowerBound, uintmax_t UpperBound>
+  struct recur<LowerBound, UpperBound, true> {
+    static const uintmax_t value = LowerBound;
+  };
+  static const uintmax_t shift = boost::static_log2<Radicand>::value;
+  static const uintmax_t initial_lower_bound = uintmax_t(1) << (shift / Root);
+  static const uintmax_t initial_upper_bound = initial_lower_bound * Root;
+  static const uintmax_t value = recur<initial_lower_bound, initial_upper_bound, false>::value;
+  static const uintmax_t remainder = Radicand - static_pow_nonnegative_integer<value, Root>::value;
+};
+template<uintmax_t Radicand>
+struct static_root_nonnegative_integer<Radicand, 1> {
+  static const uintmax_t value = Radicand;
+  static const uintmax_t remainder = 0;
+};
+template<uintmax_t Radicand>
+struct static_root_nonnegative_integer<Radicand, 0> {};
 
-// Fractional exponents are harder.
-// Writing even a decent sqrt algorithm with templates is hard,
-// so I'm going to punt and say that you have to define all answers
-// we need as explicit specializations here.
-template<typename BaseRatio, intmax_t Root>
-struct static_root { static const bool is_specialized = false; };
-template<typename BaseRatio> struct static_root<BaseRatio, 1> { typedef BaseRatio type; static const bool is_specialized = true; };
-
-template<> struct static_root<boost::mega , 2> { typedef boost::kilo  type; static const bool is_specialized = true; };
-template<> struct static_root<boost::tera , 2> { typedef boost::mega  type; static const bool is_specialized = true; };
-template<> struct static_root<boost::exa  , 2> { typedef boost::giga  type; static const bool is_specialized = true; };
-
-template<> struct static_root<boost::micro, 2> { typedef boost::milli type; static const bool is_specialized = true; };
-template<> struct static_root<boost::pico , 2> { typedef boost::micro type; static const bool is_specialized = true; };
-template<> struct static_root<boost::atto , 2> { typedef boost::nano  type; static const bool is_specialized = true; };
-
-template<> struct static_root<boost::giga , 3> { typedef boost::kilo  type; static const bool is_specialized = true; };
-template<> struct static_root<boost::exa  , 3> { typedef boost::mega  type; static const bool is_specialized = true; };
-
-template<> struct static_root<boost::nano , 3> { typedef boost::milli type; static const bool is_specialized = true; };
-template<> struct static_root<boost::atto , 3> { typedef boost::micro type; static const bool is_specialized = true; };
-
-template<typename BaseRatio, typename ExponentRatio,
-  bool DoRootFirst = static_root<BaseRatio, ExponentRatio::den>::is_specialized>
-struct static_pow :
-  static_root<
-    typename static_pow_integer<BaseRatio, ExponentRatio::num>::type,
-    ExponentRatio::den> {};
 
 template<typename BaseRatio, typename ExponentRatio>
-struct static_pow<BaseRatio, ExponentRatio, true> :
-  static_pow_integer<
-    typename static_root<BaseRatio, ExponentRatio::den>::type,
-    ExponentRatio::num> {};
-
-
-
-#if 0
-template<typename BaseRatio, intmax_t N> struct static_pow<BaseRatio, boost::ratio<N> >
-  : boost::mpl::if_c<(N > 0),
-      boost::ratio_multiply<BaseRatio, static_pow<BaseRatio, boost::ratio<N-1>> {
-  typedef typename boost::ratio_multiply<boost::ratio_multiply<BaseRatio, BaseRatio>, BaseRatio>::type type;
+struct static_ratio_pow_nonnegative {
+  typedef static_root_nonnegative_integer<BaseRatio::num, ExponentRatio::den> num_root;
+  typedef static_root_nonnegative_integer<BaseRatio::den, ExponentRatio::den> den_root;
+  static_assert(num_root::remainder == 0, "non-exact unit exponentiation");
+  static_assert(den_root::remainder == 0, "non-exact unit exponentiation");
+  static const uint64_t num = static_pow_nonnegative_integer<num_root::value, ExponentRatio::num>::value;
+  static const uint64_t den = static_pow_nonnegative_integer<den_root::value, ExponentRatio::num>::value;
+  typedef boost::ratio<num, den> type;
 };
 
-template<> struct static_pow<boost::ratio<1>, boost::ratio<0>;
-#endif
+
+template<typename BaseRatio, typename ExponentRatio>
+struct static_ratio_pow {
+  typedef typename static_ratio_pow_nonnegative<
+    typename boost::ratio_abs<BaseRatio>::type,
+    typename boost::ratio_abs<ExponentRatio>::type>::type type1;
+  static_assert(ExponentRatio::den % 2 == 1 || BaseRatio::num >= 0,
+                "Even roots of negative numbers are imaginary.");
+  typedef typename boost::conditional<(ExponentRatio::num >= 0),
+    type1, boost::ratio<type1::den, type1::num> >::type type2;
+  typedef typename boost::conditional<(BaseRatio::num >= 0 || ExponentRatio::num % 2 == 0),
+    type2, typename boost::ratio_negate<type2>::type>::type type3;
+  typedef type3 type;
+};
+
 
 template<
   typename Ratio,
@@ -178,7 +185,7 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin, Pseudo> > {
     static_assert(kelvin % den == 0, "units<> does not presently support fractional powers of base units");
     static_assert(pseudo % den == 0, "units<> does not presently support fractional powers of base units");
     typedef units<u_v_t<
-        typename static_pow<ratio, exponent>::type,
+        typename static_ratio_pow<ratio, exponent>::type,
         tau*num/den, meter*num/den, gram*num/den,
         second*num/den, ampere*num/den, kelvin*num/den,
         (pseudo*num/den) & 1> >
