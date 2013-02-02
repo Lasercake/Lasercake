@@ -45,7 +45,8 @@
 
 typedef int32_t unit_exponent_type;
 
-
+// TODO UNITS make sure all the abs/sign/imbue_sign have consistent
+// result units with each other.
 template<
   typename Ratio = boost::ratio<1>, // a boost::ratio
   // or should we name the template parameters m, g, s, A, K, for nicer error msgs?
