@@ -317,18 +317,22 @@ template<typename T> T imaginary_copy(T arg); // unimplemented
 #define UNITS(units_val) decltype(::imaginary_copy((units_val)))
 
 
-template<intmax_t Num, intmax_t Den = 1>
-struct make_units_factor {
-
+template<typename Ratio>
+struct units_ratio_t {
+  // Re-make the ratio here to ensure that the units<> will be structurally
+  // equal to all other equal units<>es (i.e. reduced to lowest terms).
+  typedef units<u_v_t<boost::ratio<Ratio::num, Ratio::den>>> type;
 };
+template<intmax_t Num, intmax_t Den = 1>
+struct units_factor_t : units_ratio_t<boost::ratio<Num, Den>> {};
 
 template<intmax_t Num, intmax_t Den = 1>
-constexpr inline units<u_v_t<boost::ratio<Num, Den>>> units_factor() {
-  return units<u_v_t<boost::ratio<Num, Den>>>();
+constexpr inline typename units_factor_t<Num, Den>::type units_factor() {
+  return typename units_factor_t<Num, Den>::type();
 }
-template<typename BoostRatio>
-constexpr inline units<u_v_t<BoostRatio>> units_factor() {
-  return units<u_v_t<BoostRatio>>();
+template<typename Ratio>
+constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
+  return typename units_ratio_t<Ratio>::type();
 }
 
 // https://en.wikipedia.org/wiki/Turn_%28geometry%29
