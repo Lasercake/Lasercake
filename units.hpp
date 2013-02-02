@@ -455,6 +455,9 @@ public:
   friend inline unit operator+(unit a) { return a; }
   friend inline unit operator-(unit a) { return unit(-a.val_, Units()); }
   friend inline unit abs(unit a) { return (a.val_ < 0) ? -a : a; }
+  friend inline
+  typename make_unit_type<Int, typename pseudo_t::units_pow<Units::pseudo>::type>::type
+  sign(unit a) { return sign(a.val_) * pseudo.pow<Units::pseudo>(); }
   friend inline size_t hash_value(unit a) { return std::hash<base_type>()(a.val_); }
   friend inline unit operator+(unit a, unit b) { return unit(a.val_ + b.val_, Units()); }
   friend inline unit operator-(unit a, unit b) { return unit(a.val_ - b.val_, Units()); }
