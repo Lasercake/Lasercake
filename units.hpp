@@ -96,29 +96,35 @@ struct static_pow_integer<BaseRatio, Exponent, true> :
 // so I'm going to punt and say that you have to define all answers
 // we need as explicit specializations here.
 template<typename BaseRatio, intmax_t Root>
-struct static_root;
-template<typename BaseRatio> struct static_root<BaseRatio, 1> { typedef BaseRatio type; };
+struct static_root { static const bool is_specialized = false; };
+template<typename BaseRatio> struct static_root<BaseRatio, 1> { typedef BaseRatio type; static const bool is_specialized = true; };
 
-template<> struct static_root<boost::mega , 2> { typedef boost::kilo  type; };
-template<> struct static_root<boost::tera , 2> { typedef boost::mega  type; };
-template<> struct static_root<boost::exa  , 2> { typedef boost::giga  type; };
+template<> struct static_root<boost::mega , 2> { typedef boost::kilo  type; static const bool is_specialized = true; };
+template<> struct static_root<boost::tera , 2> { typedef boost::mega  type; static const bool is_specialized = true; };
+template<> struct static_root<boost::exa  , 2> { typedef boost::giga  type; static const bool is_specialized = true; };
 
-template<> struct static_root<boost::micro, 2> { typedef boost::milli type; };
-template<> struct static_root<boost::pico , 2> { typedef boost::micro type; };
-template<> struct static_root<boost::atto , 2> { typedef boost::nano  type; };
+template<> struct static_root<boost::micro, 2> { typedef boost::milli type; static const bool is_specialized = true; };
+template<> struct static_root<boost::pico , 2> { typedef boost::micro type; static const bool is_specialized = true; };
+template<> struct static_root<boost::atto , 2> { typedef boost::nano  type; static const bool is_specialized = true; };
 
-template<> struct static_root<boost::giga , 3> { typedef boost::kilo  type; };
-template<> struct static_root<boost::exa  , 3> { typedef boost::mega  type; };
+template<> struct static_root<boost::giga , 3> { typedef boost::kilo  type; static const bool is_specialized = true; };
+template<> struct static_root<boost::exa  , 3> { typedef boost::mega  type; static const bool is_specialized = true; };
 
-template<> struct static_root<boost::nano , 3> { typedef boost::milli type; };
-template<> struct static_root<boost::atto , 3> { typedef boost::micro type; };
+template<> struct static_root<boost::nano , 3> { typedef boost::milli type; static const bool is_specialized = true; };
+template<> struct static_root<boost::atto , 3> { typedef boost::micro type; static const bool is_specialized = true; };
 
-template<typename BaseRatio, typename ExponentRatio>
+template<typename BaseRatio, typename ExponentRatio,
+  bool DoRootFirst = static_root<BaseRatio, ExponentRatio::den>::is_specialized>
 struct static_pow :
   static_root<
     typename static_pow_integer<BaseRatio, ExponentRatio::num>::type,
     ExponentRatio::den> {};
 
+template<typename BaseRatio, typename ExponentRatio>
+struct static_pow<BaseRatio, ExponentRatio, true> :
+  static_pow_integer<
+    typename static_root<BaseRatio, ExponentRatio::den>::type,
+    ExponentRatio::num> {};
 
 
 

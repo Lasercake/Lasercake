@@ -32,9 +32,7 @@ typedef typename units_prod<kilograms_t, meters_t,
 
 typedef typename units_prod<kilo_t, meters_t>::type kilometers_t;
 typedef typename kilometers_t::units_pow<6>::type kilometers6_t;
-// TODO make units_pow smart enough not to overflow here
-//typedef typename kilometers6_t::units_pow<-2, 3>::type inverse_kilometers4_t;
-typedef typename kilometers6_t::units_pow<-1, 3>::type::units_pow<2>::type inverse_kilometers4_t;
+typedef typename kilometers6_t::units_pow<-2, 3>::type inverse_kilometers4_t;
 typedef typename meters_t::units_pow<-4>::type inverse_meters4_t;
 
 BOOST_AUTO_TEST_CASE( unitses ) {
