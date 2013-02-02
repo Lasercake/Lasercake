@@ -240,6 +240,7 @@ inline int32_t count_trailing_zeroes_64(uint64_t argument) {
 #endif
 }
 
+// TODO rename to isqrt or similar?
 inline uint32_t i64sqrt(uint64_t radicand)
 {
   typedef uint64_t full_t;
