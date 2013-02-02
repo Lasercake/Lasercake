@@ -202,7 +202,7 @@ inline int32_t popcount(uint8_t argument)  {
 
 template<typename Int>
 inline int32_t ilog2(Int argument) {
-  static_assert(sizeof(Int) <= 64, "not implemented");
+  static_assert(std::numeric_limits<Int>::digits <= 64, "not implemented");
   if(std::numeric_limits<Int>::is_signed) caller_error_if(argument <= Int(0), "logarithm is only defined on positive numbers");
   if(std::numeric_limits<Int>::digits <= 32) return ilog2(get_primitive<uint32_t>(argument));
   else return ilog2(get_primitive<uint64_t>(argument));
