@@ -147,15 +147,26 @@ std::string show_microseconds_per_frame_as_fps(microseconds_t monotonic_microsec
 
 object_identifier init_test_world_and_return_our_robot(
       world& w, bool crazy_lasers, bool log_microseconds = true) {
-  const vector3<fine_scalar> laser_loc = world_center_fine_coords + vector3<fine_scalar>(10LL*tile_width+2, 10LL*tile_width+2, 10LL*tile_width+2);
-  const shared_ptr<robot> baz (new robot(laser_loc - vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
+  const vector3<fine_scalar> laser_loc = world_center_fine_coords
+    + vector3<fine_scalar>(10LL*tile_width + 2*fine_units,
+                           10LL*tile_width + 2*fine_units,
+                           10LL*tile_width + 2*fine_units);
+  const shared_ptr<robot> baz (new robot(
+    laser_loc - vector3<fine_scalar>(0, 0, tile_width*2),
+    vector3<fine_scalar>((5<<9)*fine_units, (3<<9)*fine_units, 0 /*TODO UNITS make class vector3_direction*/)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
-  const shared_ptr<autorobot> aur (new autorobot(laser_loc - vector3<fine_scalar>(tile_width*4,tile_width*4,tile_width*2), vector3<fine_scalar>(5<<9,3<<9,0)));
+  const shared_ptr<autorobot> aur (new autorobot(
+    laser_loc - vector3<fine_scalar>(tile_width*4,tile_width*4,tile_width*2),
+    vector3<fine_scalar>((5<<9)*fine_units, (3<<9)*fine_units, 0 /*TODO UNITS make class vector3_direction*/)));
   w.try_create_object(aur); // we just assume that this works
 
   if(crazy_lasers) {
-    const shared_ptr<laser_emitter> foo (new laser_emitter(laser_loc, vector3<fine_scalar>(5,3,1)));
-    const shared_ptr<laser_emitter> bar (new laser_emitter(laser_loc + vector3<fine_scalar>(0,0,tile_width*2), vector3<fine_scalar>(5,4,-1)));
+    const shared_ptr<laser_emitter> foo (new laser_emitter(
+      laser_loc,
+      vector3<fine_scalar>(5*fine_units, 3*fine_units, 1*fine_units /*TODO UNITS make class vector3_direction*/)));
+    const shared_ptr<laser_emitter> bar (new laser_emitter(
+      laser_loc + vector3<fine_scalar>(0,0,tile_width*2),
+      vector3<fine_scalar>(5*fine_units, 4*fine_units, -1*fine_units /*TODO UNITS make class vector3_direction*/)));
     w.try_create_object(foo);
     w.try_create_object(bar);
   }
@@ -205,7 +216,8 @@ object_identifier init_test_world_and_return_our_robot(
 std::string get_world_ztree_debug_info(world const& w) {
   std::stringstream world_ztree_debug_info;
   // hack to print this debug info occasionally
-  if(w.game_time_elapsed() % (time_units_per_second * 5) < (time_units_per_second / 15)) {
+  if(w.game_time_elapsed() % (5*seconds * identity(time_units / seconds))
+          < (1*seconds*identity(time_units / seconds) / 15)) {
     //world_ztree_debug_info << "tiles:";
     //w.tiles_exposed_to_collision().print_debug_summary_information(world_ztree_debug_info);
     world_ztree_debug_info << "objects:";
@@ -410,7 +422,9 @@ int main(int argc, char *argv[])
               options(desc).positional(p).run(), vm);
     po::notify(vm);
 
-    config.view_radius = fine_scalar(vm["view-radius"].as<uint32_t>()) * tile_width;
+    config.view_radius =
+      unit<int64_t, tile_widths_t>(vm["view-radius"].as<uint32_t>() * tile_widths)
+      * identity(fine_units / tile_widths);
     if(!config.run_drawing_code) {
       config.have_gui = false;
     }
