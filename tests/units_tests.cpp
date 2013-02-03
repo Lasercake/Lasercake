@@ -101,14 +101,14 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   pseudoscalar = pseudoscalar + pseudoscalar;
 
   1*pseudo + sign(pseudoscalar);
-  1 + sign(scalar);
+  auto useded = 1 + sign(scalar);
 
   scalar = imbue_sign(scalar, scalar);
   pseudoscalar = imbue_sign(scalar, pseudoscalar);
   pseudoscalar = imbue_sign(pseudoscalar, scalar);
   scalar = imbue_sign(pseudoscalar, pseudoscalar);
 
-  std::cerr << (yay * foofoo * invfoo4 * thirtytwobits) << '\n';
+  std::cerr << (yay * foofoo * invfoo4 * thirtytwobits * useded) << '\n';
 
   BOOST_CHECK_EQUAL(foo5 + foo3, 8*meters);
   BOOST_CHECK_EQUAL(foo5 - foo3, 2*meters);
