@@ -142,11 +142,8 @@ pseudovect2 plane_normal(vect p1, vect p2, vect p3) {
 }
 vect2 forcedly_directed_plane_normal(vect p1, vect p2, vect p3, vect interior_direction) {
   const pseudovect2 arbitrary_normal = plane_normal(p1, p2, p3);
-  pseudocoord3 x = interior_direction.dot<polygon_int_type>(arbitrary_normal);
-  pseudovect2 y = -arbitrary_normal;
-  vect2 z = imbue_sign(x, y);
-  return z;
-  
+  return imbue_sign(interior_direction.dot<polygon_int_type>(arbitrary_normal), -arbitrary_normal);
+
 #if 0
   if (interior_direction.dot<pseudocoord3>(arbitrary_normal) > 0) {
     return -arbitrary_normal/pseudo;
