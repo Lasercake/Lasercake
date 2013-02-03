@@ -654,11 +654,21 @@ identity(units<u_v_t<boost::ratio<1, N>>> u) {
   return typename identity_units<N>::type(N, u);
 }
 
-template<typename Target, typename Int, typename Units>
-inline unit<typename get_primitive_int_type<Target>::type, Units>
-numeric_representation_cast(unit<Int, Units> const& num) {
-  return num;
-}
+template<typename Target, typename Units, typename Num>
+struct numeric_representation_cast_impl<unit<Target, Units>, Num> {
+  typedef typename make_unit_type<Target, typename get_units<Num>::type>::type
+      target_type;
+};
+template<typename Target, typename Units, typename Num>
+struct numeric_representation_cast_impl<Target, unit<Num, Units>> {
+  typedef typename make_unit_type<typename get_units<Target>::representation_type, Units>::type
+      target_type;
+};
+template<typename Target, typename Units, typename Num, typename Units1>
+struct numeric_representation_cast_impl<unit<Target, Units1>, unit<Num, Units>> {
+  typedef typename make_unit_type<Target, Units>::type target_type;
+};
+
 
 template<typename Int, typename Units>
 inline unit<Int, typename Units::template units_pow<1, 2>::type>
