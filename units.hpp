@@ -457,6 +457,15 @@ public:
            bounds_checked_int_impl::superior_to<Int, SmallerInt>::value
          >::type* = 0) : val_(a.get(Units())) {}
 
+  // Explicit conversion from unit with same dimensions but representation
+  // type that does not convert losslessly.
+  template<typename BiggerInt>
+  explicit unit(unit<BiggerInt, Units> a,
+       typename boost::disable_if_c<
+           bounds_checked_int_impl::superior_to<Int, BiggerInt>::value
+         >::type* = 0) : val_(a.get(Units())) {}
+
+
   explicit operator bool() const { return bool(val_); }
 
   friend inline std::ostream& operator<<(std::ostream& os, unit a) {
