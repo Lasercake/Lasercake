@@ -710,5 +710,13 @@ make_non_normalized_rational_unit(Num num) {
     typename info::units());
 }
 
+namespace std {
+template<typename Int, typename Units>
+inline unit<Int, Units>
+abs(unit<Int, Units> a) {
+  return ::abs(a);
+}
+}
+
 //class coordinate 
 #endif
