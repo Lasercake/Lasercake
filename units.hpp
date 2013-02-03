@@ -22,8 +22,6 @@
 #ifndef LASERCAKE_UNITS_HPP__
 #define LASERCAKE_UNITS_HPP__
 
-#define BOOST_RATIO_EXTENSIONS
-
 #include <ostream>
 #include <sstream>
 #include <utility>
@@ -89,15 +87,17 @@ struct static_ratio_pow_nonnegative {
 
 template<typename BaseRatio, typename ExponentRatio>
 struct static_ratio_pow {
-  typedef typename static_ratio_pow_nonnegative<
-    typename boost::ratio_abs<BaseRatio>::type,
-    typename boost::ratio_abs<ExponentRatio>::type>::type type1;
+  static const intmax_t abs_base_num = BaseRatio::num >= 0 ? BaseRatio::num : -BaseRatio::num;
+  static const intmax_t abs_exp_num = ExponentRatio::num >= 0 ? ExponentRatio::num : -ExponentRatio::num;
+  typedef boost::ratio<abs_base_num, BaseRatio::den> abs_base;
+  typedef boost::ratio<abs_exp_num, ExponentRatio::den> abs_exp;
+  typedef typename static_ratio_pow_nonnegative<abs_base, abs_exp>::type type1;
   static_assert(ExponentRatio::den % 2 == 1 || BaseRatio::num >= 0,
                 "Even roots of negative numbers are imaginary.");
   typedef typename boost::conditional<(ExponentRatio::num >= 0),
     type1, boost::ratio<type1::den, type1::num> >::type type2;
   typedef typename boost::conditional<(BaseRatio::num >= 0 || ExponentRatio::num % 2 == 0),
-    type2, typename boost::ratio_negate<type2>::type>::type type3;
+    type2, boost::ratio< -type2::num, type2::den> >::type type3;
   typedef type3 type;
 };
 
