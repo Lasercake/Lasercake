@@ -33,7 +33,9 @@ struct state_t;
 
 // "progress" is measured in the smaller, velocity units.
 inline sub_tile_distance progress_necessary(cardinal_direction dir) {
-  return tile_size[which_dimension_is_cardinal_direction(dir)] * velocity_scale_factor;
+  return sub_tile_distance(
+    tile_size[which_dimension_is_cardinal_direction(dir)]
+    * identity(tile_physics_sub_tile_units / fine_units));
 }
 
 struct active_fluid_tile_info {
