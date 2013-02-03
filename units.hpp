@@ -368,10 +368,27 @@ template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
 namespace units_impl {
 template<typename Units> struct show_units_impl;
+
+template<typename Units> struct verify_units;
+template<> struct verify_units<units<>> { static const bool value = true; };
+template<typename DimKind>
+struct verify_units<units<DimKind>> {
+  static const bool value = !dim::is_identity<DimKind>::value;
+};
+template<typename DimKind1, typename DimKind2, typename...DimKinds>
+struct verify_units<units<DimKind1, DimKind2, DimKinds...>> {
+  static const bool value =
+    !dim::is_identity<DimKind1>::value
+    && DimKind1::tag < DimKind2::tag
+    && verify_units<units<DimKind2, DimKinds...>>::value;
+};
 }
 
 template<typename...DimensionKind>
 struct units {
+  static_assert(units_impl::verify_units<units>::value,
+    "Type arguments of units are in the wrong order and/or contain an identity element.");
+
   typedef units<typename DimensionKind::inverse...> reciprocal_type;
   static constexpr reciprocal_type reciprocal() { return reciprocal_type(); }
 
