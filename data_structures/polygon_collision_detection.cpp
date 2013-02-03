@@ -331,7 +331,6 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
   potential_running_into_a_polyhedron_info result;
   plane_as_base_point_and_normal arbitrary_plane_hit_first;
   for (auto const& plane : relating_planes) {
-    // We subtract base_point just to minimize integer size; the behavior should be the same either way.
     const auto vel_dotprod = velocity.dot<polygon_int_type>(plane.p1_to_p2_normal);
     const auto disp_dotprod = (plane.p2_base_point - plane.p1_base_point).dot<polygon_int_type>(plane.p1_to_p2_normal);
     if (vel_dotprod == 0) {
@@ -478,6 +477,8 @@ faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> g
   return get_excluding_face(p.vertices(), ps1, vs2, ps2);
 }
 
+// TODO change from int to size_t and fix anywhere else
+// in this file (polygon_collision_detection.cpp) that uses int.
 template<typename VectorType, int ArraySize> class arrayvector {
 private:
   std::array<typename VectorType::value_type, ArraySize> first_n_values_;

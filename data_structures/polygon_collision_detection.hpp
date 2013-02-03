@@ -33,8 +33,10 @@
 // So that we can make implicit conversions between their and our bbox:
 #include "bbox_collision_detector.hpp"
 
-// 64 bits though these ints are, you can't really do collision detection with them except for things
-//  with a max distance of about 14 bits between any of the parts of them.
+
+// 64 bits though these ints are, you can't really do collision detection
+// with them except for things with a max distance of about (???) bits between
+// any of the parts of them.
 
 typedef lasercake_int<int64_t>::type polygon_int_type;
 
