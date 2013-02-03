@@ -534,7 +534,8 @@ inline bounding_box convert_to_fine_units(tile_bounding_box const& bb) {
   if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
     return bounding_box::min_and_max(
       lower_bound_in_fine_units(bb.min()),
-      lower_bound_in_fine_units(bb.min() + bb.size()) - vector3<fine_scalar>(1,1,1)
+      lower_bound_in_fine_units(bb.min() + bb.size())
+        - vector3<fine_scalar>(1*fine_units, 1*fine_units, 1*fine_units)
     );
   }
   else {
