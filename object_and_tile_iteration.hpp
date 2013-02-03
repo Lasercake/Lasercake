@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_OBJECT_AND_TILE_ITERATION_HPP__
 #define LASERCAKE_OBJECT_AND_TILE_ITERATION_HPP__
 
+#include <utility>
+
 #include "tile_iteration.hpp"
 #include "data_structures/bbox_collision_detector_iteration.hpp"
 
@@ -101,9 +103,8 @@ struct tile_visitor {
   octant_number octant_;
   //get_cost<Visitor> get_cost_;
   typedef decltype(
-    static_cast<objects_collision_detector*>(nullptr)->iterate(
-      *static_cast<get_cost<Visitor>*>(nullptr)
-    ).begin()) objects_iterator;
+    std::declval<objects_collision_detector>().iterate(
+        std::declval<get_cost<Visitor>>()  ).begin()) objects_iterator;
   objects_iterator obj_i_;
   objects_iterator obj_end_;
   Visitor& visitor_;
