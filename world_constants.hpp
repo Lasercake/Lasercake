@@ -65,6 +65,7 @@ typedef unit<int64_t, time_units_t> time_unit;
 //ok...
 const fine_scalar tile_width = 1 * tile_widths * identity(fine_units / tile_widths);
 const fine_scalar tile_height = 1 * tile_heights * identity(fine_units / tile_heights);
+const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
 #if 0
 const time_unit time_units_per_second = 2*2*2*2 * 3*3*3 * 5*5 * 7 * 11;
 // delete these if we make frames variable length:
