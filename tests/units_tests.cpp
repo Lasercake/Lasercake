@@ -72,8 +72,10 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK_EQUAL(okayy1, okayy2);
 
   meters*meters;
-  units< u_v_t<boost::ratio<1>, 0, 2> > foofoo = meters*meters;
+  units<dim::meter<2>> foofoo = meters*meters;
   meters/seconds;
+  units<> dimless = meters/meters;
+  2*dimless;
   2*(meters/meters);
   2*(meters*meters);
   ((2*meters)*meters) + (2*(meters*meters));
