@@ -296,17 +296,17 @@ struct divide_units {
           type;
 };
 
-template<typename Int, typename Units> class unit;
+template<typename Num, typename Units> class unit;
 
-template<typename Int, typename Units>
-struct get_primitive_int_type< unit<Int, Units> > { typedef Int type; };
+template<typename Num, typename Units>
+struct get_primitive_int_type< unit<Num, Units> > { typedef Num type; };
 
 template<typename U>
 struct get_primitive_int_type< units<U> > { typedef void type; };
 
-template<typename Int>
+template<typename Num>
 struct unit_representation_type {
-  typedef typename lasercake_int<Int>::type type;
+  typedef typename lasercake_int<Num>::type type;
 };
 
 template<typename T>
@@ -320,10 +320,10 @@ struct get_units {
 template<typename T>
 struct get_units<bounds_checked_int<T>> : get_units<T> {};
 
-template<typename Int, typename Units>
-struct get_units< unit<Int, Units> > {
+template<typename Num, typename Units>
+struct get_units< unit<Num, Units> > {
   typedef Units type;
-  typedef typename unit_representation_type<Int>::type representation_type;
+  typedef typename unit_representation_type<Num>::type representation_type;
   static const bool is_nonunit_type = false;
   static const bool is_nonunit_scalar = false;
 };
@@ -348,14 +348,14 @@ struct units_prod<CouldBeMetafunctionContainingAUnits, Unitses...> {
 };
 
 
-template<typename Int, typename Units>
+template<typename Num, typename Units>
 struct make_unit_type {
-  typedef unit<typename get_primitive_int_type<Int>::type, Units> type;
+  typedef unit<typename get_primitive_int_type<Num>::type, Units> type;
   static inline type construct(typename type::base_type i) { return type(i, Units()); }
 };
-template<typename Int>
-struct make_unit_type<Int, trivial_units> {
-  typedef typename unit_representation_type<typename get_primitive_int_type<Int>::type>::type type;
+template<typename Num>
+struct make_unit_type<Num, trivial_units> {
+  typedef typename unit_representation_type<typename get_primitive_int_type<Num>::type>::type type;
   static inline type construct(type i) { return i; }
 };
 
@@ -450,35 +450,35 @@ typedef decltype(imaginary_copy(atto )) atto_t;
 
 
 
-template<typename Int>
-inline Int make(Int i, trivial_units) { return i; }
-template<typename Int>
-inline Int get(Int i, trivial_units) { return i; }
+template<typename Num>
+inline Num make(Num i, trivial_units) { return i; }
+template<typename Num>
+inline Num get(Num i, trivial_units) { return i; }
 
-template<typename Int, typename U>
-inline unit<typename get_primitive_int_type<Int>::type, units<U>>
-make(Int i, units<U> u) {
-  return unit<typename get_primitive_int_type<Int>::type, units<U>>(i, u);
+template<typename Num, typename U>
+inline unit<typename get_primitive_int_type<Num>::type, units<U>>
+make(Num i, units<U> u) {
+  return unit<typename get_primitive_int_type<Num>::type, units<U>>(i, u);
 }
 
 template<
-  typename Int, //the base type that this mimics.
+  typename Num, //the base type that this mimics.
   // Imagine multiplying the numeric value of that int by all of the below
   // in order to get the conceptual value of the contained number.
   typename Units //a 'units'
 > 
 class unit {
 public:
-  typedef typename unit_representation_type<Int>::type base_type;
+  typedef typename unit_representation_type<Num>::type base_type;
 private:
   base_type val_;
 public:
 
-  typedef unit<Int, typename Units::reciprocal_type> reciprocal_type;
+  typedef unit<Num, typename Units::reciprocal_type> reciprocal_type;
 
-  template<typename OtherInt>
+  template<typename OtherNum>
   struct rebase {
-    typedef unit<typename get_primitive_int_type<OtherInt>::type, Units> type;
+    typedef unit<typename get_primitive_int_type<OtherNum>::type, Units> type;
   };
 
   // Default-construction is the same as the base type.
@@ -500,18 +500,18 @@ public:
 
   // Implicit conversion from unit with same dimensions but smaller
   // representation type.
-  template<typename SmallerInt>
-  unit(unit<SmallerInt, Units> a,
+  template<typename SmallerNum>
+  unit(unit<SmallerNum, Units> a,
        typename boost::enable_if_c<
-           bounds_checked_int_impl::superior_to<Int, SmallerInt>::value
+           bounds_checked_int_impl::superior_to<Num, SmallerNum>::value
          >::type* = 0) : val_(a.get(Units())) {}
 
   // Explicit conversion from unit with same dimensions but representation
   // type that does not convert losslessly.
-  template<typename BiggerInt>
-  explicit unit(unit<BiggerInt, Units> a,
+  template<typename BiggerNum>
+  explicit unit(unit<BiggerNum, Units> a,
        typename boost::disable_if_c<
-           bounds_checked_int_impl::superior_to<Int, BiggerInt>::value
+           bounds_checked_int_impl::superior_to<Num, BiggerNum>::value
          >::type* = 0) : val_(a.get(Units())) {}
 
 
@@ -530,7 +530,7 @@ public:
   friend inline unit operator-(unit a) { return unit(-a.val_, Units()); }
   friend inline unit abs(unit a) { return (a.val_ < 0) ? -a : a; }
   friend inline
-  typename make_unit_type<Int, typename pseudo_t::units_pow<Units::pseudo>::type>::type
+  typename make_unit_type<Num, typename pseudo_t::units_pow<Units::pseudo>::type>::type
   sign(unit a) { return sign(a.val_) * pseudo.pow<Units::pseudo>(); }
   friend inline size_t hash_value(unit a) { return std::hash<base_type>()(a.val_); }
   friend inline unit operator+(unit a, unit b) { return unit(a.val_ + b.val_, Units()); }
@@ -555,78 +555,78 @@ public:
   template<typename AnyInt>
   friend inline unit& operator>>=(unit& a, AnyInt shift) { a.val_ >>= shift; return a; }
 
-  // Hmm, esp. for * and / members below, what if AnyInt is a bigger int than the current type.
+  // Hmm, esp. for * and / members below, what if AnyNum is a bigger type than the current type.
   // TODO.
-  template<typename AnyInt>
-  friend inline unit& operator*=(unit& a, AnyInt factor) { a.val_ *= factor; return a; }
-  template<typename AnyInt>
-  friend inline unit& operator/=(unit& a, AnyInt divisor) { a.val_ /= divisor; return a; }
+  template<typename AnyNum>
+  friend inline unit& operator*=(unit& a, AnyNum factor) { a.val_ *= factor; return a; }
+  template<typename AnyNum>
+  friend inline unit& operator/=(unit& a, AnyNum divisor) { a.val_ /= divisor; return a; }
 
   // These signatures are complicated so that the result type will
   // take the larger representation size of the two argument types,
   // as it would (via implicit conversions) when combining two unit<>
   // types.
-  template<typename AnyInt>
+  template<typename AnyNum>
   friend inline
   typename rebase<decltype(
     std::declval<base_type>() *
-     std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
+     std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
   )>::type
-  operator*(unit a, AnyInt factor)
+  operator*(unit a, AnyNum factor)
   { return typename rebase<decltype(a.val_ * factor)>::type(a.val_ * factor, Units()); }
 
-  template<typename AnyInt>
+  template<typename AnyNum>
   friend inline
   typename rebase<decltype(
-    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
+    std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
      * std::declval<base_type>()
   )>::type
-  operator*(AnyInt factor, unit b)
+  operator*(AnyNum factor, unit b)
   { return typename rebase<decltype(factor * b.val_)>::type(factor * b.val_, Units()); }
 
-  template<typename AnyInt>
+  template<typename AnyNum>
   friend inline
   typename rebase<decltype(
     std::declval<base_type>()
-     / std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
+     / std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
   )>::type
-  operator/(unit a, AnyInt divisor)
+  operator/(unit a, AnyNum divisor)
   { return typename rebase<decltype(a.val_ / divisor)>::type(a.val_ / divisor, Units()); }
 
-  template<typename AnyInt>
+  template<typename AnyNum>
   friend inline
   typename rebase<decltype(
-    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
+    std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
      / std::declval<base_type>()
   )>::type::reciprocal_type
-  operator/(AnyInt dividend, unit b)
+  operator/(AnyNum dividend, unit b)
   { return typename rebase<decltype(dividend / b.val_)>::type::reciprocal_type(
       dividend / b.val_, Units::reciprocal()); }
 };
 
 
-template<typename IntA, typename IntB, typename UnitsA, typename UnitsB>
+template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
 inline typename
 make_unit_type<
-    decltype(std::declval<IntA>() * std::declval<IntB>()),
+    decltype(std::declval<NumA>() * std::declval<NumB>()),
     typename multiply_units<UnitsA, UnitsB>::type
   >::type
-operator*(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
+operator*(unit<NumA, UnitsA> a, unit<NumB, UnitsB> b) {
   return make_unit_type<
-          decltype(std::declval<IntA>() * std::declval<IntB>()),
+          decltype(std::declval<NumA>() * std::declval<NumB>()),
           typename multiply_units<UnitsA, UnitsB>::type
       >::construct(a.get(UnitsA()) * b.get(UnitsB()));
 }
 
-template<typename IntA, typename IntB, typename UnitsA, typename UnitsB>
+template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
 inline typename
 make_unit_type<
-    decltype(std::declval<IntA>() / std::declval<IntB>()),
+    decltype(std::declval<NumA>() / std::declval<NumB>()),
     typename divide_units<UnitsA, UnitsB>::type
   >::type
-operator/(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
+operator/(unit<NumA, UnitsA> a, unit<NumB, UnitsB> b) {
   return make_unit_type<
-          decltype(std::declval<IntA>() / std::declval<IntB>()),
+          decltype(std::declval<NumA>() / std::declval<NumB>()),
           typename divide_units<UnitsA, UnitsB>::type
       >::construct(a.get(UnitsA()) / b.get(UnitsB()));
 }
@@ -634,22 +634,22 @@ operator/(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
 
 
 
-template<typename Int, typename U>
+template<typename Num, typename U>
 inline
 typename make_unit_type<
-  typename boost::enable_if_c<get_units<Int>::is_nonunit_scalar, Int>::type,
+  typename boost::enable_if_c<get_units<Num>::is_nonunit_scalar, Num>::type,
   units<U>
 >::type
-operator*(Int a, units<U>) {
-  return make_unit_type<Int, units<U>>::construct(a);
+operator*(Num a, units<U>) {
+  return make_unit_type<Num, units<U>>::construct(a);
 }
 
-template<typename Int, typename UnitsA, typename UB>
+template<typename Num, typename UnitsA, typename UB>
 inline typename
-make_unit_type<Int, typename multiply_units<UnitsA, units<UB>>::type>::type
-operator*(unit<Int, UnitsA> a, units<UB>) {
+make_unit_type<Num, typename multiply_units<UnitsA, units<UB>>::type>::type
+operator*(unit<Num, UnitsA> a, units<UB>) {
   return make_unit_type<
-            Int, typename multiply_units<UnitsA, units<UB>>::type
+            Num, typename multiply_units<UnitsA, units<UB>>::type
     >::construct(a.get(UnitsA()));
 }
 
@@ -657,26 +657,26 @@ operator*(unit<Int, UnitsA> a, units<UB>) {
 
 
 
-template<typename Int, typename U>
+template<typename Num, typename U>
 inline
 typename make_unit_type<
-  typename boost::enable_if_c<get_units<Int>::is_nonunit_scalar, Int>::type,
+  typename boost::enable_if_c<get_units<Num>::is_nonunit_scalar, Num>::type,
   typename units<U>::reciprocal_type
 >::type
-operator/(Int a, units<U>) {
+operator/(Num a, units<U>) {
   return make_unit_type<
-            Int, typename units<U>::reciprocal_type
+            Num, typename units<U>::reciprocal_type
     >::construct(a);
 }
 
-template<typename Int, typename UnitsA, typename UB>
+template<typename Num, typename UnitsA, typename UB>
 inline
 typename make_unit_type<
-  Int, typename divide_units<UnitsA, units<UB>>::type
+  Num, typename divide_units<UnitsA, units<UB>>::type
 >::type
-operator/(unit<Int, UnitsA> a, units<UB>) {
+operator/(unit<Num, UnitsA> a, units<UB>) {
   return make_unit_type<
-            Int, typename divide_units<UnitsA, units<UB>>::type
+            Num, typename divide_units<UnitsA, units<UB>>::type
     >::construct(a.get(UnitsA()));
 }
 
@@ -769,9 +769,9 @@ make_non_normalized_rational_unit(Num num) {
 }
 
 namespace std {
-template<typename Int, typename Units>
-inline unit<Int, Units>
-abs(unit<Int, Units> a) {
+template<typename Num, typename Units>
+inline unit<Num, Units>
+abs(unit<Num, Units> a) {
   return ::abs(a);
 }
 }
