@@ -416,5 +416,9 @@ bool intersects(std::vector<convex_polygon> const& ps1, std::vector<convex_polyg
 
 } /* end namespace geom */
 
+// TODO really? Also TODO rename this cpp/hpp?
+using geom::bounding_box;
+using geom::shape;
+
 #endif
 
