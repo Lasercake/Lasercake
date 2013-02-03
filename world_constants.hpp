@@ -25,6 +25,10 @@
 #include "utils.hpp"
 #include "units.hpp"
 
+//typedef typename units_prod<units_factor<10>, meters_t>::type tile_widths_t;
+//typedef typename units_prod<units_factor<2>, meters_t>::type tile_heights_t;
+//constexpr tile_widths_t tile_widths = tile_widths_t();
+
 // TODO: conciser names?
 // make_units<[num[, den]], meter<3>, per, kilogram> ?
 constexpr auto tile_widths = units_factor<10>() * meters;
@@ -35,6 +39,7 @@ typedef decltype(imaginary_copy(tile_widths)) tile_widths_t;
 typedef decltype(imaginary_copy(tile_heights)) tile_heights_t;
 typedef decltype(imaginary_copy(fine_units)) fine_units_t;
 
+// TODO should fine_scalar be renamed to e.g. fine_distance/fine_coordinate/?
 typedef unit<int64_t, fine_units_t> fine_scalar; // Fine as opposed to coarse, that is.
 
 
