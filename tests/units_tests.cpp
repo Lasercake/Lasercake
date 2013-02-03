@@ -23,6 +23,8 @@
 
 #include "../units.hpp"
 
+#include <iostream>
+
 typedef UNITS(meters) meter;
 constexpr auto kilograms = kilo*grams;
 
@@ -69,8 +71,6 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   const typename lasercake_int<int32_t>::type okayy2 = bfoo.get(meters*meters);
   BOOST_CHECK_EQUAL(okayy1, okayy2);
 
-  volatile auto what = bfoo;
-
   meters*meters;
   units< u_v_t<boost::ratio<1>, 0, 2> > foofoo = meters*meters;
   meters/seconds;
@@ -105,6 +105,8 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   pseudoscalar = imbue_sign(scalar, pseudoscalar);
   pseudoscalar = imbue_sign(pseudoscalar, scalar);
   scalar = imbue_sign(pseudoscalar, pseudoscalar);
+
+  std::cerr << (yay * foofoo * invfoo4 * thirtytwobits) << '\n';
 
   BOOST_CHECK_EQUAL(foo5 + foo3, 8*meters);
   BOOST_CHECK_EQUAL(foo5 - foo3, 2*meters);
