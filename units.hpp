@@ -27,7 +27,6 @@
 #include <utility>
 #include <boost/utility/enable_if.hpp>
 #include <boost/ratio/ratio.hpp>
-#include <boost/ratio/ratio_io.hpp>
 #include <boost/integer.hpp>
 #include <boost/type_traits/conditional.hpp>
 
@@ -189,7 +188,57 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin, Pseudo> > {
   static std::string suffix_repr() {
     std::stringstream os;
     if(nonidentity_ratio) {
-      os << '*' << boost::ratio_string<ratio, char>::short_name();
+      if(ratio::num == 0) {
+        os << '*' << '0';
+      }
+      else {
+        const int do_pow10 = ( (ratio::num % 10000 == 0) ? 1
+                             : (ratio::den % 10000 == 0) ? -1
+                             : 0);
+        intmax_t new_num = ratio::num;
+        intmax_t new_den = ratio::den;
+        int pow10_exp = 0;
+        if(do_pow10) {
+          if(do_pow10 == 1) {
+            while(new_num % 10 == 0) {
+              new_num = new_num / 10;
+              ++pow10_exp;
+            }
+          }
+          else {
+            while(new_den % 10 == 0) {
+              new_den = new_den / 10;
+              --pow10_exp;
+            }
+          }
+        }
+        const int do_pow2 = ( (new_num % 2048 == 0) ? 1
+                             : (new_den % 2048 == 0) ? -1
+                             : 0);
+        int pow2_exp = 0;
+        if(do_pow2) {
+          if(do_pow2 == 1) {
+            while(new_num % 2 == 0) {
+              new_num = new_num / 2;
+              ++pow2_exp;
+            }
+          }
+          else {
+            while(new_den % 2 == 0) {
+              new_den = new_den / 2;
+              --pow2_exp;
+            }
+          }
+        }
+        const bool brackets = (new_num != 1 || new_den != 1 || (pow2_exp && pow10_exp));
+        bool star = true;
+        if(brackets) { os << '*' << '['; star = false; }
+        if(new_num != 1 || new_den != 1) { if(star) {os << '*';}; os << new_num; star = true; }
+        if(new_den != 1) { os << '/' << new_den; star = true; }
+        if(pow2_exp != 0) { if(star) {os << '*';}; os << "2^" << pow2_exp; star = true;}
+        if(pow10_exp != 0) { if(star) {os << '*';}; os << "10^" << pow10_exp; star = true;}
+        if(brackets) { os << ']'; }
+      }
     }
     if(tau) { os << '*' << "tau"; if(tau != 1) { os << '^' << tau; } }
     if(gram) { os << '*' << 'g'; if(gram != 1) { os << '^' << gram; } }
