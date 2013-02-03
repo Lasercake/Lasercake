@@ -26,7 +26,13 @@ struct tile_face_shadow_info {
   // "What?" you say?
   // The key is that the TOPOLOGICAL structure does NOT change except at certain identifiable moments,
   //     which are handled by the shadow_changes system.
-  (collection of linked lists (probably) of tile_edges) lit_shape;
+  // The lists need to be doubly linked, and the collection needs to have a way to look up
+  //    the instances of a particular edge in log-or-better time
+  //    (note that there can be more than one instance of an edge, although it's rare,
+  //      as it only happens in a subset of the times when there is more than one loop,
+  //      which is rare.)
+  // They probably will be something fancier than just doubly linked list structures.
+  (collection of doubly linked lists (maybe) of tile_edges) lit_shape;
   
   TODO we need to handle the case where e.g. when a moving diagonal line is pinched off by two axis aligned lines.
 
