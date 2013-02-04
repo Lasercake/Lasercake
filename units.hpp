@@ -1032,5 +1032,11 @@ abs(unit<Num, Units> a) {
 }
 }
 
+#if 0 /*TODO*/
+#ifdef SKIP_UNIT_CHECKING
+template<typename Num, typename Units> using units<Num, Units> = Num;
+#endif
+#endif
+
 //class coordinate 
 #endif
