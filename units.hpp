@@ -29,8 +29,6 @@
 #include <boost/ratio/ratio.hpp>
 #include <boost/integer.hpp>
 #include <boost/type_traits/conditional.hpp>
-// TODO switch from gram to kg base unit because SI and because
-// well known derived units like newton are based on it.
 #include "utils.hpp"
 
 // Principle: all units replaced with int(1) and identity plain int types should
@@ -105,16 +103,33 @@ inline std::ostream& show_ratio(std::ostream& os) {
 namespace dim {
   enum dimension_kind_tag {
     ratio_tag = 1,
-    tau_tag,  // 2pi, listed here because
-    // it can't be expressed as a ratio and because the mathematically natural
-    // unit of angle is the radian yet it's more important to us to be able to
-    // represent 1 full circle as an exact number.
-    gram_tag, //TODO: kilogram instead?
+
+    // === Irrational constant factors ===
+    // tau: 2pi, listed here because it can't be expressed as a ratio
+    // and because the mathematically natural unit of angle is the radian
+    // yet it's more important to us to be able to represent 1 full circle
+    // as an exact number.
+    // https://en.wikipedia.org/wiki/Turn_%28geometry%29
+    tau_tag,
+
+    // === Basic physical dimensions ===
+    // are ordered roughly in the order that they
+    // commonly appear when written out (e.g. kg m/s^2 orders them kg, m, s).
+
+    // Why kg not g? Derived units like Newton are based on it,
+    // so it seemed more readable in that way, but it's a tradeoff
+    // that could be made in either direction.
+    kilogram_tag,
+
     meter_tag,
     second_tag,
     ampere_tag,
     kelvin_tag,
-    pseudo_tag // pseudovectors, pseudoscalars: sign dependent on space's arbitrary chirality
+
+    // === Other ===
+
+    // pseudovectors, pseudoscalars: sign dependent on space's arbitrary chirality
+    pseudo_tag
   };
 
   template<dimension_kind_tag Tag> struct identity;
@@ -269,8 +284,8 @@ namespace dim {
   // or should we name the template parameters m, g, s, A, K, for nicer error msgs?
   template<intmax_t Exponent> struct meter : basic_physical_dimension<
     meter, meter_tag, Exponent>   { static const char* symbol() { return "m"; } };
-  template<intmax_t Exponent> struct gram : basic_physical_dimension<
-    gram, gram_tag, Exponent>     { static const char* symbol() { return "g"; } };
+  template<intmax_t Exponent> struct kilogram : basic_physical_dimension<
+    kilogram, kilogram_tag, Exponent>{ static const char* symbol() { return "kg"; } };
   template<intmax_t Exponent> struct second : basic_physical_dimension<
     second, second_tag, Exponent> { static const char* symbol() { return "a"; } };
   template<intmax_t Exponent> struct ampere : basic_physical_dimension<
@@ -342,7 +357,7 @@ namespace dim {
 
   template<> struct identity<ratio_tag>  { typedef typename  ratio<0>::identity type; };
   template<> struct identity<tau_tag>    { typedef typename    tau<0>::identity type; };
-  template<> struct identity<gram_tag>   { typedef typename   gram<0>::identity type; };
+  template<> struct identity<kilogram_tag>{ typedef typename kilogram<0>::identity type; };
   template<> struct identity<meter_tag>  { typedef typename  meter<0>::identity type; };
   template<> struct identity<second_tag> { typedef typename second<0>::identity type; };
   template<> struct identity<ampere_tag> { typedef typename ampere<0>::identity type; };
@@ -644,57 +659,77 @@ constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
   return typename units_ratio_t<Ratio>::type();
 }
 
-// https://en.wikipedia.org/wiki/Turn_%28geometry%29
-constexpr auto full_circles = units<dim::tau<1>>();
-constexpr auto meters       = units<dim::meter<1>>();
-constexpr auto grams        = units<dim::gram<1>>();
-constexpr auto seconds      = units<dim::second<1>>();
-constexpr auto amperes      = units<dim::ampere<1>>();
-constexpr auto kelvins      = units<dim::kelvin<1>>();
 
-// for pseudovectors, pseudoscalars, etc:
-constexpr auto pseudo       = units<dim::pseudo<true>>();
+// === Basic units ===
+typedef units<> radians_t; // the mathematically natural unit of angle
+typedef units<dim::tau<1>> full_circles_t; // an often-convenient unit of angle
+typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t; // a unit of angle
 
-constexpr auto degrees      = full_circles / units_factor<1, 360>();
+typedef units<dim::kilogram<1>> kilograms_t;
+typedef units<dim::ratio<1, 1000>, dim::kilogram<1>> grams_t;
+typedef units<dim::meter<1>> meters_t;
+typedef units<dim::second<1>> seconds_t;
+typedef units<dim::ampere<1>> amperes_t;
+typedef units<dim::kelvin<1>> kelvins_t;
+typedef units<dim::pseudo<true>> pseudo_t;
 
-constexpr auto kilo = units_factor<boost::kilo>();
-constexpr auto mega = units_factor<boost::mega>();
-constexpr auto giga = units_factor<boost::giga>();
-constexpr auto tera = units_factor<boost::tera>();
-constexpr auto peta = units_factor<boost::peta>();
-constexpr auto exa  = units_factor<boost::exa>();
+constexpr auto full_circles = full_circles_t();
+constexpr auto kilograms    = kilograms_t();
+constexpr auto grams        = grams_t();
+constexpr auto meters       = meters_t();
+constexpr auto seconds      = seconds_t();
+constexpr auto amperes      = amperes_t();
+constexpr auto kelvins      = kelvins_t();
+constexpr auto pseudo       = pseudo_t();
+constexpr auto degrees      = degrees_t();
 
-constexpr auto milli = units_factor<boost::milli>();
-constexpr auto micro = units_factor<boost::micro>();
-constexpr auto nano  = units_factor<boost::nano>();
-constexpr auto pico  = units_factor<boost::pico>();
-constexpr auto femto = units_factor<boost::femto>();
-constexpr auto atto  = units_factor<boost::atto>();
+// === Derived units ===
+// For consistency in coding style, we do not capitalize unit
+// names (such as Newton) that SI conventionally capitalizes.
+
+// Parentheses around negative exponents are solely to make KDevelop
+// understand better.
+
+typedef units<dim::second<(-1)>> hertz_t;
+typedef units<dim::kilogram<1>, dim::meter<1>, dim::second<(-2)>> newtons_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-2)>> joules_t;
+typedef units<dim::kilogram<1>, dim::meter<(-1)>, dim::second<(-2)>> pascals_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>> watts_t;
+typedef units<dim::second<1>, dim::ampere<1>> coulombs_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-1)>> volts_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-2)>> ohms_t;
 
 
-// Avoid using the macro here because it confuses my IDE (KDevelop).
-typedef decltype(imaginary_copy(full_circles)) full_circles_t;
-typedef decltype(imaginary_copy(meters)) meters_t;
-typedef decltype(imaginary_copy(grams)) grams_t;
-typedef decltype(imaginary_copy(seconds)) seconds_t;
-typedef decltype(imaginary_copy(amperes)) amperes_t;
-typedef decltype(imaginary_copy(kelvins)) kelvins_t;
-typedef decltype(imaginary_copy(pseudo)) pseudo_t;
-typedef decltype(imaginary_copy(degrees)) degrees_t;
+// === SI prefixes ===
 
-typedef decltype(imaginary_copy(kilo)) kilo_t;
-typedef decltype(imaginary_copy(mega)) mega_t;
-typedef decltype(imaginary_copy(giga)) giga_t;
-typedef decltype(imaginary_copy(tera)) tera_t;
-typedef decltype(imaginary_copy(peta)) peta_t;
-typedef decltype(imaginary_copy(exa )) exa_t;
+typedef units<dim::ratio<1000>> kilo_t;
+typedef units<dim::ratio<1000000>> mega_t;
+typedef units<dim::ratio<1000000000>> giga_t;
+typedef units<dim::ratio<1000000000000>> tera_t;
+typedef units<dim::ratio<1000000000000000>> peta_t;
+typedef units<dim::ratio<1000000000000000000>> exa_t;
 
-typedef decltype(imaginary_copy(milli)) milli_t;
-typedef decltype(imaginary_copy(micro)) micro_t;
-typedef decltype(imaginary_copy(nano )) nano_t;
-typedef decltype(imaginary_copy(pico )) pico_t;
-typedef decltype(imaginary_copy(femto)) femto_t;
-typedef decltype(imaginary_copy(atto )) atto_t;
+typedef units<dim::ratio<1, 1000>> milli_t;
+typedef units<dim::ratio<1, 1000000>> micro_t;
+typedef units<dim::ratio<1, 1000000000>> nano_t;
+typedef units<dim::ratio<1, 1000000000000>> pico_t;
+typedef units<dim::ratio<1, 1000000000000000>> femto_t;
+typedef units<dim::ratio<1, 1000000000000000000>> atto_t;
+
+constexpr auto kilo = kilo_t();
+constexpr auto mega = mega_t();
+constexpr auto giga = giga_t();
+constexpr auto tera = tera_t();
+constexpr auto peta = peta_t();
+constexpr auto exa  = exa_t();
+
+constexpr auto milli = milli_t();
+constexpr auto micro = micro_t();
+constexpr auto nano  = nano_t();
+constexpr auto pico  = pico_t();
+constexpr auto femto = femto_t();
+constexpr auto atto  = atto_t();
+
 
 
 
@@ -709,6 +744,9 @@ make(Num i, units<U...> u) {
   return unit<typename get_primitive_int_type<Num>::type, units<U...>>(i, u);
 }
 
+template<typename Units> struct is_units;
+template<typename...U> struct is_units<units<U...>> : boost::true_type {};
+
 template<
   typename Num, //the base type that this mimics.
   // Imagine multiplying the numeric value of that int by all of the below
@@ -721,6 +759,8 @@ public:
 private:
   base_type val_;
 public:
+  static_assert(is_units<Units>::value, "Units must be of type units<..>");
+  typedef Units units;
 
   typedef unit<Num, typename Units::reciprocal_type> reciprocal_type;
 
