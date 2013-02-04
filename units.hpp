@@ -105,17 +105,28 @@ inline std::ostream& show_ratio(std::ostream& os) {
 namespace dim {
   enum dimension_kind_tag {
     ratio_tag = 1,
-    tau_tag,  // 2pi, listed here because
-    // it can't be expressed as a ratio and because the mathematically natural
-    // unit of angle is the radian yet it's more important to us to be able to
-    // represent 1 full circle as an exact number.
+
+    // === Irrational constant factors ===
+    // tau: 2pi, listed here because it can't be expressed as a ratio
+    // and because the mathematically natural unit of angle is the radian
+    // yet it's more important to us to be able to represent 1 full circle
+    // as an exact number.
     // https://en.wikipedia.org/wiki/Turn_%28geometry%29
-    gram_tag, //TODO: kilogram instead?
+    tau_tag,
+
+    // === Basic physical dimensions ===
+    // are ordered roughly in the order that they
+    // commonly appear when written out (e.g. kg m/s^2 orders them kg, m, s).
+    gram_tag,
     meter_tag,
     second_tag,
     ampere_tag,
     kelvin_tag,
-    pseudo_tag // pseudovectors, pseudoscalars: sign dependent on space's arbitrary chirality
+
+    // === Other ===
+
+    // pseudovectors, pseudoscalars: sign dependent on space's arbitrary chirality
+    pseudo_tag
   };
 
   template<dimension_kind_tag Tag> struct identity;
