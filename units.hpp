@@ -645,54 +645,51 @@ constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
   return typename units_ratio_t<Ratio>::type();
 }
 
-constexpr auto full_circles = units<dim::tau<1>>();
-constexpr auto meters       = units<dim::meter<1>>();
-constexpr auto grams        = units<dim::gram<1>>();
-constexpr auto seconds      = units<dim::second<1>>();
-constexpr auto amperes      = units<dim::ampere<1>>();
-constexpr auto kelvins      = units<dim::kelvin<1>>();
-constexpr auto pseudo       = units<dim::pseudo<true>>();
+typedef units<dim::tau<1>> full_circles_t;
+typedef units<dim::meter<1>> meters_t;
+typedef units<dim::gram<1>> grams_t;
+typedef units<dim::second<1>> seconds_t;
+typedef units<dim::ampere<1>> amperes_t;
+typedef units<dim::kelvin<1>> kelvins_t;
+typedef units<dim::pseudo<true>> pseudo_t;
+typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t;
 
-constexpr auto degrees      = full_circles / units_factor<1, 360>();
+constexpr auto full_circles = full_circles_t();
+constexpr auto meters       = meters_t();
+constexpr auto grams        = grams_t();
+constexpr auto seconds      = seconds_t();
+constexpr auto amperes      = amperes_t();
+constexpr auto kelvins      = kelvins_t();
+constexpr auto pseudo       = pseudo_t();
+constexpr auto degrees      = degrees_t();
 
-constexpr auto kilo = units_factor<boost::kilo>();
-constexpr auto mega = units_factor<boost::mega>();
-constexpr auto giga = units_factor<boost::giga>();
-constexpr auto tera = units_factor<boost::tera>();
-constexpr auto peta = units_factor<boost::peta>();
-constexpr auto exa  = units_factor<boost::exa>();
+typedef units<dim::ratio<1000>> kilo_t;
+typedef units<dim::ratio<1000000>> mega_t;
+typedef units<dim::ratio<1000000000>> giga_t;
+typedef units<dim::ratio<1000000000000>> tera_t;
+typedef units<dim::ratio<1000000000000000>> peta_t;
+typedef units<dim::ratio<1000000000000000000>> exa_t;
 
-constexpr auto milli = units_factor<boost::milli>();
-constexpr auto micro = units_factor<boost::micro>();
-constexpr auto nano  = units_factor<boost::nano>();
-constexpr auto pico  = units_factor<boost::pico>();
-constexpr auto femto = units_factor<boost::femto>();
-constexpr auto atto  = units_factor<boost::atto>();
+typedef units<dim::ratio<1, 1000>> milli_t;
+typedef units<dim::ratio<1, 1000000>> micro_t;
+typedef units<dim::ratio<1, 1000000000>> nano_t;
+typedef units<dim::ratio<1, 1000000000000>> pico_t;
+typedef units<dim::ratio<1, 1000000000000000>> femto_t;
+typedef units<dim::ratio<1, 1000000000000000000>> atto_t;
 
+constexpr auto kilo = kilo_t();
+constexpr auto mega = mega_t();
+constexpr auto giga = giga_t();
+constexpr auto tera = tera_t();
+constexpr auto peta = peta_t();
+constexpr auto exa  = exa_t();
 
-// Avoid using the macro here because it confuses my IDE (KDevelop).
-typedef decltype(imaginary_copy(full_circles)) full_circles_t;
-typedef decltype(imaginary_copy(meters)) meters_t;
-typedef decltype(imaginary_copy(grams)) grams_t;
-typedef decltype(imaginary_copy(seconds)) seconds_t;
-typedef decltype(imaginary_copy(amperes)) amperes_t;
-typedef decltype(imaginary_copy(kelvins)) kelvins_t;
-typedef decltype(imaginary_copy(pseudo)) pseudo_t;
-typedef decltype(imaginary_copy(degrees)) degrees_t;
-
-typedef decltype(imaginary_copy(kilo)) kilo_t;
-typedef decltype(imaginary_copy(mega)) mega_t;
-typedef decltype(imaginary_copy(giga)) giga_t;
-typedef decltype(imaginary_copy(tera)) tera_t;
-typedef decltype(imaginary_copy(peta)) peta_t;
-typedef decltype(imaginary_copy(exa )) exa_t;
-
-typedef decltype(imaginary_copy(milli)) milli_t;
-typedef decltype(imaginary_copy(micro)) micro_t;
-typedef decltype(imaginary_copy(nano )) nano_t;
-typedef decltype(imaginary_copy(pico )) pico_t;
-typedef decltype(imaginary_copy(femto)) femto_t;
-typedef decltype(imaginary_copy(atto )) atto_t;
+constexpr auto milli = milli_t();
+constexpr auto micro = micro_t();
+constexpr auto nano  = nano_t();
+constexpr auto pico  = pico_t();
+constexpr auto femto = femto_t();
+constexpr auto atto  = atto_t();
 
 
 
