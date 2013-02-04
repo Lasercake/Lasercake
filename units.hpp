@@ -644,15 +644,16 @@ template<typename Ratio>
 constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
   return typename units_ratio_t<Ratio>::type();
 }
-
+typedef units<> radians_t;
 typedef units<dim::tau<1>> full_circles_t;
+typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t;
+
 typedef units<dim::meter<1>> meters_t;
 typedef units<dim::gram<1>> grams_t;
 typedef units<dim::second<1>> seconds_t;
 typedef units<dim::ampere<1>> amperes_t;
 typedef units<dim::kelvin<1>> kelvins_t;
 typedef units<dim::pseudo<true>> pseudo_t;
-typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t;
 
 constexpr auto full_circles = full_circles_t();
 constexpr auto meters       = meters_t();
@@ -690,6 +691,7 @@ constexpr auto nano  = nano_t();
 constexpr auto pico  = pico_t();
 constexpr auto femto = femto_t();
 constexpr auto atto  = atto_t();
+
 
 
 
