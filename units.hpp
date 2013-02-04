@@ -109,6 +109,7 @@ namespace dim {
     // it can't be expressed as a ratio and because the mathematically natural
     // unit of angle is the radian yet it's more important to us to be able to
     // represent 1 full circle as an exact number.
+    // https://en.wikipedia.org/wiki/Turn_%28geometry%29
     gram_tag, //TODO: kilogram instead?
     meter_tag,
     second_tag,
@@ -644,15 +645,12 @@ constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
   return typename units_ratio_t<Ratio>::type();
 }
 
-// https://en.wikipedia.org/wiki/Turn_%28geometry%29
 constexpr auto full_circles = units<dim::tau<1>>();
 constexpr auto meters       = units<dim::meter<1>>();
 constexpr auto grams        = units<dim::gram<1>>();
 constexpr auto seconds      = units<dim::second<1>>();
 constexpr auto amperes      = units<dim::ampere<1>>();
 constexpr auto kelvins      = units<dim::kelvin<1>>();
-
-// for pseudovectors, pseudoscalars, etc:
 constexpr auto pseudo       = units<dim::pseudo<true>>();
 
 constexpr auto degrees      = full_circles / units_factor<1, 360>();
