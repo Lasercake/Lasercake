@@ -658,6 +658,9 @@ template<typename Ratio>
 constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
   return typename units_ratio_t<Ratio>::type();
 }
+
+
+// === Basic units ===
 typedef units<> radians_t; // the mathematically natural unit of angle
 typedef units<dim::tau<1>> full_circles_t; // an often-convenient unit of angle
 typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t; // a unit of angle
@@ -679,6 +682,25 @@ constexpr auto amperes      = amperes_t();
 constexpr auto kelvins      = kelvins_t();
 constexpr auto pseudo       = pseudo_t();
 constexpr auto degrees      = degrees_t();
+
+// === Derived units ===
+// For consistency in coding style, we do not capitalize unit
+// names (such as Newton) that SI conventionally capitalizes.
+
+// Parentheses around negative exponents are solely to make KDevelop
+// understand better.
+
+typedef units<dim::second<(-1)>> hertz_t;
+typedef units<dim::kilogram<1>, dim::meter<1>, dim::second<(-2)>> newtons_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-2)>> joules_t;
+typedef units<dim::kilogram<1>, dim::meter<(-1)>, dim::second<(-2)>> pascals_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>> watts_t;
+typedef units<dim::second<1>, dim::ampere<1>> coulombs_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-1)>> volts_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-2)>> ohms_t;
+
+
+// === SI prefixes ===
 
 typedef units<dim::ratio<1000>> kilo_t;
 typedef units<dim::ratio<1000000>> mega_t;
