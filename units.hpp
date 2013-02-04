@@ -655,9 +655,9 @@ template<typename Ratio>
 constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
   return typename units_ratio_t<Ratio>::type();
 }
-typedef units<> radians_t;
-typedef units<dim::tau<1>> full_circles_t;
-typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t;
+typedef units<> radians_t; // the mathematically natural unit of angle
+typedef units<dim::tau<1>> full_circles_t; // an often-convenient unit of angle
+typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t; // a unit of angle
 
 typedef units<dim::meter<1>> meters_t;
 typedef units<dim::gram<1>> grams_t;
