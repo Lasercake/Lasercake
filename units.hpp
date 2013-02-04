@@ -704,6 +704,9 @@ make(Num i, units<U...> u) {
   return unit<typename get_primitive_int_type<Num>::type, units<U...>>(i, u);
 }
 
+template<typename Units> struct is_units;
+template<typename...U> struct is_units<units<U...>> : boost::true_type {};
+
 template<
   typename Num, //the base type that this mimics.
   // Imagine multiplying the numeric value of that int by all of the below
@@ -716,6 +719,8 @@ public:
 private:
   base_type val_;
 public:
+  static_assert(is_units<Units>::value, "Units must be of type units<..>");
+  typedef Units units;
 
   typedef unit<Num, typename Units::reciprocal_type> reciprocal_type;
 
