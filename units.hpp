@@ -29,8 +29,6 @@
 #include <boost/ratio/ratio.hpp>
 #include <boost/integer.hpp>
 #include <boost/type_traits/conditional.hpp>
-// TODO switch from gram to kg base unit because SI and because
-// well known derived units like newton are based on it.
 #include "utils.hpp"
 
 // Principle: all units replaced with int(1) and identity plain int types should
@@ -117,7 +115,12 @@ namespace dim {
     // === Basic physical dimensions ===
     // are ordered roughly in the order that they
     // commonly appear when written out (e.g. kg m/s^2 orders them kg, m, s).
-    gram_tag,
+
+    // Why kg not g? Derived units like Newton are based on it,
+    // so it seemed more readable in that way, but it's a tradeoff
+    // that could be made in either direction.
+    kilogram_tag,
+
     meter_tag,
     second_tag,
     ampere_tag,
@@ -281,8 +284,8 @@ namespace dim {
   // or should we name the template parameters m, g, s, A, K, for nicer error msgs?
   template<intmax_t Exponent> struct meter : basic_physical_dimension<
     meter, meter_tag, Exponent>   { static const char* symbol() { return "m"; } };
-  template<intmax_t Exponent> struct gram : basic_physical_dimension<
-    gram, gram_tag, Exponent>     { static const char* symbol() { return "g"; } };
+  template<intmax_t Exponent> struct kilogram : basic_physical_dimension<
+    kilogram, kilogram_tag, Exponent>{ static const char* symbol() { return "kg"; } };
   template<intmax_t Exponent> struct second : basic_physical_dimension<
     second, second_tag, Exponent> { static const char* symbol() { return "a"; } };
   template<intmax_t Exponent> struct ampere : basic_physical_dimension<
@@ -354,7 +357,7 @@ namespace dim {
 
   template<> struct identity<ratio_tag>  { typedef typename  ratio<0>::identity type; };
   template<> struct identity<tau_tag>    { typedef typename    tau<0>::identity type; };
-  template<> struct identity<gram_tag>   { typedef typename   gram<0>::identity type; };
+  template<> struct identity<kilogram_tag>{ typedef typename kilogram<0>::identity type; };
   template<> struct identity<meter_tag>  { typedef typename  meter<0>::identity type; };
   template<> struct identity<second_tag> { typedef typename second<0>::identity type; };
   template<> struct identity<ampere_tag> { typedef typename ampere<0>::identity type; };
@@ -659,16 +662,18 @@ typedef units<> radians_t; // the mathematically natural unit of angle
 typedef units<dim::tau<1>> full_circles_t; // an often-convenient unit of angle
 typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t; // a unit of angle
 
+typedef units<dim::kilogram<1>> kilograms_t;
+typedef units<dim::ratio<1, 1000>, dim::kilogram<1>> grams_t;
 typedef units<dim::meter<1>> meters_t;
-typedef units<dim::gram<1>> grams_t;
 typedef units<dim::second<1>> seconds_t;
 typedef units<dim::ampere<1>> amperes_t;
 typedef units<dim::kelvin<1>> kelvins_t;
 typedef units<dim::pseudo<true>> pseudo_t;
 
 constexpr auto full_circles = full_circles_t();
-constexpr auto meters       = meters_t();
+constexpr auto kilograms    = kilograms_t();
 constexpr auto grams        = grams_t();
+constexpr auto meters       = meters_t();
 constexpr auto seconds      = seconds_t();
 constexpr auto amperes      = amperes_t();
 constexpr auto kelvins      = kelvins_t();
