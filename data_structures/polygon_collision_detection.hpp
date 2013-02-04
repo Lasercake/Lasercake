@@ -38,8 +38,9 @@
 
 
 namespace geom {
-// 64 bits though these ints are, you can't really do collision detection with them except for things
-//  with a max distance of about 14 bits between any of the parts of them.
+// 64 bits though these ints are, you can't really do collision detection
+// with them except for things with a max distance of about (???) bits between
+// any of the parts of them.
 
 typedef int64_t geometry_int_type;
 typedef lasercake_int<geometry_int_type>::type polygon_int_type;

@@ -606,8 +606,14 @@ inline auto multiply_rational_into(Num n, non_normalized_rational<IntType> rat)
 }
 
 template<typename Target, typename Num>
-inline Target numeric_representation_cast(Num const& num) {
-  return num;
+struct numeric_representation_cast_impl {
+  typedef Target target_type;
+};
+
+template<typename Target, typename Num>
+inline typename numeric_representation_cast_impl<Target, Num>::target_type
+numeric_representation_cast(Num const& num) {
+  return typename numeric_representation_cast_impl<Target, Num>::target_type(num);
 }
 
 #endif

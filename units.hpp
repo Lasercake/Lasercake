@@ -22,17 +22,15 @@
 #ifndef LASERCAKE_UNITS_HPP__
 #define LASERCAKE_UNITS_HPP__
 
-#define BOOST_RATIO_EXTENSIONS
-
 #include <ostream>
 #include <sstream>
 #include <utility>
 #include <boost/utility/enable_if.hpp>
 #include <boost/ratio/ratio.hpp>
-#include <boost/ratio/ratio_io.hpp>
 #include <boost/integer.hpp>
 #include <boost/type_traits/conditional.hpp>
-
+// TODO switch from gram to kg base unit because SI and because
+// well known derived units like newton are based on it.
 #include "utils.hpp"
 
 // Principle: all units replaced with int(1) and identity plain int types should
@@ -43,111 +41,364 @@
 
 // units<> * T not supported, but T * units<> is.  unit<> can be on either side.
 
+
+template<intmax_t Num, intmax_t Den>
+inline std::ostream& show_ratio(std::ostream& os) {
+  typedef boost::ratio<Num, Den> ratio;
+  if(ratio::num == 0) {
+    os << "[0]";
+  }
+  else if(ratio::num == 1 && ratio::den == 1) {
+    os << "[1]";
+  }
+  else {
+    const int do_pow10 = ( (ratio::num % 10000 == 0) ? 1
+                          : (ratio::den % 10000 == 0) ? -1
+                          : 0);
+    intmax_t new_num = ratio::num;
+    intmax_t new_den = ratio::den;
+    int pow10_exp = 0;
+    if(do_pow10) {
+      if(do_pow10 == 1) {
+        while(new_num % 10 == 0) {
+          new_num = new_num / 10;
+          ++pow10_exp;
+        }
+      }
+      else {
+        while(new_den % 10 == 0) {
+          new_den = new_den / 10;
+          --pow10_exp;
+        }
+      }
+    }
+    const int do_pow2 = ( (new_num % 2048 == 0) ? 1
+                          : (new_den % 2048 == 0) ? -1
+                          : 0);
+    int pow2_exp = 0;
+    if(do_pow2) {
+      if(do_pow2 == 1) {
+        while(new_num % 2 == 0) {
+          new_num = new_num / 2;
+          ++pow2_exp;
+        }
+      }
+      else {
+        while(new_den % 2 == 0) {
+          new_den = new_den / 2;
+          --pow2_exp;
+        }
+      }
+    }
+    const bool brackets = (new_num != 1 || new_den != 1 || (pow2_exp && pow10_exp));
+    bool star = false;
+    if(brackets) { os << '['; }
+    if(new_num != 1 || new_den != 1) { if(star) {os << '*';}; os << new_num; star = true; }
+    if(new_den != 1) { os << '/' << new_den; star = true; }
+    if(pow2_exp != 0) { if(star) {os << '*';}; os << "2^" << pow2_exp; star = true;}
+    if(pow10_exp != 0) { if(star) {os << '*';}; os << "10^" << pow10_exp; star = true;}
+    if(brackets) { os << ']'; }
+  }
+  return os;
+}
+
+namespace dim {
+  enum dimension_kind_tag {
+    ratio_tag = 1,
+    tau_tag,  // 2pi, listed here because
+    // it can't be expressed as a ratio and because the mathematically natural
+    // unit of angle is the radian yet it's more important to us to be able to
+    // represent 1 full circle as an exact number.
+    gram_tag, //TODO: kilogram instead?
+    meter_tag,
+    second_tag,
+    ampere_tag,
+    kelvin_tag,
+    pseudo_tag // pseudovectors, pseudoscalars: sign dependent on space's arbitrary chirality
+  };
+
+  template<dimension_kind_tag Tag> struct identity;
+
+  // A dimension-kind is a mathematical group.
+  // A sensible one, for example, is {meter^N | N <- integers}.
+  // It is usually Abelian (symmetric).
+  // It preferably has roots defined for meaningful (element, root) combinations;
+  // e.g. some physical quantities can meaningfully have a square root
+  // of them taken.
+  //
+  //
+  // To make a new basic physical dimension:
+  //
+  // You must add to the dimension_kind_tag enumeration.  Example: your_tag.
+  //
+  // You must create a struct your_dim_kind.  Example:
+  //   template<intmax_t Arg> struct your_dim_kind
+  //     : dimension_kind_base<your_dim_kind<Arg>, your_tag> { ... };
+  //
+  // If your dimension resembles a physical dimension (something
+  // that is not like anything else and can be multiplied by itself
+  // any number of times with no modulo effects etc),
+  // consider creating your_dim_kind like this instead:
+  //   template<intmax_t Exponent>
+  //   struct your_dim_kind : basic_physical_dimension<your_dim_kind, your_tag, Exponent> {
+  //     static const char* symbol() { return "Y"; }
+  //   };
+  //
+  // In the former case:
+  //     Your struct must contain:
+  //        typedef ... identity; //the group's identity element
+  //        typedef ... inverse; //the inverse of this element
+  //     You must either implement
+  //        template<typename AGroupMember> struct combine {
+  //          typedef ... type; //group operation on this and AGroupMember
+  //        };
+  //     or, equivalently, specialize dim::combine<GroupMember1, GroupMember2>
+  //     for your group.
+  //
+  //     If you wish to define roots, your struct must contain:
+  //        template<intmax_t Index> struct root { typedef ... type; };
+  //     It need not have a valid instantiation for all arguments of your type.
+  //     If A::root<N>::type is B, then B::pow<N>::type shall be A.
+  //
+  //     (pow<A, N> denotes combining A with itself N times, or its inverse -N times,
+  //      and is default-implemented based on combine, inverse and identity.
+  //      You can override it if you want, but there's probably no reason to.
+  //      Note that you should handle pow<A, Num, Den> if you handle roots, as
+  //      the default implementation intelligently delegates to root<> if Den is non-one.)
+  //
+  //     If you wish your dimension to be writable to ostreams, you must
+  //     implement that.  Example:
+  //        friend inline std::ostream& operator<<(std::ostream& os, your_dim_kind) {
+  //          return os << "Y" << '^' << Arg;
+  //        }
+  //
+  // Finally, you must specialize identity<your_tag>.  Example:
+  //  template<> struct identity<your_tag>  { typedef typename your_dim_kind<0>::identity type; };
+
+  template<typename A, typename B>
+  struct combine : A::template combine<B> {};
+
+  template<typename A, intmax_t Exponent, bool Odd = (Exponent % 2 == 1)>
+  struct default_pow_impl;
+  template<typename A> struct default_pow_impl<A, 0, false>;
+  template<typename A> struct default_pow_impl<A, 1, true> { typedef A type; };
+  template<typename A> struct default_pow_impl<A, 2, false> : combine<A, A> {};
+  template<typename A, intmax_t EvenExponent> struct default_pow_impl<A, EvenExponent, false> {
+    typedef typename default_pow_impl<A, EvenExponent/2>::type intermediate;
+    typedef typename combine<intermediate, intermediate>::type type;
+  };
+  template<typename A, intmax_t OddExponent> struct default_pow_impl<A, OddExponent, true> {
+    typedef typename default_pow_impl<A, OddExponent/2>::type intermediate;
+    typedef typename combine<A, typename combine<intermediate, intermediate>::type>::type type;
+  };
+
+  template<typename A, intmax_t Exponent,
+    typename Identity = void, typename Inverse = void,
+    bool NonnegativeExp = (Exponent >= 0)>
+  struct default_pow : default_pow_impl<A, Exponent> {};
+  
+  template<typename A, typename Identity, typename Inverse>
+  struct default_pow<A, 0, Identity, Inverse, true> { typedef Identity type; };
+
+  template<typename A, intmax_t Exponent, typename Identity, typename Inverse>
+  struct default_pow<A, Exponent, Identity, Inverse, false> :
+    default_pow<Inverse, -Exponent, Identity, A> {};
+
+  template<typename A>
+  struct is_identity : boost::is_same<A, typename A::identity> {};
+
+  template<typename Derived, dimension_kind_tag Tag>
+  struct dimension_kind_base {
+    static const dimension_kind_tag tag = Tag;
+    //typedef typename Derived::template combine<typename Derived::inverse>::type identity;
+    //static const bool is_identity = boost::is_same<Derived, identity>::value;
+    template<intmax_t Exponent, intmax_t Root = 1> struct pow {
+      typedef typename Derived::template root<Root>::type intermediate;
+      typedef typename default_pow<intermediate, Exponent,
+        typename intermediate::identity, typename intermediate::inverse>::type type;
+    };
+    template<intmax_t Exponent> struct pow<Exponent, 1> :
+      default_pow<Derived, Exponent, typename Derived::identity, typename Derived::inverse> {};
+//    template<intmax_t Exponent> struct pow : default_pow<Derived, Exponent,
+//      typename Derived::identity, typename Derived::inverse> {};
+    template<typename Other> struct combine : dim::combine<Derived, Other> {};
+  };
+
+  //fails in GCC < 4.7:
+  //template<char...C> struct str { static constexpr char value[] = { C..., '\0' }; };
+
+  // The strings are notionally a compile-time constant value;
+  // can we make them be one?
+
+  // UTF-8?  Tau and exponents would benefit.
+  // We might also get a non-ASCII character if ratio
+  // is 1/1000000 (micro-, mu).  Do our ostreams and terminals
+  // get the encoding right?
+  // Conciseness?
+  // Note that e.g. k(m^2) and (km)^2 are different
+  // and this output represents the former!
+
+  static const intmax_t max_intmax_t = boost::integer_traits<intmax_t>::const_max;
+  static const intmax_t min_intmax_t = boost::integer_traits<intmax_t>::const_min;
+
+  // Is there any need to support non-integer exponents?
+  template<template<intmax_t> class Derived, dimension_kind_tag Tag, intmax_t Exponent>
+  struct basic_physical_dimension : dimension_kind_base<Derived<Exponent>, Tag> {
+    static const intmax_t exponent = Exponent;
+
+    typedef Derived<0> identity;
+    typedef Derived<-Exponent> inverse;
+    template<typename Other> struct combine;
+    template<intmax_t OtherExponent> struct combine<Derived<OtherExponent>> {
+      static_assert(OtherExponent <= 0 ||
+        max_intmax_t - (OtherExponent <= 0 ? 0 : OtherExponent) >= Exponent, "overflow");
+      static_assert(OtherExponent >= 0 ||
+        min_intmax_t - (OtherExponent >= 0 ? 0 : OtherExponent) <= Exponent, "underflow");
+
+      typedef Derived<Exponent + OtherExponent> type;
+    };
+    template<intmax_t Index> struct root {
+      static_assert(Exponent % Index == 0,
+        "physical dimensions do not presently support fractional powers of base units");
+      typedef Derived<Exponent/Index> type;
+    };
+    friend inline std::ostream& operator<<(std::ostream& os, basic_physical_dimension) {
+      return os << Derived<Exponent>::symbol() << '^' << Exponent;
+    }
+  };
+  // or should we name the template parameters m, g, s, A, K, for nicer error msgs?
+  template<intmax_t Exponent> struct meter : basic_physical_dimension<
+    meter, meter_tag, Exponent>   { static const char* symbol() { return "m"; } };
+  template<intmax_t Exponent> struct gram : basic_physical_dimension<
+    gram, gram_tag, Exponent>     { static const char* symbol() { return "g"; } };
+  template<intmax_t Exponent> struct second : basic_physical_dimension<
+    second, second_tag, Exponent> { static const char* symbol() { return "a"; } };
+  template<intmax_t Exponent> struct ampere : basic_physical_dimension<
+    ampere, ampere_tag, Exponent> { static const char* symbol() { return "A"; } };
+  template<intmax_t Exponent> struct kelvin : basic_physical_dimension<
+    kelvin, kelvin_tag, Exponent> { static const char* symbol() { return "K"; } };
+  template<intmax_t Exponent> struct tau : basic_physical_dimension<
+    tau, tau_tag, Exponent>       { static const char* symbol() { return "tau"; } };
+
+  template<bool Pseudo>
+  struct pseudo : dimension_kind_base<pseudo<Pseudo>, pseudo_tag> {
+    static const bool pseudoness = Pseudo;
+
+    typedef pseudo<false> identity;
+    typedef pseudo inverse;
+    template<typename Other> struct combine;
+    template<bool OtherPseudo> struct combine<pseudo<OtherPseudo>> {
+      typedef pseudo<Pseudo ^ OtherPseudo> type;
+    };
+    template<intmax_t Index> struct root {
+      static_assert(Index % 2 == 1 || !Pseudo,
+                    "Even roots of possibly-negative numbers may be imaginary.");
+      typedef pseudo type;
+    };
+    friend inline std::ostream& operator<<(std::ostream& os, pseudo) {
+      if(Pseudo) { os << "[pseudo]"; } else { os << "[nonpseudo]"; }
+      return os;
+    }
+  };
+
+  //ratio? factor? rational_factor?
+  template<intmax_t Num, intmax_t Den = 1>
+  struct ratio : dimension_kind_base<ratio<Num, Den>, ratio_tag> {
+    static const intmax_t num = Num;
+    static const intmax_t den = Den;
+    typedef boost::ratio<Num, Den> boost_ratio;
+    static_assert(Num == boost_ratio::num && Den == boost_ratio::den, "not normalized");
+
+    typedef ratio<1> identity;
+    typedef ratio<Den, Num> inverse;
+    template<typename Other> struct combine;
+    template<intmax_t OtherNum, intmax_t OtherDen> struct combine<ratio<OtherNum, OtherDen>> {
+      typedef typename boost::ratio_multiply<
+          boost_ratio, typename ratio<OtherNum, OtherDen>::boost_ratio
+        >::type combined_boost_ratio;
+      typedef ratio<combined_boost_ratio::num, combined_boost_ratio::den> type;
+    };
+    template<intmax_t Index> struct root {
+      static_assert(Index % 2 == 1 || num >= 0,
+                    "Even roots of negative numbers are imaginary.");
+      typedef static_root_nonnegative_integer<(num >= 0 ? num : -num), Index> num_root;
+      typedef static_root_nonnegative_integer<den, Index> den_root;
+      static_assert(num_root::remainder == 0, "non-exact dim::ratio exponentiation");
+      static_assert(den_root::remainder == 0, "non-exact dim::ratio exponentiation");
+      typedef ratio<(num >= 0 ? num_root::value : -num_root::value), den_root::value> type;
+    };
+
+    friend inline std::ostream& operator<<(std::ostream& os, ratio) {
+      show_ratio<Num, Den>(os);
+      return os;
+    }
+  };
+  // make_ratio normalizes rather than requiring you to.
+  template<intmax_t Num, intmax_t Den>
+  struct make_ratio {
+    typedef boost::ratio<Num, Den> boost_ratio;
+    typedef ratio<boost_ratio::num, boost_ratio::den> type;
+  };
+
+  template<> struct identity<ratio_tag>  { typedef typename  ratio<0>::identity type; };
+  template<> struct identity<tau_tag>    { typedef typename    tau<0>::identity type; };
+  template<> struct identity<gram_tag>   { typedef typename   gram<0>::identity type; };
+  template<> struct identity<meter_tag>  { typedef typename  meter<0>::identity type; };
+  template<> struct identity<second_tag> { typedef typename second<0>::identity type; };
+  template<> struct identity<ampere_tag> { typedef typename ampere<0>::identity type; };
+  template<> struct identity<kelvin_tag> { typedef typename kelvin<0>::identity type; };
+  template<> struct identity<pseudo_tag> { typedef typename pseudo<0>::identity type; };
+
+} /* end namespace dim */
+
+
+
+
 typedef int32_t unit_exponent_type;
 
 // TODO UNITS make sure all the abs/sign/imbue_sign have consistent
 // result units with each other.
-template<
-  typename Ratio = boost::ratio<1>, // a boost::ratio
-  // or should we name the template parameters m, g, s, A, K, for nicer error msgs?
-  // Is there any need to support non-integer exponents?
-  unit_exponent_type Tau = 0, // 2pi, listed here because
-  // it can't be expressed as a ratio and because the mathematically natural
-  // unit of angle is the radian yet it's more important to us to be able to
-  // represent 1 full circle as an exact number.
-  unit_exponent_type Meter = 0,
-  unit_exponent_type Gram = 0,
-  unit_exponent_type Second = 0,
-  unit_exponent_type Ampere = 0,
-  unit_exponent_type Kelvin = 0,
-  bool Pseudo = false // pseudovectors, pseudoscalars
-  //when mul/div they add mod 2, aka they xor.
-  //unit_with_Pseudo pseudo_subtract(unit_without_Pseudo, unit_without_Pseudo)
-  // it should be generally flipping the Pseudo, as deduced from
-  // https://en.wikipedia.org/wiki/Pseudovector#Behavior_under_cross_products
-  // and the crossproduct definition
-  // (& what about abs()?)
-> struct u_v_t {}; //units_vector_type (compile-time vector)
-template<typename U_V_T> struct units;
 
-typedef units<u_v_t<>> trivial_units;
+template<typename...DimensionKind> struct units;
+template<typename Num, typename Units> class unit;
+
+typedef units<> trivial_units;
 template<typename Units> struct is_trivial_units : boost::false_type {};
 template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
+namespace units_impl {
+template<typename Units> struct show_units_impl;
 
-template<typename BaseRatio, typename ExponentRatio>
-struct static_ratio_pow_nonnegative {
-  typedef static_root_nonnegative_integer<BaseRatio::num, ExponentRatio::den> num_root;
-  typedef static_root_nonnegative_integer<BaseRatio::den, ExponentRatio::den> den_root;
-  static_assert(num_root::remainder == 0, "non-exact unit exponentiation");
-  static_assert(den_root::remainder == 0, "non-exact unit exponentiation");
-  static const uint64_t num = static_pow_nonnegative_integer<num_root::value, ExponentRatio::num>::value;
-  static const uint64_t den = static_pow_nonnegative_integer<den_root::value, ExponentRatio::num>::value;
-  typedef boost::ratio<num, den> type;
+template<typename Units> struct verify_units;
+template<> struct verify_units<units<>> { static const bool value = true; };
+template<typename DimKind>
+struct verify_units<units<DimKind>> {
+  static const bool value = !dim::is_identity<DimKind>::value;
 };
-
-
-template<typename BaseRatio, typename ExponentRatio>
-struct static_ratio_pow {
-  typedef typename static_ratio_pow_nonnegative<
-    typename boost::ratio_abs<BaseRatio>::type,
-    typename boost::ratio_abs<ExponentRatio>::type>::type type1;
-  static_assert(ExponentRatio::den % 2 == 1 || BaseRatio::num >= 0,
-                "Even roots of negative numbers are imaginary.");
-  typedef typename boost::conditional<(ExponentRatio::num >= 0),
-    type1, boost::ratio<type1::den, type1::num> >::type type2;
-  typedef typename boost::conditional<(BaseRatio::num >= 0 || ExponentRatio::num % 2 == 0),
-    type2, typename boost::ratio_negate<type2>::type>::type type3;
-  typedef type3 type;
+template<typename DimKind1, typename DimKind2, typename...DimKinds>
+struct verify_units<units<DimKind1, DimKind2, DimKinds...>> {
+  static const bool value =
+    !dim::is_identity<DimKind1>::value
+    && DimKind1::tag < DimKind2::tag
+    && verify_units<units<DimKind2, DimKinds...>>::value;
 };
+}
 
+template<typename...DimensionKind>
+struct units {
+  static_assert(units_impl::verify_units<units>::value,
+    "Type arguments of units are in the wrong order and/or contain an identity element.");
 
-template<
-  typename Ratio,
-  unit_exponent_type Tau,
-  unit_exponent_type Meter,
-  unit_exponent_type Gram,
-  unit_exponent_type Second,
-  unit_exponent_type Ampere,
-  unit_exponent_type Kelvin,
-  bool Pseudo
->
-struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin, Pseudo> > {
-  typedef Ratio ratio;
-  static const unit_exponent_type tau = Tau;
-  static const unit_exponent_type meter = Meter;
-  static const unit_exponent_type gram = Gram;
-  static const unit_exponent_type second = Second;
-  static const unit_exponent_type ampere = Ampere;
-  static const unit_exponent_type kelvin = Kelvin;
-  static const bool pseudo = Pseudo;
-
-  static const bool nonidentity_ratio = !boost::ratio_equal<ratio, boost::ratio<1>>::value;
-  static const bool nontrivial_units = !is_trivial_units<units>::value;
-
-  typedef units<u_v_t<boost::ratio<ratio::den, ratio::num>,
-    -tau, -meter, -gram, -second, -ampere, -kelvin, pseudo> > reciprocal_type;
+  typedef units<typename DimensionKind::inverse...> reciprocal_type;
   static constexpr reciprocal_type reciprocal() { return reciprocal_type(); }
 
   template<intmax_t Num, intmax_t Den = 1>
   struct units_pow {
-    typedef boost::ratio<Num, Den> exponent;
-    static const intmax_t num = exponent::num;
-    static const intmax_t den = exponent::den;
-    static_assert(tau    % den == 0, "units<> does not presently support fractional powers of base units");
-    static_assert(meter  % den == 0, "units<> does not presently support fractional powers of base units");
-    static_assert(gram   % den == 0, "units<> does not presently support fractional powers of base units");
-    static_assert(second % den == 0, "units<> does not presently support fractional powers of base units");
-    static_assert(ampere % den == 0, "units<> does not presently support fractional powers of base units");
-    static_assert(kelvin % den == 0, "units<> does not presently support fractional powers of base units");
-    static_assert(pseudo % den == 0, "units<> does not presently support fractional powers of base units");
-    typedef units<u_v_t<
-        typename static_ratio_pow<ratio, exponent>::type,
-        tau*num/den, meter*num/den, gram*num/den,
-        second*num/den, ampere*num/den, kelvin*num/den,
-        (pseudo*num/den) & 1> >
-      type;
+    typedef units<typename DimensionKind::template pow<Num, Den>::type...> type;
   };
+  template<intmax_t Den>
+  struct units_pow<0, Den> { typedef units<> type; };
+
   template<intmax_t Num, intmax_t Den = 1>
   static constexpr
   typename units::template units_pow<Num, Den>::type
@@ -176,41 +427,59 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin, Pseudo> > {
   friend inline units abs(units a) { return a; }
   friend inline int sign(units) { return 1; }
 
-  // The string is notionally a compile-time constant value;
-  // can we make it be one?
-
-  // UTF-8?  Tau and exponents would benefit.
-  // We might also get a non-ASCII character if ratio
-  // is 1/1000000 (micro-, mu).  Do our ostreams and terminals
-  // get the encoding right?
-  // Conciseness?
-  // Note that e.g. k(m^2) and (km)^2 are different
-  // and this output represents the former!
-  static std::string suffix_repr() {
-    std::stringstream os;
-    if(nonidentity_ratio) {
-      os << '*' << boost::ratio_string<ratio, char>::short_name();
-    }
-    if(tau) { os << '*' << "tau"; if(tau != 1) { os << '^' << tau; } }
-    if(gram) { os << '*' << 'g'; if(gram != 1) { os << '^' << gram; } }
-    if(meter) { os << '*' << 'm'; if(meter != 1) { os << '^' << meter; } }
-    if(kelvin) { os << '*' << 'K'; if(kelvin != 1) { os << '^' << kelvin; } }
-    if(ampere) { os << '*' << 'A'; if(ampere != 1) { os << '^' << ampere; } }
-    if(pseudo) { os << "[pseudo]"; }
-    return os.str();
-  }
-  static std::string repr() {
-    if(nontrivial_units) {
-      return suffix_repr().substr(1);
-    }
-    else {
-      return "[1]";
-    }
-  }
   friend inline std::ostream& operator<<(std::ostream& os, units) {
-    return os << repr();
+    units_impl::show_units_impl<units>::show(os);
+    return os;
   }
 };
+
+
+
+namespace units_impl {
+template<dim::dimension_kind_tag Tag, typename DimKindQ, typename Units,
+  bool Correct = (DimKindQ::tag == Tag)> struct get_dimension_kind_impl;
+template<dim::dimension_kind_tag Tag, typename DimKindQ>
+struct get_dimension_kind_impl<Tag, DimKindQ, units<>, false> :
+  dim::identity<Tag> {};
+template<dim::dimension_kind_tag Tag, typename DimKindQ, typename...DimKinds>
+struct get_dimension_kind_impl<Tag, DimKindQ, units<DimKinds...>, true> {
+  typedef DimKindQ type;
+};
+template<dim::dimension_kind_tag Tag, typename DimKindQ, typename DimKind, typename...DimKinds>
+struct get_dimension_kind_impl<Tag, DimKindQ, units<DimKind, DimKinds...>, false> :
+  get_dimension_kind_impl<Tag, DimKind, units<DimKinds...>> {};
+
+  
+template<> struct show_units_impl<units<>> {
+  static void show(std::ostream& os) {
+    os << "[1]";
+  }
+};
+template<typename DimKind> struct show_units_impl<units<DimKind>> {
+  static void show(std::ostream& os) {
+    os << DimKind();
+  }
+};
+template<typename DimKind, typename...DimKinds>
+struct show_units_impl<units<DimKind, DimKinds...>> {
+  static void show(std::ostream& os) {
+    os << DimKind();
+    os << '*';
+    show_units_impl<units<DimKinds...>>::show(os);
+  }
+};
+}  /* end namespace units_impl */
+
+template<dim::dimension_kind_tag Tag, typename Units>
+struct get_dimension_kind/*;
+template<dim::dimension_kind_tag Tag>
+struct get_dimension_kind<Tag, units<>>*/ : dim::identity<Tag> {};
+template<dim::dimension_kind_tag Tag, typename DimKind, typename...DimKinds>
+struct get_dimension_kind<Tag, units<DimKind, DimKinds...>> :
+  units_impl::get_dimension_kind_impl<Tag, DimKind, units<DimKinds...>> {};
+template<dim::dimension_kind_tag Tag, typename Num, typename Units>
+struct get_dimension_kind<Tag, unit<Num, Units>> :
+  get_dimension_kind<Tag, Units> {};
 
 // So that people who have a template-argument-dependent units<>
 // type don't have to say "::template units_pow" to take a power
@@ -218,46 +487,64 @@ struct units<u_v_t<Ratio, Tau, Meter, Gram, Second, Ampere, Kelvin, Pseudo> > {
 template<typename Units, intmax_t Num, intmax_t Den = 1>
 struct units_pow : Units::template units_pow<Num, Den> {};
 
-template<typename UnitsA, typename UnitsB>
-struct multiply_units {
-  typedef units<u_v_t<
-            typename boost::ratio_multiply<typename UnitsA::ratio,
-                                           typename UnitsB::ratio>::type,
-            UnitsA::tau    + UnitsB::tau,
-            UnitsA::meter  + UnitsB::meter,
-            UnitsA::gram   + UnitsB::gram,
-            UnitsA::second + UnitsB::second,
-            UnitsA::ampere + UnitsB::ampere,
-            UnitsA::kelvin + UnitsB::kelvin,
-            UnitsA::pseudo ^ UnitsB::pseudo> >
-          type;
+template<typename UnitsA, typename UnitsB> struct multiply_units;
+
+namespace units_impl {
+template<typename DimKind, bool IsIdentity = dim::is_identity<DimKind>::value>
+struct units_from { typedef units<DimKind> type; };
+template<typename DimKind>
+struct units_from<DimKind, true> { typedef units<> type; };
+
+// private; does not check for correct dim-kind ordering:
+template<typename DimKind, typename Units, bool IsIdentity = dim::is_identity<DimKind>::value>
+struct units_cons;
+template<typename DimKind, typename...DimKinds>
+struct units_cons<DimKind, units<DimKinds...>, false> {
+  typedef units<DimKind, DimKinds...> type;
 };
-template<typename UnitsA, typename UnitsB>
-struct divide_units {
-  typedef units<u_v_t<
-            typename boost::ratio_divide<typename UnitsA::ratio,
-                                         typename UnitsB::ratio>::type,
-            UnitsA::tau    - UnitsB::tau,
-            UnitsA::meter  - UnitsB::meter,
-            UnitsA::gram   - UnitsB::gram,
-            UnitsA::second - UnitsB::second,
-            UnitsA::ampere - UnitsB::ampere,
-            UnitsA::kelvin - UnitsB::kelvin,
-            UnitsA::pseudo ^ UnitsB::pseudo> >
-          type;
+template<typename DimKind, typename...DimKinds>
+struct units_cons<DimKind, units<DimKinds...>, true> {
+  typedef units<DimKinds...> type;
 };
+// "Compare": -1 if left < right; 0 if left == right; 1 if left > right.
+// DimKinds are sorted with lesser tags first.
+template<int Compare, typename UnitsA, typename UnitsB> struct units_zip;
+template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
+struct units_zip<0, units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...>> :
+  units_cons<typename dim::combine<DimKind1A, DimKind1B>::type,
+    typename multiply_units<units<DimKindsA...>, units<DimKindsB...>>::type> {};
+template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
+struct units_zip<-1, units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...>> :
+  units_cons<DimKind1A,
+    typename multiply_units<units<DimKindsA...>, units<DimKind1B, DimKindsB...>>::type> {};
+template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
+struct units_zip<1, units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...>> :
+  units_cons<DimKind1B,
+    typename multiply_units<units<DimKind1A, DimKindsA...>, units<DimKindsB...>>::type> {};
+} /* end namespace units_impl */
 
-template<typename Int, typename Units> class unit;
+template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
+struct multiply_units<units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...> > :
+  units_impl::units_zip<
+    ((DimKind1A::tag > DimKind1B::tag) - (DimKind1A::tag < DimKind1B::tag)),
+    units<DimKind1A, DimKindsA...>,  units<DimKind1B, DimKindsB...> > {};
+template<typename Units> struct multiply_units<Units, units<> > { typedef Units type; };
+template<typename Units> struct multiply_units<units<>, Units> { typedef Units type; };
+template<> struct multiply_units<units<>, units<>> { typedef units<> type; };
 
-template<typename Int, typename Units>
-struct get_primitive_int_type< unit<Int, Units> > { typedef Int type; };
+template<typename UnitsA, typename UnitsB>
+struct divide_units : multiply_units<UnitsA, typename UnitsB::reciprocal_type> {};
 
-template<typename U>
-struct get_primitive_int_type< units<U> > { typedef void type; };
 
-template<typename Int>
+template<typename Num, typename Units>
+struct get_primitive_int_type< unit<Num, Units> > { typedef Num type; };
+
+template<typename...U>
+struct get_primitive_int_type< units<U...> > { typedef void type; };
+
+template<typename Num>
 struct unit_representation_type {
-  typedef typename lasercake_int<Int>::type type;
+  typedef typename lasercake_int<Num>::type type;
 };
 
 template<typename T>
@@ -271,16 +558,16 @@ struct get_units {
 template<typename T>
 struct get_units<bounds_checked_int<T>> : get_units<T> {};
 
-template<typename Int, typename Units>
-struct get_units< unit<Int, Units> > {
+template<typename Num, typename Units>
+struct get_units< unit<Num, Units> > {
   typedef Units type;
-  typedef typename unit_representation_type<Int>::type representation_type;
+  typedef typename unit_representation_type<Num>::type representation_type;
   static const bool is_nonunit_type = false;
   static const bool is_nonunit_scalar = false;
 };
-template<typename U>
-struct get_units< units<U> > {
-  typedef units<U> type;
+template<typename...U>
+struct get_units< units<U...> > {
+  typedef units<U...> type;
   typedef void representation_type;
   static const bool is_nonunit_type = false;
   static const bool is_nonunit_scalar = false;
@@ -288,41 +575,51 @@ struct get_units< units<U> > {
 
 template<typename... Unitses> struct units_prod;
 template<> struct units_prod<> { typedef trivial_units type; };
-template<typename U> struct units_prod<units<U>> { typedef units<U> type; };
-template<typename U, typename... Unitses> struct units_prod<units<U>, Unitses...> {
-  typedef typename multiply_units<units<U>, typename units_prod<Unitses...>::type>::type type;
+template<typename...U> struct units_prod<units<U...>> { typedef units<U...> type; };
+template<typename...U, typename... Unitses> struct units_prod<units<U...>, Unitses...> {
+  typedef typename multiply_units<units<U...>, typename units_prod<Unitses...>::type>::type type;
 };
-template<typename CouldBeMetafunctionContainingAUnits, typename... Unitses>
-struct units_prod<CouldBeMetafunctionContainingAUnits, Unitses...> {
-  typedef typename CouldBeMetafunctionContainingAUnits::type Units;
+template<typename Num, typename Units, typename... Unitses>
+struct units_prod<unit<Num, Units>, Unitses...> : units_prod<Units, Unitses...> {};
+
+// metafunction containing a unit or related type:
+template<typename T>
+typename T::type units_prod_arg_find_units_type(T); //unimplemented
+// dimension kind:
+template<typename T, dim::dimension_kind_tag = T::tag>
+typename units_impl::units_from<T>::type units_prod_arg_find_units_type(T); //unimplemented
+
+template<typename UnitLike, typename... Unitses>
+struct units_prod<UnitLike, Unitses...> {
+  typedef decltype(units_prod_arg_find_units_type(std::declval<UnitLike>())) Units;
   typedef typename units_prod<Units, Unitses...>::type type;
 };
 
 
-template<typename Int, typename Units>
+template<typename Num, typename Units>
 struct make_unit_type {
-  typedef unit<typename get_primitive_int_type<Int>::type, Units> type;
+  typedef unit<typename get_primitive_int_type<Num>::type, Units> type;
   static inline type construct(typename type::base_type i) { return type(i, Units()); }
 };
-template<typename Int>
-struct make_unit_type<Int, trivial_units> {
-  typedef typename unit_representation_type<typename get_primitive_int_type<Int>::type>::type type;
+template<typename Num>
+struct make_unit_type<Num, trivial_units> {
+  typedef typename unit_representation_type<typename get_primitive_int_type<Num>::type>::type type;
   static inline type construct(type i) { return i; }
 };
 
 
 
-template<typename UA, typename UB>
+template<typename...UA, typename...UB>
 inline constexpr
-typename multiply_units<units<UA>, units<UB>>::type
-operator*(units<UA>, units<UB>) {
-  return typename multiply_units<units<UA>, units<UB>>::type();
+typename multiply_units<units<UA...>, units<UB...>>::type
+operator*(units<UA...>, units<UB...>) {
+  return typename multiply_units<units<UA...>, units<UB...>>::type();
 }
 
-template<typename UA, typename UB>
-inline constexpr typename divide_units<units<UA>, units<UB>>::type
-operator/(units<UA>, units<UB>) {
-  return typename divide_units<units<UA>, units<UB>>::type();
+template<typename...UA, typename...UB>
+inline constexpr typename divide_units<units<UA...>, units<UB...>>::type
+operator/(units<UA...>, units<UB...>) {
+  return typename divide_units<units<UA...>, units<UB...>>::type();
 }
 
 template<typename T> T imaginary_copy(T arg); // unimplemented
@@ -333,7 +630,7 @@ template<typename Ratio>
 struct units_ratio_t {
   // Re-make the ratio here to ensure that the units<> will be structurally
   // equal to all other equal units<>es (i.e. reduced to lowest terms).
-  typedef units<u_v_t<boost::ratio<Ratio::num, Ratio::den>>> type;
+  typedef units<dim::ratio<Ratio::num, Ratio::den>> type;
 };
 template<intmax_t Num, intmax_t Den = 1>
 struct units_factor_t : units_ratio_t<boost::ratio<Num, Den>> {};
@@ -348,15 +645,15 @@ constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
 }
 
 // https://en.wikipedia.org/wiki/Turn_%28geometry%29
-constexpr auto full_circles = units<u_v_t<boost::ratio<1>, 1> >();
-constexpr auto meters       = units<u_v_t<boost::ratio<1>, 0, 1> >();
-constexpr auto grams        = units<u_v_t<boost::ratio<1>, 0, 0, 1> >();
-constexpr auto seconds      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 1> >();
-constexpr auto amperes      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 1> >();
-constexpr auto kelvins      = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 0, 1> >();
+constexpr auto full_circles = units<dim::tau<1>>();
+constexpr auto meters       = units<dim::meter<1>>();
+constexpr auto grams        = units<dim::gram<1>>();
+constexpr auto seconds      = units<dim::second<1>>();
+constexpr auto amperes      = units<dim::ampere<1>>();
+constexpr auto kelvins      = units<dim::kelvin<1>>();
 
 // for pseudovectors, pseudoscalars, etc:
-constexpr auto pseudo       = units<u_v_t<boost::ratio<1>, 0, 0, 0, 0, 0, 0, true> >();
+constexpr auto pseudo       = units<dim::pseudo<true>>();
 
 constexpr auto degrees      = full_circles / units_factor<1, 360>();
 
@@ -401,35 +698,35 @@ typedef decltype(imaginary_copy(atto )) atto_t;
 
 
 
-template<typename Int>
-inline Int make(Int i, trivial_units) { return i; }
-template<typename Int>
-inline Int get(Int i, trivial_units) { return i; }
+template<typename Num>
+inline Num make(Num i, trivial_units) { return i; }
+template<typename Num>
+inline Num get(Num i, trivial_units) { return i; }
 
-template<typename Int, typename U>
-inline unit<typename get_primitive_int_type<Int>::type, units<U>>
-make(Int i, units<U> u) {
-  return unit<typename get_primitive_int_type<Int>::type, units<U>>(i, u);
+template<typename Num, typename...U>
+inline unit<typename get_primitive_int_type<Num>::type, units<U...>>
+make(Num i, units<U...> u) {
+  return unit<typename get_primitive_int_type<Num>::type, units<U...>>(i, u);
 }
 
 template<
-  typename Int, //the base type that this mimics.
+  typename Num, //the base type that this mimics.
   // Imagine multiplying the numeric value of that int by all of the below
   // in order to get the conceptual value of the contained number.
   typename Units //a 'units'
 > 
 class unit {
 public:
-  typedef typename unit_representation_type<Int>::type base_type;
+  typedef typename unit_representation_type<Num>::type base_type;
 private:
   base_type val_;
 public:
 
-  typedef unit<Int, typename Units::reciprocal_type> reciprocal_type;
+  typedef unit<Num, typename Units::reciprocal_type> reciprocal_type;
 
-  template<typename OtherInt>
+  template<typename OtherNum>
   struct rebase {
-    typedef unit<typename get_primitive_int_type<OtherInt>::type, Units> type;
+    typedef unit<typename get_primitive_int_type<OtherNum>::type, Units> type;
   };
 
   // Default-construction is the same as the base type.
@@ -451,16 +748,25 @@ public:
 
   // Implicit conversion from unit with same dimensions but smaller
   // representation type.
-  template<typename SmallerInt>
-  unit(unit<SmallerInt, Units> a,
+  template<typename SmallerNum>
+  unit(unit<SmallerNum, Units> a,
        typename boost::enable_if_c<
-           bounds_checked_int_impl::superior_to<Int, SmallerInt>::value
+           bounds_checked_int_impl::superior_to<Num, SmallerNum>::value
          >::type* = 0) : val_(a.get(Units())) {}
+
+  // Explicit conversion from unit with same dimensions but representation
+  // type that does not convert losslessly.
+  template<typename BiggerNum>
+  explicit unit(unit<BiggerNum, Units> a,
+       typename boost::disable_if_c<
+           bounds_checked_int_impl::superior_to<Num, BiggerNum>::value
+         >::type* = 0) : val_(a.get(Units())) {}
+
 
   explicit operator bool() const { return bool(val_); }
 
   friend inline std::ostream& operator<<(std::ostream& os, unit a) {
-    os << a.val_ << Units::suffix_repr();
+    os << a.val_ << '*' << Units();
     return os;
   }
 
@@ -472,8 +778,10 @@ public:
   friend inline unit operator-(unit a) { return unit(-a.val_, Units()); }
   friend inline unit abs(unit a) { return (a.val_ < 0) ? -a : a; }
   friend inline
-  typename make_unit_type<Int, typename pseudo_t::units_pow<Units::pseudo>::type>::type
-  sign(unit a) { return sign(a.val_) * pseudo.pow<Units::pseudo>(); }
+  typename make_unit_type<Num, typename pseudo_t::units_pow<
+    get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>::type>::type
+  sign(unit a) { return sign(a.val_) * pseudo.pow<
+    get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>(); }
   friend inline size_t hash_value(unit a) { return std::hash<base_type>()(a.val_); }
   friend inline unit operator+(unit a, unit b) { return unit(a.val_ + b.val_, Units()); }
   friend inline unit operator-(unit a, unit b) { return unit(a.val_ - b.val_, Units()); }
@@ -497,78 +805,78 @@ public:
   template<typename AnyInt>
   friend inline unit& operator>>=(unit& a, AnyInt shift) { a.val_ >>= shift; return a; }
 
-  // Hmm, esp. for * and / members below, what if AnyInt is a bigger int than the current type.
+  // Hmm, esp. for * and / members below, what if AnyNum is a bigger type than the current type.
   // TODO.
-  template<typename AnyInt>
-  friend inline unit& operator*=(unit& a, AnyInt factor) { a.val_ *= factor; return a; }
-  template<typename AnyInt>
-  friend inline unit& operator/=(unit& a, AnyInt divisor) { a.val_ /= divisor; return a; }
+  template<typename AnyNum>
+  friend inline unit& operator*=(unit& a, AnyNum factor) { a.val_ *= factor; return a; }
+  template<typename AnyNum>
+  friend inline unit& operator/=(unit& a, AnyNum divisor) { a.val_ /= divisor; return a; }
 
   // These signatures are complicated so that the result type will
   // take the larger representation size of the two argument types,
   // as it would (via implicit conversions) when combining two unit<>
   // types.
-  template<typename AnyInt>
+  template<typename AnyNum>
   friend inline
   typename rebase<decltype(
     std::declval<base_type>() *
-     std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
+     std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
   )>::type
-  operator*(unit a, AnyInt factor)
+  operator*(unit a, AnyNum factor)
   { return typename rebase<decltype(a.val_ * factor)>::type(a.val_ * factor, Units()); }
 
-  template<typename AnyInt>
+  template<typename AnyNum>
   friend inline
   typename rebase<decltype(
-    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
+    std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
      * std::declval<base_type>()
   )>::type
-  operator*(AnyInt factor, unit b)
+  operator*(AnyNum factor, unit b)
   { return typename rebase<decltype(factor * b.val_)>::type(factor * b.val_, Units()); }
 
-  template<typename AnyInt>
+  template<typename AnyNum>
   friend inline
   typename rebase<decltype(
     std::declval<base_type>()
-     / std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
+     / std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
   )>::type
-  operator/(unit a, AnyInt divisor)
+  operator/(unit a, AnyNum divisor)
   { return typename rebase<decltype(a.val_ / divisor)>::type(a.val_ / divisor, Units()); }
 
-  template<typename AnyInt>
+  template<typename AnyNum>
   friend inline
   typename rebase<decltype(
-    std::declval<typename boost::enable_if_c<get_units<AnyInt>::is_nonunit_scalar, AnyInt>::type>()
+    std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
      / std::declval<base_type>()
   )>::type::reciprocal_type
-  operator/(AnyInt dividend, unit b)
+  operator/(AnyNum dividend, unit b)
   { return typename rebase<decltype(dividend / b.val_)>::type::reciprocal_type(
       dividend / b.val_, Units::reciprocal()); }
 };
 
 
-template<typename IntA, typename IntB, typename UnitsA, typename UnitsB>
+template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
 inline typename
 make_unit_type<
-    decltype(std::declval<IntA>() * std::declval<IntB>()),
+    decltype(std::declval<NumA>() * std::declval<NumB>()),
     typename multiply_units<UnitsA, UnitsB>::type
   >::type
-operator*(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
+operator*(unit<NumA, UnitsA> a, unit<NumB, UnitsB> b) {
   return make_unit_type<
-          decltype(std::declval<IntA>() * std::declval<IntB>()),
+          decltype(std::declval<NumA>() * std::declval<NumB>()),
           typename multiply_units<UnitsA, UnitsB>::type
       >::construct(a.get(UnitsA()) * b.get(UnitsB()));
 }
 
-template<typename IntA, typename IntB, typename UnitsA, typename UnitsB>
+template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
 inline typename
 make_unit_type<
-    decltype(std::declval<IntA>() / std::declval<IntB>()),
+    decltype(std::declval<NumA>() / std::declval<NumB>()),
     typename divide_units<UnitsA, UnitsB>::type
   >::type
-operator/(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
+operator/(unit<NumA, UnitsA> a, unit<NumB, UnitsB> b) {
   return make_unit_type<
-          decltype(std::declval<IntA>() / std::declval<IntB>()),
+          decltype(std::declval<NumA>() / std::declval<NumB>()),
           typename divide_units<UnitsA, UnitsB>::type
       >::construct(a.get(UnitsA()) / b.get(UnitsB()));
 }
@@ -576,22 +884,22 @@ operator/(unit<IntA, UnitsA> a, unit<IntB, UnitsB> b) {
 
 
 
-template<typename Int, typename U>
+template<typename Num, typename...U>
 inline
 typename make_unit_type<
-  typename boost::enable_if_c<get_units<Int>::is_nonunit_scalar, Int>::type,
-  units<U>
+  typename boost::enable_if_c<get_units<Num>::is_nonunit_scalar, Num>::type,
+  units<U...>
 >::type
-operator*(Int a, units<U>) {
-  return make_unit_type<Int, units<U>>::construct(a);
+operator*(Num a, units<U...>) {
+  return make_unit_type<Num, units<U...>>::construct(a);
 }
 
-template<typename Int, typename UnitsA, typename UB>
+template<typename Num, typename UnitsA, typename...UB>
 inline typename
-make_unit_type<Int, typename multiply_units<UnitsA, units<UB>>::type>::type
-operator*(unit<Int, UnitsA> a, units<UB>) {
+make_unit_type<Num, typename multiply_units<UnitsA, units<UB...>>::type>::type
+operator*(unit<Num, UnitsA> a, units<UB...>) {
   return make_unit_type<
-            Int, typename multiply_units<UnitsA, units<UB>>::type
+            Num, typename multiply_units<UnitsA, units<UB...>>::type
     >::construct(a.get(UnitsA()));
 }
 
@@ -599,44 +907,50 @@ operator*(unit<Int, UnitsA> a, units<UB>) {
 
 
 
-template<typename Int, typename U>
+template<typename Num, typename...U>
 inline
 typename make_unit_type<
-  typename boost::enable_if_c<get_units<Int>::is_nonunit_scalar, Int>::type,
-  typename units<U>::reciprocal_type
+  typename boost::enable_if_c<get_units<Num>::is_nonunit_scalar, Num>::type,
+  typename units<U...>::reciprocal_type
 >::type
-operator/(Int a, units<U>) {
+operator/(Num a, units<U...>) {
   return make_unit_type<
-            Int, typename units<U>::reciprocal_type
+            Num, typename units<U...>::reciprocal_type
     >::construct(a);
 }
 
-template<typename Int, typename UnitsA, typename UB>
+template<typename Num, typename UnitsA, typename...UB>
 inline
 typename make_unit_type<
-  Int, typename divide_units<UnitsA, units<UB>>::type
+  Num, typename divide_units<UnitsA, units<UB...>>::type
 >::type
-operator/(unit<Int, UnitsA> a, units<UB>) {
+operator/(unit<Num, UnitsA> a, units<UB...>) {
   return make_unit_type<
-            Int, typename divide_units<UnitsA, units<UB>>::type
+            Num, typename divide_units<UnitsA, units<UB...>>::type
     >::construct(a.get(UnitsA()));
 }
 
 
 // Multiplies the sign of arg 1 into the (signed) value of arg 2.
 template<typename T1, typename T2>
-inline auto
-imbue_sign(T1 signum, T2 base_val)
--> decltype(base_val
-    * pseudo.pow<get_units<T1>::type::pseudo>()
-    * units_factor<(get_units<T1>::type::ratio::num < 0 ? -1 : 1)>())
-{
-  static_assert(get_units<T1>::type::ratio::num != 0, "imbuing an ambiguous sign");
+inline //TODO write unit_prod<>
+typename make_unit_type<
+  typename get_units<T2>::representation_type,
+  typename units_prod<
+    get_units<T2>,
+    dim::pseudo<get_dimension_kind<dim::pseudo_tag, T1>::type::pseudoness>,
+    dim::ratio<(get_dimension_kind<dim::ratio_tag, T1>::type::num < 0 ? -1 : 1)>
+  >::type
+>::type
+imbue_sign(T1 signum, T2 base_val) {
+  static_assert(get_dimension_kind<dim::ratio_tag, T1>::type::num != 0, "imbuing an ambiguous sign");
   caller_error_if(signum == 0, "imbuing an ambiguous sign");
   return
     ((signum < 0) ? -base_val : base_val)
-    * pseudo.pow<get_units<T1>::type::pseudo>()
-    * units_factor<(get_units<T1>::type::ratio::num < 0 ? -1 : 1)>();
+    * typename units_prod<
+        dim::pseudo<get_dimension_kind<dim::pseudo_tag, T1>::type::pseudoness>,
+        dim::ratio<(get_dimension_kind<dim::ratio_tag, T1>::type::num < 0 ? -1 : 1)>
+      >::type();
 }
 
 
@@ -644,21 +958,31 @@ template<intmax_t N>
 struct identity_units {
   typedef unit<
       typename boost::int_max_value_t<(N >= 0 ? N : ~N)>::least,
-      units<u_v_t<boost::ratio<1, N>>>
+      units<dim::ratio<1, N>>
     > type;
 };
 
 template<intmax_t N>
 inline typename identity_units<N>::type
-identity(units<u_v_t<boost::ratio<1, N>>> u) {
+identity(units<dim::ratio<1, N>> u) {
   return typename identity_units<N>::type(N, u);
 }
 
-template<typename Target, typename Int, typename Units>
-inline unit<typename get_primitive_int_type<Target>::type, Units>
-numeric_representation_cast(unit<Int, Units> const& num) {
-  return num;
-}
+template<typename Target, typename Units, typename Num>
+struct numeric_representation_cast_impl<unit<Target, Units>, Num> {
+  typedef typename make_unit_type<Target, typename get_units<Num>::type>::type
+      target_type;
+};
+template<typename Target, typename Units, typename Num>
+struct numeric_representation_cast_impl<Target, unit<Num, Units>> {
+  typedef typename make_unit_type<typename get_units<Target>::representation_type, Units>::type
+      target_type;
+};
+template<typename Target, typename Units, typename Num, typename Units1>
+struct numeric_representation_cast_impl<unit<Target, Units1>, unit<Num, Units>> {
+  typedef typename make_unit_type<Target, Units>::type target_type;
+};
+
 
 template<typename Int, typename Units>
 inline unit<Int, typename Units::template units_pow<1, 2>::type>
@@ -699,6 +1023,20 @@ make_non_normalized_rational_unit(Num num) {
       typename info::int_type(1)),
     typename info::units());
 }
+
+namespace std {
+template<typename Num, typename Units>
+inline unit<Num, Units>
+abs(unit<Num, Units> a) {
+  return ::abs(a);
+}
+}
+
+#if 0 /*TODO*/
+#ifdef SKIP_UNIT_CHECKING
+template<typename Num, typename Units> using units<Num, Units> = Num;
+#endif
+#endif
 
 //class coordinate 
 #endif
