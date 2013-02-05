@@ -1646,7 +1646,7 @@ struct compare_less {
 };
 struct compare_greater {
   template<typename T>
-  bool operator()(T const& t1, T const& t2) { return t2 < t2; }
+  bool operator()(T const& t1, T const& t2) { return t2 < t1; }
 };
 
 namespace /*anonymous*/ {
