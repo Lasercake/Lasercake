@@ -85,60 +85,31 @@
 template<intmax_t Num, intmax_t Den>
 inline std::ostream& show_ratio(std::ostream& os) {
   typedef boost::ratio<Num, Den> ratio;
-  if(ratio::num == 0) {
-    os << "[0]";
-  }
-  else if(ratio::num == 1 && ratio::den == 1) {
-    os << "[1]";
-  }
-  else {
-    const int do_pow10 = ( (ratio::num % 10000 == 0) ? 1
-                          : (ratio::den % 10000 == 0) ? -1
-                          : 0);
-    intmax_t new_num = ratio::num;
-    intmax_t new_den = ratio::den;
-    int pow10_exp = 0;
-    if(do_pow10) {
-      if(do_pow10 == 1) {
-        while(new_num % 10 == 0) {
-          new_num = new_num / 10;
-          ++pow10_exp;
-        }
-      }
-      else {
-        while(new_den % 10 == 0) {
-          new_den = new_den / 10;
-          --pow10_exp;
-        }
-      }
-    }
-    const int do_pow2 = ( (new_num % 2048 == 0) ? 1
-                          : (new_den % 2048 == 0) ? -1
-                          : 0);
-    int pow2_exp = 0;
-    if(do_pow2) {
-      if(do_pow2 == 1) {
-        while(new_num % 2 == 0) {
-          new_num = new_num / 2;
-          ++pow2_exp;
-        }
-      }
-      else {
-        while(new_den % 2 == 0) {
-          new_den = new_den / 2;
-          --pow2_exp;
-        }
-      }
-    }
-    const bool brackets = (new_num != 1 || new_den != 1 || (pow2_exp && pow10_exp));
-    bool star = false;
-    if(brackets) { os << '['; }
-    if(new_num != 1 || new_den != 1) { if(star) {os << '*';}; os << new_num; star = true; }
-    if(new_den != 1) { os << '/' << new_den; star = true; }
-    if(pow2_exp != 0) { if(star) {os << '*';}; os << "2^" << pow2_exp; star = true;}
-    if(pow10_exp != 0) { if(star) {os << '*';}; os << "10^" << pow10_exp; star = true;}
-    if(brackets) { os << ']'; }
-  }
+  static const bool negative = (ratio::num < 0);
+  static const intmax_t positive_num = (negative ? -ratio::num : ratio::num);
+  typedef extract_factor<10, positive_num> num_tens;
+  typedef extract_factor<10, ratio::den> den_tens;
+  static const bool do_pow10 = (num_tens::factor_exponent + den_tens::factor_exponent) >= 4;
+  static const int pow10_exp = num_tens::factor_exponent - den_tens::factor_exponent;
+  static const intmax_t numB = (do_pow10 ? num_tens::rest_of_factoree : positive_num);
+  static const intmax_t denB = (do_pow10 ? den_tens::rest_of_factoree : ratio::den);
+  typedef extract_factor<2, numB> num_twos;
+  typedef extract_factor<2, denB> den_twos;
+  static const bool do_pow2 = (num_twos::factor_exponent + den_twos::factor_exponent) >= 11;
+  static const int pow2_exp = num_twos::factor_exponent - den_twos::factor_exponent;
+  static const intmax_t numC = (do_pow2 ? num_twos::rest_of_factoree : numB);
+  static const intmax_t denC = (do_pow2 ? den_twos::rest_of_factoree : denB);
+  static const bool brackets = // all the time except a specific case
+    !(!negative && numC == 1 && denC == 1 && (do_pow10 + do_pow2 == 1));
+  bool star = false;
+  if(brackets) { os << '['; }
+  if(negative) { os << '-'; }
+  if(numC != 1 || denC != 1) { if(star) {os << '*';}; os << numC; star = true; }
+  if(denC != 1) { os << '/' << denC; star = true; }
+  if(do_pow2) { if(star) {os << '*';}; os << "2^" << pow2_exp; star = true;}
+  if(do_pow10) { if(star) {os << '*';}; os << "10^" << pow10_exp; star = true;}
+  if(!star) { os << '1'; }
+  if(brackets) { os << ']'; }
   return os;
 }
 
