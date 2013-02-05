@@ -25,27 +25,27 @@
 
 #include <iostream>
 
-typedef UNITS(meters) meter;
+typedef meters_t meter;
 //constexpr auto kilograms = kilo*grams;
 
 //typedef typename units_prod<kilo_t, grams_t>::type kilograms_t;
 typedef typename units_prod<kilograms_t, meters_t,
-  typename seconds_t::units_pow<-2>::type>::type newtons_t_A;
-typedef typename units_prod<kilograms_t, meters_t, seconds_t::units_pow<-2>
-  >::type newtons_t_B;
+  typename units_pow<seconds_t, -2>::type>::type newtons_t_A;
+typedef typename units_prod<kilograms_t, meters_t,
+  units_pow<seconds_t, -2>>::type newtons_t_B;
 
 typedef typename units_prod<kilo_t, meters_t>::type kilometers_t;
-typedef typename kilometers_t::units_pow<6>::type kilometers6_t;
-typedef typename kilometers6_t::units_pow<-2, 3>::type inverse_kilometers4_t;
-typedef typename meters_t::units_pow<-4>::type inverse_meters4_t;
+typedef typename units_pow<kilometers_t, 6>::type kilometers6_t;
+typedef typename units_pow<kilometers6_t, -2, 3>::type inverse_kilometers4_t;
+typedef typename units_pow<meters_t, -4>::type inverse_meters4_t;
 
 constexpr auto kilometers = kilometers_t();
 
 BOOST_AUTO_TEST_CASE( unitses ) {
-  const unit<int32_t, meter> foo = 1 * meter();
-  const unit<int64_t, meter> foo64 = foo;
-  const unit<int32_t, meter> foo3 = 3 * meter();
-  const unit<int32_t, meter> foo5 = 5 * meters;
+  const physical_quantity<int32_t, meter> foo = 1 * meter();
+  const physical_quantity<int64_t, meter> foo64 = foo;
+  const physical_quantity<int32_t, meter> foo3 = 3 * meter();
+  const physical_quantity<int32_t, meter> foo5 = 5 * meters;
   foo + foo;
   auto bfoo = foo * foo;
   bfoo = bfoo * 3;
@@ -54,11 +54,11 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   // TODO consider whether to relax bounds_checked_int to make this work,
   // or provide conversion functions, or such.
-  // const unit<double, meter> foofloating = foo;
-  // Also this doesn't work because unit<> tries to wrap
+  // const physical_quantity<double, meter> foofloating = foo;
+  // Also this doesn't work because physical_quantity<> tries to wrap
   // its data type in a bounds checked int, heh.  That'd
   // be fairly easy to fix for floating point.
-  // const unit<double, meter> foofloating = 1.0*meters;
+  // const physical_quantity<double, meter> foofloating = 1.0*meters;
 
   // Deliberately avoid get_primitive_int() to make sure
   // that it is returning the correct type in both cases.
@@ -84,16 +84,20 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   // 1000*1000*1000*1000 doesn't fit into 32 bits, so this identity()
   // returns a 64 bit quantity.
-  const unit<int64_t, inverse_kilometers4_t> invfoo4 = 1/foo/foo/foo/foo
+  const physical_quantity<int64_t, inverse_kilometers4_t> invfoo4
+    = 1/foo/foo/foo/foo
     * identity(inverse_kilometers4_t() / inverse_meters4_t());
   // This fits within fewer bits:
-  const unit<int32_t, meters_t> thirtytwobits = 1 * kilometers * identity(meters / kilometers);
+  const physical_quantity<int32_t, meters_t> thirtytwobits
+    = 1 * kilometers * identity(meters / kilometers);
 
-  const unit<int, newtons_t_A> newtonz = 7 * kilograms * meters / seconds / seconds;
+  const physical_quantity<int, newtons_t_A> newtonz =
+    7 * kilograms * meters / seconds / seconds;
   newtonz + 1*newtons_t_B();
 
   auto scalar = 4*meters;
   auto pseudoscalar = scalar*pseudo;
+  BOOST_CHECK_EQUAL(pseudoscalar, abs(pseudoscalar) * sign(pseudoscalar));
   scalar = pseudoscalar * pseudo;
   scalar = pseudoscalar / pseudo;
   pseudoscalar = scalar * pseudo;
@@ -129,7 +133,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK_EQUAL(foo5 << 3, 40*meters);
   BOOST_CHECK_EQUAL(foo5 >> 1, 2*meters);
 
-  constexpr auto recipmeters = meters.reciprocal();
+  constexpr auto recipmeters = reciprocal(meters);
   const auto recipfoo3 = 9 / foo3;
   
   BOOST_CHECK_EQUAL(foo5 * foo3, 15*meters*meters);
@@ -144,7 +148,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK_EQUAL(13 / foo5, 2/meters);
   BOOST_CHECK_EQUAL(foo5 / meters, 5);
   BOOST_CHECK_EQUAL(7 / meters, 7/meters);
-  BOOST_CHECK_EQUAL(kilograms / meters, meters.reciprocal()*kilograms);
+  BOOST_CHECK_EQUAL(kilograms / meters, reciprocal(meters)*kilograms);
 
   BOOST_CHECK_EQUAL(foo5 * recipfoo3, 15);
   BOOST_CHECK_EQUAL(foo5 * recipmeters, 5);
@@ -155,7 +159,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK_EQUAL(seconds / seconds, trivial_units());
 
 
-  unit<int32_t, meter> mutfoo = 0;
+  physical_quantity<int32_t, meter> mutfoo = 0;
   BOOST_CHECK_EQUAL(mutfoo, 0*meters);
   BOOST_CHECK_EQUAL(mutfoo += foo3, 3*meters);
   BOOST_CHECK_EQUAL(mutfoo += foo3, 6*meters);

@@ -1,6 +1,6 @@
 /*
 
-    Copyright Eli Dupree and Isaac Dupree, 2011, 2012
+    Copyright Eli Dupree and Isaac Dupree, 2011, 2012, 2013
 
     This file is part of Lasercake.
 
@@ -241,16 +241,60 @@ inline int32_t count_trailing_zeroes_64(uint64_t argument) {
 }
 
 
-template<uintmax_t Base, uintmax_t Exponent>
-struct static_pow_nonnegative_integer {
-  static const uintmax_t recur = static_pow_nonnegative_integer<Base, Exponent-1>::value;
-  static const uintmax_t value = Base * recur;
-  static_assert(value / Base == recur && value / recur == Base, "overflow");
+template<uintmax_t Result>
+struct static_pow_nonnegative_integer_answer {
+  static const uintmax_t value = Result; // result or max uintmax_t for overflow
+  static const uintmax_t value_minus_one = value - 1; //result-1 or max uintmax_t for overflow
+  static const uintmax_t modulo_value = Result; // result
+  static const bool overflow = false;
 };
-template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 0> {
-  static const uintmax_t value = 1; };
-template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 1> {
-  static const uintmax_t value = Base; };
+template<uintmax_t A, uintmax_t B, bool AlreadyOverflowing = false>
+struct static_multiply_nonnegative_integer {
+  static const uintmax_t modulo_value = A * B;
+  static const bool overflow = AlreadyOverflowing
+    || modulo_value / (B?B:1) != (B?A:0)  //if B!=0, check
+    || modulo_value / (A?A:1) != (A?B:0); //if A!=0, check
+  static const uintmax_t value = (overflow ? uintmax_t(-1) : modulo_value);
+  static const uintmax_t value_minus_one = (overflow ? uintmax_t(-1) : modulo_value - 1);
+};
+
+template<typename A, typename B>
+struct static_re_multiply_nonnegative_integer
+  : static_multiply_nonnegative_integer<A::modulo_value, B::modulo_value,
+                                          (A::overflow || B::overflow)> {};
+
+
+
+template<typename Base, uintmax_t Exponent, bool Odd = (Exponent % 2 == 1)>
+struct static_pow_nonnegative_integer_impl;
+template<typename B> struct static_pow_nonnegative_integer_impl<B, 0, false>
+  : static_pow_nonnegative_integer_answer<1> {};
+template<typename B> struct static_pow_nonnegative_integer_impl<B, 1, true>
+  : B {};
+template<typename B> struct static_pow_nonnegative_integer_impl<B, 2, false>
+  : static_re_multiply_nonnegative_integer<B, B> {};
+template<typename B, uintmax_t EvenExponent> struct static_pow_nonnegative_integer_impl<B, EvenExponent, false>
+  : static_re_multiply_nonnegative_integer<
+      static_pow_nonnegative_integer_impl<B, EvenExponent/2>,
+      static_pow_nonnegative_integer_impl<B, EvenExponent/2>
+      > {};
+template<typename B, uintmax_t OddExponent> struct static_pow_nonnegative_integer_impl<B, OddExponent, true>
+  : static_re_multiply_nonnegative_integer<
+      B,
+      static_re_multiply_nonnegative_integer<
+        static_pow_nonnegative_integer_impl<B, OddExponent/2>,
+        static_pow_nonnegative_integer_impl<B, OddExponent/2>
+      > > {};
+
+template<uintmax_t Base, uintmax_t Exponent, bool AllowOverflow = false>
+struct static_pow_nonnegative_integer
+  : static_pow_nonnegative_integer_impl<
+      static_pow_nonnegative_integer_answer<Base>, Exponent> {
+  static_assert(AllowOverflow ||
+    !static_pow_nonnegative_integer_impl<
+      static_pow_nonnegative_integer_answer<Base>, Exponent>::overflow,
+    "exponentiation overflow");
+};
 
 template<uintmax_t Radicand, uintmax_t Root = 2>
 struct static_root_nonnegative_integer {
@@ -258,10 +302,10 @@ struct static_root_nonnegative_integer {
   template<uintmax_t LowerBound, uintmax_t UpperBound, bool Done>
   struct recur {
     static const uintmax_t mid = ((LowerBound + UpperBound) >> 1);
-    static const bool mid_is_upper_bound =
-      static_pow_nonnegative_integer<mid, Root>::value > Radicand;
-    static const uintmax_t new_lower_bound = mid_is_upper_bound ? LowerBound : mid;
-    static const uintmax_t new_upper_bound = mid_is_upper_bound ? mid : UpperBound;
+    static const bool mid_is_new_upper_bound =
+      static_pow_nonnegative_integer<mid, Root, true>::value_minus_one > Radicand - 1;
+    static const uintmax_t new_lower_bound = mid_is_new_upper_bound ? LowerBound : mid;
+    static const uintmax_t new_upper_bound = mid_is_new_upper_bound ? mid : UpperBound;
     static const bool done = new_lower_bound >= new_upper_bound - 1;
     static const uintmax_t value = recur<new_lower_bound, new_upper_bound, done>::value;
   };
@@ -280,8 +324,87 @@ struct static_root_nonnegative_integer<Radicand, 1> {
   static const uintmax_t value = Radicand;
   static const uintmax_t remainder = 0;
 };
+template<uintmax_t Root>
+struct static_root_nonnegative_integer<0, Root> {
+  static const uintmax_t value = 0;
+  static const uintmax_t remainder = 0;
+};
+// zeroth roots are meaningless:
 template<uintmax_t Radicand>
 struct static_root_nonnegative_integer<Radicand, 0> {};
+template<>
+struct static_root_nonnegative_integer<0, 0> {};
+
+
+static const uintmax_t safe_uintmax_t_to_square =
+  (uintmax_t(1)<<(std::numeric_limits<uintmax_t>::digits/2)) - 1u;
+template<uintmax_t Factor, uintmax_t Factoree,
+  int Difficulty = (
+    ((Factoree % Factor) == 0)
+    + (Factor <= safe_uintmax_t_to_square &&
+        ((Factoree % ((Factor <= safe_uintmax_t_to_square)*Factor*Factor)) == 0)))>
+struct extract_factor_impl;
+template<uintmax_t Factor, uintmax_t Factoree>
+struct extract_factor_impl<Factor, Factoree, 0> {
+  static const int factor_exponent = 0;
+  static const uintmax_t factored_out_value = 1;
+  static const uintmax_t rest_of_factoree = Factoree;
+};
+template<uintmax_t Factor, uintmax_t Factoree>
+struct extract_factor_impl<Factor, Factoree, 1> {
+  static const int factor_exponent = (Factoree % Factor) == 0;
+  static const uintmax_t factored_out_value = (factor_exponent ? Factor : 1);
+  static const uintmax_t rest_of_factoree = (factor_exponent ? Factoree/Factor : Factoree);
+};
+template<uintmax_t Factor, uintmax_t Factoree>
+struct extract_factor_impl<Factor, Factoree, 2> {
+private:
+  static_assert(std::numeric_limits<uintmax_t>::digits <= 128, "unimplemented");
+  static const uintmax_t f1 = Factor;
+  static const uintmax_t f2 = (f1<=safe_uintmax_t_to_square)*f1*f1;
+  static const uintmax_t f4 = (f2<=safe_uintmax_t_to_square)*f2*f2;
+  static const uintmax_t f8 = (f4<=safe_uintmax_t_to_square)*f4*f4;
+  static const uintmax_t f16 = (f8<=safe_uintmax_t_to_square)*f8*f8;
+  static const uintmax_t f32 = (f16<=safe_uintmax_t_to_square)*f16*f16;
+  static const uintmax_t f64 = (f32<=safe_uintmax_t_to_square)*f32*f32;
+  static const bool e64 = f64 && ((Factoree % (    (f64?f64:1))) == 0);
+  static const uintmax_t p64 =     (e64?f64:1);
+  static const bool e32 = f32 && ((Factoree % (p64*(f32?f32:1))) == 0);
+  static const uintmax_t p32 = p64*(e32?f32:1);
+  static const bool e16 = f16 && ((Factoree % (p32*(f16?f16:1))) == 0);
+  static const uintmax_t p16 = p32*(e16?f16:1);
+  static const bool e8 = f8 && ((Factoree % (p16*(f8?f8:1))) == 0);
+  static const uintmax_t p8 = p16*(e8?f8:1);
+  static const bool e4 = f4 && ((Factoree % (p8*(f4?f4:1))) == 0);
+  static const uintmax_t p4 = p8*(e4?f4:1);
+  static const bool e2 = f2 && ((Factoree % (p4*(f2?f2:1))) == 0);
+  static const uintmax_t p2 = p4*(e2?f2:1);
+  static const bool e1 = f1 && ((Factoree % (p2*(f1?f1:1))) == 0);
+  static const uintmax_t p1 = p2*(e1?f1:1);
+public:
+  static const int factor_exponent = e64*64 + e32*32 + e16*16 + e8*8
+                                              + e4*4 + e2*2 + e1*1;
+  static const uintmax_t factored_out_value = p1;
+  static const uintmax_t rest_of_factoree = Factoree / factored_out_value;
+};
+
+// extract_factor<F, N> divides out F from N as many times
+// as it goes in evenly.  It tells you how many times it
+// divided (factor_exponent), the amount divided out
+// (factors_value, which is F to the factor_exponent),
+// and N sans the F parts (rest_of_factoree).
+template<uintmax_t Factor, uintmax_t Factoree>
+struct extract_factor : extract_factor_impl<Factor, Factoree> {
+  static const int factor_base = Factor;
+  static const int factoree = Factoree;
+};
+// These are not meaningful:
+template<uintmax_t Factoree> struct extract_factor<0, Factoree>;
+template<uintmax_t Factoree> struct extract_factor<1, Factoree>;
+template<uintmax_t Factor> struct extract_factor<Factor, 0>;
+
+
+
 
 
 // TODO rename to isqrt or similar?
