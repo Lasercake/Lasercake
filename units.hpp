@@ -383,9 +383,6 @@ namespace dim {
 
 
 
-// TODO UNITS make sure all the abs/sign/imbue_sign have consistent
-// result units with each other.
-
 // Skip down a page for more API; mostly tedious forward declarations here.
 template<typename...DimensionKind> struct units;
 template<typename Num, typename Units> class physical_quantity;
@@ -534,9 +531,6 @@ struct units {
   friend inline bool operator>(decltype(nullptr), units) { return false; }
   friend inline bool operator>=(decltype(nullptr), units) { return false; }
 
-  friend inline units abs(units a) { return a; }
-  friend inline int sign(units) { return 1; }
-
   friend inline std::ostream& operator<<(std::ostream& os, units) {
     units_impl::show_units_impl<units>::show(os);
     return os;
@@ -654,12 +648,6 @@ public:
   // dimensions.
   friend inline this_t operator+(this_t a) { return a; }
   friend inline this_t operator-(this_t a) { return this_t(-a.val_, Units()); }
-  friend inline this_t abs(this_t a) { return (a.val_ < 0) ? -a : a; }
-  friend inline
-  typename make_physical_quantity_type<Num, typename units_prod<dim::pseudo<
-    get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>>::type>::type
-  sign(this_t a) { return sign(a.val_) * typename units_prod<dim::pseudo<
-    get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>>::type(); }
   friend inline size_t hash_value(this_t a) { return std::hash<base_type>()(a.val_); }
   friend inline this_t operator+(this_t a, this_t b) { return this_t(a.val_ + b.val_, Units()); }
   friend inline this_t operator-(this_t a, this_t b) { return this_t(a.val_ - b.val_, Units()); }
@@ -742,9 +730,8 @@ inline //TODO write physical_quantity_prod<>?
 typename make_physical_quantity_type<
   typename get_units<T2>::representation_type,
   typename units_prod<
-    get_units<T2>,
-    dim::pseudo<get_dimension_kind<dim::pseudo_tag, T1>::type::pseudoness>,
-    dim::ratio<(get_dimension_kind<dim::ratio_tag, T1>::type::num < 0 ? -1 : 1)>
+    get_sign_components_of_units<T1>,
+    get_units<T2>
   >::type
 >::type
 imbue_sign(T1 signum, T2 base_val) {
@@ -752,10 +739,7 @@ imbue_sign(T1 signum, T2 base_val) {
   caller_error_if(signum == 0, "imbuing an ambiguous sign");
   return
     ((signum < 0) ? -base_val : base_val)
-    * typename units_prod<
-        dim::pseudo<get_dimension_kind<dim::pseudo_tag, T1>::type::pseudoness>,
-        dim::ratio<(get_dimension_kind<dim::ratio_tag, T1>::type::num < 0 ? -1 : 1)>
-      >::type();
+    * typename get_sign_components_of_units<T1>::type();
 }
 
 // helper
@@ -820,14 +804,53 @@ make_non_normalized_rational_physical_quantity(Num num) {
     typename info::units());
 }
 
+// Even units<> has abs() and sign().
+template<typename...U>
+inline typename get_non_sign_components_of_units<units<U...>>::type
+abs(units<U...>) {
+  return typename get_non_sign_components_of_units<units<U...>>::type();
+}
+
+template<typename...U>
+inline typename make_physical_quantity_type<int,
+  typename get_sign_components_of_units<units<U...>>::type>::type
+sign(units<U...>) {
+  make_physical_quantity_type<int,
+    typename get_sign_components_of_units<units<U...>>::type
+  >::construct(1);
+}
+
+template<typename Num, typename Units>
+inline typename make_physical_quantity_type<Num,
+  typename get_non_sign_components_of_units<Units>::type>::type
+abs(physical_quantity<Num, Units> a) {
+  return ((a < 0) ? -a : a)
+    / typename get_sign_components_of_units<Units>::type();
+}
+template<typename Num, typename Units>
+inline typename make_physical_quantity_type<Num,
+  typename get_sign_components_of_units<Units>::type>::type
+sign(physical_quantity<Num, Units> a) {
+  return sign(get(a, Units()))
+    * typename get_sign_components_of_units<Units>::type();
+}
+
 // support std::abs
 namespace std {
 template<typename Num, typename Units>
-inline physical_quantity<Num, Units>
+inline typename make_physical_quantity_type<Num,
+  typename get_non_sign_components_of_units<Units>::type>::type
 abs(physical_quantity<Num, Units> a) {
   return ::abs(a);
 }
+template<typename...U>
+inline typename get_non_sign_components_of_units<units<U...>>::type
+abs(units<U...> a) {
+  return ::abs(a);
 }
+}
+
+
 
 //class coordinate?
 

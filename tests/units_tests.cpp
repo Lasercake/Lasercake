@@ -97,6 +97,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   auto scalar = 4*meters;
   auto pseudoscalar = scalar*pseudo;
+  BOOST_CHECK_EQUAL(pseudoscalar, abs(pseudoscalar) * sign(pseudoscalar));
   scalar = pseudoscalar * pseudo;
   scalar = pseudoscalar / pseudo;
   pseudoscalar = scalar * pseudo;
