@@ -61,7 +61,8 @@
 //   typedef units<dim::ratio<1000>, dim::kilogram<1>, dim::meter<2>,
 //                                            dim::second<-2>>
 //       kilonewtons_t;
-// A selection of common units is provided at the end of this file.
+// A selection of common units is provided near the end of this file;
+// look for "[FRIENDLY UNITS]".
 //
 // [1] Principle: replacing "units<>" variables with "1" and physical_quantity
 // types with their underlying numeric type should not change code behavior.
@@ -151,7 +152,7 @@ namespace dim {
   //     for your group.
   //
   //     If you wish to define roots, your struct must contain:
-  //        template<intmax_t Index> struct root { typedef ... type; };
+  //        template<intmax_t Root> struct root { typedef ... type; };
   //     It need not have a valid instantiation for all arguments of your type.
   //     If A::root<N>::type is B, then B::pow<N>::type shall be A.
   //
@@ -254,10 +255,10 @@ namespace dim {
 
       typedef Derived<Exponent + OtherExponent> type;
     };
-    template<intmax_t Index> struct root {
-      static_assert(Exponent % Index == 0,
+    template<intmax_t Root> struct root {
+      static_assert(Exponent % Root == 0,
         "physical dimensions do not presently support fractional powers of base units");
-      typedef Derived<Exponent/Index> type;
+      typedef Derived<Exponent/Root> type;
     };
     friend inline std::ostream& operator<<(std::ostream& os, basic_physical_dimension) {
       return os << Derived<Exponent>::symbol() << '^' << Exponent;
@@ -287,8 +288,8 @@ namespace dim {
     template<bool OtherPseudo> struct combine<pseudo<OtherPseudo>> {
       typedef pseudo<Pseudo ^ OtherPseudo> type;
     };
-    template<intmax_t Index> struct root {
-      static_assert(Index % 2 == 1 || !Pseudo,
+    template<intmax_t Root> struct root {
+      static_assert(Root % 2 == 1 || !Pseudo,
                     "Even roots of possibly-negative numbers may be imaginary.");
       typedef pseudo type;
     };
@@ -345,11 +346,11 @@ namespace dim {
         >::type combined_boost_ratio;
       typedef ratio<combined_boost_ratio::num, combined_boost_ratio::den> type;
     };
-    template<intmax_t Index> struct root {
-      static_assert(Index % 2 == 1 || num >= 0,
+    template<intmax_t Root> struct root {
+      static_assert(Root % 2 == 1 || num >= 0,
                     "Even roots of negative numbers are imaginary.");
-      typedef static_root_nonnegative_integer<(num >= 0 ? num : -num), Index> num_root;
-      typedef static_root_nonnegative_integer<den, Index> den_root;
+      typedef static_root_nonnegative_integer<(num >= 0 ? num : -num), Root> num_root;
+      typedef static_root_nonnegative_integer<den, Root> den_root;
       static_assert(num_root::remainder == 0, "non-exact dim::ratio exponentiation");
       static_assert(den_root::remainder == 0, "non-exact dim::ratio exponentiation");
       typedef ratio<(num >= 0 ? num_root::value : -num_root::value), den_root::value> type;
@@ -385,51 +386,134 @@ namespace dim {
 // TODO UNITS make sure all the abs/sign/imbue_sign have consistent
 // result units with each other.
 
+// Skip down a page for more API; mostly tedious forward declarations here.
 template<typename...DimensionKind> struct units;
 template<typename Num, typename Units> class physical_quantity;
+
+template<typename Num>
+struct physical_quantity_representation_type {
+  typedef typename lasercake_int<Num>::type type;
+};
 
 typedef units<> trivial_units;
 template<typename Units> struct is_trivial_units : boost::false_type {};
 template<> struct is_trivial_units<trivial_units> : boost::true_type {};
 
-namespace units_impl {
-template<typename Units> struct show_units_impl;
 
-template<typename Units> struct verify_units;
-template<> struct verify_units<units<>> { static const bool value = true; };
-template<typename DimKind>
-struct verify_units<units<DimKind>> {
-  static const bool value = !dim::is_identity<DimKind>::value;
-};
-template<typename DimKind1, typename DimKind2, typename...DimKinds>
-struct verify_units<units<DimKind1, DimKind2, DimKinds...>> {
-  static const bool value =
-    !dim::is_identity<DimKind1>::value
-    && DimKind1::tag < DimKind2::tag
-    && verify_units<units<DimKind2, DimKinds...>>::value;
-};
-}
+template<typename T> struct get_units;
+template<dim::dimension_kind_tag Tag, typename T> struct get_dimension_kind;
+template<typename... T> struct units_prod;
+
+namespace units_impl {
+  template<typename Units> struct show_units_impl;
+  template<typename T> struct get_units_impl;
+  template<dim::dimension_kind_tag Tag, typename Units> struct get_dimension_kind_impl2;
+  template<typename UnitsA, typename UnitsB> struct multiply_units;
+  template<typename UnitsA, typename UnitsB> struct divide_units;
+
+  template<typename Units> struct verify_units;
+  template<> struct verify_units<units<>> { static const bool value = true; };
+  template<typename DimKind>
+  struct verify_units<units<DimKind>> {
+    static const bool value = !dim::is_identity<DimKind>::value;
+  };
+  template<typename DimKind1, typename DimKind2, typename...DimKinds>
+  struct verify_units<units<DimKind1, DimKind2, DimKinds...>> {
+    static const bool value =
+      !dim::is_identity<DimKind1>::value
+      && DimKind1::tag < DimKind2::tag
+      && verify_units<units<DimKind2, DimKinds...>>::value;
+  };
+  template<typename Units> struct is_units : boost::false_type {};
+  template<typename...U> struct is_units<units<U...>> : boost::true_type {};
+  // The implicit conversion to Units isn't useful on the type level, but
+  // if you're constructing one in an expression it means you can skip the
+  // "typename" "::type" parts.
+  template<typename Units>
+  struct units_result {
+    typedef Units type;
+    operator Units()const { return Units(); }
+  };
+} /* end namespace units_impl */
+
+// get_units has
+// ::type   the units<> type affiliated with the given type
+//           (affiliations include being a dimension-kind, a units<>,
+//            a physical_quantity's unit, a meta-function with ::type
+//            having to do with units, and a scalar non-unit type)
+// ::representation_type
+//          the numeric type representing this (if any)
+// ::is_nonunit_type      boolean
+// ::is_nonunit_scalar    boolean
+template<typename T>
+struct get_units : units_impl::get_units_impl<T> {};
+
+// Operations that transform one units type to a related units type:
+// units_pow<units, pow[, root]>
+// units_root<units, root>
+// units_recip<units>
+// get_sign_components_of_units<units>
+// get_non_sign_components_of_units<units>
+// units_prod<units...>
+//    ::type
+//
+// units_prod is a swiss army knife of unit combination.
+// Provide any number of unit-like types and its ::type is the
+// units<> that is the product of all the units they represent.
+
+template<typename... Unitses> struct units_prod;
+
+template<typename Units, intmax_t Num, intmax_t Den = 1> struct units_pow;
+template<typename... DimKind, intmax_t Num, intmax_t Den>
+struct units_pow<units<DimKind...>, Num, Den> : units_impl::units_result<
+  units<typename DimKind::template pow<Num, Den>::type...>> {};
+template<typename... DimKind, intmax_t Den>
+struct units_pow<units<DimKind...>, 0, Den> : units_impl::units_result<units<>> {};
+
+template<typename Units, intmax_t Root = 2> struct units_root;
+template<typename... DimKind, intmax_t Root>
+struct units_root<units<DimKind...>, Root> : units_impl::units_result<
+  units<typename DimKind::template root<Root>::type...>> {};
+
+template<typename Units> struct units_recip;
+template<typename... DimKind>
+struct units_recip<units<DimKind...>> : units_impl::units_result<
+  units<typename DimKind::inverse...>> {};
+
+template<typename Units>
+struct get_sign_components_of_units : units_impl::units_result<
+  typename units_prod<
+    dim::pseudo<get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>,
+    dim::ratio<(get_dimension_kind<dim::ratio_tag, Units>::type::num < 0 ? -1 : 1)>
+  >::type> {};
+
+template<typename Units>
+struct get_non_sign_components_of_units : units_impl::units_result<
+  typename units_prod<
+    Units,
+    typename units_recip<typename get_sign_components_of_units<Units>
+  ::type>::type>::type> {};
+
+// value-level units<> reciprocal function:
+template<typename... DimKind>
+inline constexpr units<typename DimKind::inverse...>
+reciprocal(units<DimKind...>) { return units<typename DimKind::inverse...>(); }
 
 template<typename...DimensionKind>
 struct units {
   static_assert(units_impl::verify_units<units>::value,
-    "Type arguments of units are in the wrong order and/or contain an identity element.");
+    "Type arguments of units are in the wrong order and/or contain an identity element and/or duplicate dimension kinds.");
 
-  typedef units<typename DimensionKind::inverse...> reciprocal_type;
-  static constexpr reciprocal_type reciprocal() { return reciprocal_type(); }
-
-  template<intmax_t Num, intmax_t Den = 1>
-  struct units_pow {
-    typedef units<typename DimensionKind::template pow<Num, Den>::type...> type;
-  };
-  template<intmax_t Den>
-  struct units_pow<0, Den> { typedef units<> type; };
-
+  // value-level units<> pow function.
+  // The only reason pow is a member function is that the exponent
+  // has to be a template argument, and as a non-member function
+  // the template arguments (the exponent) would have to come before
+  // the units, which is a confusing order for an exponent.
   template<intmax_t Num, intmax_t Den = 1>
   static constexpr
-  typename units::template units_pow<Num, Den>::type
+  typename units_pow<units, Num, Den>::type
   pow() {
-    return typename units::template units_pow<Num, Den>::type();
+    return typename units_pow<units, Num, Den>::type();
   }
 
   // A units is positive and equal to itself.
@@ -459,237 +543,44 @@ struct units {
   }
 };
 
-
-
-namespace units_impl {
-template<dim::dimension_kind_tag Tag, typename DimKindQ, typename Units,
-  bool Correct = (DimKindQ::tag == Tag)> struct get_dimension_kind_impl;
-template<dim::dimension_kind_tag Tag, typename DimKindQ>
-struct get_dimension_kind_impl<Tag, DimKindQ, units<>, false> :
-  dim::identity<Tag> {};
-template<dim::dimension_kind_tag Tag, typename DimKindQ, typename...DimKinds>
-struct get_dimension_kind_impl<Tag, DimKindQ, units<DimKinds...>, true> {
-  typedef DimKindQ type;
-};
-template<dim::dimension_kind_tag Tag, typename DimKindQ, typename DimKind, typename...DimKinds>
-struct get_dimension_kind_impl<Tag, DimKindQ, units<DimKind, DimKinds...>, false> :
-  get_dimension_kind_impl<Tag, DimKind, units<DimKinds...>> {};
-
-  
-template<> struct show_units_impl<units<>> {
-  static void show(std::ostream& os) {
-    os << "[1]";
-  }
-};
-template<typename DimKind> struct show_units_impl<units<DimKind>> {
-  static void show(std::ostream& os) {
-    os << DimKind();
-  }
-};
-template<typename DimKind, typename...DimKinds>
-struct show_units_impl<units<DimKind, DimKinds...>> {
-  static void show(std::ostream& os) {
-    os << DimKind();
-    os << '*';
-    show_units_impl<units<DimKinds...>>::show(os);
-  }
-};
-}  /* end namespace units_impl */
-
+// Given a kind of dimension you're interested in,
+// returns a dim::* item describing that kind of dimension
+// in this type.
 template<dim::dimension_kind_tag Tag, typename Units>
-struct get_dimension_kind/*;
-template<dim::dimension_kind_tag Tag>
-struct get_dimension_kind<Tag, units<>>*/ : dim::identity<Tag> {};
-template<dim::dimension_kind_tag Tag, typename DimKind, typename...DimKinds>
-struct get_dimension_kind<Tag, units<DimKind, DimKinds...>> :
-  units_impl::get_dimension_kind_impl<Tag, DimKind, units<DimKinds...>> {};
-template<dim::dimension_kind_tag Tag, typename Num, typename Units>
-struct get_dimension_kind<Tag, physical_quantity<Num, Units>> :
-  get_dimension_kind<Tag, Units> {};
+struct get_dimension_kind :
+  units_impl::get_dimension_kind_impl2<Tag, typename get_units<Units>::type> {};
 
-// So that people who have a template-argument-dependent units<>
-// type don't have to say "::template units_pow" to take a power
-// of it:
-template<typename Units, intmax_t Num, intmax_t Den = 1>
-struct units_pow : Units::template units_pow<Num, Den> {};
-
-template<typename UnitsA, typename UnitsB> struct multiply_units;
-
-namespace units_impl {
-template<typename DimKind, bool IsIdentity = dim::is_identity<DimKind>::value>
-struct units_from { typedef units<DimKind> type; };
-template<typename DimKind>
-struct units_from<DimKind, true> { typedef units<> type; };
-
-// private; does not check for correct dim-kind ordering:
-template<typename DimKind, typename Units, bool IsIdentity = dim::is_identity<DimKind>::value>
-struct units_cons;
-template<typename DimKind, typename...DimKinds>
-struct units_cons<DimKind, units<DimKinds...>, false> {
-  typedef units<DimKind, DimKinds...> type;
-};
-template<typename DimKind, typename...DimKinds>
-struct units_cons<DimKind, units<DimKinds...>, true> {
-  typedef units<DimKinds...> type;
-};
-// "Compare": -1 if left < right; 0 if left == right; 1 if left > right.
-// DimKinds are sorted with lesser tags first.
-template<int Compare, typename UnitsA, typename UnitsB> struct units_zip;
-template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
-struct units_zip<0, units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...>> :
-  units_cons<typename dim::combine<DimKind1A, DimKind1B>::type,
-    typename multiply_units<units<DimKindsA...>, units<DimKindsB...>>::type> {};
-template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
-struct units_zip<-1, units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...>> :
-  units_cons<DimKind1A,
-    typename multiply_units<units<DimKindsA...>, units<DimKind1B, DimKindsB...>>::type> {};
-template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
-struct units_zip<1, units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...>> :
-  units_cons<DimKind1B,
-    typename multiply_units<units<DimKind1A, DimKindsA...>, units<DimKindsB...>>::type> {};
-} /* end namespace units_impl */
-
-template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
-struct multiply_units<units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...> > :
-  units_impl::units_zip<
-    ((DimKind1A::tag > DimKind1B::tag) - (DimKind1A::tag < DimKind1B::tag)),
-    units<DimKind1A, DimKindsA...>,  units<DimKind1B, DimKindsB...> > {};
-template<typename Units> struct multiply_units<Units, units<> > { typedef Units type; };
-template<typename Units> struct multiply_units<units<>, Units> { typedef Units type; };
-template<> struct multiply_units<units<>, units<>> { typedef units<> type; };
-
-template<typename UnitsA, typename UnitsB>
-struct divide_units : multiply_units<UnitsA, typename UnitsB::reciprocal_type> {};
-
-
+// We specialize this template that's from bounds_checked_int:
 template<typename Num, typename Units>
 struct get_primitive_int_type< physical_quantity<Num, Units> > { typedef Num type; };
-
 template<typename...U>
 struct get_primitive_int_type< units<U...> > { typedef void type; };
 
-template<typename Num>
-struct physical_quantity_representation_type {
-  typedef typename lasercake_int<Num>::type type;
-};
-
-template<typename T>
-struct get_units {
-  typedef trivial_units type;
-  typedef T representation_type;
-  static const bool is_nonunit_type = true;
-  // This is an approximation...
-  static const bool is_nonunit_scalar = std::numeric_limits<T>::is_specialized;
-};
-template<typename T>
-struct get_units<bounds_checked_int<T>> : get_units<T> {};
-
-template<typename Num, typename Units>
-struct get_units< physical_quantity<Num, Units> > {
-  typedef Units type;
-  typedef typename physical_quantity_representation_type<Num>::type representation_type;
-  static const bool is_nonunit_type = false;
-  static const bool is_nonunit_scalar = false;
-};
-template<typename...U>
-struct get_units< units<U...> > {
-  typedef units<U...> type;
-  typedef void representation_type;
-  static const bool is_nonunit_type = false;
-  static const bool is_nonunit_scalar = false;
-};
-
-template<typename... Unitses> struct units_prod;
-template<> struct units_prod<> { typedef trivial_units type; };
-template<typename...U> struct units_prod<units<U...>> { typedef units<U...> type; };
-template<typename...U, typename... Unitses> struct units_prod<units<U...>, Unitses...> {
-  typedef typename multiply_units<units<U...>, typename units_prod<Unitses...>::type>::type type;
-};
-template<typename Num, typename Units, typename... Unitses>
-struct units_prod<physical_quantity<Num, Units>, Unitses...> : units_prod<Units, Unitses...> {};
-
-// units_prod_arg_find_units_type, used in decltype,
-// explores different things the user of units_prod might have provided
-// as one of its template arguments:
-// * metafunction containing a unit or related type:
-template<typename T>
-typename T::type units_prod_arg_find_units_type(T); //unimplemented
-// * dimension kind:
-template<typename T, dim::dimension_kind_tag = T::tag>
-typename units_impl::units_from<T>::type units_prod_arg_find_units_type(T); //unimplemented
-
-template<typename UnitLike, typename... Unitses>
-struct units_prod<UnitLike, Unitses...> {
-  typedef decltype(units_prod_arg_find_units_type(std::declval<UnitLike>())) Units;
-  typedef typename units_prod<Units, Unitses...>::type type;
-};
-
-
+// Using this template lets you provide a non-primitive Num type
+// (it unwraps the type) and makes dimensionless quantities simply
+// be the base numeric type (which is what we intend to do).
 template<typename Num, typename Units>
 struct make_physical_quantity_type {
   typedef physical_quantity<typename get_primitive_int_type<Num>::type, Units> type;
   static inline type construct(typename type::base_type i) { return type(i, Units()); }
 };
 template<typename Num>
-struct make_physical_quantity_type<Num, trivial_units> {
+struct make_physical_quantity_type<Num, units<>> {
   typedef typename physical_quantity_representation_type<typename get_primitive_int_type<Num>::type>::type type;
   static inline type construct(type i) { return i; }
 };
 
-
-
-template<typename...UA, typename...UB>
-inline constexpr
-typename multiply_units<units<UA...>, units<UB...>>::type
-operator*(units<UA...>, units<UB...>) {
-  return typename multiply_units<units<UA...>, units<UB...>>::type();
-}
-
-template<typename...UA, typename...UB>
-inline constexpr typename divide_units<units<UA...>, units<UB...>>::type
-operator/(units<UA...>, units<UB...>) {
-  return typename divide_units<units<UA...>, units<UB...>>::type();
-}
-
-template<typename T> T imaginary_copy(T arg); // unimplemented
-#define UNITS(units_val) decltype(::imaginary_copy((units_val)))
-
-
-template<typename Ratio>
-struct units_ratio_t {
-  // Re-make the ratio here to ensure that the units<> will be structurally
-  // equal to all other equal units<>es (i.e. reduced to lowest terms).
-  typedef units<dim::ratio<Ratio::num, Ratio::den>> type;
-};
-template<intmax_t Num, intmax_t Den = 1>
-struct units_factor_t : units_ratio_t<boost::ratio<Num, Den>> {};
-
-template<intmax_t Num, intmax_t Den = 1>
-constexpr inline typename units_factor_t<Num, Den>::type units_factor() {
-  return typename units_factor_t<Num, Den>::type();
-}
-template<typename Ratio>
-constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
-  return typename units_ratio_t<Ratio>::type();
-}
-
-
-
-
-
+// The suggested way to make and retrieve physical quantity values.
 template<typename Num>
-inline Num make(Num i, trivial_units) { return i; }
+inline Num make(Num i, units<>) { return i; }
 template<typename Num>
-inline Num get(Num i, trivial_units) { return i; }
-
+inline Num get(Num i, units<>) { return i; }
 template<typename Num, typename...U>
 inline physical_quantity<typename get_primitive_int_type<Num>::type, units<U...>>
 make(Num i, units<U...> u) {
   return physical_quantity<typename get_primitive_int_type<Num>::type, units<U...>>(i, u);
 }
-
-template<typename Units> struct is_units;
-template<typename...U> struct is_units<units<U...>> : boost::true_type {};
+// (get(physical_quantity<>) defined in-class)
 
 template<
   typename Num, //the base type that this mimics.
@@ -699,20 +590,22 @@ template<
 > 
 class physical_quantity {
 public:
+  // helpful typedefs
   typedef typename physical_quantity_representation_type<Num>::type base_type;
-private:
-  base_type val_;
-  typedef physical_quantity this_t;
-public:
-  static_assert(is_units<Units>::value, "Units must be of type units<..>");
   typedef Units units;
-
-  typedef physical_quantity<Num, typename Units::reciprocal_type> reciprocal_type;
 
   template<typename OtherNum>
   struct rebase {
     typedef physical_quantity<typename get_primitive_int_type<OtherNum>::type, Units> type;
   };
+
+  typedef physical_quantity<Num, typename units_recip<Units>::type> reciprocal_type;
+
+private:
+  base_type val_;
+  typedef physical_quantity this_t;
+  static_assert(units_impl::is_units<Units>::value, "Units must be of type units<..>");
+public:
 
   // Default-construction is the same as the base type.
   physical_quantity() = default;
@@ -835,88 +728,15 @@ public:
      / std::declval<base_type>()
   )>::type::reciprocal_type
   operator/(AnyNum dividend, this_t b)
-  { return typename rebase<decltype(dividend / b.val_)>::type::reciprocal_type(
-      dividend / b.val_, Units::reciprocal()); }
+  { typedef typename rebase<decltype(dividend / b.val_)>::type::reciprocal_type result_type;
+    return result_type(dividend / b.val_, typename result_type::units()); }
 };
 
-
-template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
-inline typename
-make_physical_quantity_type<
-    decltype(std::declval<NumA>() * std::declval<NumB>()),
-    typename multiply_units<UnitsA, UnitsB>::type
-  >::type
-operator*(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b) {
-  return make_physical_quantity_type<
-          decltype(std::declval<NumA>() * std::declval<NumB>()),
-          typename multiply_units<UnitsA, UnitsB>::type
-      >::construct(a.get(UnitsA()) * b.get(UnitsB()));
-}
-
-template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
-inline typename
-make_physical_quantity_type<
-    decltype(std::declval<NumA>() / std::declval<NumB>()),
-    typename divide_units<UnitsA, UnitsB>::type
-  >::type
-operator/(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b) {
-  return make_physical_quantity_type<
-          decltype(std::declval<NumA>() / std::declval<NumB>()),
-          typename divide_units<UnitsA, UnitsB>::type
-      >::construct(a.get(UnitsA()) / b.get(UnitsB()));
-}
+// More multiplication and division defined later; the signatures
+// are very tedious.
 
 
-
-
-template<typename Num, typename...U>
-inline
-typename make_physical_quantity_type<
-  typename boost::enable_if_c<get_units<Num>::is_nonunit_scalar, Num>::type,
-  units<U...>
->::type
-operator*(Num a, units<U...>) {
-  return make_physical_quantity_type<Num, units<U...>>::construct(a);
-}
-
-template<typename Num, typename UnitsA, typename...UB>
-inline typename
-make_physical_quantity_type<Num, typename multiply_units<UnitsA, units<UB...>>::type>::type
-operator*(physical_quantity<Num, UnitsA> a, units<UB...>) {
-  return make_physical_quantity_type<
-            Num, typename multiply_units<UnitsA, units<UB...>>::type
-    >::construct(a.get(UnitsA()));
-}
-
-
-
-
-
-template<typename Num, typename...U>
-inline
-typename make_physical_quantity_type<
-  typename boost::enable_if_c<get_units<Num>::is_nonunit_scalar, Num>::type,
-  typename units<U...>::reciprocal_type
->::type
-operator/(Num a, units<U...>) {
-  return make_physical_quantity_type<
-            Num, typename units<U...>::reciprocal_type
-    >::construct(a);
-}
-
-template<typename Num, typename UnitsA, typename...UB>
-inline
-typename make_physical_quantity_type<
-  Num, typename divide_units<UnitsA, units<UB...>>::type
->::type
-operator/(physical_quantity<Num, UnitsA> a, units<UB...>) {
-  return make_physical_quantity_type<
-            Num, typename divide_units<UnitsA, units<UB...>>::type
-    >::construct(a.get(UnitsA()));
-}
-
-
-// Multiplies the sign of arg 1 into the (signed) value of arg 2.
+// imbue_sign() multiplies the sign of arg 1 into the (signed) value of arg 2.
 template<typename T1, typename T2>
 inline //TODO write physical_quantity_prod<>?
 typename make_physical_quantity_type<
@@ -938,7 +758,7 @@ imbue_sign(T1 signum, T2 base_val) {
       >::type();
 }
 
-
+// helper
 template<intmax_t N>
 struct identity_units {
   typedef physical_quantity<
@@ -947,36 +767,23 @@ struct identity_units {
     > type;
 };
 
+// For converting between magnitudes of the same general dimension of quantity;
+// typical usage: (some quantity in kilograms) * identity(grams / kilograms)
 template<intmax_t N>
 inline typename identity_units<N>::type
 identity(units<dim::ratio<1, N>> u) {
   return typename identity_units<N>::type(N, u);
 }
 
-template<typename Target, typename Units, typename Num>
-struct numeric_representation_cast_impl<physical_quantity<Target, Units>, Num> {
-  typedef typename make_physical_quantity_type<Target, typename get_units<Num>::type>::type
-      target_type;
-};
-template<typename Target, typename Units, typename Num>
-struct numeric_representation_cast_impl<Target, physical_quantity<Num, Units>> {
-  typedef typename make_physical_quantity_type<typename get_units<Target>::representation_type, Units>::type
-      target_type;
-};
-template<typename Target, typename Units, typename Num, typename Units1>
-struct numeric_representation_cast_impl<physical_quantity<Target, Units1>, physical_quantity<Num, Units>> {
-  typedef typename make_physical_quantity_type<Target, Units>::type target_type;
-};
-
-
+// Sqrt'ing a quantity sqrts its units.
 template<typename Int, typename Units>
-inline physical_quantity<Int, typename Units::template units_pow<1, 2>::type>
+inline physical_quantity<Int, typename units_root<Units, 2>::type>
 i64sqrt(physical_quantity<Int, Units> const& radicand) {
-  typedef typename Units::template units_pow<1, 2>::type sqrt_units;
+  typedef typename units_root<Units, 2>::type sqrt_units;
   return physical_quantity<Int, sqrt_units>(i64sqrt(get(radicand, Units())), sqrt_units());
 }
 
-
+// helper
 template<typename TypeIfWeDivided>
 struct make_non_normalized_rational_physical_quantity_info {
   typedef typename get_units<TypeIfWeDivided>::representation_type int_type;
@@ -985,6 +792,11 @@ struct make_non_normalized_rational_physical_quantity_info {
   typedef typename make_physical_quantity_type<rational_number_type, units>::type type;
 };
 
+// make_non_normalized_rational_physical_quantity(numerator, denominator)
+// takes a num and/or denom that are physical quantities, and produces a
+//     physical_quantity<non_normalized_rational<base numeric type>, units>
+// with the correct units (or just a non_normalized_rational if those units
+// are dimensionless).
 template<typename Num, typename Den>
 inline typename
 make_non_normalized_rational_physical_quantity_info<decltype(std::declval<Num>() / std::declval<Den>())>::type
@@ -996,7 +808,6 @@ make_non_normalized_rational_physical_quantity(Num num, Den den) {
       get(den, typename get_units<Den>::type())),
     typename info::units());
 }
-
 template<typename Num>
 inline typename
 make_non_normalized_rational_physical_quantity_info<Num>::type
@@ -1009,6 +820,7 @@ make_non_normalized_rational_physical_quantity(Num num) {
     typename info::units());
 }
 
+// support std::abs
 namespace std {
 template<typename Num, typename Units>
 inline physical_quantity<Num, Units>
@@ -1017,16 +829,10 @@ abs(physical_quantity<Num, Units> a) {
 }
 }
 
-#if 0 /*TODO*/
-#ifdef SKIP_UNIT_CHECKING
-template<typename Num, typename Units> using units<Num, Units> = Num;
-#endif
-#endif
-
 //class coordinate?
 
-
-
+// =========[FRIENDLY UNITS]==========
+//
 // === Basic units ===
 typedef units<> radians_t; // the mathematically natural unit of angle
 typedef units<dim::tau<1>> full_circles_t; // an often-convenient unit of angle
@@ -1096,6 +902,289 @@ constexpr auto nano  = nano_t();
 constexpr auto pico  = pico_t();
 constexpr auto femto = femto_t();
 constexpr auto atto  = atto_t();
+
+// === Factors of your choice ===
+
+template<typename Ratio>
+struct units_ratio_t {
+  typedef units<typename dim::make_ratio<Ratio::num, Ratio::den>::type> type;
+};
+template<intmax_t Num, intmax_t Den = 1>
+struct units_factor_t {
+  typedef units<typename dim::make_ratio<Num, Den>::type> type;
+};
+
+template<intmax_t Num, intmax_t Den = 1>
+constexpr inline typename units_factor_t<Num, Den>::type units_factor() {
+  return typename units_factor_t<Num, Den>::type();
+}
+template<typename Ratio>
+constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
+  return typename units_ratio_t<Ratio>::type();
+}
+
+
+
+
+///////////////////////////////////////////////////////////////////////////
+//////////// EXTRA-BORING IMPLEMENTATION DETAILS BELOW HERE ///////////////
+///////////////////////////////////////////////////////////////////////////
+
+
+#if 0 /*TODO*/
+#ifdef SKIP_UNIT_CHECKING
+template<typename Num, typename Units> using units<Num, Units> = Num;
+#endif
+#endif
+
+
+// Specialize numbers.hpp's numeric_representation_cast<>
+// for the sake of e.g. vector3's dot product implementation.
+template<typename Target, typename Units, typename Num>
+struct numeric_representation_cast_impl<physical_quantity<Target, Units>, Num> {
+  typedef typename make_physical_quantity_type<Target, typename get_units<Num>::type>::type
+      target_type;
+};
+template<typename Target, typename Units, typename Num>
+struct numeric_representation_cast_impl<Target, physical_quantity<Num, Units>> {
+  typedef typename make_physical_quantity_type<typename get_units<Target>::representation_type, Units>::type
+      target_type;
+};
+template<typename Target, typename Units, typename Num, typename Units1>
+struct numeric_representation_cast_impl<physical_quantity<Target, Units1>, physical_quantity<Num, Units>> {
+  typedef typename make_physical_quantity_type<Target, Units>::type target_type;
+};
+
+namespace units_impl {
+
+
+template<> struct show_units_impl<units<>> {
+  static void show(std::ostream& os) {
+    os << "[1]"; } };
+template<typename DimKind> struct show_units_impl<units<DimKind>> {
+  static void show(std::ostream& os) {
+    os << DimKind(); } };
+template<typename DimKind, typename...DimKinds>
+struct show_units_impl<units<DimKind, DimKinds...>> {
+  static void show(std::ostream& os) {
+    os << DimKind() << '*';
+    show_units_impl<units<DimKinds...>>::show(os); } };
+
+
+template<typename Units, typename Impl, bool Nonunit, bool NonunitScalar>
+struct result_of_get_units : units_impl::units_result<Units> {
+  typedef Impl representation_type;
+  static const bool is_nonunit_type = Nonunit;
+  static const bool is_nonunit_scalar = NonunitScalar;
+};
+
+// * numeric non-dimensional types
+template<typename T, typename = typename boost::enable_if_c<
+      std::numeric_limits<T>::is_specialized>::type>
+result_of_get_units<units<>, T, true, true> overload_find_units_type(T); //unimplemented
+
+// * metafunction containing a unit or related type:
+template<typename T, typename = typename boost::enable_if_c<
+      !get_units_impl<typename T::type>::is_nonunit_type>::type>
+get_units_impl<typename T::type> overload_find_units_type(T); //unimplemented
+
+// * dimension kind:
+template<typename T, dim::dimension_kind_tag = T::tag, typename = typename boost::enable_if_c<
+  dim::is_identity<T>::value>::type>
+result_of_get_units<units<>, void, false, false> overload_find_units_type(T); //unimplemented
+
+template<typename T, dim::dimension_kind_tag = T::tag, typename = typename boost::disable_if_c<
+  dim::is_identity<T>::value>::type>
+result_of_get_units<units<T>, void, false, false> overload_find_units_type(T); //unimplemented
+
+template<typename Num, typename Units>
+struct get_units_impl<physical_quantity<Num, Units>> : units_impl::units_result<Units> {
+  typedef typename physical_quantity_representation_type<Num>::type representation_type;
+  static const bool is_nonunit_type = false;
+  static const bool is_nonunit_scalar = false;
+};
+template<typename...U>
+struct get_units_impl<units<U...>> : units_impl::units_result<units<U...>> {
+  typedef void representation_type;
+  static const bool is_nonunit_type = false;
+  static const bool is_nonunit_scalar = false;
+};
+template<typename T>
+struct get_units_impl<bounds_checked_int<T>> : get_units_impl<T> {};
+
+template<typename T>
+struct get_units_impl : decltype(overload_find_units_type(std::declval<T>())) {};
+
+
+
+template<dim::dimension_kind_tag Tag, typename DimKindQ, typename Units,
+  bool Correct = (DimKindQ::tag == Tag)> struct get_dimension_kind_impl;
+template<dim::dimension_kind_tag Tag, typename DimKindQ>
+struct get_dimension_kind_impl<Tag, DimKindQ, units<>, false> :
+  dim::identity<Tag> {};
+template<dim::dimension_kind_tag Tag, typename DimKindQ, typename...DimKinds>
+struct get_dimension_kind_impl<Tag, DimKindQ, units<DimKinds...>, true> {
+  typedef DimKindQ type;
+};
+template<dim::dimension_kind_tag Tag, typename DimKindQ, typename DimKind, typename...DimKinds>
+struct get_dimension_kind_impl<Tag, DimKindQ, units<DimKind, DimKinds...>, false> :
+  get_dimension_kind_impl<Tag, DimKind, units<DimKinds...>> {};
+
+template<dim::dimension_kind_tag Tag>
+struct get_dimension_kind_impl2<Tag, units<>> : dim::identity<Tag> {};
+template<dim::dimension_kind_tag Tag, typename DimKind, typename...DimKinds>
+struct get_dimension_kind_impl2<Tag, units<DimKind, DimKinds...>> :
+  get_dimension_kind_impl<Tag, DimKind, units<DimKinds...>> {};
+
+
+
+// private; does not check for correct dim-kind ordering:
+template<typename DimKind, typename Units, bool IsIdentity = dim::is_identity<DimKind>::value>
+struct units_cons;
+template<typename DimKind, typename...DimKinds>
+struct units_cons<DimKind, units<DimKinds...>, false> {
+  typedef units<DimKind, DimKinds...> type;
+};
+template<typename DimKind, typename...DimKinds>
+struct units_cons<DimKind, units<DimKinds...>, true> {
+  typedef units<DimKinds...> type;
+};
+// "Compare": -1 if left < right; 0 if left == right; 1 if left > right.
+// DimKinds are sorted with lesser tags first.
+template<int Compare, typename UnitsA, typename UnitsB> struct units_zip;
+template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
+struct units_zip<0, units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...>> :
+  units_cons<typename dim::combine<DimKind1A, DimKind1B>::type,
+    typename multiply_units<units<DimKindsA...>, units<DimKindsB...>>::type> {};
+template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
+struct units_zip<-1, units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...>> :
+  units_cons<DimKind1A,
+    typename multiply_units<units<DimKindsA...>, units<DimKind1B, DimKindsB...>>::type> {};
+template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
+struct units_zip<1, units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...>> :
+  units_cons<DimKind1B,
+    typename multiply_units<units<DimKind1A, DimKindsA...>, units<DimKindsB...>>::type> {};
+
+template<typename DimKind1A, typename...DimKindsA, typename DimKind1B, typename...DimKindsB>
+struct multiply_units<units<DimKind1A, DimKindsA...>, units<DimKind1B, DimKindsB...> > :
+  units_impl::units_zip<
+    ((DimKind1A::tag > DimKind1B::tag) - (DimKind1A::tag < DimKind1B::tag)),
+    units<DimKind1A, DimKindsA...>,  units<DimKind1B, DimKindsB...> > {};
+template<typename Units> struct multiply_units<Units, units<> > { typedef Units type; };
+template<typename Units> struct multiply_units<units<>, Units> { typedef Units type; };
+template<> struct multiply_units<units<>, units<>> { typedef units<> type; };
+
+template<typename UnitsA, typename UnitsB>
+struct divide_units : multiply_units<UnitsA, typename units_recip<UnitsB>::type> {};
+
+}
+
+template<> struct units_prod<> { typedef units<> type; };
+template<typename...U> struct units_prod<units<U...>> { typedef units<U...> type; };
+template<typename...U, typename... Unitses> struct units_prod<units<U...>, Unitses...> {
+  typedef typename units_impl::multiply_units<units<U...>, typename units_prod<Unitses...>::type>::type type;
+};
+template<typename UnitLike, typename... Unitses>
+struct units_prod<UnitLike, Unitses...>
+  : units_prod<typename get_units<UnitLike>::type, Unitses...> {};
+
+
+// And now, all those multiplication and division operators!
+
+template<typename...UA, typename...UB>
+inline constexpr
+typename units_impl::multiply_units<units<UA...>, units<UB...>>::type
+operator*(units<UA...>, units<UB...>) {
+  return typename units_impl::multiply_units<units<UA...>, units<UB...>>::type();
+}
+
+template<typename...UA, typename...UB>
+inline constexpr typename units_impl::divide_units<units<UA...>, units<UB...>>::type
+operator/(units<UA...>, units<UB...>) {
+  return typename units_impl::divide_units<units<UA...>, units<UB...>>::type();
+}
+
+
+
+template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
+inline typename
+make_physical_quantity_type<
+    decltype(std::declval<NumA>() * std::declval<NumB>()),
+    typename units_impl::multiply_units<UnitsA, UnitsB>::type
+  >::type
+operator*(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b) {
+  return make_physical_quantity_type<
+          decltype(std::declval<NumA>() * std::declval<NumB>()),
+          typename units_impl::multiply_units<UnitsA, UnitsB>::type
+      >::construct(a.get(UnitsA()) * b.get(UnitsB()));
+}
+
+template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
+inline typename
+make_physical_quantity_type<
+    decltype(std::declval<NumA>() / std::declval<NumB>()),
+    typename units_impl::divide_units<UnitsA, UnitsB>::type
+  >::type
+operator/(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b) {
+  return make_physical_quantity_type<
+          decltype(std::declval<NumA>() / std::declval<NumB>()),
+          typename units_impl::divide_units<UnitsA, UnitsB>::type
+      >::construct(a.get(UnitsA()) / b.get(UnitsB()));
+}
+
+
+
+
+template<typename Num, typename...U>
+inline
+typename make_physical_quantity_type<
+  typename boost::enable_if_c<get_units<Num>::is_nonunit_scalar, Num>::type,
+  units<U...>
+>::type
+operator*(Num a, units<U...>) {
+  return make_physical_quantity_type<Num, units<U...>>::construct(a);
+}
+
+template<typename Num, typename UnitsA, typename...UB>
+inline typename
+make_physical_quantity_type<Num, typename units_impl::multiply_units<UnitsA, units<UB...>>::type>::type
+operator*(physical_quantity<Num, UnitsA> a, units<UB...>) {
+  return make_physical_quantity_type<
+            Num, typename units_impl::multiply_units<UnitsA, units<UB...>>::type
+    >::construct(a.get(UnitsA()));
+}
+
+
+
+
+
+template<typename Num, typename...U>
+inline
+typename make_physical_quantity_type<
+  typename boost::enable_if_c<get_units<Num>::is_nonunit_scalar, Num>::type,
+  typename units_recip<units<U...>>::type
+>::type
+operator/(Num a, units<U...>) {
+  return make_physical_quantity_type<
+            Num, typename units_recip<units<U...>>::type
+    >::construct(a);
+}
+
+template<typename Num, typename UnitsA, typename...UB>
+inline
+typename make_physical_quantity_type<
+  Num, typename units_impl::divide_units<UnitsA, units<UB...>>::type
+>::type
+operator/(physical_quantity<Num, UnitsA> a, units<UB...>) {
+  return make_physical_quantity_type<
+            Num, typename units_impl::divide_units<UnitsA, units<UB...>>::type
+    >::construct(a.get(UnitsA()));
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//////////// EXTRA-BORING IMPLEMENTATION DETAILS ABOVE HERE ///////////////
+///////////////////////////////////////////////////////////////////////////
 
 
 #endif
