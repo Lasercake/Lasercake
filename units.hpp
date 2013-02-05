@@ -31,14 +31,56 @@
 #include <boost/type_traits/conditional.hpp>
 #include "utils.hpp"
 
-// Principle: all units replaced with int(1) and identity plain int types should
-// get the same results; this is just a checking mechanism.
+// === units ===
+//
+// This module is a mechanism you can use to cause yourself type errors
+// when your code has variables with certain physical dimensions or constant
+// factors and you try something nonsensical (like
+// adding meters to seconds).[1]
+//
+// Instead of using, say, int32_t, you can use
+//   physical_quantity<int32_t, meters_t>.
+// Most operations on a physical_quantity type require the dimensions to
+// remain the same (the numeric type follows the numeric promotions of the
+// base type[2]).  Multiplication and division multiply or divide the quantities'
+// unit types; e.g. dividing meters by seconds gives you a quantity
+// with unit type meters per second.
+//
+// == creation and extraction ==
+// You create a variable of a unit type by calling make(42, meters) or
+// multiplying (42 * meters).  You retrieve a value 'distance' for use with
+// code that can't handle physical_quantity types by calling
+// get(distance, meters) or dividing (distance / meters).
+//
+// == unit types ==
+//
+// The units argument of physical_quantity<> is an instantiation of units<>.
+// units<> is a variadic template taking a sequence of dimension kinds
+// from the "dim" namespace (see documentation below if you want to add a
+// dimension kind or use these directly).  An example unit is
+//   typedef units<dim::ratio<1000>, dim::kilogram<1>, dim::meter<2>,
+//                                            dim::second<-2>>
+//       kilonewtons_t;
+// A selection of common units is provided 
+//
+// [1] Principle: replacing "units<>" variables with "1" and physical_quantity
+// types with their underlying numeric type should not change code behavior.
+// This is just a checking mechanism.
 // Overflow/underflow and undefined behavior are forbidden.
+//
+// [2] For convenience, because you probably don't want modulo
+// behavior in units, physical_quantity wraps the numeric type in
+// lasercake_int which may bounds_checked_int the contained type.
+// We may make this configurable in the future.
+
+
+
 // Oh hmm neat I can rely on bounds_checked_int to enforce signed/unsigned
 // although the error messages will be ugly.
 
 // units<> * T not supported, but T * units<> is.  physical_quantity<> can be on either side.
 
+// TODO document more
 
 template<intmax_t Num, intmax_t Den>
 inline std::ostream& show_ratio(std::ostream& os) {
