@@ -1,6 +1,6 @@
 /*
 
-    Copyright Eli Dupree and Isaac Dupree, 2011, 2012
+    Copyright Eli Dupree and Isaac Dupree, 2011, 2012, 2013
 
     This file is part of Lasercake.
 
@@ -241,23 +241,60 @@ inline int32_t count_trailing_zeroes_64(uint64_t argument) {
 }
 
 
-template<uintmax_t Base, uintmax_t Exponent>
-struct static_pow_nonnegative_integer {
-  static_assert(Exponent < std::numeric_limits<uintmax_t>::digits, "certain overflow");
-  static const uintmax_t recur = static_pow_nonnegative_integer<Base, Exponent-1>::value;
-  static const uintmax_t value = Base * recur;
-  static_assert(value / Base == recur && value / recur == Base, "overflow");
+template<uintmax_t Result>
+struct static_pow_nonnegative_integer_answer {
+  static const uintmax_t value = Result; // result or max uintmax_t for overflow
+  static const uintmax_t value_minus_one = value - 1; //result-1 or max uintmax_t for overflow
+  static const uintmax_t modulo_value = Result; // result
+  static const bool overflow = false;
 };
-template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 0> {
-  static const uintmax_t value = 1; };
-template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 1> {
-  static const uintmax_t value = Base; };
-template<uintmax_t Exponent> struct static_pow_nonnegative_integer<1, Exponent> {
-  static const uintmax_t value = 1; };
-template<> struct static_pow_nonnegative_integer<1, 1> {
-  static const uintmax_t value = 1; };
-template<> struct static_pow_nonnegative_integer<0, 0> {
-  static const uintmax_t value = 1; }; // usually the best choice for 0^0
+template<uintmax_t A, uintmax_t B, bool AlreadyOverflowing = false>
+struct static_multiply_nonnegative_integer {
+  static const uintmax_t modulo_value = A * B;
+  static const bool overflow = AlreadyOverflowing
+    || modulo_value / (B?B:1) != (B?A:0)  //if B!=0, check
+    || modulo_value / (A?A:1) != (A?B:0); //if A!=0, check
+  static const uintmax_t value = (overflow ? uintmax_t(-1) : modulo_value);
+  static const uintmax_t value_minus_one = (overflow ? uintmax_t(-1) : modulo_value - 1);
+};
+
+template<typename A, typename B>
+struct static_re_multiply_nonnegative_integer
+  : static_multiply_nonnegative_integer<A::modulo_value, B::modulo_value,
+                                          (A::overflow || B::overflow)> {};
+
+
+
+template<typename Base, uintmax_t Exponent, bool Odd = (Exponent % 2 == 1)>
+struct static_pow_nonnegative_integer_impl;
+template<typename B> struct static_pow_nonnegative_integer_impl<B, 0, false>
+  : static_pow_nonnegative_integer_answer<1> {};
+template<typename B> struct static_pow_nonnegative_integer_impl<B, 1, true>
+  : B {};
+template<typename B> struct static_pow_nonnegative_integer_impl<B, 2, false>
+  : static_re_multiply_nonnegative_integer<B, B> {};
+template<typename B, uintmax_t EvenExponent> struct static_pow_nonnegative_integer_impl<B, EvenExponent, false>
+  : static_re_multiply_nonnegative_integer<
+      static_pow_nonnegative_integer_impl<B, EvenExponent/2>,
+      static_pow_nonnegative_integer_impl<B, EvenExponent/2>
+      > {};
+template<typename B, uintmax_t OddExponent> struct static_pow_nonnegative_integer_impl<B, OddExponent, true>
+  : static_re_multiply_nonnegative_integer<
+      B,
+      static_re_multiply_nonnegative_integer<
+        static_pow_nonnegative_integer_impl<B, OddExponent/2>,
+        static_pow_nonnegative_integer_impl<B, OddExponent/2>
+      > > {};
+
+template<uintmax_t Base, uintmax_t Exponent, bool AllowOverflow = false>
+struct static_pow_nonnegative_integer
+  : static_pow_nonnegative_integer_impl<
+      static_pow_nonnegative_integer_answer<Base>, Exponent> {
+  static_assert(AllowOverflow ||
+    !static_pow_nonnegative_integer_impl<
+      static_pow_nonnegative_integer_answer<Base>, Exponent>::overflow,
+    "exponentiation overflow");
+};
 
 template<uintmax_t Radicand, uintmax_t Root = 2>
 struct static_root_nonnegative_integer {
@@ -266,7 +303,7 @@ struct static_root_nonnegative_integer {
   struct recur {
     static const uintmax_t mid = ((LowerBound + UpperBound) >> 1);
     static const bool mid_is_new_upper_bound =
-      static_pow_nonnegative_integer<mid, Root>::value > Radicand;
+      static_pow_nonnegative_integer<mid, Root, true>::value_minus_one > Radicand - 1;
     static const uintmax_t new_lower_bound = mid_is_new_upper_bound ? LowerBound : mid;
     static const uintmax_t new_upper_bound = mid_is_new_upper_bound ? mid : UpperBound;
     static const bool done = new_lower_bound >= new_upper_bound - 1;

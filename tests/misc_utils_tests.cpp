@@ -1,6 +1,6 @@
 /*
 
-    Copyright Eli Dupree and Isaac Dupree, 2011, 2012
+    Copyright Eli Dupree and Isaac Dupree, 2011, 2012, 2013
 
     This file is part of Lasercake.
 
@@ -188,6 +188,9 @@ BOOST_AUTO_TEST_CASE( vector3_tests ) {
   }
 }
 
+static_assert(static_pow_nonnegative_integer<2,2>::value == 4, "bug");
+static_assert(static_pow_nonnegative_integer<2,3>::value == 8, "bug");
+static_assert(static_pow_nonnegative_integer<3,2>::value == 9, "bug");
 static_assert(static_pow_nonnegative_integer<9,7>::value == 4782969, "bug");
 static_assert(static_pow_nonnegative_integer<9,0>::value == 1, "bug");
 static_assert(static_pow_nonnegative_integer<0,1>::value == 0, "bug");
@@ -206,7 +209,7 @@ static_assert(static_root_nonnegative_integer<27,3>::value == 3, "bug");
 static_assert(static_root_nonnegative_integer<243,5>::value == 3, "bug");
 static_assert(static_root_nonnegative_integer<500,5>::remainder == 500-243, "bug");
 static_assert(static_root_nonnegative_integer<999999999,1>::value == 999999999, "bug");
-//static_assert(static_root_nonnegative_integer<1,999999999>::value == 1, "bug");
+static_assert(static_root_nonnegative_integer<1,999999999>::value == 1, "bug");
 static_assert(static_root_nonnegative_integer<0,3>::value == 0, "bug");
 
 
