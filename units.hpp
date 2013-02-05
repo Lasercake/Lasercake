@@ -724,14 +724,8 @@ public:
 
 // imbue_sign() multiplies the sign of arg 1 into the (signed) value of arg 2.
 template<typename T1, typename T2>
-inline //TODO write physical_quantity_prod<>?
-typename make_physical_quantity_type<
-  typename get_units<T2>::representation_type,
-  typename units_prod<
-    get_sign_components_of_units<T1>,
-    get_units<T2>
-  >::type
->::type
+inline
+decltype(std::declval<T2>() * typename get_sign_components_of_units<T1>::type())
 imbue_sign(T1 signum, T2 base_val) {
   static_assert(get_dimension_kind<dim::ratio_tag, T1>::type::num != 0, "imbuing an ambiguous sign");
   caller_error_if(signum == 0, "imbuing an ambiguous sign");
@@ -1017,6 +1011,14 @@ result_of_get_units<units<>, void, false, false> overload_find_units_type(T); //
 template<typename T, dim::dimension_kind_tag = T::tag, typename = typename boost::disable_if_c<
   dim::is_identity<T>::value>::type>
 result_of_get_units<units<T>, void, false, false> overload_find_units_type(T); //unimplemented
+
+// * invalid result ( ::type omitted to facilitate SFINAE ).
+struct invalid_get_units {
+  static const bool is_nonunit_type = true;
+  static const bool is_nonunit_scalar = false;
+};
+invalid_get_units overload_find_units_type(...); //unimplemented
+
 
 template<typename Num, typename Units>
 struct get_units_impl<physical_quantity<Num, Units>> : units_impl::units_result<Units> {
