@@ -188,4 +188,24 @@ BOOST_AUTO_TEST_CASE( vector3_tests ) {
   }
 }
 
+static_assert(static_pow_nonnegative_integer<9,7>::value == 4782969, "bug");
+static_assert(static_pow_nonnegative_integer<9,0>::value == 1, "bug");
+static_assert(static_pow_nonnegative_integer<0,1>::value == 0, "bug");
+static_assert(static_pow_nonnegative_integer<0,0>::value == 1, "this is generally useful");
+//static_assert(static_pow_nonnegative_integer<1,999999999>::value == 1, "bug");
+static_assert(static_pow_nonnegative_integer<2,32>::value == 0x100000000ull, "bug");
+
+static_assert(static_root_nonnegative_integer<9,2>::value == 3, "bug");
+static_assert(static_root_nonnegative_integer<9,2>::remainder == 0, "bug");
+static_assert(static_root_nonnegative_integer<10,2>::value == 3, "bug");
+static_assert(static_root_nonnegative_integer<10,2>::remainder == 1, "bug");
+static_assert(static_root_nonnegative_integer<8,2>::value == 2, "bug");
+static_assert(static_root_nonnegative_integer<8,2>::remainder == 4, "bug");
+static_assert(static_root_nonnegative_integer<27,3>::value == 3, "bug");
+static_assert(static_root_nonnegative_integer<243,5>::value == 3, "bug");
+static_assert(static_root_nonnegative_integer<500,5>::remainder == 500-243, "bug");
+static_assert(static_root_nonnegative_integer<999999999,1>::value == 999999999, "bug");
+//static_assert(static_root_nonnegative_integer<1,999999999>::value == 1, "bug");
+
+
 }  /* end anonymous namespace */
