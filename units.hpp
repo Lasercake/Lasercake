@@ -61,7 +61,7 @@
 //   typedef units<dim::ratio<1000>, dim::kilogram<1>, dim::meter<2>,
 //                                            dim::second<-2>>
 //       kilonewtons_t;
-// A selection of common units is provided 
+// A selection of common units is provided at the end of this file.
 //
 // [1] Principle: replacing "units<>" variables with "1" and physical_quantity
 // types with their underlying numeric type should not change code behavior.
@@ -81,37 +81,6 @@
 // units<> * T not supported, but T * units<> is.  physical_quantity<> can be on either side.
 
 // TODO document more
-
-template<intmax_t Num, intmax_t Den>
-inline std::ostream& show_ratio(std::ostream& os) {
-  typedef boost::ratio<Num, Den> ratio;
-  static const bool negative = (ratio::num < 0);
-  static const intmax_t positive_num = (negative ? -ratio::num : ratio::num);
-  typedef extract_factor<10, positive_num> num_tens;
-  typedef extract_factor<10, ratio::den> den_tens;
-  static const bool do_pow10 = (num_tens::factor_exponent + den_tens::factor_exponent) >= 4;
-  static const int pow10_exp = num_tens::factor_exponent - den_tens::factor_exponent;
-  static const intmax_t numB = (do_pow10 ? num_tens::rest_of_factoree : positive_num);
-  static const intmax_t denB = (do_pow10 ? den_tens::rest_of_factoree : ratio::den);
-  typedef extract_factor<2, numB> num_twos;
-  typedef extract_factor<2, denB> den_twos;
-  static const bool do_pow2 = (num_twos::factor_exponent + den_twos::factor_exponent) >= 11;
-  static const int pow2_exp = num_twos::factor_exponent - den_twos::factor_exponent;
-  static const intmax_t numC = (do_pow2 ? num_twos::rest_of_factoree : numB);
-  static const intmax_t denC = (do_pow2 ? den_twos::rest_of_factoree : denB);
-  static const bool brackets = // all the time except a specific case
-    !(!negative && numC == 1 && denC == 1 && (do_pow10 + do_pow2 == 1));
-  bool star = false;
-  if(brackets) { os << '['; }
-  if(negative) { os << '-'; }
-  if(numC != 1 || denC != 1) { if(star) {os << '*';}; os << numC; star = true; }
-  if(denC != 1) { os << '/' << denC; star = true; }
-  if(do_pow2) { if(star) {os << '*';}; os << "2^" << pow2_exp; star = true;}
-  if(do_pow10) { if(star) {os << '*';}; os << "10^" << pow10_exp; star = true;}
-  if(!star) { os << '1'; }
-  if(brackets) { os << ']'; }
-  return os;
-}
 
 namespace dim {
   enum dimension_kind_tag {
@@ -144,8 +113,6 @@ namespace dim {
     // pseudovectors, pseudoscalars: sign dependent on space's arbitrary chirality
     pseudo_tag
   };
-
-  template<dimension_kind_tag Tag> struct identity;
 
   // A dimension-kind is a mathematical group.
   // A sensible one, for example, is {meter^N | N <- integers}.
@@ -202,6 +169,8 @@ namespace dim {
   //
   // Finally, you must specialize identity<your_tag>.  Example:
   //  template<> struct identity<your_tag>  { typedef typename your_dim_kind<0>::identity type; };
+
+  template<dimension_kind_tag Tag> struct identity;
 
   template<typename A, typename B>
   struct combine : A::template combine<B> {};
@@ -329,6 +298,36 @@ namespace dim {
     }
   };
 
+  template<intmax_t Num, intmax_t Den>
+  inline std::ostream& show_ratio(std::ostream& os) {
+    typedef boost::ratio<Num, Den> ratio;
+    static const bool negative = (ratio::num < 0);
+    static const intmax_t positive_num = (negative ? -ratio::num : ratio::num);
+    typedef extract_factor<10, positive_num> num_tens;
+    typedef extract_factor<10, ratio::den> den_tens;
+    static const bool do_pow10 = (num_tens::factor_exponent + den_tens::factor_exponent) >= 4;
+    static const int pow10_exp = num_tens::factor_exponent - den_tens::factor_exponent;
+    static const intmax_t numB = (do_pow10 ? num_tens::rest_of_factoree : positive_num);
+    static const intmax_t denB = (do_pow10 ? den_tens::rest_of_factoree : ratio::den);
+    typedef extract_factor<2, numB> num_twos;
+    typedef extract_factor<2, denB> den_twos;
+    static const bool do_pow2 = (num_twos::factor_exponent + den_twos::factor_exponent) >= 11;
+    static const int pow2_exp = num_twos::factor_exponent - den_twos::factor_exponent;
+    static const intmax_t numC = (do_pow2 ? num_twos::rest_of_factoree : numB);
+    static const intmax_t denC = (do_pow2 ? den_twos::rest_of_factoree : denB);
+    static const bool brackets = // all the time except a specific case
+      !(!negative && numC == 1 && denC == 1 && (do_pow10 + do_pow2 == 1));
+    bool star = false;
+    if(brackets) { os << '['; }
+    if(negative) { os << '-'; }
+    if(numC != 1 || denC != 1) { if(star) {os << '*';}; os << numC; star = true; }
+    if(denC != 1) { os << '/' << denC; star = true; }
+    if(do_pow2) { if(star) {os << '*';}; os << "2^" << pow2_exp; star = true;}
+    if(do_pow10) { if(star) {os << '*';}; os << "10^" << pow10_exp; star = true;}
+    if(!star) { os << '1'; }
+    if(brackets) { os << ']'; }
+    return os;
+  }
   //ratio? factor? rational_factor?
   template<intmax_t Num, intmax_t Den = 1>
   struct ratio : dimension_kind_base<ratio<Num, Den>, ratio_tag> {
@@ -674,76 +673,6 @@ constexpr inline typename units_ratio_t<Ratio>::type units_factor() {
   return typename units_ratio_t<Ratio>::type();
 }
 
-
-// === Basic units ===
-typedef units<> radians_t; // the mathematically natural unit of angle
-typedef units<dim::tau<1>> full_circles_t; // an often-convenient unit of angle
-typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t; // a unit of angle
-
-typedef units<dim::kilogram<1>> kilograms_t;
-typedef units<dim::ratio<1, 1000>, dim::kilogram<1>> grams_t;
-typedef units<dim::meter<1>> meters_t;
-typedef units<dim::second<1>> seconds_t;
-typedef units<dim::ampere<1>> amperes_t;
-typedef units<dim::kelvin<1>> kelvins_t;
-typedef units<dim::pseudo<true>> pseudo_t;
-
-constexpr auto full_circles = full_circles_t();
-constexpr auto kilograms    = kilograms_t();
-constexpr auto grams        = grams_t();
-constexpr auto meters       = meters_t();
-constexpr auto seconds      = seconds_t();
-constexpr auto amperes      = amperes_t();
-constexpr auto kelvins      = kelvins_t();
-constexpr auto pseudo       = pseudo_t();
-constexpr auto degrees      = degrees_t();
-
-// === Derived units ===
-// For consistency in coding style, we do not capitalize unit
-// names (such as Newton) that SI conventionally capitalizes.
-
-// Parentheses around negative exponents are solely to make KDevelop
-// understand better.
-
-typedef units<dim::second<(-1)>> hertz_t;
-typedef units<dim::kilogram<1>, dim::meter<1>, dim::second<(-2)>> newtons_t;
-typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-2)>> joules_t;
-typedef units<dim::kilogram<1>, dim::meter<(-1)>, dim::second<(-2)>> pascals_t;
-typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>> watts_t;
-typedef units<dim::second<1>, dim::ampere<1>> coulombs_t;
-typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-1)>> volts_t;
-typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-2)>> ohms_t;
-
-
-// === SI prefixes ===
-
-typedef units<dim::ratio<1000>> kilo_t;
-typedef units<dim::ratio<1000000>> mega_t;
-typedef units<dim::ratio<1000000000>> giga_t;
-typedef units<dim::ratio<1000000000000>> tera_t;
-typedef units<dim::ratio<1000000000000000>> peta_t;
-typedef units<dim::ratio<1000000000000000000>> exa_t;
-
-typedef units<dim::ratio<1, 1000>> milli_t;
-typedef units<dim::ratio<1, 1000000>> micro_t;
-typedef units<dim::ratio<1, 1000000000>> nano_t;
-typedef units<dim::ratio<1, 1000000000000>> pico_t;
-typedef units<dim::ratio<1, 1000000000000000>> femto_t;
-typedef units<dim::ratio<1, 1000000000000000000>> atto_t;
-
-constexpr auto kilo = kilo_t();
-constexpr auto mega = mega_t();
-constexpr auto giga = giga_t();
-constexpr auto tera = tera_t();
-constexpr auto peta = peta_t();
-constexpr auto exa  = exa_t();
-
-constexpr auto milli = milli_t();
-constexpr auto micro = micro_t();
-constexpr auto nano  = nano_t();
-constexpr auto pico  = pico_t();
-constexpr auto femto = femto_t();
-constexpr auto atto  = atto_t();
 
 
 
@@ -1094,5 +1023,79 @@ template<typename Num, typename Units> using units<Num, Units> = Num;
 #endif
 #endif
 
-//class coordinate 
+//class coordinate?
+
+
+
+// === Basic units ===
+typedef units<> radians_t; // the mathematically natural unit of angle
+typedef units<dim::tau<1>> full_circles_t; // an often-convenient unit of angle
+typedef units<dim::ratio<1, 360>, dim::tau<1>> degrees_t; // a unit of angle
+
+typedef units<dim::kilogram<1>> kilograms_t;
+typedef units<dim::ratio<1, 1000>, dim::kilogram<1>> grams_t;
+typedef units<dim::meter<1>> meters_t;
+typedef units<dim::second<1>> seconds_t;
+typedef units<dim::ampere<1>> amperes_t;
+typedef units<dim::kelvin<1>> kelvins_t;
+typedef units<dim::pseudo<true>> pseudo_t;
+
+constexpr auto full_circles = full_circles_t();
+constexpr auto kilograms    = kilograms_t();
+constexpr auto grams        = grams_t();
+constexpr auto meters       = meters_t();
+constexpr auto seconds      = seconds_t();
+constexpr auto amperes      = amperes_t();
+constexpr auto kelvins      = kelvins_t();
+constexpr auto pseudo       = pseudo_t();
+constexpr auto degrees      = degrees_t();
+
+// === Derived units ===
+// For consistency in coding style, we do not capitalize unit
+// names (such as Newton) that SI conventionally capitalizes.
+
+// Parentheses around negative exponents are solely to make KDevelop
+// understand better.
+
+typedef units<dim::second<(-1)>> hertz_t;
+typedef units<dim::kilogram<1>, dim::meter<1>, dim::second<(-2)>> newtons_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-2)>> joules_t;
+typedef units<dim::kilogram<1>, dim::meter<(-1)>, dim::second<(-2)>> pascals_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>> watts_t;
+typedef units<dim::second<1>, dim::ampere<1>> coulombs_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-1)>> volts_t;
+typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-2)>> ohms_t;
+
+
+// === SI prefixes ===
+
+typedef units<dim::ratio<1000>> kilo_t;
+typedef units<dim::ratio<1000000>> mega_t;
+typedef units<dim::ratio<1000000000>> giga_t;
+typedef units<dim::ratio<1000000000000>> tera_t;
+typedef units<dim::ratio<1000000000000000>> peta_t;
+typedef units<dim::ratio<1000000000000000000>> exa_t;
+
+typedef units<dim::ratio<1, 1000>> milli_t;
+typedef units<dim::ratio<1, 1000000>> micro_t;
+typedef units<dim::ratio<1, 1000000000>> nano_t;
+typedef units<dim::ratio<1, 1000000000000>> pico_t;
+typedef units<dim::ratio<1, 1000000000000000>> femto_t;
+typedef units<dim::ratio<1, 1000000000000000000>> atto_t;
+
+constexpr auto kilo = kilo_t();
+constexpr auto mega = mega_t();
+constexpr auto giga = giga_t();
+constexpr auto tera = tera_t();
+constexpr auto peta = peta_t();
+constexpr auto exa  = exa_t();
+
+constexpr auto milli = milli_t();
+constexpr auto micro = micro_t();
+constexpr auto nano  = nano_t();
+constexpr auto pico  = pico_t();
+constexpr auto femto = femto_t();
+constexpr auto atto  = atto_t();
+
+
 #endif
