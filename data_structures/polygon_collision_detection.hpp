@@ -46,34 +46,34 @@ typedef int64_t geometry_int_type;
 typedef lasercake_int<geometry_int_type>::type polygon_int_type;
 typedef lasercake_int<geometry_int_type>::type dimensionless;
 
-typedef unit<non_normalized_rational<dimensionless>, seconds_t> rational_time;
+typedef physical_quantity<non_normalized_rational<dimensionless>, seconds_t> rational_time;
 typedef faux_optional<rational_time> optional_rational_time;
 
-typedef unit<non_normalized_rational<dimensionless>, fine_units_t> rational_coord;
+typedef physical_quantity<non_normalized_rational<dimensionless>, fine_units_t> rational_coord;
 
 typedef non_normalized_rational<dimensionless> dimensionless_rational;
 typedef faux_optional<dimensionless_rational> optional_dimensionless_rational;
 
-typedef typename fine_units_t::units_pow<2>::type fine_units2_t;
-typedef typename fine_units_t::units_pow<3>::type fine_units3_t;
-typedef typename fine_units_t::units_pow<4>::type fine_units4_t;
-typedef typename fine_units_t::units_pow<5>::type fine_units5_t;
+typedef typename units_pow<fine_units_t, 2>::type fine_units2_t;
+typedef typename units_pow<fine_units_t, 3>::type fine_units3_t;
+typedef typename units_pow<fine_units_t, 4>::type fine_units4_t;
+typedef typename units_pow<fine_units_t, 5>::type fine_units5_t;
 typedef typename units_prod<fine_units_t, pseudo_t>::type pseudo_fine_units_t;
 typedef typename units_prod<fine_units2_t, pseudo_t>::type pseudo_fine_units2_t;
 typedef typename units_prod<fine_units3_t, pseudo_t>::type pseudo_fine_units3_t;
 typedef typename units_prod<fine_units4_t, pseudo_t>::type pseudo_fine_units4_t;
 typedef typename units_prod<fine_units5_t, pseudo_t>::type pseudo_fine_units5_t;
 
-typedef unit<geometry_int_type, fine_units_t> coord;
-typedef unit<geometry_int_type, fine_units2_t> coord2;
-typedef unit<geometry_int_type, fine_units3_t> coord3;
-typedef unit<geometry_int_type, fine_units4_t> coord4;
-typedef unit<geometry_int_type, fine_units5_t> coord5;
-typedef unit<geometry_int_type, pseudo_fine_units_t> pseudocoord;
-typedef unit<geometry_int_type, pseudo_fine_units2_t> pseudocoord2;
-typedef unit<geometry_int_type, pseudo_fine_units3_t> pseudocoord3;
-typedef unit<geometry_int_type, pseudo_fine_units4_t> pseudocoord4;
-typedef unit<geometry_int_type, pseudo_fine_units5_t> pseudocoord5;
+typedef physical_quantity<geometry_int_type, fine_units_t> coord;
+typedef physical_quantity<geometry_int_type, fine_units2_t> coord2;
+typedef physical_quantity<geometry_int_type, fine_units3_t> coord3;
+typedef physical_quantity<geometry_int_type, fine_units4_t> coord4;
+typedef physical_quantity<geometry_int_type, fine_units5_t> coord5;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units_t> pseudocoord;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units2_t> pseudocoord2;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units3_t> pseudocoord3;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units4_t> pseudocoord4;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units5_t> pseudocoord5;
 typedef vector3<coord> vect;
 typedef vector3<coord2> vect2;
 typedef vector3<coord3> vect3;
@@ -86,8 +86,8 @@ typedef vector3<pseudocoord4> pseudovect4;
 typedef vector3<pseudocoord5> pseudovect5;
 
 // TODO check if these ought be the same as the world_constants units
-typedef typename divide_units<fine_units_t, seconds_t>::type geom_velocity_units_t;
-typedef unit<geometry_int_type, geom_velocity_units_t> geom_velocity_scalar;
+typedef typename units_prod<fine_units_t, dim::second<(-1)>>::type geom_velocity_units_t;
+typedef physical_quantity<geometry_int_type, geom_velocity_units_t> geom_velocity_scalar;
 typedef vector3<geom_velocity_scalar> geom_velocity_vect;
 
 struct polygon_collision_info_cache {

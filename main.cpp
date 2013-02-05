@@ -423,7 +423,8 @@ int main(int argc, char *argv[])
     po::notify(vm);
 
     config.view_radius =
-      unit<int64_t, tile_widths_t>(vm["view-radius"].as<uint32_t>() * tile_widths)
+      physical_quantity<int64_t, tile_widths_t>(
+          vm["view-radius"].as<uint32_t>() * tile_widths)
       * identity(fine_units / tile_widths);
     if(!config.run_drawing_code) {
       config.have_gui = false;

@@ -372,7 +372,8 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(
       // point is inside the polyhedron.
     }
     else {
-      const rational_time moment = make_non_normalized_rational_unit(disp_dotprod, vel_dotprod);
+      const rational_time moment = make_non_normalized_rational_physical_quantity(
+                                    disp_dotprod, vel_dotprod);
       if (vel_dotprod < 0) {
         //
         if (!max || (moment < *max)) {
@@ -403,7 +404,9 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(
   // The movement code uses this: if the movement is INTO this plane then it's blocked, if it's
   // OUT OF this plane then it's fudged by allowing it not to collide.
   if (result.min <= rational_time(0) && result.max >= rational_time(0)) {
-    const rational_coord no_excl_dist = make_non_normalized_rational_unit<coord>(-1*fine_units);
+    // TODO fix this hack
+    const rational_coord no_excl_dist = make_non_normalized_rational_physical_quantity<coord>(
+                                          -1*fine_units);
     rational_coord closest_excl_dist = no_excl_dist;
     for (pair_of_parallel_supporting_planes const& plane : relating_planes) {
       // NOTE: The magnitude calculation seems unavoidable here,
@@ -413,7 +416,7 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(
       // This calcuation has problems:
       // 1) Rounding error
       // 2) Seemingly unneeded extra height limit on the normal
-      const rational_coord this_excl_dist = make_non_normalized_rational_unit(
+      const rational_coord this_excl_dist = make_non_normalized_rational_physical_quantity(
           (plane.p1_base_point - plane.p2_base_point)
           .dot<polygon_int_type>(plane.p1_to_p2_normal),
           // divided by
@@ -1664,7 +1667,7 @@ should_keep_going check(
     if (compare(l.ends[0][dim], bb_min_or_max[dim])) return RETURN_NONE_IMMEDIATELY;
   }
   else {
-    const dimensionless_rational checkval = make_non_normalized_rational_unit(
+    const dimensionless_rational checkval = make_non_normalized_rational_physical_quantity(
       (l.ends[1][dim] > l.ends[0][dim] ? bb_min_or_max[dim] : bb_max_or_min[dim]) - l.ends[0][dim],
       l.ends[1][dim] - l.ends[0][dim]
     );
@@ -1729,7 +1732,7 @@ optional_dimensionless_rational planar_get_first_intersection(
   const coord2 Dy2mDy1 = Dy2 - Dy1;
   const coord3 ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
   if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return none;
-  else                                               return make_non_normalized_rational_unit(Dy1, Dy1 - Dy2);
+  else return make_non_normalized_rational_physical_quantity(Dy1, Dy1 - Dy2);
 }
 }
 } /* end anonymous namespace */
@@ -1804,7 +1807,8 @@ optional_dimensionless_rational get_first_intersection(line_segment l, convex_po
     }
   }
   
-  return make_non_normalized_rational_unit(skewed_z[0], skewed_z[0] - skewed_z[1]);
+  return make_non_normalized_rational_physical_quantity(
+            skewed_z[0],   skewed_z[0] - skewed_z[1]);
 }
 
 optional_dimensionless_rational get_first_intersection(line_segment l, convex_polyhedron const& p) {
@@ -1841,7 +1845,8 @@ optional_dimensionless_rational get_first_intersection(line_segment l, convex_po
       }
     }
     else {
-      const dimensionless_rational intersection_point = make_non_normalized_rational_unit(-l0_dot_normal, lv_dot_normal);
+      const dimensionless_rational intersection_point = make_non_normalized_rational_physical_quantity(
+        -l0_dot_normal, lv_dot_normal);
       if (lv_dot_normal > 0) {
         if (intersection_point < max_intersecting) {
           max_intersecting = intersection_point;

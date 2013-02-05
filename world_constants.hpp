@@ -38,7 +38,7 @@ typedef units<dim::ratio< 1, 200>, dim::meter<1>> fine_distance_units_t;
 typedef typename units_prod<fine_distance_units_t, dim::ratio<1, 30>>::type tile_physics_sub_tile_units_t;
 typedef units<dim::ratio<1, (2*2*2*2 * 3*3*3 * 5*5 * 7 * 11)>, dim::second<1>> time_units_t;
 typedef typename units_prod<fine_distance_units_t, hertz_t>::type velocity_units_t;
-typedef typename units_prod<milli_t, grams_t, meters_t::units_pow<(-3)>>::type density_units_t;
+typedef typename units_prod<milli_t, grams_t, units_pow<meters_t, (-3)>>::type density_units_t;
 typedef pascals_t pressure_units_t;
 
 
@@ -66,10 +66,10 @@ constexpr auto pressure_units = pressure_units_t();
 // We can fit it within 32 bits, so we might as well have faster math
 // (on 32bit, and possibly 64bit platform multiply/divides) and smaller storage.
 
-typedef unit<int64_t, fine_distance_units_t> distance;
-typedef unit<int32_t, tile_physics_sub_tile_units_t> sub_tile_distance;
-typedef unit<int64_t, tile_physics_sub_tile_units_t> large_sub_tile_distance;
-typedef unit<int64_t, time_units_t> time_unit;
+typedef physical_quantity<int64_t, fine_distance_units_t> distance;
+typedef physical_quantity<int32_t, tile_physics_sub_tile_units_t> sub_tile_distance;
+typedef physical_quantity<int64_t, tile_physics_sub_tile_units_t> large_sub_tile_distance;
+typedef physical_quantity<int64_t, time_units_t> time_unit;
 
 
 typedef distance fine_scalar; // TODO replace fine_scalar->distance.
