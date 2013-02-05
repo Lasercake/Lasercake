@@ -47,7 +47,7 @@
 // with unit type meters per second.
 //
 // == creation and extraction ==
-// You create a variable of a unit type by calling make(42, meters) or
+// You create a variable of a dimensional type by calling make(42, meters) or
 // multiplying (42 * meters).  You retrieve a value 'distance' for use with
 // code that can't handle physical_quantity types by calling
 // get(distance, meters) or dividing (distance / meters).
@@ -62,7 +62,9 @@
 //                                            dim::second<-2>>
 //       kilonewtons_t;
 // A selection of common units is provided near the end of this file;
-// look for "[FRIENDLY UNITS]".
+// look for "[FRIENDLY UNITS]".  There are also type-level ways to manipulate
+// units types throughout this file, with comments.  units_prod<..>::type
+// is particularly commonly useful.
 //
 // [1] Principle: replacing "units<>" variables with "1" and physical_quantity
 // types with their underlying numeric type should not change code behavior.
@@ -74,14 +76,10 @@
 // lasercake_int which may bounds_checked_int the contained type.
 // We may make this configurable in the future.
 
+// In current implementation (half-intentionally),
+// units<> * T not supported, but T * units<> is.
+// physical_quantity<> can be on either side.
 
-
-// Oh hmm neat I can rely on bounds_checked_int to enforce signed/unsigned
-// although the error messages will be ugly.
-
-// units<> * T not supported, but T * units<> is.  physical_quantity<> can be on either side.
-
-// TODO document more
 
 namespace dim {
   enum dimension_kind_tag {
