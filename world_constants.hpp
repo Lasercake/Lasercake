@@ -25,42 +25,59 @@
 #include "utils.hpp"
 #include "units.hpp"
 
-//typedef typename units_prod<units_factor<10>, meters_t>::type tile_widths_t;
-//typedef typename units_prod<units_factor<2>, meters_t>::type tile_heights_t;
-//constexpr tile_widths_t tile_widths = tile_widths_t();
+// fine_distance_units: Fine as opposed to coarse, that is.
 
-// TODO: conciser names?
-// make_units<[num[, den]], meter<3>, per, kilogram> ?
-constexpr auto tile_widths = units_factor<10>() * meters;
-constexpr auto tile_heights = units_factor<2>() * meters;
-constexpr auto fine_units = tile_widths * units_factor<1, 2000>();
-
-typedef decltype(imaginary_copy(tile_widths)) tile_widths_t;
-typedef decltype(imaginary_copy(tile_heights)) tile_heights_t;
-typedef decltype(imaginary_copy(fine_units)) fine_units_t;
-
-// TODO should fine_scalar be renamed to e.g. fine_distance/fine_coordinate/?
-typedef unit<int64_t, fine_units_t> fine_scalar; // Fine as opposed to coarse, that is.
-
-
-constexpr auto velocity_units = fine_units / /* units_factor<30>() / ? */ seconds;
-constexpr auto tile_physics_sub_tile_units = fine_units / units_factor<30>();
-
-typedef decltype(imaginary_copy(velocity_units)) velocity_units_t;
-typedef decltype(imaginary_copy(tile_physics_sub_tile_units)) tile_physics_sub_tile_units_t;
-
-typedef unit<int32_t, tile_physics_sub_tile_units_t> sub_tile_distance; // We can fit it within 32 bits, so we might as well do faster math
-typedef unit<int64_t, tile_physics_sub_tile_units_t> large_sub_tile_distance;
-
-
-// Choose a number that makes lots of frames-per-second values multiply in evenly.
+// time_units: Choose a number that makes lots of frames-per-second values multiply in evenly.
 // TODO if we use this more and want a different representation, that would be fine too.
 // TODO where it doesn't already, code should refer to some kind of time unit more,
 //        rather than implicitly relying on frames being a fixed duration.
 
-constexpr auto time_units = seconds * units_factor<1, (2*2*2*2 * 3*3*3 * 5*5 * 7 * 11)>();
-typedef decltype(imaginary_copy(time_units)) time_units_t;
+typedef units<dim::ratio<10>, dim::meter<1>> tile_widths_t;
+typedef units<dim::ratio< 2>, dim::meter<1>> tile_heights_t;
+typedef units<dim::ratio< 1, 200>, dim::meter<1>> fine_distance_units_t;
+typedef typename units_prod<fine_distance_units_t, dim::ratio<1, 30>>::type tile_physics_sub_tile_units_t;
+typedef units<dim::ratio<1, (2*2*2*2 * 3*3*3 * 5*5 * 7 * 11)>, dim::second<1>> time_units_t;
+typedef typename units_prod<fine_distance_units_t, hertz_t>::type velocity_units_t;
+typedef typename units_prod<milli_t, grams_t, meters_t::units_pow<(-3)>>::type density_units_t;
+typedef pascals_t pressure_units_t;
+
+
+
+//typedef typename units_prod<kilograms_t, fine_distance_units_t::pow<(-3)>>::type density_units_t;
+
+
+//constexpr auto velocity_units = fine_units / /* units_factor<30>() / ? */ seconds;
+//constexpr auto tile_physics_sub_tile_units = fine_units / units_factor<30>();
+
+
+constexpr auto tile_widths = tile_widths_t();
+constexpr auto tile_heights = tile_heights_t();
+constexpr auto fine_distance_units = fine_distance_units_t();
+constexpr auto tile_physics_sub_tile_units = tile_physics_sub_tile_units_t();
+constexpr auto time_units = time_units_t();
+constexpr auto velocity_units = velocity_units_t();
+constexpr auto density_units = density_units_t();
+constexpr auto pressure_units = pressure_units_t();
+
+// Rationale for the 64 bit types:
+// A lot of computations in Lasercake require more than 32 bits.
+//
+// Rationale for the 32 bit types:
+// We can fit it within 32 bits, so we might as well have faster math
+// (on 32bit, and possibly 64bit platform multiply/divides) and smaller storage.
+
+typedef unit<int64_t, fine_distance_units_t> distance;
+typedef unit<int32_t, tile_physics_sub_tile_units_t> sub_tile_distance;
+typedef unit<int64_t, tile_physics_sub_tile_units_t> large_sub_tile_distance;
 typedef unit<int64_t, time_units_t> time_unit;
+
+
+typedef distance fine_scalar; // TODO replace fine_scalar->distance.
+typedef fine_distance_units_t fine_units_t; // TODO
+constexpr auto fine_units = fine_units_t(); // TODO
+
+
+
 
 //ok...
 const fine_scalar tile_width = 1 * tile_widths * identity(fine_units / tile_widths);
