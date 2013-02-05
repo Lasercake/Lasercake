@@ -243,6 +243,7 @@ inline int32_t count_trailing_zeroes_64(uint64_t argument) {
 
 template<uintmax_t Base, uintmax_t Exponent>
 struct static_pow_nonnegative_integer {
+  static_assert(Exponent < std::numeric_limits<uintmax_t>::digits, "certain overflow");
   static const uintmax_t recur = static_pow_nonnegative_integer<Base, Exponent-1>::value;
   static const uintmax_t value = Base * recur;
   static_assert(value / Base == recur && value / recur == Base, "overflow");
@@ -251,6 +252,12 @@ template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 0> {
   static const uintmax_t value = 1; };
 template<uintmax_t Base> struct static_pow_nonnegative_integer<Base, 1> {
   static const uintmax_t value = Base; };
+template<uintmax_t Exponent> struct static_pow_nonnegative_integer<1, Exponent> {
+  static const uintmax_t value = 1; };
+template<> struct static_pow_nonnegative_integer<1, 1> {
+  static const uintmax_t value = 1; };
+template<> struct static_pow_nonnegative_integer<0, 0> {
+  static const uintmax_t value = 1; }; // usually the best choice for 0^0
 
 template<uintmax_t Radicand, uintmax_t Root = 2>
 struct static_root_nonnegative_integer {
@@ -258,10 +265,10 @@ struct static_root_nonnegative_integer {
   template<uintmax_t LowerBound, uintmax_t UpperBound, bool Done>
   struct recur {
     static const uintmax_t mid = ((LowerBound + UpperBound) >> 1);
-    static const bool mid_is_upper_bound =
+    static const bool mid_is_new_upper_bound =
       static_pow_nonnegative_integer<mid, Root>::value > Radicand;
-    static const uintmax_t new_lower_bound = mid_is_upper_bound ? LowerBound : mid;
-    static const uintmax_t new_upper_bound = mid_is_upper_bound ? mid : UpperBound;
+    static const uintmax_t new_lower_bound = mid_is_new_upper_bound ? LowerBound : mid;
+    static const uintmax_t new_upper_bound = mid_is_new_upper_bound ? mid : UpperBound;
     static const bool done = new_lower_bound >= new_upper_bound - 1;
     static const uintmax_t value = recur<new_lower_bound, new_upper_bound, done>::value;
   };
@@ -280,8 +287,17 @@ struct static_root_nonnegative_integer<Radicand, 1> {
   static const uintmax_t value = Radicand;
   static const uintmax_t remainder = 0;
 };
+template<uintmax_t Root>
+struct static_root_nonnegative_integer<0, Root> {
+  static const uintmax_t value = 0;
+  static const uintmax_t remainder = 0;
+};
+// zeroth roots are meaningless:
 template<uintmax_t Radicand>
 struct static_root_nonnegative_integer<Radicand, 0> {};
+template<>
+struct static_root_nonnegative_integer<0, 0> {};
+
 
 
 // TODO rename to isqrt or similar?
