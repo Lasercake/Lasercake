@@ -42,10 +42,10 @@ typedef typename meters_t::units_pow<-4>::type inverse_meters4_t;
 constexpr auto kilometers = kilometers_t();
 
 BOOST_AUTO_TEST_CASE( unitses ) {
-  const unit<int32_t, meter> foo = 1 * meter();
-  const unit<int64_t, meter> foo64 = foo;
-  const unit<int32_t, meter> foo3 = 3 * meter();
-  const unit<int32_t, meter> foo5 = 5 * meters;
+  const physical_quantity<int32_t, meter> foo = 1 * meter();
+  const physical_quantity<int64_t, meter> foo64 = foo;
+  const physical_quantity<int32_t, meter> foo3 = 3 * meter();
+  const physical_quantity<int32_t, meter> foo5 = 5 * meters;
   foo + foo;
   auto bfoo = foo * foo;
   bfoo = bfoo * 3;
@@ -54,11 +54,11 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   // TODO consider whether to relax bounds_checked_int to make this work,
   // or provide conversion functions, or such.
-  // const unit<double, meter> foofloating = foo;
-  // Also this doesn't work because unit<> tries to wrap
+  // const physical_quantity<double, meter> foofloating = foo;
+  // Also this doesn't work because physical_quantity<> tries to wrap
   // its data type in a bounds checked int, heh.  That'd
   // be fairly easy to fix for floating point.
-  // const unit<double, meter> foofloating = 1.0*meters;
+  // const physical_quantity<double, meter> foofloating = 1.0*meters;
 
   // Deliberately avoid get_primitive_int() to make sure
   // that it is returning the correct type in both cases.
@@ -84,12 +84,15 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   // 1000*1000*1000*1000 doesn't fit into 32 bits, so this identity()
   // returns a 64 bit quantity.
-  const unit<int64_t, inverse_kilometers4_t> invfoo4 = 1/foo/foo/foo/foo
+  const physical_quantity<int64_t, inverse_kilometers4_t> invfoo4
+    = 1/foo/foo/foo/foo
     * identity(inverse_kilometers4_t() / inverse_meters4_t());
   // This fits within fewer bits:
-  const unit<int32_t, meters_t> thirtytwobits = 1 * kilometers * identity(meters / kilometers);
+  const physical_quantity<int32_t, meters_t> thirtytwobits
+    = 1 * kilometers * identity(meters / kilometers);
 
-  const unit<int, newtons_t_A> newtonz = 7 * kilograms * meters / seconds / seconds;
+  const physical_quantity<int, newtons_t_A> newtonz =
+    7 * kilograms * meters / seconds / seconds;
   newtonz + 1*newtons_t_B();
 
   auto scalar = 4*meters;
@@ -155,7 +158,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK_EQUAL(seconds / seconds, trivial_units());
 
 
-  unit<int32_t, meter> mutfoo = 0;
+  physical_quantity<int32_t, meter> mutfoo = 0;
   BOOST_CHECK_EQUAL(mutfoo, 0*meters);
   BOOST_CHECK_EQUAL(mutfoo += foo3, 3*meters);
   BOOST_CHECK_EQUAL(mutfoo += foo3, 6*meters);
