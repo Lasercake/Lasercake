@@ -863,10 +863,10 @@ public:
   friend inline this_t operator-(this_t a) { return this_t(-a.val_, Units()); }
   friend inline this_t abs(this_t a) { return (a.val_ < 0) ? -a : a; }
   friend inline
-  typename make_physical_quantity_type<Num, typename pseudo_t::units_pow<
-    get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>::type>::type
-  sign(this_t a) { return sign(a.val_) * pseudo.pow<
-    get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>(); }
+  typename make_physical_quantity_type<Num, typename units_prod<dim::pseudo<
+    get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>>::type>::type
+  sign(this_t a) { return sign(a.val_) * typename units_prod<dim::pseudo<
+    get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>>::type(); }
   friend inline size_t hash_value(this_t a) { return std::hash<base_type>()(a.val_); }
   friend inline this_t operator+(this_t a, this_t b) { return this_t(a.val_ + b.val_, Units()); }
   friend inline this_t operator-(this_t a, this_t b) { return this_t(a.val_ - b.val_, Units()); }
