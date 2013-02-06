@@ -877,7 +877,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
   }
   std::vector<int> vertex_id_map(vertices_.size());
   int next_vert_id = 0;
-  for (int i = 0; i < vertices_.size(); ++i) {
+  for (size_t i = 0; i < vertices_.size(); ++i) {
     if (existences_of_points[i]) {
       vertices_[next_vert_id] = vertices_[i];
       vertex_id_map[i] = next_vert_id;
