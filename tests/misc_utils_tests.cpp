@@ -246,17 +246,6 @@ BOOST_AUTO_TEST_CASE( my_ctz ) {
   BOOST_CHECK_EQUAL(count_trailing_zeroes_64(0x8000000000000000ull), 63);
 }
 
-BOOST_AUTO_TEST_CASE( divide_rounding_towards_zero_test ) {
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,1), 3);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,2), 1);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(0,3), 0);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(0,-3), 0);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(-3,3), -1);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(-3,2), -1);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,-2), -1);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(-3,-2), 1);
-  BOOST_CHECK_THROW(divide_rounding_towards_zero(-3,0), std::logic_error);
-}
 
 BOOST_AUTO_TEST_CASE( non_normalized_rational_test ) {
   typedef non_normalized_rational<int32_t> rational;

@@ -29,55 +29,23 @@ typedef non_normalized_rational<time_int_type> time_type;
 typedef faux_optional<time_type> optional_time;
 
 vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& velocity, time_type end_time) {
-  // Round to nearest:
-  return vector3<fine_scalar>(
-    divide_rounding_towards_zero(
-      ((2 * velocity.x * end_time.numerator) + (end_time.denominator * velocity_scale_factor)),
-      ( 2 *                                     end_time.denominator * velocity_scale_factor )
-    ),
-    divide_rounding_towards_zero(
-      ((2 * velocity.y * end_time.numerator) + (end_time.denominator * velocity_scale_factor)),
-      ( 2 *                                     end_time.denominator * velocity_scale_factor )
-    ),
-    divide_rounding_towards_zero(
-      ((2 * velocity.z * end_time.numerator) + (end_time.denominator * velocity_scale_factor)),
-      ( 2 *                                     end_time.denominator * velocity_scale_factor )
-    )
-  );
+  // TODO is this the right rounding strategy? I did not change
+  // the effect but maybe round-to-even or -odd is better? -Isaac
+  using namespace rounding_strategies;
+  return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
+    rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>());
 }
 
 vector3<fine_scalar> movement_delta_rounding_up(vector3<fine_scalar> const& velocity, time_type end_time) {
-  return vector3<fine_scalar>(
-    sign(velocity.x) * (
-      ((std::abs(velocity.x) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
-      / (                                             end_time.denominator * velocity_scale_factor)
-    ),
-    sign(velocity.y) * (
-      ((std::abs(velocity.y) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
-      / (                                             end_time.denominator * velocity_scale_factor)
-    ),
-    sign(velocity.z) * (
-      ((std::abs(velocity.z) * end_time.numerator) + (end_time.denominator * velocity_scale_factor) - 1)
-      / (                                             end_time.denominator * velocity_scale_factor)
-    )
-  );
+  using namespace rounding_strategies;
+  return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
+    rounding_strategy<round_up, negative_mirrors_positive>());
 }
 
 vector3<fine_scalar> movement_delta_rounding_down(vector3<fine_scalar> const& velocity, time_type end_time) {
-  return vector3<fine_scalar>(
-    divide_rounding_towards_zero(
-      (velocity.x * end_time.numerator),
-      (end_time.denominator * velocity_scale_factor)
-    ),
-    divide_rounding_towards_zero(
-      (velocity.y * end_time.numerator),
-      (end_time.denominator * velocity_scale_factor)
-    ),
-    divide_rounding_towards_zero(
-      (velocity.z * end_time.numerator),
-      (end_time.denominator * velocity_scale_factor)
-    )
-  );
+  using namespace rounding_strategies;
+  return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
+    rounding_strategy<round_down, negative_mirrors_positive>());
 }
 
 vector3<fine_scalar> movement_delta_intermediate(vector3<fine_scalar> const& velocity, time_type min, time_type max) {

@@ -297,17 +297,6 @@ inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
 }
 
 
-template<typename ScalarType1, typename ScalarType2>
-auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
-  -> decltype(dividend/divisor) /*C++11 syntax for return type that lets it refer to argument names*/
-{
-  caller_correct_if(divisor != 0, "divisor must be nonzero");
-  using namespace std;
-  const auto abs_result = abs(dividend) / abs(divisor);
-  if (is_negative(dividend) == is_negative(divisor)) return abs_result;
-  else return -abs_result;
-}
-
 inline int32_t ilog2(uint64_t argument) {
   caller_error_if(argument == 0, "the logarithm of zero is undefined");
 #if defined(DETECTED_builtin_clz64)
