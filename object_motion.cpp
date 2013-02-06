@@ -32,19 +32,22 @@ vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& ve
   // TODO is this the right rounding strategy? I did not change
   // the effect but maybe round-to-even or -odd is better? -Isaac
   using namespace rounding_strategies;
-  return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
+  const auto end_time_rat = make_units_split_rational(end_time);
+  return divide(velocity * end_time_rat.numerator, end_time_rat.denominator * velocity_scale_factor,
     rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>());
 }
 
 vector3<fine_scalar> movement_delta_rounding_up(vector3<fine_scalar> const& velocity, time_type end_time) {
   using namespace rounding_strategies;
-  return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
+  const auto end_time_rat = make_units_split_rational(end_time);
+  return divide(velocity * end_time_rat.numerator, end_time_rat.denominator * velocity_scale_factor,
     rounding_strategy<round_up, negative_mirrors_positive>());
 }
 
 vector3<fine_scalar> movement_delta_rounding_down(vector3<fine_scalar> const& velocity, time_type end_time) {
   using namespace rounding_strategies;
-  return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
+  const auto end_time_rat = make_units_split_rational(end_time);
+  return divide(velocity * end_time_rat.numerator, end_time_rat.denominator * velocity_scale_factor,
     rounding_strategy<round_down, negative_mirrors_positive>());
 }
 
@@ -58,7 +61,8 @@ vector3<fine_scalar> movement_delta_intermediate(vector3<fine_scalar> const& vel
 const fine_scalar max_error_dist = 2;
 
 
-time_type round_time_downwards(time_type time, time_int_type max_meaningful_precision) {
+time_type round_time_downwards(time_type time_with_units, time_int_type max_meaningful_precision) {
+  const auto time = make_units_split_rational(time_with_units);
   if (time.denominator < 0) {
     time.numerator = -time.numerator;
     time.denominator = -time.denominator;
@@ -77,7 +81,8 @@ time_type round_time_downwards(time_type time, time_int_type max_meaningful_prec
   return time;
 }
 
-time_type round_time_upwards(time_type time, time_int_type max_meaningful_precision) {
+time_type round_time_upwards(time_type time_with_units, time_int_type max_meaningful_precision) {
+  const auto time = make_units_split_rational(time_with_units);
   if (time.denominator < 0) {
     time.numerator = -time.numerator;
     time.denominator = -time.denominator;
