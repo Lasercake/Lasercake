@@ -78,6 +78,7 @@ macro(show_paths output_var_name)
 endmacro()
 
 set(OPT_FLAGS -O3)
+# clang: -ferror-limit=15 not -fmax-errors=15
 set(WARNING_FLAGS -g -Wall -Wextra -Wno-unknown-pragmas -fmax-errors=15 -fdiagnostics-show-option)
 if(WIN32)
 	# MinGW has various problems with -std=c++0x.  For example,
