@@ -376,7 +376,7 @@ struct polyhedron_planes_info_for_intersection {
   std::vector<base_point_and_outward_facing_normal> base_points_and_outward_facing_normals;
 };
 
-// TODO: Is this a plane with a facing? It seems to be used as such?
+// These planes have a meaningful facing; they are isomorphic to half-spaces.
 struct plane_as_base_point_and_normal {
   vect base_point;
   vect2 normal;
