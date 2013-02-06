@@ -488,9 +488,9 @@ inline vector3<tile_coordinate> get_random_containing_tile_coordinates(vector3<f
   }
   const boost::random::uniform_int_distribution<int32_t> random_bits(0, 7);
   const int32_t three_random_bits = random_bits(rng);
-  const fine_scalar xplus = !!(three_random_bits & 1);
-  const fine_scalar yplus = !!(three_random_bits & 2);
-  const fine_scalar zplus = !!(three_random_bits & 4);
+  const fine_scalar xplus = int(bool(three_random_bits & 1))*fine_distance_units;
+  const fine_scalar yplus = int(bool(three_random_bits & 2))*fine_distance_units;
+  const fine_scalar zplus = int(bool(three_random_bits & 4))*fine_distance_units;
   return vector3<tile_coordinate>(
     tile_coordinate((v.x + xplus) / tile_width),
     tile_coordinate((v.y + yplus) / tile_width),

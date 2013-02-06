@@ -187,7 +187,7 @@ void float_above_ground(vector3<fine_scalar>& velocity_, world& w, object_identi
 } /* end anonymous namespace */
 
 shape robot::get_initial_personal_space_shape()const {
-  /*return shape(convex_polyhedron(bounding_box::min_and_max(
+  /*return shape(geom::convex_polyhedron(bounding_box::min_and_max(
     location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
     location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
   )));*/
@@ -325,8 +325,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     w.try_create_object(sol);
   }
   if (input_news.is_currently_pressed("r")) {
-    const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>
-            random_delta(get_primitive_int(-tile_width), get_primitive_int(tile_width));
+    const uniform_int_distribution<fine_scalar> random_delta(-tile_width, tile_width);
     for (int i = 0; i < 20; ++i) {
       const shared_ptr<random_walk_rocket> roc (new random_walk_rocket(
         location_ + facing_ * 2 +
@@ -358,7 +357,7 @@ vector3<tile_coordinate> robot::get_building_tile(world& w)const { // TODO: This
 }
 
 shape laser_emitter::get_initial_personal_space_shape()const {
-  return shape(convex_polyhedron(bounding_box::min_and_max(
+  return shape(geom::convex_polyhedron(bounding_box::min_and_max(
     location_ - vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10),
     location_ + vector3<fine_scalar>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10)
   )));
@@ -378,7 +377,7 @@ void laser_emitter::update(world& w, input_representation::input_news_t const&, 
       facing_.x = random_delta(w.get_rng())*fine_distance_units;//TODO implement vector3_location
       facing_.y = random_delta(w.get_rng())*fine_distance_units;
       facing_.z = random_delta(w.get_rng())*fine_distance_units;
-    } while (facing_.magnitude_within_32_bits_is_greater_than(1023) || facing_.magnitude_within_32_bits_is_less_than(512));
+    } while (facing_.magnitude_within_32_bits_is_greater_than(1023*fine_distance_units) || facing_.magnitude_within_32_bits_is_less_than(512*fine_distance_units));
 
     fire_standard_laser(w, my_id, location_, facing_);
   }
@@ -476,7 +475,8 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
       }
     }
     else {
-      const vector3<fine_scalar> beam_vector_2(facing_.x / -4, facing_.y / -4, 1 - shape_bounds.size(Z));
+      const vector3<fine_scalar> beam_vector_2(facing_.x / -4, facing_.y / -4,
+                                               1*fine_distance_units - shape_bounds.size(Z));
       const object_or_tile_identifier hit2 = laser_find(w, my_id, top_middle + beam_vector_1, beam_vector_2, true);
       if (hit2 != object_or_tile_identifier()) {
         if (tile_location const* locp = hit2.get_tile_location()) {
@@ -533,10 +533,9 @@ void random_walk_rocket::update(world& w, input_representation::input_news_t con
     velocity_[Z] = 0;
   }
 
-  const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>
-          random_delta(
-            get_primitive_int(-tile_width * velocity_scale_factor / 30),
-            get_primitive_int( tile_width * velocity_scale_factor / 30));
+  const uniform_int_distribution<fine_scalar>
+          random_delta(-tile_width * velocity_scale_factor / 30,
+                        tile_width * velocity_scale_factor / 30);
   velocity_[X] += random_delta(rng);
   velocity_[Y] += random_delta(rng);
   velocity_[Z] += random_delta(rng);
