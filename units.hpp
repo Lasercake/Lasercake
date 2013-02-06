@@ -548,6 +548,14 @@ struct get_primitive_int_type< physical_quantity<Num, Units> > { typedef Num typ
 template<typename...U>
 struct get_primitive_int_type< units<U...> > { typedef void type; };
 
+// You probably should rarely use this overload of get_primitive_int;
+// sometimes get_primitive_int(get(var, units)) is what you want
+// to do for clarity.
+template<typename Num, typename Units>
+inline Num get_primitive_int(physical_quantity<Num, Units> a) {
+  return get(a, Units());
+}
+
 // Using this template lets you provide a non-primitive Num type
 // (it unwraps the type) and makes dimensionless quantities simply
 // be the base numeric type (which is what we intend to do).
@@ -860,6 +868,19 @@ abs(units<U...> a) {
   return ::abs(a);
 }
 }
+
+template<typename Quantity>
+struct uniform_int_distribution :
+    boost::random::uniform_int_distribution<typename get_primitive_int_type<Quantity>::type> {
+  typedef boost::random::uniform_int_distribution<typename get_primitive_int_type<Quantity>::type>
+    dist;
+  uniform_int_distribution(Quantity min, Quantity max)
+    : dist(get_primitive_int(min), get_primitive_int(max)) {}
+  template<typename Engine>
+  Quantity operator()(Engine& eng) const {
+    return make(dist::operator()(eng), typename get_units<Quantity>::type());
+  }
+};
 
 
 
