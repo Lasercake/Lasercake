@@ -783,14 +783,18 @@ void convex_polyhedron::init_other_info_from_vertices() {
             new_face.verts.push_back(i);
             new_face.verts.push_back(l->vert_1);
             new_face.verts.push_back(l->vert_2);
-            // TODO UNITS I don't understand why this code should produce
-            // a non-pseudo vector, so I didn't do something sensible yet. -Isaac
-            new_face.normal = plane_normal(vs[i], vs[l->vert_1], vs[l->vert_2]) / pseudo;
+            const pseudovect2 normal = plane_normal(vs[i], vs[l->vert_1], vs[l->vert_2]);
+            // To make the normal's sign meaningful, we make sure it's
+            // pointing away from an existing part of the polyhedron.
+            // The reason it iterates through the first four vertices
+            // is that up to three of them may be coplanar with it - but
+            // any that are noncoplanar are guaranteed to be on the same side.
+            new_face.normal = normal / pseudo;
             for (int q = 0; q < 4; ++q) {
               const int idx = first_four_noncoplanar_verts[q];
               if ((i != idx) && (l->vert_1 != idx) && (l->vert_2 != idx)) {
                 if ((vs[i] - vs[idx]).dot<polygon_int_type>(new_face.normal) < 0) {
-                  new_face.normal = -new_face.normal;
+                  new_face.normal = -normal / pseudo;
                   break;
                 }
               }
