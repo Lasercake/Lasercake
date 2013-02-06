@@ -228,7 +228,14 @@ namespace std {
   // having different behavior they'll get a bounds-checking error.
   // Only instantiating it at defauly bounds for now, in order to
   // make min() and max() non-nonsensical.
-  template<typename Int> struct numeric_limits< bounds_checked_int<Int> > : numeric_limits<Int> {};
+  template<typename Int> struct numeric_limits< bounds_checked_int<Int> > : numeric_limits<Int> {
+  private:
+    //static const int digits;
+    //static const int digits10;
+    static const bool is_modulo;
+    //static bounds_checked_int<Int> max();
+    //static bounds_checked_int<Int> min();
+  };
 }
 namespace boost {
   template<typename Int> struct   make_signed< bounds_checked_int<Int> > { typedef bounds_checked_int<typename   make_signed<Int>::type> type; };
