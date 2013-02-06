@@ -268,7 +268,10 @@ template<typename T1, typename T2, typename RoundingStrategy,
   rounding_strategies::strategy_for_positive_numbers PosStrategy = RoundingStrategy::positive_strategy,
   rounding_strategies::strategy_for_negative_numbers NegStrategy = RoundingStrategy::negative_strategy,
   typename = typename boost::enable_if_c<
-    (std::numeric_limits<T1>::is_specialized && std::numeric_limits<T2>::is_specialized)>::type>
+    (std::numeric_limits<T1>::is_specialized && std::numeric_limits<T2>::is_specialized
+      // we don't currently implement IEEE754 floating-point rounding modes
+      && std::numeric_limits<T1>::is_integer && std::numeric_limits<T2>::is_integer
+    )>::type>
 inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
 -> decltype(dividend/divisor) {
   using namespace rounding_strategies;

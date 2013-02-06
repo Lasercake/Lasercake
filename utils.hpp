@@ -161,12 +161,15 @@ public:
     rounding_strategies::round_down,
     rounding_strategies::negative_mirrors_positive> default_rounding_strategy;
 
+  // In C++11 integer division rounds towards zero,
+  // which is often what we want for vectors; IEEE754 floating point division,
+  // by default, rounds to nearest and to even for ties.
   template<typename OtherType> auto operator/(OtherType const& other)const
   -> vector3<decltype(x / other)> {
-    return divide(*this, other, default_rounding_strategy());
+    return vector3<decltype(x / other)>(x/other, y/other, z/other);
   }
   vector3& operator/=(ScalarType other) {
-    *this = divide(*this, other, default_rounding_strategy());
+    x /= other; y /= other; z /= other;
     return *this;
   }
   // Multiplying two vectors is usually a type-error mistake, so
