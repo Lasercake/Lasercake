@@ -573,9 +573,9 @@ void view_on_the_world::prepare_gl_data(
       "F11"
       #endif
       ": fullscreen; "
-      "p: pause; g: single-step; "//o: overview view; l: local view; i: robot view; "
-                                          "o, l, i: overview, local, robot view; "
-      "z: regular drawing; t: debug drawing\n",
+      "p: pause; g: single-step; "
+      "1, 2, 3: overview, local, robot view; "
+      "8: regular drawing; 9: debug drawing\n",
       color(0xffcc33cc),
       "Granger_ch8plus",
       24,
