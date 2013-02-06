@@ -930,6 +930,8 @@ typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-
 
 // === SI prefixes ===
 
+typedef units<dim::ratio<10>> deca_t;
+typedef units<dim::ratio<100>> hecto_t;
 typedef units<dim::ratio<1000>> kilo_t;
 typedef units<dim::ratio<1000000>> mega_t;
 typedef units<dim::ratio<1000000000>> giga_t;
@@ -937,6 +939,8 @@ typedef units<dim::ratio<1000000000000>> tera_t;
 typedef units<dim::ratio<1000000000000000>> peta_t;
 typedef units<dim::ratio<1000000000000000000>> exa_t;
 
+typedef units<dim::ratio<1, 10>> deci_t;
+typedef units<dim::ratio<1, 100>> centi_t;
 typedef units<dim::ratio<1, 1000>> milli_t;
 typedef units<dim::ratio<1, 1000000>> micro_t;
 typedef units<dim::ratio<1, 1000000000>> nano_t;
@@ -944,6 +948,8 @@ typedef units<dim::ratio<1, 1000000000000>> pico_t;
 typedef units<dim::ratio<1, 1000000000000000>> femto_t;
 typedef units<dim::ratio<1, 1000000000000000000>> atto_t;
 
+constexpr auto deca = deca_t();
+constexpr auto hecto = hecto_t();
 constexpr auto kilo = kilo_t();
 constexpr auto mega = mega_t();
 constexpr auto giga = giga_t();
@@ -951,6 +957,8 @@ constexpr auto tera = tera_t();
 constexpr auto peta = peta_t();
 constexpr auto exa  = exa_t();
 
+constexpr auto deci = deci_t();
+constexpr auto centi = centi_t();
 constexpr auto milli = milli_t();
 constexpr auto micro = micro_t();
 constexpr auto nano  = nano_t();
