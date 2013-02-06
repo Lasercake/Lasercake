@@ -146,15 +146,28 @@ public:
   vector3& operator*=(ScalarType other) {
     x *= other; y *= other; z *= other; return *this;
   }
+  template<typename OtherType, typename RoundingStrategy>
+  friend inline auto divide(vector3 const& v, OtherType const& other, RoundingStrategy strat)
+  -> vector3<decltype(std::declval<ScalarType>() / other)>{
+    return vector3<decltype(v.x / other)>(
+      divide(v.x, other, strat),
+      divide(v.y, other, strat),
+      divide(v.z, other, strat));
+  }
+  // Default to rounding towards zero. (TODO: is it wise to have any default here?
+  // It's not like we use division much.  But we don't want to use shifting
+  // without considering that shifting rounds down towards negative infinity, too.)
+  typedef rounding_strategy<
+    rounding_strategies::round_down,
+    rounding_strategies::negative_mirrors_positive> default_rounding_strategy;
+
   template<typename OtherType> auto operator/(OtherType const& other)const
   -> vector3<decltype(x / other)> {
-    return vector3<decltype(x / other)>(
-      divide_rounding_towards_zero(x, other),
-      divide_rounding_towards_zero(y, other),
-      divide_rounding_towards_zero(z, other));
+    return divide(*this, other, default_rounding_strategy());
   }
   vector3& operator/=(ScalarType other) {
-    x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other); return *this;
+    *this = divide(*this, other, default_rounding_strategy());
+    return *this;
   }
   // Multiplying two vectors is usually a type-error mistake, so
   // you have to say you're doing it in words:
@@ -162,12 +175,13 @@ public:
   -> vector3<decltype(x * other.x)> {
     return vector3<decltype(x * other.x)>(x * other.x, y * other.y, z * other.z);
   }
-  template<typename OtherType> auto divide_piecewise_by(vector3<OtherType> const& other)const
+  template<typename OtherType, typename RoundingStrategy>
+  auto divide_piecewise_by(vector3<OtherType> const& other, RoundingStrategy strat)const
   -> vector3<decltype(x / other.x)> {
     return vector3<decltype(x / other.x)>(
-      divide_rounding_towards_zero(x, other.x),
-      divide_rounding_towards_zero(y, other.y),
-      divide_rounding_towards_zero(z, other.z));
+      divide(x, other.x, strat),
+      divide(y, other.y, strat),
+      divide(z, other.z, strat));
   }
   // Careful, shift operators on builtin types (ScalarType?) are only
   // defined for shift >= 0 && shift < bits_in_type

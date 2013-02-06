@@ -101,6 +101,9 @@ BOOST_AUTO_TEST_CASE( explicit_rounding ) {
   BOOST_CHECK_EQUAL(divide(-21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
   BOOST_CHECK_EQUAL(divide(-21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
   BOOST_CHECK_EQUAL(divide( 21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+
+
+  BOOST_CHECK_EQUAL(divide(vector3<int>(3,4,5), 4, rounding_strategy<round_up, negative_continuous_with_positive>()), vector3<int>(1,1,2));
 }
 
 // Test case from https://svn.boost.org/trac/boost/ticket/6189
