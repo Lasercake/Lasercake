@@ -31,6 +31,78 @@
 
 namespace /* anonymous */ {
 
+// see rationale in numbers.hpp division code
+BOOST_AUTO_TEST_CASE( standard_rounding_behavior ) {
+  BOOST_CHECK_EQUAL(8/3, 2);
+  BOOST_CHECK_EQUAL(-8/3, -2);
+  BOOST_CHECK_EQUAL(-8/-3, 2);
+  BOOST_CHECK_EQUAL(8/-3, -2);
+  BOOST_CHECK_EQUAL(8%3, 2);
+  BOOST_CHECK_EQUAL(-8%3, -2);
+  BOOST_CHECK_EQUAL(-8%-3, -2);
+  BOOST_CHECK_EQUAL(8%-3, 2);
+}
+BOOST_AUTO_TEST_CASE( explicit_rounding ) {
+  using namespace rounding_strategies;
+  BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_down, negative_mirrors_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_down, negative_mirrors_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_down, negative_mirrors_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_down, negative_mirrors_positive>()), -2);
+  
+  BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_down, negative_continuous_with_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_down, negative_continuous_with_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_down, negative_continuous_with_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_down, negative_continuous_with_positive>()), -3);
+  
+  BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_up, negative_continuous_with_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_up, negative_continuous_with_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_up, negative_continuous_with_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_up, negative_continuous_with_positive>()), -2);
+
+  BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_up, negative_mirrors_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_up, negative_mirrors_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_up, negative_mirrors_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_up, negative_mirrors_positive>()), -3);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()), -3);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()), -2);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()), -2);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()), -3);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()),  2);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), -2);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()),  2);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), -2);
+  BOOST_CHECK_EQUAL(divide( 21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()),  4);
+  BOOST_CHECK_EQUAL(divide(-21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), -4);
+  BOOST_CHECK_EQUAL(divide(-21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()),  4);
+  BOOST_CHECK_EQUAL(divide( 21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), -4);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+  BOOST_CHECK_EQUAL(divide( 21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
+  BOOST_CHECK_EQUAL(divide(-21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+  BOOST_CHECK_EQUAL(divide(-21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
+  BOOST_CHECK_EQUAL(divide( 21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+}
+
 // Test case from https://svn.boost.org/trac/boost/ticket/6189
 class MGen {
 public:

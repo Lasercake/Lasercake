@@ -56,6 +56,237 @@ typename boost::make_unsigned<Int>::type to_unsigned_type(Int i) {
   return result;
 }
 
+namespace rounding_strategies {
+// Zero divided by something is always zero.
+// Any other division result is always (before rounding)
+// positive or negative.
+// We specify a division strategy in terms of positive
+// numbers and an indication of how negative rounding is
+// related to positive rounding.
+enum strategy_for_positive_numbers {
+  round_down, round_up,
+  round_to_nearest_with_ties_rounding_up,
+  round_to_nearest_with_ties_rounding_down,
+  round_to_nearest_with_ties_rounding_to_even,
+  round_to_nearest_with_ties_rounding_to_odd
+};
+enum strategy_for_negative_numbers {
+  // "doesn't make a difference" is true for unsigned arguments
+  // and for round-to-even and round-to-odd.  It is a compile
+  // error to claim "doesn't make a difference" when it might
+  // in fact make a difference.
+  negative_variant_doesnt_make_a_difference,
+  // result invariant under negation; roughly,
+  // -divide(-x, y, strat) == divide(x, y, strat)
+  negative_mirrors_positive,
+  // result invariant under addition of a constant; roughly,
+  // divide(x + C*y, y, strat) - C == divide(x, y, strat)
+  negative_continuous_with_positive,
+  // these just assert that the numerator and denominator is nonnegative.
+  negative_is_forbidden
+};
+
+// C++11 specifies that int '/' is round-to-zero.
+// Test this at compile time and runtime (misc_utils_tests.cpp
+// test "standard_rounding_behavior").
+// It's simpler to implement division algorithms when we can
+// count on something (anything), and this is the thing
+// that everyone seems to have agreed on.
+static_assert(8/3 == 2, "we use the typical, standard round-towards-zero");
+static_assert(-8/3 == -2, "we use the typical, standard round-towards-zero");
+static_assert(-8/-3 == 2, "we use the typical, standard round-towards-zero");
+static_assert(8/-3 == -2, "we use the typical, standard round-towards-zero");
+static_assert(8%3 == 2, "we use the typical, standard round-towards-zero");
+static_assert(-8%3 == -2, "we use the typical, standard round-towards-zero");
+static_assert(-8%-3 == -2, "we use the typical, standard round-towards-zero");
+static_assert(8%-3 == 2, "we use the typical, standard round-towards-zero");
+template<
+  strategy_for_positive_numbers PosStrategy,
+  strategy_for_negative_numbers NegStrategy
+    = negative_variant_doesnt_make_a_difference>
+struct rounding_strategy {
+  static const strategy_for_positive_numbers positive_strategy = PosStrategy;
+  static const strategy_for_negative_numbers negative_strategy = NegStrategy;
+};
+
+// TODO boost::enable_if<std::numeric_limits<T1 & T2>::is_specialized
+// or get_primitive_int_type? or.
+
+// Division is a slow instruction, so we want to start it as soon
+// as possible and finish as soon as possible after we have the
+// result.  Most division instructions also give modulus for free.
+// If the divisor is a compile-time constant, however, the compiler
+// converts it to a multiplication-by-constant and a few shifts,
+// and the remainder sometimes costs a bit.
+// We also have to consider, if modifying 'divisor' before dividing,
+// whether the possibility of overflow is acceptable.
+template<typename T>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<round_down, negative_mirrors_positive>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  return dividend / divisor;
+}
+template<typename T>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<round_down, negative_continuous_with_positive>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  const T rounded_to_zero = dividend / divisor;
+  const T remainder = dividend % divisor;
+  //'adjust' is probably branch-predictable
+  // even if the sign of the numbers aren't.
+  // (The compiler seems to be smart and transforms
+  //  either to something reasonable, given that either
+  //  has a reasonable way to run it.)
+  //const T adjust =
+  //  ((dividend < 0) != (divisor < 0)) && (remainder != 0);
+  //return rounded_to_zero - adjust;
+  if(((dividend < T(0)) != (divisor < T(0))) && (remainder != T(0))) {
+    return rounded_to_zero - T(1);
+  }
+  else {
+    return rounded_to_zero;
+  }
+}
+template<typename T>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<round_up, negative_mirrors_positive>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  const T rounded_to_zero = dividend / divisor;
+  const T remainder = dividend % divisor;
+  const T adjust = ((dividend < T(0)) == (divisor < T(0)) ? T(1) : T(-1));
+  if(remainder != 0) {
+    return rounded_to_zero + adjust;
+  }
+  else {
+    return rounded_to_zero;
+  }
+}
+template<typename T>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<round_up, negative_continuous_with_positive>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  const T rounded_to_zero = dividend / divisor;
+  const T remainder = dividend % divisor;
+  if(((dividend < T(0)) == (divisor < T(0))) && (remainder != T(0))) {
+    return rounded_to_zero + T(1);
+  }
+  else {
+    return rounded_to_zero;
+  }
+}
+
+// this is too tricky to allow two different int type arguments for
+template<typename T,
+  strategy_for_positive_numbers PosStrategy,
+  strategy_for_negative_numbers NegStrategy>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<PosStrategy, NegStrategy>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  const T rounded_to_zero = dividend / divisor;
+  const T remainder = dividend % divisor;
+  // result_positive is a slight misnomer.
+  // If dividend is zero, then the result and remainder are zero
+  // and all is fine regardless of this bool's value.
+  // If dividend is nonzero, this bool indicates (as it must)
+  // the sign of the conceptual, unrounded quotient.
+  const bool result_positive = (dividend < T(0)) == (divisor < T(0));
+  const T adjust = (result_positive ? T(1) : T(-1));
+
+  // compare(abs(divisor)/2, abs(remainder)) without rounding error
+  // or overflow for any argument.
+  T tweak;
+  T nonnegative_divisor_ish;
+  if(divisor < T(0)) {
+    tweak = T(1);
+    nonnegative_divisor_ish = ~divisor;
+  }
+  else {
+    tweak = T(0);
+    nonnegative_divisor_ish = divisor;
+  }
+  // remainder cannot be -MIN_INT
+  // remainder's sign is dividend's sign (the CPU knows the latter sooner)
+  const T nonnegative_remainder = ((dividend < T(0)) ? -remainder : remainder);
+  const T left = nonnegative_divisor_ish - nonnegative_remainder;
+  const T right = nonnegative_remainder - tweak;
+  if(left < right) {
+    // remainder's magnitude is large; round quotient's magnitude up
+    return rounded_to_zero + adjust;
+  }
+  else if(left > right) {
+    // remainder's magnitude is small; round quotient's magnitude down
+    return rounded_to_zero;
+  }
+  else {
+    // tie!
+    // partially compile-time ifs here.
+    if(PosStrategy == round_to_nearest_with_ties_rounding_to_even) {
+      if(rounded_to_zero & 1) { return rounded_to_zero + adjust; }
+      else                    { return rounded_to_zero; }
+    }
+    if(PosStrategy == round_to_nearest_with_ties_rounding_to_odd) {
+      if(rounded_to_zero & 1) { return rounded_to_zero; }
+      else                    { return rounded_to_zero + adjust; }
+    }
+    // else it is one of the four biased rounding tiebreakers.
+    if((result_positive || NegStrategy == negative_mirrors_positive)
+        == (PosStrategy == round_to_nearest_with_ties_rounding_up)) {
+      return rounded_to_zero + adjust;
+    }
+    else {
+      return rounded_to_zero;
+    }
+  }
+}
+
+template<typename OperationType, bool ForceNonnegative>
+struct divide_dispatch_impl {
+  template<typename T1, typename T2, typename RoundingStrategy>
+  static inline OperationType impl(T1 dividend, T2 divisor, RoundingStrategy strat) {
+    return divide_impl<OperationType>(dividend, divisor, strat);
+  }
+};
+template<typename OperationType>
+struct divide_dispatch_impl<OperationType, true> {
+  template<typename T1, typename T2, typename RoundingStrategy>
+  static inline OperationType impl(T1 dividend, T2 divisor, RoundingStrategy) {
+    caller_error_if(dividend < 0 || divisor < 0, "Negative number forbidden in this division!");
+    // Use unsigned types so that the divide_impl optimizes better
+    // even if it's not inlined.
+    typedef typename boost::make_unsigned<OperationType>::type UnsignedOperationType;
+    return OperationType(divide_impl<UnsignedOperationType>(
+      UnsignedOperationType(dividend),
+      UnsignedOperationType(divisor),
+      rounding_strategy<RoundingStrategy::positive_strategy, negative_mirrors_positive>()));
+  }
+};
+} /* end namespace rounding_strategies */
+using rounding_strategies::rounding_strategy;
+// Avoid specifying rounding_strategy<> in last argument's structure so that
+// overloads of divide() will be picked before this one.
+template<typename T1, typename T2, typename RoundingStrategy,
+  rounding_strategies::strategy_for_positive_numbers PosStrategy = RoundingStrategy::positive_strategy,
+  rounding_strategies::strategy_for_negative_numbers NegStrategy = RoundingStrategy::negative_strategy,
+  typename = typename boost::enable_if_c<
+    (std::numeric_limits<T1>::is_specialized && std::numeric_limits<T2>::is_specialized)>::type>
+inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
+-> decltype(dividend/divisor) {
+  using namespace rounding_strategies;
+  static_assert(std::numeric_limits<T1>::is_signed == std::numeric_limits<T2>::is_signed,
+                "Dividing two numbers of mixed sign is probably a bad idea.");
+  typedef decltype(dividend / divisor) operation_type;
+  static_assert(
+       NegStrategy != negative_variant_doesnt_make_a_difference
+    || PosStrategy == round_to_nearest_with_ties_rounding_to_even
+    || PosStrategy == round_to_nearest_with_ties_rounding_to_odd
+    || (!std::numeric_limits<T1>::is_signed && !std::numeric_limits<T2>::is_signed),
+    "You lied! The negative variant does make a difference.");
+  return divide_dispatch_impl<
+    operation_type, NegStrategy == negative_is_forbidden
+  >::impl(dividend, divisor, strat);
+}
+
+
 template<typename ScalarType1, typename ScalarType2>
 auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
   -> decltype(dividend/divisor) /*C++11 syntax for return type that lets it refer to argument names*/

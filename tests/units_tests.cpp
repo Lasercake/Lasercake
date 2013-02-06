@@ -114,6 +114,11 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   std::cerr << (yay * foofoo * invfoo4 * thirtytwobits * useded) << '\n';
 
+  rounding_strategy<
+    rounding_strategies::round_down,
+    rounding_strategies::negative_mirrors_positive> strat;
+  divide(divide(foo, bfoo, strat), 3, strat) + divide(3, foo, strat);
+
   BOOST_CHECK_EQUAL(foo5 + foo3, 8*meters);
   BOOST_CHECK_EQUAL(foo5 - foo3, 2*meters);
   BOOST_CHECK_EQUAL(foo5 % foo3, 2*meters);
