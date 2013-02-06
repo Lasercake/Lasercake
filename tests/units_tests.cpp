@@ -126,6 +126,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   const auto rerat = make_non_normalized_rational_physical_quantity(
     derat.numerator, derat.denominator);
   BOOST_CHECK_EQUAL(ratty, rerat);
+  derat + ratty;
 
   BOOST_CHECK_EQUAL(foo5 + foo3, 8*meters);
   BOOST_CHECK_EQUAL(foo5 - foo3, 2*meters);

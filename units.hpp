@@ -800,6 +800,9 @@ struct units_split_rational {
   units_split_rational(physical_quantity<non_normalized_rational<Num>, Units> urat)
     : numerator(make(get(urat, Units()).numerator, Units())),
       denominator(get(urat, Units()).denominator) {}
+  operator physical_quantity<non_normalized_rational<Num>, Units>()const {
+    return make_non_normalized_rational_physical_quantity(numerator, denominator);
+  }
 
   physical_quantity<Num, Units> numerator;
   Num denominator;
