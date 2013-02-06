@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   const auto ratty = make_non_normalized_rational_physical_quantity(bfoo, foo);
   const auto derat = make_units_split_rational(ratty);
   derat.numerator + foo;
-  3 + derat.denominator;
+  (3 + derat.denominator) * seconds;
   const auto rerat = make_non_normalized_rational_physical_quantity(
     derat.numerator, derat.denominator);
   BOOST_CHECK_EQUAL(ratty, rerat);
