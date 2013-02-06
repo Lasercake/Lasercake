@@ -24,6 +24,7 @@
 #include "../units.hpp"
 
 #include <iostream>
+#include <boost/random/mersenne_twister.hpp>
 
 typedef meters_t meter;
 //constexpr auto kilograms = kilo*grams;
@@ -127,6 +128,16 @@ BOOST_AUTO_TEST_CASE( unitses ) {
     derat.numerator, derat.denominator);
   BOOST_CHECK_EQUAL(ratty, rerat);
   derat + ratty;
+  
+  boost::mt19937 rng;
+  const uniform_int_distribution<bounds_checked_int<int> > dist1(7, 11);
+  bounds_checked_int<int> val1 = dist1(rng);
+  BOOST_CHECK_GE(val1, 7);
+  BOOST_CHECK_LE(val1, 11);
+  const uniform_int_distribution<physical_quantity<int32_t, meter> > dist2(foo3, foo5);
+  physical_quantity<int32_t, meter> val2 = dist2(rng);
+  BOOST_CHECK_GE(val2, 3*meters);
+  BOOST_CHECK_LE(val2, 5*meters);
 
   BOOST_CHECK_EQUAL(foo5 + foo3, 8*meters);
   BOOST_CHECK_EQUAL(foo5 - foo3, 2*meters);
