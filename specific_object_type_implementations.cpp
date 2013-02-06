@@ -27,25 +27,27 @@
 
 namespace /* anonymous */ {
 
-typedef polygon_rational_type rational;
-
 namespace laserbeam {
-  static const uint64_t too_large = (1ULL << 32) - 1;
+  static const uint64_t too_large = (1ULL << 32) - 1; // HACK
+  static const tile_coordinate too_many_tiles_wide(too_large / get_primitive_int(get(tile_width, fine_distance_units)));
+  static const tile_coordinate too_many_tiles_high(too_large / get_primitive_int(get(tile_height, fine_distance_units)));
   inline bool bbox_is_too_large(world_collision_detector::bounding_box const& bbox) {
-    return (bbox.size_minus_one(X) >= too_large || bbox.size_minus_one(Y) >= too_large || bbox.size_minus_one(Z) >= too_large);
+    return (bbox.size_minus_one(X) >= too_large
+         || bbox.size_minus_one(Y) >= too_large
+         || bbox.size_minus_one(Z) >= too_large);
   }
   inline bool bbox_is_too_large(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
-    return (bbox.size_minus_one(X) >= tile_coordinate(too_large/get_primitive_int(tile_width))
-         || bbox.size_minus_one(Y) >= tile_coordinate(too_large/get_primitive_int(tile_width))
-         || bbox.size_minus_one(Z) >= tile_coordinate(too_large/get_primitive_int(tile_height)));
+    return (bbox.size_minus_one(X) >= too_many_tiles_wide
+         || bbox.size_minus_one(Y) >= too_many_tiles_wide
+         || bbox.size_minus_one(Z) >= too_many_tiles_high);
   }
   struct beam_first_contact_finder {
-    beam_first_contact_finder(world const& w, line_segment beam, object_or_tile_identifier ignore):w_(w),beam_(beam) {ignores_.insert(ignore);}
-    typedef rational cost_type;
-    typedef optional_rational result_type;
+    beam_first_contact_finder(world const& w, geom::line_segment beam, object_or_tile_identifier ignore):w_(w),beam_(beam) {ignores_.insert(ignore);}
+    typedef geom::dimensionless_rational cost_type;
+    typedef geom::optional_dimensionless_rational result_type;
     result_type min_cost(world_collision_detector::bounding_box const& bbox) const {
       // hack - avoid overflow - don't try to filter out too-large regions
-      if(bbox_is_too_large(bbox)) return rational(0);
+      if(bbox_is_too_large(bbox)) return cost_type(0);
       return get_first_intersection(beam_, bbox);
     }
     result_type cost(object_identifier id, world_collision_detector::bounding_box const& bbox) const {
@@ -56,12 +58,12 @@ namespace laserbeam {
     }
   private:
     world const& w_;
-    line_segment beam_;
+    geom::line_segment beam_;
     unordered_set<object_or_tile_identifier> ignores_;
   };
 
   struct beam_first_contact_finder_tile {
-    beam_first_contact_finder_tile(octant_number octant, line_segment beam)
+    beam_first_contact_finder_tile(octant_number octant, geom::line_segment beam)
       : octant_(octant), beam_(beam), latest_distance_(0), found_tile_() {}
 
     tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
@@ -70,8 +72,8 @@ namespace laserbeam {
         return indeterminate;
       }
       const tile_bounding_box tile_bbox = cube_bbox_to_tile_bounding_box(bbox);
-      const optional_rational new_distance =
-        get_first_intersection(beam_, convert_to_fine_units(tile_bbox));
+      const geom::optional_dimensionless_rational new_distance =
+        geom::get_first_intersection(beam_, convert_to_fine_units(tile_bbox));
       if(new_distance) {
         assert_if_ASSERT_EVERYTHING(*new_distance >= latest_distance_);
         latest_distance_ = *new_distance;
@@ -90,8 +92,8 @@ namespace laserbeam {
     octant_number octant()const { return octant_; }
 
     octant_number octant_;
-    line_segment beam_;
-    rational latest_distance_;
+    geom::line_segment beam_;
+    geom::dimensionless_rational latest_distance_;
     boost::optional<tile_location> found_tile_;
   };
 }
@@ -105,13 +107,13 @@ object_or_tile_identifier laser_find(
     vector3<fine_scalar> beam_vector,
     bool add_laser_sfx
 ) {
-  const line_segment beam(source, source + beam_vector);
+  const geom::line_segment beam(source, source + beam_vector);
   const laserbeam::beam_first_contact_finder finder(w, beam, dont_hit_this);
   laserbeam::beam_first_contact_finder_tile finder_tile(vector_octant(beam_vector), beam);
   w.visit_collidable_tiles(finder_tile);
   auto hit_object =  w.objects_exposed_to_collision().find_least(finder);
-  const rational farther_away_than_possible_intercept_point = rational(2); //the valid max is 1
-  rational best_intercept_point = farther_away_than_possible_intercept_point;
+  const geom::dimensionless_rational farther_away_than_possible_intercept_point(2); //the valid max is 1
+  geom::dimensionless_rational best_intercept_point = farther_away_than_possible_intercept_point;
   object_or_tile_identifier hit_thing;
   if(finder_tile.found_tile_) {
     hit_thing = *finder_tile.found_tile_;
@@ -195,7 +197,7 @@ shape robot::get_initial_personal_space_shape()const {
   verts.push_back(location_ + vector3<fine_scalar>(-tile_width * 3 / 10, -tile_width * 3 / 10, tile_width * 3 / 10));
   verts.push_back(location_ + vector3<fine_scalar>(-tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10));
   verts.push_back(location_ + vector3<fine_scalar>(0, 0, -tile_width * 3 / 10));
-  return shape(convex_polyhedron(verts));
+  return shape(geom::convex_polyhedron(verts));
 }
 
 shape robot::get_initial_detail_shape()const {
@@ -243,13 +245,13 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   const bool turn_up = input_news.is_currently_pressed("up") || input_news.is_currently_pressed("w");
   const bool turn_down = input_news.is_currently_pressed("down") || input_news.is_currently_pressed("x");
   if (turn_right != turn_left) {
-    const fine_scalar which_way = (turn_right ? 1 : -1);
+    const int which_way = (turn_right ? 1 : -1);
     const fine_scalar new_facing_x = facing_.x + which_way * facing_.y / 20;
     const fine_scalar new_facing_y = facing_.y - which_way * facing_.x / 20;
     facing_.x = new_facing_x; facing_.y = new_facing_y;
   }
   if (turn_up != turn_down) {
-    const fine_scalar which_way = (turn_up ? 1 : -1);
+    const int which_way = (turn_up ? 1 : -1);
     const fine_scalar new_xymag = xymag - (which_way * facing_.z / 20);
     if (new_xymag > tile_width / 8) {
       facing_.z += which_way * xymag / 20;
@@ -326,7 +328,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type>
             random_delta(get_primitive_int(-tile_width), get_primitive_int(tile_width));
     for (int i = 0; i < 20; ++i) {
-      const shared_ptr<random_walk_rocket> roc (new random_walk_rocket(location_ + facing_ * 2 + vector3<fine_scalar>(random_delta(w.get_rng()), random_delta(w.get_rng()), random_delta(w.get_rng())), facing_));
+      const shared_ptr<random_walk_rocket> roc (new random_walk_rocket(
+        location_ + facing_ * 2 +
+          vector3<fine_scalar>(random_delta(w.get_rng()), random_delta(w.get_rng()), random_delta(w.get_rng())),
+        facing_));
       w.try_create_object(roc);
     }
   }
@@ -370,9 +375,9 @@ void laser_emitter::update(world& w, input_representation::input_news_t const&, 
   const boost::random::uniform_int_distribution<get_primitive_int_type<fine_scalar>::type> random_delta(-1023, 1023);
   for (int i = 0; i < 100; ++i) {
     do {
-      facing_.x = random_delta(w.get_rng());
-      facing_.y = random_delta(w.get_rng());
-      facing_.z = random_delta(w.get_rng());
+      facing_.x = random_delta(w.get_rng())*fine_distance_units;//TODO implement vector3_location
+      facing_.y = random_delta(w.get_rng())*fine_distance_units;
+      facing_.z = random_delta(w.get_rng())*fine_distance_units;
     } while (facing_.magnitude_within_32_bits_is_greater_than(1023) || facing_.magnitude_within_32_bits_is_less_than(512));
 
     fire_standard_laser(w, my_id, location_, facing_);
@@ -383,7 +388,7 @@ void laser_emitter::update(world& w, input_representation::input_news_t const&, 
 
 
 shape autorobot::get_initial_personal_space_shape()const {
-  return shape(convex_polyhedron(bounding_box::min_and_max(
+  return shape(geom::convex_polyhedron(bounding_box::min_and_max(
     location_ - vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
     location_ + vector3<fine_scalar>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
   )));
@@ -503,7 +508,7 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
 
 
 shape random_walk_rocket::get_initial_personal_space_shape()const {
-  return shape(convex_polyhedron(bounding_box::min_and_max(
+  return shape(geom::convex_polyhedron(bounding_box::min_and_max(
     initial_location_ - vector3<fine_scalar>(tile_width * 2 / 15, tile_width * 2 / 15, tile_width * 2 / 15),
     initial_location_ + vector3<fine_scalar>(tile_width * 2 / 15, tile_width * 2 / 15, tile_width * 2 / 15)
   )));
