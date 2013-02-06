@@ -795,6 +795,22 @@ make_non_normalized_rational_physical_quantity(Num num) {
       typename info::int_type(1)),
     typename info::units());
 }
+template<typename Num, typename Units>
+struct units_split_rational {
+  units_split_rational(physical_quantity<non_normalized_rational<Num>, Units> urat)
+    : numerator(make(get(urat, Units()).numerator, Units())),
+      denominator(get(urat, Units()).denominator) {}
+
+  physical_quantity<Num, Units> numerator;
+  Num denominator;
+};
+template<typename Num, typename Units>
+inline units_split_rational<Num, Units> make_units_split_rational(
+      physical_quantity<non_normalized_rational<Num>, Units> urat) {
+  return urat;
+}
+
+
 
 // Even units<> has abs() and sign().
 template<typename...U>
