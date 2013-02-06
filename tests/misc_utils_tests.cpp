@@ -42,8 +42,49 @@ BOOST_AUTO_TEST_CASE( standard_rounding_behavior ) {
   BOOST_CHECK_EQUAL(-8%-3, -2);
   BOOST_CHECK_EQUAL(8%-3, 2);
 }
+template<typename T>
+void for_each_rounding_strategy(T dividend, T divisor, T quotient) {
+  using namespace rounding_strategies;
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_down, negative_mirrors_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_down, negative_continuous_with_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_up, negative_mirrors_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_up, negative_continuous_with_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), quotient);
+}
 BOOST_AUTO_TEST_CASE( explicit_rounding ) {
   using namespace rounding_strategies;
+  const int min_int = std::numeric_limits<int>::min();
+  const int max_int = std::numeric_limits<int>::max();
+  const unsigned int max_uint = std::numeric_limits<unsigned int>::max();
+
+  for_each_rounding_strategy(max_int, -1, min_int+1);
+  for_each_rounding_strategy(min_int+1, -1, max_int);
+  for_each_rounding_strategy(0, -1, 0);
+  for_each_rounding_strategy(0, 1, 0);
+  for_each_rounding_strategy(0, 2, 0);
+  for_each_rounding_strategy(0, -2, 0);
+  for_each_rounding_strategy(0, min_int, 0);
+  for_each_rounding_strategy(0, max_int, 0);
+  for_each_rounding_strategy(1, 1, 1);
+  for_each_rounding_strategy(max_int, 1, max_int);
+  for_each_rounding_strategy(min_int, 1, min_int);
+  for_each_rounding_strategy(max_int, max_int, 1);
+  for_each_rounding_strategy(min_int, min_int, 1);
+  for_each_rounding_strategy(max_int/2+1, max_int/2+1, 1);
+  for_each_rounding_strategy(max_int/2+1, max_int/4+1, 2);
+  for_each_rounding_strategy(max_int/2+1, max_int/8+1, 4);
+  for_each_rounding_strategy(min_int, min_int/2, 2);
+  for_each_rounding_strategy(max_uint, 1u, max_uint);
+  for_each_rounding_strategy(max_uint - 3, 1u, max_uint - 3);
+  for_each_rounding_strategy(max_uint - 3, 2u, (max_uint - 3)/2);
+  for_each_rounding_strategy(max_uint, 3u, max_uint/3);
+
+
   BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_down, negative_mirrors_positive>()),  2);
   BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_down, negative_mirrors_positive>()), -2);
   BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_down, negative_mirrors_positive>()),  2);
@@ -53,16 +94,21 @@ BOOST_AUTO_TEST_CASE( explicit_rounding ) {
   BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_down, negative_continuous_with_positive>()), -3);
   BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_down, negative_continuous_with_positive>()),  2);
   BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_down, negative_continuous_with_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-1,  3, rounding_strategy<round_down, negative_continuous_with_positive>()), -1);
   
   BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_up, negative_continuous_with_positive>()),  3);
   BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_up, negative_continuous_with_positive>()), -2);
   BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_up, negative_continuous_with_positive>()),  3);
   BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_up, negative_continuous_with_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide( 1,  3, rounding_strategy<round_up, negative_continuous_with_positive>()),  1);
+  BOOST_CHECK_EQUAL(divide(-1,  3, rounding_strategy<round_up, negative_continuous_with_positive>()),  0);
 
   BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_up, negative_mirrors_positive>()),  3);
   BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_up, negative_mirrors_positive>()), -3);
   BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_up, negative_mirrors_positive>()),  3);
   BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_up, negative_mirrors_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide( 1,  3, rounding_strategy<round_up, negative_mirrors_positive>()),  1);
+  BOOST_CHECK_EQUAL(divide(-1,  3, rounding_strategy<round_up, negative_mirrors_positive>()), -1);
 
   BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()),  3);
   BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()), -3);
@@ -101,6 +147,7 @@ BOOST_AUTO_TEST_CASE( explicit_rounding ) {
   BOOST_CHECK_EQUAL(divide(-21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
   BOOST_CHECK_EQUAL(divide(-21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
   BOOST_CHECK_EQUAL(divide( 21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+  BOOST_CHECK_EQUAL(divide( -1,  2, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -1);
 
 
   BOOST_CHECK_EQUAL(divide(vector3<int>(3,4,5), 4, rounding_strategy<round_up, negative_continuous_with_positive>()), vector3<int>(1,1,2));

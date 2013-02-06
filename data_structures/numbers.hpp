@@ -57,6 +57,12 @@ typename boost::make_unsigned<Int>::type to_unsigned_type(Int i) {
 }
 
 namespace rounding_strategies {
+// Otherwise we get warnings when instantiated with unsigned
+// types for (val < 0):
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma clang diagnostic ignored "-Wtautological-compare"
+
 // Zero divided by something is always zero.
 // Any other division result is always (before rounding)
 // positive or negative.
@@ -260,6 +266,7 @@ struct divide_dispatch_impl<OperationType, true> {
       rounding_strategy<RoundingStrategy::positive_strategy, negative_mirrors_positive>()));
   }
 };
+#pragma GCC diagnostic pop
 } /* end namespace rounding_strategies */
 using rounding_strategies::rounding_strategy;
 // Avoid specifying rounding_strategy<> in last argument's structure so that
