@@ -38,7 +38,7 @@ void world::update(unordered_map<object_identifier, input_representation::input_
   }
   update_moving_objects();
   //TODO update_light(vector3<fine_scalar>(3,10,-999), 3);
-  current_game_time_ += time_units_per_fixed_frame;
+  current_game_time_ += 1*fixed_frame_lengths * identity(time_units / fixed_frame_lengths);
 }
 
 object_identifier world::try_create_object(shared_ptr<object> obj) {

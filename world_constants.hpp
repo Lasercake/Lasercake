@@ -41,6 +41,9 @@ typedef typename units_prod<fine_distance_units_t, hertz_t>::type velocity_units
 typedef typename units_prod<milli_t, grams_t, units_pow<meters_t, (-3)>>::type density_units_t;
 typedef pascals_t pressure_units_t;
 
+// This is a stupid unit but it exists currently:
+typedef typename units_prod<time_units_t, dim::ratio<30>>::type fixed_frame_lengths_t;
+
 
 
 //typedef typename units_prod<kilograms_t, fine_distance_units_t::pow<(-3)>>::type density_units_t;
@@ -58,6 +61,7 @@ constexpr auto time_units = time_units_t();
 constexpr auto velocity_units = velocity_units_t();
 constexpr auto density_units = density_units_t();
 constexpr auto pressure_units = pressure_units_t();
+constexpr auto fixed_frame_lengths = fixed_frame_lengths_t();
 
 // Rationale for the 64 bit types:
 // A lot of computations in Lasercake require more than 32 bits.
