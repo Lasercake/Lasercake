@@ -992,6 +992,14 @@ template<typename Num, typename Units> using units<Num, Units> = Num;
 #endif
 #endif
 
+namespace boost {
+  template<typename Num, typename Units>
+  struct make_signed< physical_quantity<Num, Units> > {
+    typedef physical_quantity<typename make_signed<Num>::type, Units> type; };
+  template<typename Num, typename Units>
+  struct make_unsigned< physical_quantity<Num, Units> > {
+    typedef physical_quantity<typename make_unsigned<Num>::type, Units> type; };
+}
 
 // Specialize numbers.hpp's numeric_representation_cast<>
 // for the sake of e.g. vector3's dot product implementation.
