@@ -404,10 +404,7 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(
   // The movement code uses this: if the movement is INTO this plane then it's blocked, if it's
   // OUT OF this plane then it's fudged by allowing it not to collide.
   if (result.min <= rational_time(0) && result.max >= rational_time(0)) {
-    // TODO fix this hack
-    const rational_coord no_excl_dist = make_non_normalized_rational_physical_quantity<coord>(
-                                          -1*fine_units);
-    rational_coord closest_excl_dist = no_excl_dist;
+    optional_rational_coord closest_excl_dist;
     for (pair_of_parallel_supporting_planes const& plane : relating_planes) {
       // NOTE: The magnitude calculation seems unavoidable here,
       // because the rule is "if we went directly outwards through the plane",
@@ -421,7 +418,7 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(
           .dot<polygon_int_type>(plane.p1_to_p2_normal),
           // divided by
           plane.p1_to_p2_normal.magnitude_within_32_bits());
-      if (closest_excl_dist == no_excl_dist || this_excl_dist < closest_excl_dist) {
+      if (!closest_excl_dist || this_excl_dist < *closest_excl_dist) {
         closest_excl_dist = this_excl_dist;
         result.arbitrary_plane_of_closest_exclusion = plane_as_base_point_and_normal(
             plane.p1_base_point, plane.p1_to_p2_normal);

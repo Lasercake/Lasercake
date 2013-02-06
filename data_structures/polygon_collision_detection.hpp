@@ -50,6 +50,7 @@ typedef physical_quantity<non_normalized_rational<dimensionless>, seconds_t> rat
 typedef faux_optional<rational_time> optional_rational_time;
 
 typedef physical_quantity<non_normalized_rational<dimensionless>, fine_units_t> rational_coord;
+typedef faux_optional<rational_coord> optional_rational_coord;
 
 typedef non_normalized_rational<dimensionless> dimensionless_rational;
 typedef faux_optional<dimensionless_rational> optional_dimensionless_rational;
