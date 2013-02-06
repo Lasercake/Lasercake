@@ -604,7 +604,8 @@ fine_scalar persistent_water_group_info::get_pressure_at_height(tile_coordinate 
     assert_if_ASSERT_EVERYTHING(foo != num_tiles_by_height.rend());
     current_height = foo->first;
     if (height > current_height) return 0;
-    pressure_caches.insert(make_pair(current_height, 0));
+    pressure_caches.insert(
+      decltype(pressure_caches)::value_type(current_height, 0));
     // TODO make less stupid
     width_of_widest_level_so_far_caches.erase(current_height);
     width_of_widest_level_so_far_caches.insert(make_pair(current_height, foo->second));
@@ -1520,7 +1521,7 @@ void update_fluids_impl(state_t& state) {
       const sub_tile_distance amount_of_new_vel_in_movement_dir = dst_fluid.velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
       const sub_tile_distance deficiency_of_new_vel_in_movement_dir = move.amount_of_the_push_that_sent_us_over_the_threshold - amount_of_new_vel_in_movement_dir;
       if (deficiency_of_new_vel_in_movement_dir > 0) {
-        dst_fluid.velocity += vector3<sub_tile_distance>(cardinal_direction_vectors[move.dir]) * deficiency_of_new_vel_in_movement_dir;
+        dst_fluid.velocity += cardinal_direction_vectors[move.dir] * deficiency_of_new_vel_in_movement_dir;
       }
       
       // Don't lose movement to rounding error during progress over multiple tiles:
