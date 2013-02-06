@@ -220,14 +220,23 @@ namespace std {
 // How to implement numeric_limits most correctly with non-default bounds?
 // Especially as something that is supposed to only check code, never change
 // its behaviour.
-// Leaving unimplemented for now.
-#if 0
+// Well, it became useful to enable this for divide().
 namespace std {
   // is_modulo: always false?
   // min(), max(), digits, digits10
-  template<typename Int> struct numeric_limits< bounds_checked_int<Int> > : numeric_limits<Int> {};
+  // Per above, we'll leave it the same, and if something relies on this
+  // having different behavior they'll get a bounds-checking error.
+  // Only instantiating it at defauly bounds for now, in order to
+  // make min() and max() non-nonsensical.
+  template<typename Int> struct numeric_limits< bounds_checked_int<Int> > : numeric_limits<Int> {
+  private:
+    //static const int digits;
+    //static const int digits10;
+    static const bool is_modulo;
+    //static bounds_checked_int<Int> max();
+    //static bounds_checked_int<Int> min();
+  };
 }
-#endif
 namespace boost {
   template<typename Int> struct   make_signed< bounds_checked_int<Int> > { typedef bounds_checked_int<typename   make_signed<Int>::type> type; };
   template<typename Int> struct make_unsigned< bounds_checked_int<Int> > { typedef bounds_checked_int<typename make_unsigned<Int>::type> type; };

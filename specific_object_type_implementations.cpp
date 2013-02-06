@@ -225,9 +225,11 @@ std::string robot::player_instructions()const {
 void robot::update(world& w, input_representation::input_news_t const& input_news, object_identifier my_id) {
   update_location(location_, w, my_id);
   //float_above_ground(velocity_, w, my_id);
-    
-  velocity_.x = divide_rounding_towards_zero(velocity_.x, 2);
-  velocity_.y = divide_rounding_towards_zero(velocity_.y, 2);
+
+  // TODO is this the best rounding strategy? (do we care here?)
+  using namespace rounding_strategies;
+  velocity_.x = divide(velocity_.x, 2, rounding_strategy<round_down, negative_mirrors_positive>());
+  velocity_.y = divide(velocity_.y, 2, rounding_strategy<round_down, negative_mirrors_positive>());
   const fine_scalar xymag = i64sqrt(facing_.x*facing_.x + facing_.y*facing_.y);
   if (input_news.is_currently_pressed("5") || input_news.is_currently_pressed("s")) {
     velocity_.x = facing_.x * tile_width * velocity_scale_factor / 8 / xymag;

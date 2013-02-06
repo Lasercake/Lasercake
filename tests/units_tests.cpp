@@ -114,6 +114,19 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   std::cerr << (yay * foofoo * invfoo4 * thirtytwobits * useded) << '\n';
 
+  rounding_strategy<
+    rounding_strategies::round_down,
+    rounding_strategies::negative_mirrors_positive> strat;
+  divide(divide(foo, bfoo, strat), 3, strat) + divide(3, foo, strat);
+
+  const auto ratty = make_non_normalized_rational_physical_quantity(bfoo, foo);
+  const auto derat = make_units_split_rational(ratty);
+  derat.numerator + foo;
+  3 + derat.denominator;
+  const auto rerat = make_non_normalized_rational_physical_quantity(
+    derat.numerator, derat.denominator);
+  BOOST_CHECK_EQUAL(ratty, rerat);
+
   BOOST_CHECK_EQUAL(foo5 + foo3, 8*meters);
   BOOST_CHECK_EQUAL(foo5 - foo3, 2*meters);
   BOOST_CHECK_EQUAL(foo5 % foo3, 2*meters);

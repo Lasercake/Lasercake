@@ -795,6 +795,22 @@ make_non_normalized_rational_physical_quantity(Num num) {
       typename info::int_type(1)),
     typename info::units());
 }
+template<typename Num, typename Units>
+struct units_split_rational {
+  units_split_rational(physical_quantity<non_normalized_rational<Num>, Units> urat)
+    : numerator(make(get(urat, Units()).numerator, Units())),
+      denominator(get(urat, Units()).denominator) {}
+
+  physical_quantity<Num, Units> numerator;
+  Num denominator;
+};
+template<typename Num, typename Units>
+inline units_split_rational<Num, Units> make_units_split_rational(
+      physical_quantity<non_normalized_rational<Num>, Units> urat) {
+  return urat;
+}
+
+
 
 // Even units<> has abs() and sign().
 template<typename...U>
@@ -971,7 +987,6 @@ struct numeric_representation_cast_impl<physical_quantity<Target, Units1>, physi
 };
 
 namespace units_impl {
-
 
 template<> struct show_units_impl<units<>> {
   static void show(std::ostream& os) {
@@ -1204,6 +1219,50 @@ operator/(physical_quantity<Num, UnitsA> a, units<UB...>) {
     >::construct(a.get(UnitsA()));
 }
 
+
+
+template<typename NumA, typename NumB, typename UnitsA, typename UnitsB, typename RoundingStrategy>
+inline
+typename make_physical_quantity_type<
+    decltype(divide(std::declval<NumA>(), std::declval<NumB>(), std::declval<RoundingStrategy>())),
+    typename units_impl::divide_units<UnitsA, UnitsB>::type
+  >::type
+divide(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b, RoundingStrategy strat) {
+  return make_physical_quantity_type<
+      decltype(divide(std::declval<NumA>(), std::declval<NumB>(), std::declval<RoundingStrategy>())),
+      typename units_impl::divide_units<UnitsA, UnitsB>::type
+    >::construct(divide(a.get(UnitsA()), b.get(UnitsB()), strat));
+}
+
+template<typename Num, typename Units, typename AnyNum, typename RoundingStrategy>
+inline
+typename make_physical_quantity_type<decltype(
+  divide(std::declval<Num>(),
+         std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
+         std::declval<RoundingStrategy>())
+), Units>::type
+divide(physical_quantity<Num, Units> a, AnyNum b, RoundingStrategy strat) {
+  return make_physical_quantity_type<decltype(
+      divide(std::declval<Num>(),
+             std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
+             std::declval<RoundingStrategy>())
+    ), Units>::construct(divide(a.get(Units()), b, strat));
+}
+
+template<typename Num, typename Units, typename AnyNum, typename RoundingStrategy>
+inline
+typename make_physical_quantity_type<decltype(
+  divide(std::declval<Num>(),
+         std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
+         std::declval<RoundingStrategy>())
+), typename units_recip<Units>::type>::type
+divide(AnyNum a, physical_quantity<Num, Units> b, RoundingStrategy strat) {
+  return make_physical_quantity_type<decltype(
+      divide(std::declval<Num>(),
+             std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
+             std::declval<RoundingStrategy>())
+    ), typename units_recip<Units>::type>::construct(divide(a, b.get(Units()), strat));
+}
 
 ///////////////////////////////////////////////////////////////////////////
 //////////// EXTRA-BORING IMPLEMENTATION DETAILS ABOVE HERE ///////////////
