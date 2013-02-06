@@ -82,12 +82,15 @@ enum strategy_for_negative_numbers {
   // error to claim "doesn't make a difference" when it might
   // in fact make a difference.
   negative_variant_doesnt_make_a_difference,
+  
   // result invariant under negation; roughly,
   // -divide(-x, y, strat) == divide(x, y, strat)
   negative_mirrors_positive,
+  
   // result invariant under addition of a constant; roughly,
   // divide(x + C*y, y, strat) - C == divide(x, y, strat)
   negative_continuous_with_positive,
+  
   // these just assert that the numerator and denominator is nonnegative.
   negative_is_forbidden
 };
