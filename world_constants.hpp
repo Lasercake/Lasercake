@@ -37,8 +37,9 @@ typedef units<dim::ratio< 2>, dim::meter<1>> tile_heights_t;
 typedef units<dim::ratio< 1, 200>, dim::meter<1>> fine_distance_units_t;
 typedef typename units_prod<fine_distance_units_t, dim::ratio<1, 30>>::type tile_physics_sub_tile_units_t;
 typedef units<dim::ratio<1, (2*2*2*2 * 3*3*3 * 5*5 * 7 * 11)>, dim::second<1>> time_units_t;
-typedef typename units_prod<fine_distance_units_t, hertz_t>::type velocity_units_t;
-typedef typename units_prod<milli_t, grams_t, units_pow<meters_t, (-3)>>::type density_units_t;
+typedef typename units_prod<fine_distance_units_t, dim::second<(-1)>>::type velocity_units_t;
+typedef typename units_prod<fine_distance_units_t, dim::second<(-2)>>::type acceleration_units_t;
+typedef typename units_prod<milli_t, grams_t, dim::meter<(-3)>>::type density_units_t;
 typedef pascals_t pressure_units_t;
 
 // This is a stupid unit but it exists currently:
@@ -59,6 +60,7 @@ constexpr auto fine_distance_units = fine_distance_units_t();
 constexpr auto tile_physics_sub_tile_units = tile_physics_sub_tile_units_t();
 constexpr auto time_units = time_units_t();
 constexpr auto velocity_units = velocity_units_t();
+constexpr auto acceleration_units = acceleration_units_t();
 constexpr auto density_units = density_units_t();
 constexpr auto pressure_units = pressure_units_t();
 constexpr auto fixed_frame_lengths = fixed_frame_lengths_t();
