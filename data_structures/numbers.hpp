@@ -227,12 +227,12 @@ inline T divide_impl(T dividend, T divisor,
     // tie!
     // partially compile-time ifs here.
     if(PosStrategy == round_to_nearest_with_ties_rounding_to_even) {
-      if(rounded_to_zero & 1) { return rounded_to_zero + adjust; }
-      else                    { return rounded_to_zero; }
+      if(rounded_to_zero & T(1)) { return rounded_to_zero + adjust; }
+      else                       { return rounded_to_zero; }
     }
     if(PosStrategy == round_to_nearest_with_ties_rounding_to_odd) {
-      if(rounded_to_zero & 1) { return rounded_to_zero; }
-      else                    { return rounded_to_zero + adjust; }
+      if(rounded_to_zero & T(1)) { return rounded_to_zero; }
+      else                       { return rounded_to_zero + adjust; }
     }
     // else it is one of the four biased rounding tiebreakers.
     if((result_positive || NegStrategy == negative_mirrors_positive)
@@ -248,7 +248,7 @@ inline T divide_impl(T dividend, T divisor,
 template<typename T, rounding_strategy_for_positive_numbers PosStrategy>
 inline T divide_impl(T dividend, T divisor,
       rounding_strategy<PosStrategy, negative_is_forbidden>) {
-  caller_error_if(dividend < 0 || divisor < 0, "Negative number forbidden in this division!");
+  caller_error_if(dividend < T(0) || divisor < T(0), "Negative number forbidden in this division!");
   // Use unsigned types so that the divide_impl optimizes better
   // even if it's not inlined.
   typedef typename boost::make_unsigned<T>::type UnsignedT;
