@@ -115,9 +115,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   std::cerr << (yay * foofoo * invfoo4 * thirtytwobits * useded) << '\n';
 
-  rounding_strategy<
-    rounding_strategies::round_down,
-    rounding_strategies::negative_mirrors_positive> strat;
+  rounding_strategy<round_down, negative_mirrors_positive> strat;
   divide(divide(foo, bfoo, strat), 3, strat) + divide(3, foo, strat);
 
   const auto ratty = make_non_normalized_rational_physical_quantity(bfoo, foo);

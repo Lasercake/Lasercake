@@ -31,19 +31,16 @@ typedef faux_optional<time_type> optional_time;
 vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& velocity, time_type end_time) {
   // TODO is this the right rounding strategy? I did not change
   // the effect but maybe round-to-even or -odd is better? -Isaac
-  using namespace rounding_strategies;
   return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
     rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>());
 }
 
 vector3<fine_scalar> movement_delta_rounding_up(vector3<fine_scalar> const& velocity, time_type end_time) {
-  using namespace rounding_strategies;
   return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
     rounding_strategy<round_up, negative_mirrors_positive>());
 }
 
 vector3<fine_scalar> movement_delta_rounding_down(vector3<fine_scalar> const& velocity, time_type end_time) {
-  using namespace rounding_strategies;
   return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
     rounding_strategy<round_down, negative_mirrors_positive>());
 }

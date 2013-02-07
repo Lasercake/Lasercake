@@ -44,7 +44,6 @@ BOOST_AUTO_TEST_CASE( standard_rounding_behavior ) {
 }
 template<typename T>
 void for_each_rounding_strategy(T dividend, T divisor, T quotient) {
-  using namespace rounding_strategies;
   BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_down, negative_mirrors_positive>()), quotient);
   BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_down, negative_continuous_with_positive>()), quotient);
   BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_up, negative_mirrors_positive>()), quotient);
@@ -57,7 +56,6 @@ void for_each_rounding_strategy(T dividend, T divisor, T quotient) {
   BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), quotient);
 }
 BOOST_AUTO_TEST_CASE( explicit_rounding ) {
-  using namespace rounding_strategies;
   const int min_int = std::numeric_limits<int>::min();
   const int max_int = std::numeric_limits<int>::max();
   const unsigned int max_uint = std::numeric_limits<unsigned int>::max();
