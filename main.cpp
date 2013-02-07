@@ -423,7 +423,7 @@ int main(int argc, char *argv[])
     po::notify(vm);
 
     config.view_radius =
-      physical_quantity<int64_t, tile_widths_t>(
+      physical_quantity<lint64_t, tile_widths_t>(
           vm["view-radius"].as<uint32_t>() * tile_widths)
       * identity(fine_units / tile_widths);
     if(!config.run_drawing_code) {
