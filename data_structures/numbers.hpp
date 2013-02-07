@@ -56,12 +56,6 @@ typename boost::make_unsigned<Int>::type to_unsigned_type(Int i) {
   return result;
 }
 
-namespace rounding_strategies {
-// Otherwise we get warnings when instantiated with unsigned
-// types for (val < 0):
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wtype-limits"
-#pragma clang diagnostic ignored "-Wtautological-compare"
 
 // Zero divided by something is always zero.
 // Any other division result is always (before rounding)
@@ -69,14 +63,14 @@ namespace rounding_strategies {
 // We specify a division strategy in terms of positive
 // numbers and an indication of how negative rounding is
 // related to positive rounding.
-enum strategy_for_positive_numbers {
+enum rounding_strategy_for_positive_numbers {
   round_down, round_up,
   round_to_nearest_with_ties_rounding_up,
   round_to_nearest_with_ties_rounding_down,
   round_to_nearest_with_ties_rounding_to_even,
   round_to_nearest_with_ties_rounding_to_odd
 };
-enum strategy_for_negative_numbers {
+enum rounding_strategy_for_negative_numbers {
   // "doesn't make a difference" is true for unsigned arguments
   // and for round-to-even and round-to-odd.  It is a compile
   // error to claim "doesn't make a difference" when it might
@@ -94,6 +88,20 @@ enum strategy_for_negative_numbers {
   // these just assert that the numerator and denominator is nonnegative.
   negative_is_forbidden
 };
+template<
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy
+    = negative_variant_doesnt_make_a_difference>
+struct rounding_strategy {
+  static const rounding_strategy_for_positive_numbers positive_strategy = PosStrategy;
+  static const rounding_strategy_for_negative_numbers negative_strategy = NegStrategy;
+};
+namespace rounding_strategies_impl {
+// Otherwise we get warnings when instantiated with unsigned
+// types for (val < 0):
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma clang diagnostic ignored "-Wtautological-compare"
 
 // C++11 specifies that int '/' is round-to-zero.
 // Test this at compile time and runtime (misc_utils_tests.cpp
@@ -109,14 +117,6 @@ static_assert(8%3 == 2, "we use the typical, standard round-towards-zero");
 static_assert(-8%3 == -2, "we use the typical, standard round-towards-zero");
 static_assert(-8%-3 == -2, "we use the typical, standard round-towards-zero");
 static_assert(8%-3 == 2, "we use the typical, standard round-towards-zero");
-template<
-  strategy_for_positive_numbers PosStrategy,
-  strategy_for_negative_numbers NegStrategy
-    = negative_variant_doesnt_make_a_difference>
-struct rounding_strategy {
-  static const strategy_for_positive_numbers positive_strategy = PosStrategy;
-  static const strategy_for_negative_numbers negative_strategy = NegStrategy;
-};
 
 // TODO boost::enable_if<std::numeric_limits<T1 & T2>::is_specialized
 // or get_primitive_int_type? or.
@@ -186,8 +186,8 @@ inline T divide_impl(T dividend, T divisor,
 
 // this is too tricky to allow two different int type arguments for
 template<typename T,
-  strategy_for_positive_numbers PosStrategy,
-  strategy_for_negative_numbers NegStrategy>
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy>
 inline T divide_impl(T dividend, T divisor,
       rounding_strategy<PosStrategy, NegStrategy>) {
   caller_correct_if(divisor != T(0), "divisor must be nonzero");
@@ -248,35 +248,26 @@ inline T divide_impl(T dividend, T divisor,
   }
 }
 
-template<typename OperationType, bool ForceNonnegative>
-struct divide_dispatch_impl {
-  template<typename T1, typename T2, typename RoundingStrategy>
-  static inline OperationType impl(T1 dividend, T2 divisor, RoundingStrategy strat) {
-    return divide_impl<OperationType>(dividend, divisor, strat);
-  }
-};
-template<typename OperationType>
-struct divide_dispatch_impl<OperationType, true> {
-  template<typename T1, typename T2, typename RoundingStrategy>
-  static inline OperationType impl(T1 dividend, T2 divisor, RoundingStrategy) {
-    caller_error_if(dividend < 0 || divisor < 0, "Negative number forbidden in this division!");
-    // Use unsigned types so that the divide_impl optimizes better
-    // even if it's not inlined.
-    typedef typename boost::make_unsigned<OperationType>::type UnsignedOperationType;
-    return OperationType(divide_impl<UnsignedOperationType>(
-      UnsignedOperationType(dividend),
-      UnsignedOperationType(divisor),
-      rounding_strategy<RoundingStrategy::positive_strategy, negative_mirrors_positive>()));
-  }
-};
+template<typename T, rounding_strategy_for_positive_numbers PosStrategy>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<PosStrategy, negative_is_forbidden>) {
+  caller_error_if(dividend < 0 || divisor < 0, "Negative number forbidden in this division!");
+  // Use unsigned types so that the divide_impl optimizes better
+  // even if it's not inlined.
+  typedef typename boost::make_unsigned<T>::type UnsignedT;
+  return T(divide_impl<UnsignedT>(
+    UnsignedT(dividend),
+    UnsignedT(divisor),
+    rounding_strategy<PosStrategy, negative_mirrors_positive>()));
+}
 #pragma GCC diagnostic pop
 } /* end namespace rounding_strategies */
-using rounding_strategies::rounding_strategy;
+
 // Avoid specifying rounding_strategy<> in last argument's structure so that
 // overloads of divide() will be picked before this one.
 template<typename T1, typename T2, typename RoundingStrategy,
-  rounding_strategies::strategy_for_positive_numbers PosStrategy = RoundingStrategy::positive_strategy,
-  rounding_strategies::strategy_for_negative_numbers NegStrategy = RoundingStrategy::negative_strategy,
+  rounding_strategy_for_positive_numbers PosStrategy = RoundingStrategy::positive_strategy,
+  rounding_strategy_for_negative_numbers NegStrategy = RoundingStrategy::negative_strategy,
   typename = typename boost::enable_if_c<
     (std::numeric_limits<T1>::is_specialized && std::numeric_limits<T2>::is_specialized
       // we don't currently implement IEEE754 floating-point rounding modes
@@ -284,7 +275,6 @@ template<typename T1, typename T2, typename RoundingStrategy,
     )>::type>
 inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
 -> decltype(dividend/divisor) {
-  using namespace rounding_strategies;
   static_assert(std::numeric_limits<T1>::is_signed == std::numeric_limits<T2>::is_signed,
                 "Dividing two numbers of mixed sign is probably a bad idea.");
   typedef decltype(dividend / divisor) operation_type;
@@ -294,9 +284,8 @@ inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
     || PosStrategy == round_to_nearest_with_ties_rounding_to_odd
     || (!std::numeric_limits<T1>::is_signed && !std::numeric_limits<T2>::is_signed),
     "You lied! The negative variant does make a difference.");
-  return divide_dispatch_impl<
-    operation_type, NegStrategy == negative_is_forbidden
-  >::impl(dividend, divisor, strat);
+  return rounding_strategies_impl::divide_impl(
+    operation_type(dividend), operation_type(divisor), strat);
 }
 
 

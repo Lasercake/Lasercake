@@ -229,7 +229,6 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   //float_above_ground(velocity_, w, my_id);
 
   // TODO is this the best rounding strategy? (do we care here?)
-  using namespace rounding_strategies;
   velocity_.x = divide(velocity_.x, 2, rounding_strategy<round_down, negative_mirrors_positive>());
   velocity_.y = divide(velocity_.y, 2, rounding_strategy<round_down, negative_mirrors_positive>());
   const fine_scalar xymag = i64sqrt(facing_.x*facing_.x + facing_.y*facing_.y);

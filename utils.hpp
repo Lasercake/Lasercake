@@ -165,9 +165,7 @@ public:
   // Default to rounding towards zero. (TODO: is it wise to have any default here?
   // It's not like we use division much.  But we don't want to use shifting
   // without considering that shifting rounds down towards negative infinity, too.)
-  typedef rounding_strategy<
-    rounding_strategies::round_down,
-    rounding_strategies::negative_mirrors_positive> default_rounding_strategy;
+  typedef rounding_strategy<round_down, negative_mirrors_positive> default_rounding_strategy;
 
   // In C++11 integer division rounds towards zero,
   // which is often what we want for vectors; IEEE754 floating point division,

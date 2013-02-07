@@ -93,7 +93,10 @@ const distance tile_height = 1 * tile_heights * identity(fine_units / tile_heigh
 const vector3<distance> tile_size(tile_width, tile_width, tile_height);
 
 // Standard (Earth-equivalent) gravity: precisely 9.80665 m/s2
-const acceleration gravity_acceleration_magnitude = divide(9806650 * (micro*meters) / (seconds*seconds), identity((micro*meters) / fine_distance_units), rounding_strategy<rounding_strategies::round_to_nearest_with_ties_rounding_to_even>());
+const acceleration gravity_acceleration_magnitude =
+  divide(9806650 * (micro*meters) / (seconds*seconds),
+         identity((micro*meters) / fine_distance_units),
+         rounding_strategy<round_to_nearest_with_ties_rounding_to_even>());
 const vector3<acceleration> gravity_acceleration(0, 0, -gravity_acceleration_magnitude);
 
 #if 0
