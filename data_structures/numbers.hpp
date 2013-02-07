@@ -245,27 +245,18 @@ inline T divide_impl(T dividend, T divisor,
   }
 }
 
-template<typename OperationType, bool ForceNonnegative>
-struct divide_dispatch_impl {
-  template<typename T1, typename T2, typename RoundingStrategy>
-  static inline OperationType impl(T1 dividend, T2 divisor, RoundingStrategy strat) {
-    return divide_impl<OperationType>(dividend, divisor, strat);
-  }
-};
-template<typename OperationType>
-struct divide_dispatch_impl<OperationType, true> {
-  template<typename T1, typename T2, typename RoundingStrategy>
-  static inline OperationType impl(T1 dividend, T2 divisor, RoundingStrategy) {
-    caller_error_if(dividend < 0 || divisor < 0, "Negative number forbidden in this division!");
-    // Use unsigned types so that the divide_impl optimizes better
-    // even if it's not inlined.
-    typedef typename boost::make_unsigned<OperationType>::type UnsignedOperationType;
-    return OperationType(divide_impl<UnsignedOperationType>(
-      UnsignedOperationType(dividend),
-      UnsignedOperationType(divisor),
-      rounding_strategy<RoundingStrategy::positive_strategy, negative_mirrors_positive>()));
-  }
-};
+template<typename T, strategy_for_positive_numbers PosStrategy>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<PosStrategy, negative_is_forbidden>) {
+  caller_error_if(dividend < 0 || divisor < 0, "Negative number forbidden in this division!");
+  // Use unsigned types so that the divide_impl optimizes better
+  // even if it's not inlined.
+  typedef typename boost::make_unsigned<T>::type UnsignedT;
+  return T(divide_impl<UnsignedT>(
+    UnsignedT(dividend),
+    UnsignedT(divisor),
+    rounding_strategy<PosStrategy, negative_mirrors_positive>()));
+}
 #pragma GCC diagnostic pop
 } /* end namespace rounding_strategies */
 using rounding_strategies::rounding_strategy;
@@ -291,9 +282,8 @@ inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
     || PosStrategy == round_to_nearest_with_ties_rounding_to_odd
     || (!std::numeric_limits<T1>::is_signed && !std::numeric_limits<T2>::is_signed),
     "You lied! The negative variant does make a difference.");
-  return divide_dispatch_impl<
-    operation_type, NegStrategy == negative_is_forbidden
-  >::impl(dividend, divisor, strat);
+  return rounding_strategies::divide_impl(
+    operation_type(dividend), operation_type(divisor), strat);
 }
 
 
