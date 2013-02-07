@@ -1013,7 +1013,8 @@ struct numeric_representation_cast_impl<physical_quantity<Target, Units>, Num> {
 };
 template<typename Target, typename Units, typename Num>
 struct numeric_representation_cast_impl<Target, physical_quantity<Num, Units>> {
-  typedef typename make_physical_quantity_type<typename get_units<Target>::representation_type, Units>::type
+  typedef typename make_physical_quantity_type<
+    typename numeric_representation_cast_impl<Target, Num>::target_type, Units>::type
       target_type;
 };
 template<typename Target, typename Units, typename Num, typename Units1>
