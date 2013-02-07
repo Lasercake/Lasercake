@@ -73,6 +73,8 @@ constexpr auto fixed_frame_lengths = fixed_frame_lengths_t();
 // (on 32bit, and possibly 64bit platform multiply/divides) and smaller storage.
 
 typedef physical_quantity<lint64_t, fine_distance_units_t> distance;
+typedef physical_quantity<lint64_t, velocity_units_t> velocity;
+typedef physical_quantity<lint64_t, acceleration_units_t> acceleration;
 typedef physical_quantity<lint32_t, tile_physics_sub_tile_units_t> sub_tile_distance;
 typedef physical_quantity<lint64_t, tile_physics_sub_tile_units_t> large_sub_tile_distance;
 typedef physical_quantity<lint64_t, time_units_t> time_unit;
@@ -91,8 +93,8 @@ const fine_scalar tile_height = 1 * tile_heights * identity(fine_units / tile_he
 const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
 
 // Standard (Earth-equivalent) gravity: precisely 9.80665 m/s2
-const physical_quantity<lint64_t, acceleration_units_t> gravity_acceleration_magnitude = divide(9806650 * (micro*meters) / (seconds*seconds), identity((micro*meters) / fine_distance_units), rounding_strategy<rounding_strategies::round_to_nearest_with_ties_rounding_to_even>());
-const vector3<physical_quantity<lint64_t, acceleration_units_t>> gravity_acceleration(0, 0, -gravity_acceleration_magnitude);
+const acceleration gravity_acceleration_magnitude = divide(9806650 * (micro*meters) / (seconds*seconds), identity((micro*meters) / fine_distance_units), rounding_strategy<rounding_strategies::round_to_nearest_with_ties_rounding_to_even>());
+const vector3<acceleration> gravity_acceleration(0, 0, -gravity_acceleration_magnitude);
 
 #if 0
 const time_unit time_units_per_second = 2*2*2*2 * 3*3*3 * 5*5 * 7 * 11;
