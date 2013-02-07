@@ -53,23 +53,15 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   foo64 + foo;
 
-  // TODO consider whether to relax bounds_checked_int to make this work,
-  // or provide conversion functions, or such.
-  // const physical_quantity<double, meter> foofloating = foo;
-  // Also this doesn't work because physical_quantity<> tries to wrap
-  // its data type in a bounds checked int, heh.  That'd
-  // be fairly easy to fix for floating point.
-  // const physical_quantity<double, meter> foofloating = 1.0*meters;
+  const physical_quantity<double, meter> foofloating = foo;
+  const physical_quantity<double, meter> foofloating2 = 1.0*meters;
 
-  // Deliberately avoid get_primitive_int() to make sure
-  // that it is returning the correct type in both cases.
-#if USE_BOUNDS_CHECKED_INTS
-  int yay = (bfoo / foo / foo).get();
-#else
-  int yay = (bfoo / foo / foo);
-#endif
-  const typename lasercake_int<int32_t>::type okayy1 = get(bfoo, meters*meters);
-  const typename lasercake_int<int32_t>::type okayy2 = bfoo.get(meters*meters);
+  const physical_quantity<bounds_checked_int<int32_t>, meter> foobound(foo);
+  const auto bfoobound = foobound * foobound;
+  
+  int yay = (bfoobound / foobound / foobound).get();
+  const int32_t okayy1 = get(bfoo, meters*meters);
+  const int32_t okayy2 = bfoo.get(meters*meters);
   BOOST_CHECK_EQUAL(okayy1, okayy2);
 
   meters*meters;
