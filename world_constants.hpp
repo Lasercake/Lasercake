@@ -88,9 +88,9 @@ constexpr auto fine_units = fine_units_t(); // TODO
 
 
 //ok...
-const fine_scalar tile_width = 1 * tile_widths * identity(fine_units / tile_widths);
-const fine_scalar tile_height = 1 * tile_heights * identity(fine_units / tile_heights);
-const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
+const distance tile_width = 1 * tile_widths * identity(fine_units / tile_widths);
+const distance tile_height = 1 * tile_heights * identity(fine_units / tile_heights);
+const vector3<distance> tile_size(tile_width, tile_width, tile_height);
 
 // Standard (Earth-equivalent) gravity: precisely 9.80665 m/s2
 const acceleration gravity_acceleration_magnitude = divide(9806650 * (micro*meters) / (seconds*seconds), identity((micro*meters) / fine_distance_units), rounding_strategy<rounding_strategies::round_to_nearest_with_ties_rounding_to_even>());
