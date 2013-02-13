@@ -44,23 +44,6 @@ vector3<fine_scalar> movement_delta_rounding_up(vector3<fine_scalar> const& velo
     rounding_strategy<round_up, negative_mirrors_positive>());
 }
 
-vector3<fine_scalar> movement_delta_rounding_down(vector3<fine_scalar> const& velocity, time_type end_time) {
-  using namespace rounding_strategies;
-  const auto end_time_rat = make_units_split_rational(end_time);
-  return divide(velocity * end_time_rat.numerator, end_time_rat.denominator * velocity_scale_factor,
-    rounding_strategy<round_down, negative_mirrors_positive>());
-}
-
-vector3<fine_scalar> movement_delta_intermediate(vector3<fine_scalar> const& velocity, time_type min, time_type max) {
-  return movement_delta_from_start_to(velocity, max) - movement_delta_from_start_to(velocity, min);
-}
-
-// You can round up by up to 1.
-// Something you're facing head-on can round up in the other direction by up to 1.
-// 
-const fine_scalar max_error_dist = 2;
-
-
 time_type round_time_downwards(time_type time_with_units, time_int_type max_meaningful_precision) {
   const auto time = make_units_split_rational(time_with_units);
   if (time.denominator < 0) {
