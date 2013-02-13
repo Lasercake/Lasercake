@@ -43,7 +43,7 @@ typedef typename units_prod<milli_t, grams_t, dim::meter<(-3)>>::type density_un
 typedef pascals_t pressure_units_t;
 
 // This is a stupid unit but it exists currently:
-typedef typename units_prod<time_units_t, dim::ratio<30>>::type fixed_frame_lengths_t;
+typedef typename units_prod<seconds_t, dim::ratio<1, 30>>::type fixed_frame_lengths_t;
 
 
 
