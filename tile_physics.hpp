@@ -43,7 +43,7 @@ struct active_fluid_tile_info {
   active_fluid_tile_info();
   bool is_in_inactive_state()const;
 
-  vector3<sub_tile_distance> velocity;
+  vector3<sub_tile_velocity> velocity;
   value_for_each_cardinal_direction<sub_tile_distance> progress;
   value_for_each_cardinal_direction<sub_tile_distance> blockage_amount_this_frame;
 
@@ -58,14 +58,14 @@ struct persistent_water_group_info {
   map<tile_coordinate, water_tile_count> num_tiles_by_height;
   unordered_set<tile_location> surface_tiles;
 
-  mutable map<tile_coordinate, fine_scalar> pressure_caches;
+  mutable map<tile_coordinate, pressure> pressure_caches;
   mutable map<tile_coordinate, water_tile_count> width_of_widest_level_so_far_caches;
 
   //bool is_infinite;
   //tile_coordinate infinite_ocean_height;
 
   void recompute_num_tiles_by_height_from_surface_tiles(state_t const& w);
-  fine_scalar get_pressure_at_height(tile_coordinate height)const;
+  pressure get_pressure_at_height(tile_coordinate height)const;
 
   tile_location get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height);
 
