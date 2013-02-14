@@ -25,7 +25,8 @@
 #include <algorithm>
 #include <set>
 #include <vector>
-
+#include <ostream>
+//TODO try a binary search for removing headers and see what works
 
 namespace input_representation {
 
