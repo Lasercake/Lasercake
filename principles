@@ -26,7 +26,7 @@ Everything that makes reference to the worldblock system goes in the_decompositi
 data_structures/ are data structures and algorithms that are are not specific to
 the specific world that Lasercake envisions.
 
-specific_object_type_implementations.cpp is currently a hodgepodge of implementations of leaf object types; I have no attachment to that fact
+specific_object_types.cpp/hpp is currently a hodgepodge of implementations of leaf object types; I have no attachment to that fact.
 disorganized_stuff.cpp houses the rest of the stuff that I haven't come up with a good way to categorize.
 
 
