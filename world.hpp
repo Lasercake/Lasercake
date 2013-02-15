@@ -82,7 +82,7 @@ const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof
 //const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 2)) - 5;//0x55555555;
 
 const vector3<tile_coordinate> world_center_tile_coords(world_center_tile_coord, world_center_tile_coord, world_center_tile_coord);
-const vector3<fine_scalar> world_center_fine_coords = lower_bound_in_fine_units(world_center_tile_coords);
+const vector3<distance> world_center_fine_coords = lower_bound_in_fine_units(world_center_tile_coords);
 
 
 
@@ -161,15 +161,15 @@ public:
   //virtual void move_due_to_velocity() = 0;
 
   mobile_object():velocity_(0,0,0){}
-  mobile_object(vector3<fine_scalar> velocity):velocity_(velocity){}
-  vector3<fine_scalar> const& velocity() const { return velocity_; }
-  vector3<fine_scalar> velocity_;
+  mobile_object(vector3<velocity1d> velocity):velocity_(velocity){}
+  vector3<velocity1d> const& velocity() const { return velocity_; }
+  vector3<velocity1d> velocity_;
 };
 
 // The player can use these objects.
 class object_with_eye_direction : virtual public object {
 public:
-  virtual vector3<fine_scalar> get_facing()const = 0;
+  virtual vector3<distance> get_facing()const = 0;
 };
 class object_with_player_instructions : virtual public object {
 public:
@@ -186,8 +186,8 @@ public:
   virtual void mind_control(input_representation::input_news_t const& input_news) {}
   // Current assumption of this class: these have excellent eyes
   // that a human can see from.
-  virtual vector3<fine_scalar> eye_location() const = 0;
-  virtual vector3<fine_scalar> eye_direction() const = 0;
+  virtual vector3<distance> eye_location() const = 0;
+  virtual vector3<distance> eye_direction() const = 0;
 };
 #endif
 
@@ -358,7 +358,7 @@ public:
   // lolhack. TODO: Replace this with a for-real thing
 std::unordered_map<object_identifier, int> object_litnesses_;
 std::unordered_map<vector3<tile_coordinate>, int> tile_litnesses_;
-void update_light(vector3<fine_scalar> sun_direction, uint32_t sun_direction_z_shift);
+void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shift);
 
   world(worldgen_function_t f);
   
@@ -413,8 +413,8 @@ void update_light(vector3<fine_scalar> sun_direction, uint32_t sun_direction_z_s
   // Objects can't fail to change their detail shape, but it may cause effects (like blocking a laser beam)
   //void change_detail_shape(object_identifier id, shape const& new_shape);
 
-  typedef std::vector<std::pair<vector3<fine_scalar>, vector3<fine_scalar>>> laser_sfxes_type;
-  void add_laser_sfx(vector3<fine_scalar> laser_source, vector3<fine_scalar> laser_delta) {
+  typedef std::vector<std::pair<vector3<distance>, vector3<distance>>> laser_sfxes_type;
+  void add_laser_sfx(vector3<distance> laser_source, vector3<distance> laser_delta) {
     laser_sfxes_.push_back(make_pair(laser_source, laser_delta));
   }
   laser_sfxes_type const& get_laser_sfxes()const { return laser_sfxes_; }
