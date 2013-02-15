@@ -105,7 +105,7 @@ typedef lint64_t time_int_type;
 typedef non_normalized_rational<time_int_type> time_type;
 typedef faux_optional<time_type> optional_time;
 
-void draw_vertex(vector3<polygon_int_type> v) {
+void draw_vertex(vector3<geometry_int_type> v) {
   glVertex3f((GLfloat)v(X), (GLfloat)v(Y), (GLfloat)v(Z));
 }
 void draw_polyhedron(convex_polyhedron foo) {
@@ -130,18 +130,18 @@ large_fast_noncrypto_rng rng(time(NULL));
 typedef boost::random::uniform_int_distribution<int64_t> uniform_random;
   
   
-  vector3<polygon_int_type> velocity(1,2,3);
+  vector3<geometry_int_type> velocity(1,2,3);
 int frame = 0;
 
-  std::vector<vector3<polygon_int_type>> verts;
-  verts.push_back(vector3<polygon_int_type>(3, 3, 3));
-  verts.push_back(vector3<polygon_int_type>(3, -3, 3));
-  verts.push_back(vector3<polygon_int_type>(-3, -3, 3));
-  verts.push_back(vector3<polygon_int_type>(-3, 3, 3));
-  verts.push_back(vector3<polygon_int_type>(0, 0, -3));
+  std::vector<vector3<geometry_int_type>> verts;
+  verts.push_back(vector3<geometry_int_type>(3, 3, 3));
+  verts.push_back(vector3<geometry_int_type>(3, -3, 3));
+  verts.push_back(vector3<geometry_int_type>(-3, -3, 3));
+  verts.push_back(vector3<geometry_int_type>(-3, 3, 3));
+  verts.push_back(vector3<geometry_int_type>(0, 0, -3));
   convex_polyhedron foo1(verts);
-  convex_polyhedron foo2(bounding_box::min_and_max(-vector3<polygon_int_type>(3, 3, 3), vector3<polygon_int_type>(3, 3, 3)));
-  convex_polyhedron obstacle(bounding_box::min_and_max(-vector3<polygon_int_type>(3, 3, 1), vector3<polygon_int_type>(3, 3, 1)));
+  convex_polyhedron foo2(bounding_box::min_and_max(-vector3<geometry_int_type>(3, 3, 3), vector3<geometry_int_type>(3, 3, 3)));
+  convex_polyhedron obstacle(bounding_box::min_and_max(-vector3<geometry_int_type>(3, 3, 1), vector3<geometry_int_type>(3, 3, 1)));
   
   bool draw_endp = false;
   bool draw_coll_stuff = false;
@@ -173,12 +173,12 @@ int frame = 0;
           if(event.key.keysym.sym == SDLK_s) --velocity[Y];
           if(event.key.keysym.sym == SDLK_e) ++velocity[Z];
           if(event.key.keysym.sym == SDLK_d) --velocity[Z];
-          if(event.key.keysym.sym == SDLK_r) obstacle.translate(vector3<polygon_int_type>(1,0,0));
-          if(event.key.keysym.sym == SDLK_f) obstacle.translate(vector3<polygon_int_type>(-1,0,0));
-          if(event.key.keysym.sym == SDLK_t) obstacle.translate(vector3<polygon_int_type>(0,1,0));
-          if(event.key.keysym.sym == SDLK_g) obstacle.translate(vector3<polygon_int_type>(0,-1,0));
-          if(event.key.keysym.sym == SDLK_y) obstacle.translate(vector3<polygon_int_type>(0,0,1));
-          if(event.key.keysym.sym == SDLK_h) obstacle.translate(vector3<polygon_int_type>(0,0,-1));
+          if(event.key.keysym.sym == SDLK_r) obstacle.translate(vector3<geometry_int_type>(1,0,0));
+          if(event.key.keysym.sym == SDLK_f) obstacle.translate(vector3<geometry_int_type>(-1,0,0));
+          if(event.key.keysym.sym == SDLK_t) obstacle.translate(vector3<geometry_int_type>(0,1,0));
+          if(event.key.keysym.sym == SDLK_g) obstacle.translate(vector3<geometry_int_type>(0,-1,0));
+          if(event.key.keysym.sym == SDLK_y) obstacle.translate(vector3<geometry_int_type>(0,0,1));
+          if(event.key.keysym.sym == SDLK_h) obstacle.translate(vector3<geometry_int_type>(0,0,-1));
           //if(event.key.keysym.sym == SDLK_r) ++view_dist;
           //if(event.key.keysym.sym == SDLK_f) --view_dist;
           if(event.key.keysym.sym != SDLK_ESCAPE)break;
@@ -211,7 +211,7 @@ int frame = 0;
   
       auto coll_info = when_do_polyhedra_intersect(foo, obstacle, velocity);
       if ((coll_info.is_anywhere) && (coll_info.max >= 0) && (coll_info.min <= (time_type(1)))) {
-        if ((coll_info.min >= 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<polygon_int_type>(velocity) > 0)) {
+        if ((coll_info.min >= 0) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<geometry_int_type>(velocity) > 0)) {
   glColor4f(0.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.5 + GLfloat(rand()%255) / 512.0, 0.6);
           
         }

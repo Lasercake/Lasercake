@@ -794,7 +794,7 @@ large_fast_noncrypto_rng rng(time(NULL));
   uniform_random rand_size(10,30);
   
   
-//  vector3<polygon_int_type> velocity(1,2,3);
+//  vector3<geometry_int_type> velocity(1,2,3);
 int frame = 0;
 
   tree_node<2> root;
@@ -841,12 +841,12 @@ int frame = 0;
           //if(event.key.keysym.sym == SDLK_s) --velocity[Y];
           //if(event.key.keysym.sym == SDLK_e) ++velocity[Z];
           //if(event.key.keysym.sym == SDLK_d) --velocity[Z];
-          //if(event.key.keysym.sym == SDLK_r) obstacle.translate(vector3<polygon_int_type>(1,0,0));
-          //if(event.key.keysym.sym == SDLK_f) obstacle.translate(vector3<polygon_int_type>(-1,0,0));
-          //if(event.key.keysym.sym == SDLK_t) obstacle.translate(vector3<polygon_int_type>(0,1,0));
-          //if(event.key.keysym.sym == SDLK_g) obstacle.translate(vector3<polygon_int_type>(0,-1,0));
-          //if(event.key.keysym.sym == SDLK_y) obstacle.translate(vector3<polygon_int_type>(0,0,1));
-          //if(event.key.keysym.sym == SDLK_h) obstacle.translate(vector3<polygon_int_type>(0,0,-1));
+          //if(event.key.keysym.sym == SDLK_r) obstacle.translate(vector3<geometry_int_type>(1,0,0));
+          //if(event.key.keysym.sym == SDLK_f) obstacle.translate(vector3<geometry_int_type>(-1,0,0));
+          //if(event.key.keysym.sym == SDLK_t) obstacle.translate(vector3<geometry_int_type>(0,1,0));
+          //if(event.key.keysym.sym == SDLK_g) obstacle.translate(vector3<geometry_int_type>(0,-1,0));
+          //if(event.key.keysym.sym == SDLK_y) obstacle.translate(vector3<geometry_int_type>(0,0,1));
+          //if(event.key.keysym.sym == SDLK_h) obstacle.translate(vector3<geometry_int_type>(0,0,-1));
           //if(event.key.keysym.sym == SDLK_r) ++view_dist;
           //if(event.key.keysym.sym == SDLK_f) --view_dist;
           if(event.key.keysym.sym != SDLK_ESCAPE)break;

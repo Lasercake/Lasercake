@@ -42,8 +42,8 @@ namespace geom {
 // with them except for things with a max distance of about (???) bits between
 // any of the parts of them.
 
-typedef lint64_t polygon_int_type;
-typedef polygon_int_type dimensionless;
+typedef lint64_t geometry_int_type;
+typedef geometry_int_type dimensionless;
 
 typedef physical_quantity<non_normalized_rational<dimensionless>, seconds_t> rational_time;
 typedef faux_optional<rational_time> optional_rational_time;
@@ -64,16 +64,16 @@ typedef typename units_prod<fine_units3_t, pseudo_t>::type pseudo_fine_units3_t;
 typedef typename units_prod<fine_units4_t, pseudo_t>::type pseudo_fine_units4_t;
 typedef typename units_prod<fine_units5_t, pseudo_t>::type pseudo_fine_units5_t;
 
-typedef physical_quantity<polygon_int_type, fine_units_t> coord;
-typedef physical_quantity<polygon_int_type, fine_units2_t> coord2;
-typedef physical_quantity<polygon_int_type, fine_units3_t> coord3;
-typedef physical_quantity<polygon_int_type, fine_units4_t> coord4;
-typedef physical_quantity<polygon_int_type, fine_units5_t> coord5;
-typedef physical_quantity<polygon_int_type, pseudo_fine_units_t> pseudocoord;
-typedef physical_quantity<polygon_int_type, pseudo_fine_units2_t> pseudocoord2;
-typedef physical_quantity<polygon_int_type, pseudo_fine_units3_t> pseudocoord3;
-typedef physical_quantity<polygon_int_type, pseudo_fine_units4_t> pseudocoord4;
-typedef physical_quantity<polygon_int_type, pseudo_fine_units5_t> pseudocoord5;
+typedef physical_quantity<geometry_int_type, fine_units_t> coord;
+typedef physical_quantity<geometry_int_type, fine_units2_t> coord2;
+typedef physical_quantity<geometry_int_type, fine_units3_t> coord3;
+typedef physical_quantity<geometry_int_type, fine_units4_t> coord4;
+typedef physical_quantity<geometry_int_type, fine_units5_t> coord5;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units_t> pseudocoord;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units2_t> pseudocoord2;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units3_t> pseudocoord3;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units4_t> pseudocoord4;
+typedef physical_quantity<geometry_int_type, pseudo_fine_units5_t> pseudocoord5;
 typedef vector3<coord> vect;
 typedef vector3<coord2> vect2;
 typedef vector3<coord3> vect3;
@@ -87,7 +87,7 @@ typedef vector3<pseudocoord5> pseudovect5;
 
 // TODO check if these ought be the same as the world_constants units
 typedef typename units_prod<fine_units_t, dim::second<(-1)>>::type geom_velocity_units_t;
-typedef physical_quantity<polygon_int_type, geom_velocity_units_t> geom_velocity_scalar;
+typedef physical_quantity<geometry_int_type, geom_velocity_units_t> geom_velocity_scalar;
 typedef vector3<geom_velocity_scalar> geom_velocity_vect;
 
 struct polygon_collision_info_cache {

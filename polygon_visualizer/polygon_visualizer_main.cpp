@@ -101,7 +101,7 @@ static void createSurface (int fullscreen)
 	}
 }
 
-inline geom::vect vect_literal(geom::polygon_int_type x, geom::polygon_int_type y, geom::polygon_int_type z) {
+inline geom::vect vect_literal(geom::geometry_int_type x, geom::geometry_int_type y, geom::geometry_int_type z) {
   return geom::vect(x*fine_units, y*fine_units, z*fine_units);
 }
 
