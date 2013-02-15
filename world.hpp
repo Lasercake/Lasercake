@@ -47,7 +47,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "utils.hpp"
-#include "data_structures/polygon_collision_detection.hpp"
+#include "data_structures/geometry.hpp"
 #include "data_structures/bbox_collision_detector.hpp"
 #include "data_structures/patricia_trie.hpp"
 #include "tiles.hpp"

@@ -22,7 +22,7 @@
 #include "world.hpp"
 #include "data_structures/borrowed_bitset.hpp"
 #include "object_and_tile_iteration.hpp"
-#include "data_structures/polygon_collision_detection.hpp"
+#include "data_structures/geometry.hpp"
 #if 0
 const int SUN_AREA_SIZE = 1<<12;
 const fine_scalar SUN_PACKETS_PER_TILE_WIDTH = 8;

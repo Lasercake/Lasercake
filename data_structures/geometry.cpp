@@ -109,7 +109,7 @@ lt*(Dy2 - Dy1) = sl1x * ol2x*y2 - sl2x * ol2x*y1
 #include <boost/type_traits.hpp>
 #include <boost/range/iterator_range.hpp>
 
-#include "polygon_collision_detection.hpp"
+#include "geometry.hpp"
 
 namespace geom {
 
@@ -534,7 +534,7 @@ faux_optional<base_point_and_outward_facing_normal> get_excluding_face(
 }
 
 // TODO change from int to size_t and fix anywhere else
-// in this file (polygon_collision_detection.cpp) that uses int.
+// in this file (geometry.cpp) that uses int.
 template<typename VectorType, int ArraySize> class arrayvector {
 private:
   std::array<typename VectorType::value_type, ArraySize> first_n_values_;

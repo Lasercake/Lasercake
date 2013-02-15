@@ -35,7 +35,7 @@
 #define USE_BOUNDS_CHECKED_INTS 1
 #include "../data_structures/collection_of_obscured_area_boundaries.hpp"
 // purely for a convenient bounding box type:
-#include "../data_structures/polygon_collision_detection.hpp"
+#include "../data_structures/geometry.hpp"
 
 using namespace collection_of_obscured_area_boundaries_impl;
 

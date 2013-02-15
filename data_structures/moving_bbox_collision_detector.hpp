@@ -22,7 +22,7 @@
 #ifndef LASERCAKE_MOVING_BBOX_COLLISION_DETECTOR_HPP__
 #define LASERCAKE_MOVING_BBOX_COLLISION_DETECTOR_HPP__
 
-#include "polygon_collision_detection.hpp"
+#include "geometry.hpp"
 
 
 namespace moving_bbox_collision_detector_internals {
