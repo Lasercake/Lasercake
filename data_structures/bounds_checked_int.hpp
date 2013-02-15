@@ -155,6 +155,11 @@ public:
 
   //(the implicitly generated copy constructor is implicit.)
 
+  //For compilers that can't handle this, comment these out.
+  //Floats don't overflow but are permitted to silently be inexact.
+  explicit operator float()const { return float(val_); }
+  explicit operator double()const { return double(val_); }
+  explicit operator long double()const { return static_cast<long double>(val_); }
 
   //unary operators
   bounds_checked_int operator+() const { return *this; }

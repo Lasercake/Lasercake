@@ -534,7 +534,7 @@ struct get_dimension_kind :
 
 // We specialize this template that's from bounds_checked_int:
 template<typename Num, typename Units>
-struct get_primitive_int_type< physical_quantity<Num, Units> > { typedef Num type; };
+struct get_primitive_int_type< physical_quantity<Num, Units> > : get_primitive_int_type<Num> {};
 template<typename...U>
 struct get_primitive_int_type< units<U...> > { typedef void type; };
 
@@ -547,7 +547,8 @@ struct get_physical_quantity_base_type< physical_quantity<Num, Units> > { typede
 // sometimes get_primitive_int(get(var, units)) is what you want
 // to do for clarity.
 template<typename Num, typename Units>
-inline Num get_primitive_int(physical_quantity<Num, Units> a) {
+inline typename get_primitive_int_type<Num>::type
+get_primitive_int(physical_quantity<Num, Units> a) {
   return get_primitive_int(get(a, Units()));
 }
 
@@ -1083,8 +1084,10 @@ struct get_units_impl<units<U...>> : units_impl::units_result<units<U...>> {
   static const bool is_nonunit_type = false;
   static const bool is_nonunit_scalar = false;
 };
-template<typename T>
-struct get_units_impl<bounds_checked_int<T>> : get_units_impl<T> {};
+template<typename Int, Int Min, Int Max>
+struct get_units_impl<bounds_checked_int<Int,Min,Max>> : get_units_impl<Int> {
+  typedef bounds_checked_int<Int,Min,Max> representation_type;
+};
 
 template<typename T>
 struct get_units_impl : decltype(overload_find_units_type(std::declval<T>())) {};

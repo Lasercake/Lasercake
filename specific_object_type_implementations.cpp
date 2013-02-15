@@ -360,12 +360,12 @@ shape laser_emitter::get_initial_detail_shape()const {
 void laser_emitter::update(world& w, input_representation::input_news_t const&, object_identifier my_id) {
   update_location(location_, w, my_id);
   
-  const boost::random::uniform_int_distribution<get_primitive_int_type<distance>::type> random_delta(-1023, 1023);
+  const uniform_int_distribution<distance> random_delta(-1023*fine_distance_units, 1023*fine_distance_units);
   for (int i = 0; i < 100; ++i) {
     do {
-      facing_.x = random_delta(w.get_rng())*fine_distance_units;//TODO implement vector3_location
-      facing_.y = random_delta(w.get_rng())*fine_distance_units;
-      facing_.z = random_delta(w.get_rng())*fine_distance_units;
+      facing_.x = random_delta(w.get_rng());//TODO implement vector3_location
+      facing_.y = random_delta(w.get_rng());
+      facing_.z = random_delta(w.get_rng());
     } while (facing_.magnitude_within_32_bits_is_greater_than(1023*fine_distance_units) || facing_.magnitude_within_32_bits_is_less_than(512*fine_distance_units));
 
     fire_standard_laser(w, my_id, location_, facing_);
