@@ -1,19 +1,27 @@
 
+Building Lasercake
+==================
+
+   Dependencies
+------------------
+
+### libraries ###
+
 Lasercake currently depends on the following libraries:
 (You'll need the development headers.)
 
-Qt (at least 4.8) -- http://qt-project.org/
-OpenGL
+- Qt (at least 4.8) -- http://qt-project.org/
+- OpenGL
 
-optionally, Glib (for a small speed improvement. To
+- optionally, Glib (for a small speed improvement. To
                    disable, pass -DGLIB=OFF to cmake)
-optionally, Boost ( http://www.boost.org/ . Lasercake
+- optionally, Boost ( http://www.boost.org/ . Lasercake
               comes with all the Boost code it needs,
               but if you're developing you might need
               it; ./generate-boostbcp.py has relevant
               comments too.)
 
-and tools:
+### tools ###
 
 CMake
 A recent C++ compiler (e.g. GCC >= 4.6, CLang >= 3.1)
@@ -23,6 +31,10 @@ optionally, Python (>= 2.6, including >= 3) for misc
     development scripts.
 optionally, a shell (POSIX/Bourne-compatible) for misc
     development scripts.
+
+
+To build Lasercake
+==================
 
 To build, run 'cmake .' then 'make' (or use your favorite CMake
 interface).  (If developing, using ./dev-build.py might
