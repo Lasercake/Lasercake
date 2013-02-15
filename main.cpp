@@ -64,6 +64,8 @@
 
 #include "tests/test_main.hpp"
 
+static_assert(boost::is_same<gl_data_preparation::header_GLfloat, GLfloat>::value, "consistent GL types");
+static_assert(boost::is_same<gl_data_preparation::header_GLubyte, GLubyte>::value, "consistent GL types");
 
 namespace /* anonymous */ {
 

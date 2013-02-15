@@ -22,9 +22,10 @@
 #ifndef LASERCAKE_GL_DATA_PREPARATION_HPP__
 #define LASERCAKE_GL_DATA_PREPARATION_HPP__
 
-// This header must be included AFTER including GL headers.
-// This allows this header to be agnostic between GLEW and Qt's opinions
-// of those headers.
+// This header does not use GL types (GLfloat, GLubyte) in order to
+// be agnostic between GLEW and Qt's opinions of OpenGL headers.
+// Both this .cpp and main .cpp static_asserts that they're the types we
+// expect.
 
 #include <vector>
 #include <unordered_map>
@@ -35,6 +36,9 @@
 
 namespace gl_data_preparation {
 
+typedef float header_GLfloat;
+typedef unsigned char header_GLubyte;
+
 // These are to be passed as part of arrays to OpenGL.
 // Thus their data format/layout makes a difference.
 // TODO maybe make vector3<GLfloat> and vertex the same thing?
@@ -43,12 +47,12 @@ namespace gl_data_preparation {
 struct vertex {
   vertex() {}
 
-  vertex(GLfloat x, GLfloat y, GLfloat z) : x(x), y(y), z(z) {}
-  /* implicit conversion */ vertex(vector3<GLfloat> const& v) : x(v.x), y(v.y), z(v.z) {}
+  vertex(header_GLfloat x, header_GLfloat y, header_GLfloat z) : x(x), y(y), z(z) {}
+  /* implicit conversion */ vertex(vector3<header_GLfloat> const& v) : x(v.x), y(v.y), z(v.z) {}
 
-  GLfloat x, y, z;
+  header_GLfloat x, y, z;
 };
-static_assert(sizeof(vertex) == 3*sizeof(GLfloat), "OpenGL needs this data layout.");
+static_assert(sizeof(vertex) == 3*sizeof(header_GLfloat), "OpenGL needs this data layout.");
 inline std::ostream& operator<<(std::ostream& os, vertex const& v) {
   // TODO does the float precision we output here matter?
   return os << '(' << v.x << ", " << v.y << ", " << v.z << ')';
@@ -60,17 +64,19 @@ struct color {
   // Use hex RGBA values as familiar from e.g. CSS.
   // e.g. 0x00ff0077 is pure green at 50% opacity.
   explicit color(uint32_t rgba)
-   : r(GLubyte(rgba >> 24)), g(GLubyte(rgba >> 16)), b(GLubyte(rgba >> 8)), a(GLubyte(rgba)) {}
+    : r(header_GLubyte(rgba >> 24)), g(header_GLubyte(rgba >> 16)),
+      b(header_GLubyte(rgba >>  8)), a(header_GLubyte(rgba)) {}
 
-  color(GLubyte r, GLubyte g, GLubyte b, GLubyte a) : r(r), g(g), b(b), a(a) {}
+  color(header_GLubyte r, header_GLubyte g, header_GLubyte b, header_GLubyte a)
+    : r(r), g(g), b(b), a(a) {}
 
   // random Web forums thought a factor of 255.0 was correct, but is it exactly the right conversion?
-  color(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
-   : r(GLubyte(r*255)), g(GLubyte(g*255)), b(GLubyte(b*255)), a(GLubyte(a*255)) {}
+  color(header_GLfloat r, header_GLfloat g, header_GLfloat b, header_GLfloat a)
+   : r(header_GLubyte(r*255)), g(header_GLubyte(g*255)), b(header_GLubyte(b*255)), a(header_GLubyte(a*255)) {}
 
-  GLubyte r, g, b, a;
+  header_GLubyte r, g, b, a;
 };
-static_assert(sizeof(color) == 4*sizeof(GLubyte), "OpenGL needs this data layout.");
+static_assert(sizeof(color) == 4*sizeof(header_GLubyte), "OpenGL needs this data layout.");
 inline std::ostream& operator<<(std::ostream& os, color const& c) {
   // TODO does the float precision we output here matter?
   return os << "rgba(" << std::hex << int(c.r) << int(c.g) << int(c.b) << int(c.a) << std::dec << ')';
@@ -80,7 +86,8 @@ struct vertex_with_color {
   vertex_with_color() {}
 
   vertex_with_color(vertex v, color c) : c(c), v(v) {}
-  vertex_with_color(GLfloat x, GLfloat y, GLfloat z, color c) : c(c), v(x,y,z) {}
+  vertex_with_color(header_GLfloat x, header_GLfloat y, header_GLfloat z, color c)
+    : c(c), v(x,y,z) {}
   color c;
   vertex v;
 };
@@ -173,8 +180,8 @@ struct gl_all_data {
   gl_collectionplex stuff_to_draw_as_gl_collections_by_distance;
   color tint_everything_with_this_color;
   heads_up_display_text hud_text;
-  vector3<GLfloat> facing;
-  vector3<GLfloat> facing_up;
+  vector3<header_GLfloat> facing;
+  vector3<header_GLfloat> facing_up;
 };
 
 } // end namespace gl_data_preparation

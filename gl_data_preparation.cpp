@@ -19,7 +19,6 @@
 
 */
 
-// for types e.g. GLubyte, GLfloat:
 #include <GL/glew.h>
 
 #include "gl_data_preparation.hpp"
@@ -31,6 +30,9 @@
 #include "tile_iteration.hpp"
 
 using namespace gl_data_preparation;
+
+static_assert(boost::is_same<header_GLfloat, GLfloat>::value, "consistent GL types");
+static_assert(boost::is_same<header_GLubyte, GLubyte>::value, "consistent GL types");
 
 namespace /* anonymous */ {
 
