@@ -1,6 +1,6 @@
 /*
 
-    Copyright Eli Dupree and Isaac Dupree, 2011, 2012
+    Copyright Eli Dupree and Isaac Dupree, 2011, 2012, 2013
 
     This file is part of Lasercake.
 
@@ -30,6 +30,130 @@
 #include <boost/random/uniform_int.hpp>
 
 namespace /* anonymous */ {
+
+// see rationale in numbers.hpp division code
+BOOST_AUTO_TEST_CASE( standard_rounding_behavior ) {
+  BOOST_CHECK_EQUAL(8/3, 2);
+  BOOST_CHECK_EQUAL(-8/3, -2);
+  BOOST_CHECK_EQUAL(-8/-3, 2);
+  BOOST_CHECK_EQUAL(8/-3, -2);
+  BOOST_CHECK_EQUAL(8%3, 2);
+  BOOST_CHECK_EQUAL(-8%3, -2);
+  BOOST_CHECK_EQUAL(-8%-3, -2);
+  BOOST_CHECK_EQUAL(8%-3, 2);
+}
+template<typename T>
+void for_each_rounding_strategy(T dividend, T divisor, T quotient) {
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_down, negative_mirrors_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_down, negative_continuous_with_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_up, negative_mirrors_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_up, negative_continuous_with_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), quotient);
+  BOOST_CHECK_EQUAL(divide(dividend, divisor, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), quotient);
+}
+BOOST_AUTO_TEST_CASE( explicit_rounding ) {
+  const int min_int = std::numeric_limits<int>::min();
+  const int max_int = std::numeric_limits<int>::max();
+  const unsigned int max_uint = std::numeric_limits<unsigned int>::max();
+
+  for_each_rounding_strategy(max_int, -1, min_int+1);
+  for_each_rounding_strategy(min_int+1, -1, max_int);
+  for_each_rounding_strategy(0, -1, 0);
+  for_each_rounding_strategy(0, 1, 0);
+  for_each_rounding_strategy(0, 2, 0);
+  for_each_rounding_strategy(0, -2, 0);
+  for_each_rounding_strategy(0, min_int, 0);
+  for_each_rounding_strategy(0, max_int, 0);
+  for_each_rounding_strategy(1, 1, 1);
+  for_each_rounding_strategy(max_int, 1, max_int);
+  for_each_rounding_strategy(min_int, 1, min_int);
+  for_each_rounding_strategy(max_int, max_int, 1);
+  for_each_rounding_strategy(min_int, min_int, 1);
+  for_each_rounding_strategy(max_int/2+1, max_int/2+1, 1);
+  for_each_rounding_strategy(max_int/2+1, max_int/4+1, 2);
+  for_each_rounding_strategy(max_int/2+1, max_int/8+1, 4);
+  for_each_rounding_strategy(min_int, min_int/2, 2);
+  for_each_rounding_strategy(max_uint, 1u, max_uint);
+  for_each_rounding_strategy(max_uint - 3, 1u, max_uint - 3);
+  for_each_rounding_strategy(max_uint - 3, 2u, (max_uint - 3)/2);
+  for_each_rounding_strategy(max_uint, 3u, max_uint/3);
+
+
+  BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_down, negative_mirrors_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_down, negative_mirrors_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_down, negative_mirrors_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_down, negative_mirrors_positive>()), -2);
+  
+  BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_down, negative_continuous_with_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_down, negative_continuous_with_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_down, negative_continuous_with_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_down, negative_continuous_with_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-1,  3, rounding_strategy<round_down, negative_continuous_with_positive>()), -1);
+  
+  BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_up, negative_continuous_with_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_up, negative_continuous_with_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_up, negative_continuous_with_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_up, negative_continuous_with_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide( 1,  3, rounding_strategy<round_up, negative_continuous_with_positive>()),  1);
+  BOOST_CHECK_EQUAL(divide(-1,  3, rounding_strategy<round_up, negative_continuous_with_positive>()),  0);
+
+  BOOST_CHECK_EQUAL(divide( 8,  3, rounding_strategy<round_up, negative_mirrors_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide(-8,  3, rounding_strategy<round_up, negative_mirrors_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-8, -3, rounding_strategy<round_up, negative_mirrors_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide( 8, -3, rounding_strategy<round_up, negative_mirrors_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide( 1,  3, rounding_strategy<round_up, negative_mirrors_positive>()),  1);
+  BOOST_CHECK_EQUAL(divide(-1,  3, rounding_strategy<round_up, negative_mirrors_positive>()), -1);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>()), -3);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_mirrors_positive>()), -2);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()), -2);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()),  3);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_continuous_with_positive>()), -2);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()), -3);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()),  2);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_down, negative_continuous_with_positive>()), -3);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()),  2);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), -2);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()),  2);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), -2);
+  BOOST_CHECK_EQUAL(divide( 21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()),  4);
+  BOOST_CHECK_EQUAL(divide(-21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), -4);
+  BOOST_CHECK_EQUAL(divide(-21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()),  4);
+  BOOST_CHECK_EQUAL(divide( 21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_even>()), -4);
+
+  BOOST_CHECK_EQUAL(divide( 15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
+  BOOST_CHECK_EQUAL(divide(-15,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+  BOOST_CHECK_EQUAL(divide(-15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
+  BOOST_CHECK_EQUAL(divide( 15, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+  BOOST_CHECK_EQUAL(divide( 21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
+  BOOST_CHECK_EQUAL(divide(-21,  6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+  BOOST_CHECK_EQUAL(divide(-21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()),  3);
+  BOOST_CHECK_EQUAL(divide( 21, -6, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -3);
+  BOOST_CHECK_EQUAL(divide( -1,  2, rounding_strategy<round_to_nearest_with_ties_rounding_to_odd>()), -1);
+
+  BOOST_CHECK_EQUAL(divide(8, 3, rounding_strategy<round_up, negative_is_forbidden>()),  3);
+  BOOST_CHECK_THROW(divide(-8, 3, rounding_strategy<round_up, negative_is_forbidden>()), std::logic_error);
+  BOOST_CHECK_THROW(divide(-8, -3, rounding_strategy<round_up, negative_is_forbidden>()), std::logic_error);
+  BOOST_CHECK_THROW(divide(8, -3, rounding_strategy<round_up, negative_is_forbidden>()), std::logic_error);
+
+  BOOST_CHECK_EQUAL(divide(vector3<int>(3,4,5), 4, rounding_strategy<round_up, negative_continuous_with_positive>()), vector3<int>(1,1,2));
+}
 
 // Test case from https://svn.boost.org/trac/boost/ticket/6189
 class MGen {
@@ -124,17 +248,6 @@ BOOST_AUTO_TEST_CASE( my_ctz ) {
   BOOST_CHECK_EQUAL(count_trailing_zeroes_64(0x8000000000000000ull), 63);
 }
 
-BOOST_AUTO_TEST_CASE( divide_rounding_towards_zero_test ) {
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,1), 3);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,2), 1);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(0,3), 0);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(0,-3), 0);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(-3,3), -1);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(-3,2), -1);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(3,-2), -1);
-  BOOST_CHECK_EQUAL(divide_rounding_towards_zero(-3,-2), 1);
-  BOOST_CHECK_THROW(divide_rounding_towards_zero(-3,0), std::logic_error);
-}
 
 BOOST_AUTO_TEST_CASE( non_normalized_rational_test ) {
   typedef non_normalized_rational<int32_t> rational;
@@ -187,5 +300,38 @@ BOOST_AUTO_TEST_CASE( vector3_tests ) {
     BOOST_CHECK_EQUAL(ss.str(), "(-99, 0, 100)");
   }
 }
+
+static_assert(static_pow_nonnegative_integer<2,2>::value == 4, "bug");
+static_assert(static_pow_nonnegative_integer<2,3>::value == 8, "bug");
+static_assert(static_pow_nonnegative_integer<3,2>::value == 9, "bug");
+static_assert(static_pow_nonnegative_integer<9,7>::value == 4782969, "bug");
+static_assert(static_pow_nonnegative_integer<9,0>::value == 1, "bug");
+static_assert(static_pow_nonnegative_integer<0,1>::value == 0, "bug");
+static_assert(static_pow_nonnegative_integer<0,0>::value == 1, "this is generally useful");
+static_assert(static_pow_nonnegative_integer<1,999999999>::value == 1, "bug");
+static_assert(static_pow_nonnegative_integer<999999999,1>::value == 999999999, "bug");
+static_assert(static_pow_nonnegative_integer<2,32>::value == 0x100000000ull, "bug");
+static_assert(!static_pow_nonnegative_integer<9,9,true>::overflow, "bug");
+static_assert(static_pow_nonnegative_integer<999,999,true>::overflow, "bug");
+
+static_assert(static_root_nonnegative_integer<9,2>::value == 3, "bug");
+static_assert(static_root_nonnegative_integer<9,2>::remainder == 0, "bug");
+static_assert(static_root_nonnegative_integer<10,2>::value == 3, "bug");
+static_assert(static_root_nonnegative_integer<10,2>::remainder == 1, "bug");
+static_assert(static_root_nonnegative_integer<8,2>::value == 2, "bug");
+static_assert(static_root_nonnegative_integer<8,2>::remainder == 4, "bug");
+static_assert(static_root_nonnegative_integer<27,3>::value == 3, "bug");
+static_assert(static_root_nonnegative_integer<243,5>::value == 3, "bug");
+static_assert(static_root_nonnegative_integer<500,5>::remainder == 500-243, "bug");
+static_assert(static_root_nonnegative_integer<999999999,1>::value == 999999999, "bug");
+static_assert(static_root_nonnegative_integer<1,999999999>::value == 1, "bug");
+static_assert(static_root_nonnegative_integer<0,3>::value == 0, "bug");
+
+static_assert(extract_factor<3, 270>::factor_exponent == 3, "bug");
+static_assert(extract_factor<3, 270>::factored_out_value == 27, "bug");
+static_assert(extract_factor<3, 270>::rest_of_factoree == 10, "bug");
+static_assert(extract_factor<12345, 12345ll*12345*12345*97>::factor_exponent == 3, "bug");
+static_assert(extract_factor<2, (1ll<<41)>::factor_exponent == 41, "bug");
+static_assert(extract_factor<(1ll<<41), (1ll<<41)>::factor_exponent == 1, "bug");
 
 }  /* end anonymous namespace */

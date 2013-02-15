@@ -1,6 +1,6 @@
 /*
 
-    Copyright Eli Dupree and Isaac Dupree, 2011, 2012
+    Copyright Eli Dupree and Isaac Dupree, 2011, 2012, 2013
 
     This file is part of Lasercake.
 
@@ -56,16 +56,238 @@ typename boost::make_unsigned<Int>::type to_unsigned_type(Int i) {
   return result;
 }
 
-template<typename ScalarType1, typename ScalarType2>
-auto divide_rounding_towards_zero(ScalarType1 dividend, ScalarType2 divisor)
-  -> decltype(dividend/divisor) /*C++11 syntax for return type that lets it refer to argument names*/
-{
-  caller_correct_if(divisor != 0, "divisor must be nonzero");
-  using namespace std;
-  const auto abs_result = abs(dividend) / abs(divisor);
-  if (is_negative(dividend) == is_negative(divisor)) return abs_result;
-  else return -abs_result;
+
+// Zero divided by something is always zero.
+// Any other division result is always (before rounding)
+// positive or negative.
+// We specify a division strategy in terms of positive
+// numbers and an indication of how negative rounding is
+// related to positive rounding.
+enum rounding_strategy_for_positive_numbers {
+  round_down, round_up,
+  round_to_nearest_with_ties_rounding_up,
+  round_to_nearest_with_ties_rounding_down,
+  round_to_nearest_with_ties_rounding_to_even,
+  round_to_nearest_with_ties_rounding_to_odd
+};
+enum rounding_strategy_for_negative_numbers {
+  // "doesn't make a difference" is true for unsigned arguments
+  // and for round-to-even and round-to-odd.  It is a compile
+  // error to claim "doesn't make a difference" when it might
+  // in fact make a difference.
+  negative_variant_doesnt_make_a_difference,
+  
+  // result invariant under negation; roughly,
+  // -divide(-x, y, strat) == divide(x, y, strat)
+  negative_mirrors_positive,
+  
+  // result invariant under addition of a constant; roughly,
+  // divide(x + C*y, y, strat) - C == divide(x, y, strat)
+  negative_continuous_with_positive,
+  
+  // these just assert that the numerator and denominator is nonnegative.
+  negative_is_forbidden
+};
+template<
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy
+    = negative_variant_doesnt_make_a_difference>
+struct rounding_strategy {
+  static const rounding_strategy_for_positive_numbers positive_strategy = PosStrategy;
+  static const rounding_strategy_for_negative_numbers negative_strategy = NegStrategy;
+};
+namespace rounding_strategies_impl {
+// Otherwise we get warnings when instantiated with unsigned
+// types for (val < 0):
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma clang diagnostic ignored "-Wtautological-compare"
+
+// C++11 specifies that int '/' is round-to-zero.
+// Test this at compile time and runtime (misc_utils_tests.cpp
+// test "standard_rounding_behavior").
+// It's simpler to implement division algorithms when we can
+// count on something (anything), and this is the thing
+// that everyone seems to have agreed on.
+static_assert(8/3 == 2, "we use the typical, standard round-towards-zero");
+static_assert(-8/3 == -2, "we use the typical, standard round-towards-zero");
+static_assert(-8/-3 == 2, "we use the typical, standard round-towards-zero");
+static_assert(8/-3 == -2, "we use the typical, standard round-towards-zero");
+static_assert(8%3 == 2, "we use the typical, standard round-towards-zero");
+static_assert(-8%3 == -2, "we use the typical, standard round-towards-zero");
+static_assert(-8%-3 == -2, "we use the typical, standard round-towards-zero");
+static_assert(8%-3 == 2, "we use the typical, standard round-towards-zero");
+
+// TODO boost::enable_if<std::numeric_limits<T1 & T2>::is_specialized
+// or get_primitive_int_type? or.
+
+// Division is a slow instruction, so we want to start it as soon
+// as possible and finish as soon as possible after we have the
+// result.  Most division instructions also give modulus for free.
+// If the divisor is a compile-time constant, however, the compiler
+// converts it to a multiplication-by-constant and a few shifts,
+// and the remainder sometimes costs a bit.
+// We also have to consider, if modifying 'divisor' before dividing,
+// whether the possibility of overflow is acceptable.
+template<typename T>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<round_down, negative_mirrors_positive>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  return dividend / divisor;
 }
+template<typename T>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<round_down, negative_continuous_with_positive>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  const T rounded_to_zero = dividend / divisor;
+  const T remainder = dividend % divisor;
+  //'adjust' is probably branch-predictable
+  // even if the sign of the numbers aren't.
+  // (The compiler seems to be smart and transforms
+  //  either to something reasonable, given that either
+  //  has a reasonable way to run it.)
+  //const T adjust =
+  //  ((dividend < 0) != (divisor < 0)) && (remainder != 0);
+  //return rounded_to_zero - adjust;
+  if(((dividend < T(0)) != (divisor < T(0))) && (remainder != T(0))) {
+    return rounded_to_zero - T(1);
+  }
+  else {
+    return rounded_to_zero;
+  }
+}
+template<typename T>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<round_up, negative_mirrors_positive>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  const T rounded_to_zero = dividend / divisor;
+  const T remainder = dividend % divisor;
+  const T adjust = ((dividend < T(0)) == (divisor < T(0)) ? T(1) : T(-1));
+  if(remainder != 0) {
+    return rounded_to_zero + adjust;
+  }
+  else {
+    return rounded_to_zero;
+  }
+}
+template<typename T>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<round_up, negative_continuous_with_positive>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  const T rounded_to_zero = dividend / divisor;
+  const T remainder = dividend % divisor;
+  if(((dividend < T(0)) == (divisor < T(0))) && (remainder != T(0))) {
+    return rounded_to_zero + T(1);
+  }
+  else {
+    return rounded_to_zero;
+  }
+}
+
+// this is too tricky to allow two different int type arguments for
+template<typename T,
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<PosStrategy, NegStrategy>) {
+  caller_correct_if(divisor != T(0), "divisor must be nonzero");
+  const T rounded_to_zero = dividend / divisor;
+  const T remainder = dividend % divisor;
+  // result_positive is a slight misnomer.
+  // If dividend is zero, then the result and remainder are zero
+  // and all is fine regardless of this bool's value.
+  // If dividend is nonzero, this bool indicates (as it must)
+  // the sign of the conceptual, unrounded quotient.
+  const bool result_positive = (dividend < T(0)) == (divisor < T(0));
+  const T adjust = (result_positive ? T(1) : T(-1));
+
+  // compare(abs(divisor)/2, abs(remainder)) without rounding error
+  // or overflow for any argument.
+  T tweak;
+  T nonnegative_divisor_ish;
+  if(divisor < T(0)) {
+    tweak = T(1);
+    nonnegative_divisor_ish = ~divisor;
+  }
+  else {
+    tweak = T(0);
+    nonnegative_divisor_ish = divisor;
+  }
+  // remainder cannot be -MIN_INT
+  // remainder's sign is dividend's sign (the CPU knows the latter sooner)
+  const T nonnegative_remainder = ((dividend < T(0)) ? -remainder : remainder);
+  const T left = nonnegative_divisor_ish - nonnegative_remainder;
+  const T right = nonnegative_remainder - tweak;
+  if(left < right) {
+    // remainder's magnitude is large; round quotient's magnitude up
+    return rounded_to_zero + adjust;
+  }
+  else if(left > right) {
+    // remainder's magnitude is small; round quotient's magnitude down
+    return rounded_to_zero;
+  }
+  else {
+    // tie!
+    // partially compile-time ifs here.
+    if(PosStrategy == round_to_nearest_with_ties_rounding_to_even) {
+      if(rounded_to_zero & T(1)) { return rounded_to_zero + adjust; }
+      else                       { return rounded_to_zero; }
+    }
+    if(PosStrategy == round_to_nearest_with_ties_rounding_to_odd) {
+      if(rounded_to_zero & T(1)) { return rounded_to_zero; }
+      else                       { return rounded_to_zero + adjust; }
+    }
+    // else it is one of the four biased rounding tiebreakers.
+    if((result_positive || NegStrategy == negative_mirrors_positive)
+        == (PosStrategy == round_to_nearest_with_ties_rounding_up)) {
+      return rounded_to_zero + adjust;
+    }
+    else {
+      return rounded_to_zero;
+    }
+  }
+}
+
+template<typename T, rounding_strategy_for_positive_numbers PosStrategy>
+inline T divide_impl(T dividend, T divisor,
+      rounding_strategy<PosStrategy, negative_is_forbidden>) {
+  caller_error_if(dividend < T(0) || divisor < T(0), "Negative number forbidden in this division!");
+  // Use unsigned types so that the divide_impl optimizes better
+  // even if it's not inlined.
+  typedef typename boost::make_unsigned<T>::type UnsignedT;
+  return T(divide_impl<UnsignedT>(
+    UnsignedT(dividend),
+    UnsignedT(divisor),
+    rounding_strategy<PosStrategy, negative_mirrors_positive>()));
+}
+#pragma GCC diagnostic pop
+} /* end namespace rounding_strategies */
+
+// Avoid specifying rounding_strategy<> in last argument's structure so that
+// overloads of divide() will be picked before this one.
+template<typename T1, typename T2, typename RoundingStrategy,
+  rounding_strategy_for_positive_numbers PosStrategy = RoundingStrategy::positive_strategy,
+  rounding_strategy_for_negative_numbers NegStrategy = RoundingStrategy::negative_strategy,
+  typename = typename boost::enable_if_c<
+    (std::numeric_limits<T1>::is_specialized && std::numeric_limits<T2>::is_specialized
+      // we don't currently implement IEEE754 floating-point rounding modes
+      && std::numeric_limits<T1>::is_integer && std::numeric_limits<T2>::is_integer
+    )>::type>
+inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
+-> decltype(dividend/divisor) {
+  static_assert(std::numeric_limits<T1>::is_signed == std::numeric_limits<T2>::is_signed,
+                "Dividing two numbers of mixed sign is probably a bad idea.");
+  typedef decltype(dividend / divisor) operation_type;
+  static_assert(
+       NegStrategy != negative_variant_doesnt_make_a_difference
+    || PosStrategy == round_to_nearest_with_ties_rounding_to_even
+    || PosStrategy == round_to_nearest_with_ties_rounding_to_odd
+    || (!std::numeric_limits<T1>::is_signed && !std::numeric_limits<T2>::is_signed),
+    "You lied! The negative variant does make a difference.");
+  return rounding_strategies_impl::divide_impl(
+    operation_type(dividend), operation_type(divisor), strat);
+}
+
 
 inline int32_t ilog2(uint64_t argument) {
   caller_error_if(argument == 0, "the logarithm of zero is undefined");
@@ -202,7 +424,7 @@ inline int32_t popcount(uint8_t argument)  {
 
 template<typename Int>
 inline int32_t ilog2(Int argument) {
-  static_assert(sizeof(Int) <= 64, "not implemented");
+  static_assert(std::numeric_limits<Int>::digits <= 64, "not implemented");
   if(std::numeric_limits<Int>::is_signed) caller_error_if(argument <= Int(0), "logarithm is only defined on positive numbers");
   if(std::numeric_limits<Int>::digits <= 32) return ilog2(get_primitive<uint32_t>(argument));
   else return ilog2(get_primitive<uint64_t>(argument));
@@ -240,6 +462,174 @@ inline int32_t count_trailing_zeroes_64(uint64_t argument) {
 #endif
 }
 
+
+template<uintmax_t Result>
+struct static_pow_nonnegative_integer_answer {
+  static const uintmax_t value = Result; // result or max uintmax_t for overflow
+  static const uintmax_t value_minus_one = value - 1; //result-1 or max uintmax_t for overflow
+  static const uintmax_t modulo_value = Result; // result
+  static const bool overflow = false;
+};
+template<uintmax_t A, uintmax_t B, bool AlreadyOverflowing = false>
+struct static_multiply_nonnegative_integer {
+  static const uintmax_t modulo_value = A * B;
+  static const bool overflow = AlreadyOverflowing
+    || modulo_value / (B?B:1) != (B?A:0)  //if B!=0, check
+    || modulo_value / (A?A:1) != (A?B:0); //if A!=0, check
+  static const uintmax_t value = (overflow ? uintmax_t(-1) : modulo_value);
+  static const uintmax_t value_minus_one = (overflow ? uintmax_t(-1) : modulo_value - 1);
+};
+
+template<typename A, typename B>
+struct static_re_multiply_nonnegative_integer
+  : static_multiply_nonnegative_integer<A::modulo_value, B::modulo_value,
+                                          (A::overflow || B::overflow)> {};
+
+
+
+template<typename Base, uintmax_t Exponent, bool Odd = (Exponent % 2 == 1)>
+struct static_pow_nonnegative_integer_impl;
+template<typename B> struct static_pow_nonnegative_integer_impl<B, 0, false>
+  : static_pow_nonnegative_integer_answer<1> {};
+template<typename B> struct static_pow_nonnegative_integer_impl<B, 1, true>
+  : B {};
+template<typename B> struct static_pow_nonnegative_integer_impl<B, 2, false>
+  : static_re_multiply_nonnegative_integer<B, B> {};
+template<typename B, uintmax_t EvenExponent> struct static_pow_nonnegative_integer_impl<B, EvenExponent, false>
+  : static_re_multiply_nonnegative_integer<
+      static_pow_nonnegative_integer_impl<B, EvenExponent/2>,
+      static_pow_nonnegative_integer_impl<B, EvenExponent/2>
+      > {};
+template<typename B, uintmax_t OddExponent> struct static_pow_nonnegative_integer_impl<B, OddExponent, true>
+  : static_re_multiply_nonnegative_integer<
+      B,
+      static_re_multiply_nonnegative_integer<
+        static_pow_nonnegative_integer_impl<B, OddExponent/2>,
+        static_pow_nonnegative_integer_impl<B, OddExponent/2>
+      > > {};
+
+template<uintmax_t Base, uintmax_t Exponent, bool AllowOverflow = false>
+struct static_pow_nonnegative_integer
+  : static_pow_nonnegative_integer_impl<
+      static_pow_nonnegative_integer_answer<Base>, Exponent> {
+  static_assert(AllowOverflow ||
+    !static_pow_nonnegative_integer_impl<
+      static_pow_nonnegative_integer_answer<Base>, Exponent>::overflow,
+    "exponentiation overflow");
+};
+
+template<uintmax_t Radicand, uintmax_t Root = 2>
+struct static_root_nonnegative_integer {
+  // Newton-Raphson method.
+  template<uintmax_t LowerBound, uintmax_t UpperBound, bool Done>
+  struct recur {
+    static const uintmax_t mid = ((LowerBound + UpperBound) >> 1);
+    static const bool mid_is_new_upper_bound =
+      static_pow_nonnegative_integer<mid, Root, true>::value_minus_one > Radicand - 1;
+    static const uintmax_t new_lower_bound = mid_is_new_upper_bound ? LowerBound : mid;
+    static const uintmax_t new_upper_bound = mid_is_new_upper_bound ? mid : UpperBound;
+    static const bool done = new_lower_bound >= new_upper_bound - 1;
+    static const uintmax_t value = recur<new_lower_bound, new_upper_bound, done>::value;
+  };
+  template<uintmax_t LowerBound, uintmax_t UpperBound>
+  struct recur<LowerBound, UpperBound, true> {
+    static const uintmax_t value = LowerBound;
+  };
+  static const uintmax_t shift = boost::static_log2<Radicand>::value;
+  static const uintmax_t initial_lower_bound = uintmax_t(1) << (shift / Root);
+  static const uintmax_t initial_upper_bound = initial_lower_bound * Root;
+  static const uintmax_t value = recur<initial_lower_bound, initial_upper_bound, false>::value;
+  static const uintmax_t remainder = Radicand - static_pow_nonnegative_integer<value, Root>::value;
+};
+template<uintmax_t Radicand>
+struct static_root_nonnegative_integer<Radicand, 1> {
+  static const uintmax_t value = Radicand;
+  static const uintmax_t remainder = 0;
+};
+template<uintmax_t Root>
+struct static_root_nonnegative_integer<0, Root> {
+  static const uintmax_t value = 0;
+  static const uintmax_t remainder = 0;
+};
+// zeroth roots are meaningless:
+template<uintmax_t Radicand>
+struct static_root_nonnegative_integer<Radicand, 0> {};
+template<>
+struct static_root_nonnegative_integer<0, 0> {};
+
+
+static const uintmax_t safe_uintmax_t_to_square =
+  (uintmax_t(1)<<(std::numeric_limits<uintmax_t>::digits/2)) - 1u;
+template<uintmax_t Factor, uintmax_t Factoree,
+  int Difficulty = (
+    ((Factoree % Factor) == 0)
+    + (Factor <= safe_uintmax_t_to_square &&
+        ((Factoree % ((Factor <= safe_uintmax_t_to_square)*Factor*Factor)) == 0)))>
+struct extract_factor_impl;
+template<uintmax_t Factor, uintmax_t Factoree>
+struct extract_factor_impl<Factor, Factoree, 0> {
+  static const int factor_exponent = 0;
+  static const uintmax_t factored_out_value = 1;
+  static const uintmax_t rest_of_factoree = Factoree;
+};
+template<uintmax_t Factor, uintmax_t Factoree>
+struct extract_factor_impl<Factor, Factoree, 1> {
+  static const int factor_exponent = (Factoree % Factor) == 0;
+  static const uintmax_t factored_out_value = (factor_exponent ? Factor : 1);
+  static const uintmax_t rest_of_factoree = (factor_exponent ? Factoree/Factor : Factoree);
+};
+template<uintmax_t Factor, uintmax_t Factoree>
+struct extract_factor_impl<Factor, Factoree, 2> {
+private:
+  static_assert(std::numeric_limits<uintmax_t>::digits <= 128, "unimplemented");
+  static const uintmax_t f1 = Factor;
+  static const uintmax_t f2 = (f1<=safe_uintmax_t_to_square)*f1*f1;
+  static const uintmax_t f4 = (f2<=safe_uintmax_t_to_square)*f2*f2;
+  static const uintmax_t f8 = (f4<=safe_uintmax_t_to_square)*f4*f4;
+  static const uintmax_t f16 = (f8<=safe_uintmax_t_to_square)*f8*f8;
+  static const uintmax_t f32 = (f16<=safe_uintmax_t_to_square)*f16*f16;
+  static const uintmax_t f64 = (f32<=safe_uintmax_t_to_square)*f32*f32;
+  static const bool e64 = f64 && ((Factoree % (    (f64?f64:1))) == 0);
+  static const uintmax_t p64 =     (e64?f64:1);
+  static const bool e32 = f32 && ((Factoree % (p64*(f32?f32:1))) == 0);
+  static const uintmax_t p32 = p64*(e32?f32:1);
+  static const bool e16 = f16 && ((Factoree % (p32*(f16?f16:1))) == 0);
+  static const uintmax_t p16 = p32*(e16?f16:1);
+  static const bool e8 = f8 && ((Factoree % (p16*(f8?f8:1))) == 0);
+  static const uintmax_t p8 = p16*(e8?f8:1);
+  static const bool e4 = f4 && ((Factoree % (p8*(f4?f4:1))) == 0);
+  static const uintmax_t p4 = p8*(e4?f4:1);
+  static const bool e2 = f2 && ((Factoree % (p4*(f2?f2:1))) == 0);
+  static const uintmax_t p2 = p4*(e2?f2:1);
+  static const bool e1 = f1 && ((Factoree % (p2*(f1?f1:1))) == 0);
+  static const uintmax_t p1 = p2*(e1?f1:1);
+public:
+  static const int factor_exponent = e64*64 + e32*32 + e16*16 + e8*8
+                                              + e4*4 + e2*2 + e1*1;
+  static const uintmax_t factored_out_value = p1;
+  static const uintmax_t rest_of_factoree = Factoree / factored_out_value;
+};
+
+// extract_factor<F, N> divides out F from N as many times
+// as it goes in evenly.  It tells you how many times it
+// divided (factor_exponent), the amount divided out
+// (factors_value, which is F to the factor_exponent),
+// and N sans the F parts (rest_of_factoree).
+template<uintmax_t Factor, uintmax_t Factoree>
+struct extract_factor : extract_factor_impl<Factor, Factoree> {
+  static const int factor_base = Factor;
+  static const int factoree = Factoree;
+};
+// These are not meaningful:
+template<uintmax_t Factoree> struct extract_factor<0, Factoree>;
+template<uintmax_t Factoree> struct extract_factor<1, Factoree>;
+template<uintmax_t Factor> struct extract_factor<Factor, 0>;
+
+
+
+
+
+// TODO rename to isqrt or similar?
 inline uint32_t i64sqrt(uint64_t radicand)
 {
   typedef uint64_t full_t;
@@ -558,6 +948,17 @@ template<typename IntType, typename Num>
 inline auto multiply_rational_into(Num n, non_normalized_rational<IntType> rat)
 -> decltype(n * rat.numerator / rat.denominator) {
   return n * rat.numerator / rat.denominator;
+}
+
+template<typename Target, typename Num>
+struct numeric_representation_cast_impl {
+  typedef Target target_type;
+};
+
+template<typename Target, typename Num>
+inline typename numeric_representation_cast_impl<Target, Num>::target_type
+numeric_representation_cast(Num const& num) {
+  return typename numeric_representation_cast_impl<Target, Num>::target_type(num);
 }
 
 #endif

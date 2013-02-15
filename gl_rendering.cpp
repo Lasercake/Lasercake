@@ -49,6 +49,9 @@ struct gl_renderer::state_t_ {
 gl_renderer::gl_renderer() {}
 gl_renderer::~gl_renderer() {}
 
+static const double tile_width_double = get_primitive_double(get(tile_width, fine_units));
+static const double tile_height_double = get_primitive_double(get(tile_height, fine_units));
+
 void gl_renderer::output_gl_data_to_OpenGL(
     gl_data_preparation::gl_all_data const& gl_data,
     viewport_dimension viewport_width,
@@ -94,7 +97,7 @@ void gl_renderer::output_gl_data_to_OpenGL(
   glLoadIdentity();
 
   // TODO convert these GLU calls to plain GL calls?
-  gluPerspective(80, (double(viewport_width) / viewport_height), 0.1*get_primitive_double(tile_width), 300.0*get_primitive_double(tile_width));
+  gluPerspective(80, (double(viewport_width) / viewport_height), 0.1*tile_width_double, 300.0*tile_width_double);
   gluLookAt(0, 0, 0,
             gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
             gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);

@@ -45,6 +45,14 @@
 template<typename Int> struct lasercake_int {
   typedef typename maybe_bounds_checked_int<Int>::type type;
 };
+typedef typename lasercake_int< uint8_t>::type  luint8_t;
+typedef typename lasercake_int<  int8_t>::type   lint8_t;
+typedef typename lasercake_int<uint16_t>::type luint16_t;
+typedef typename lasercake_int< int16_t>::type  lint16_t;
+typedef typename lasercake_int<uint32_t>::type luint32_t;
+typedef typename lasercake_int< int32_t>::type  lint32_t;
+typedef typename lasercake_int<uint64_t>::type luint64_t;
+typedef typename lasercake_int< int64_t>::type  lint64_t;
 
 template<typename Map>
 typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const& k) {
@@ -92,6 +100,8 @@ template<typename ScalarType> class vector3 {
 public:
   ScalarType x, y, z;
   vector3():x(0),y(0),z(0){}
+  // implicit conversion from literal 0, so you can write 0 for any zero vector.
+  vector3(decltype(nullptr)):x(0),y(0),z(0){}
   vector3(ScalarType x, ScalarType y, ScalarType z):x(x),y(y),z(z){}
   template<typename OtherType> explicit vector3(vector3<OtherType> const& other):
     x(other.x),y(other.y),z(other.z){}
@@ -123,38 +133,64 @@ public:
   BOOST_FORCEINLINE ScalarType operator()(which_dimension_type index)const { return (*this)[index]; }
   BOOST_FORCEINLINE void set(which_dimension_type index, ScalarType value) { (*this)[index] = value; }
 
-  // Note: The operators are biased towards the type of the left operand (e.g. vector3<int> + vector3<int64_t> = vector3<int>)
-  template<typename OtherType> vector3 operator+(vector3<OtherType> const& other)const {
-    return vector3(x + other.x, y + other.y, z + other.z);
+  template<typename OtherType> auto operator+(vector3<OtherType> const& other)const
+  -> vector3<decltype(x + other.x)> {
+    return vector3<decltype(x + other.x)>(x + other.x, y + other.y, z + other.z);
   }
   template<typename OtherType> vector3& operator+=(vector3<OtherType> const& other) {
     x += other.x; y += other.y; z += other.z; return *this;
   }
-  template<typename OtherType> vector3 operator-(vector3<OtherType> const& other)const {
-    return vector3(x - other.x, y - other.y, z - other.z);
+  template<typename OtherType> auto operator-(vector3<OtherType> const& other)const
+  -> vector3<decltype(x - other.x)> {
+    return vector3<decltype(x - other.x)>(x - other.x, y - other.y, z - other.z);
   }
   template<typename OtherType> vector3& operator-=(vector3<OtherType> const& other) {
     x -= other.x; y -= other.y; z -= other.z; return *this;
   }
-  vector3 operator*(ScalarType other)const {
-    return vector3(x * other, y * other, z * other);
+  template<typename OtherType> auto operator*(OtherType const& other)const
+  -> vector3<decltype(x * other)> {
+    return vector3<decltype(x * other)>(x * other, y * other, z * other);
   }
   vector3& operator*=(ScalarType other) {
     x *= other; y *= other; z *= other; return *this;
   }
-  vector3 operator/(ScalarType other)const {
-    return vector3(divide_rounding_towards_zero(x, other), divide_rounding_towards_zero(y, other), divide_rounding_towards_zero(z, other));
+  template<typename OtherType, typename RoundingStrategy>
+  friend inline auto divide(vector3 const& v, OtherType const& other, RoundingStrategy strat)
+  -> vector3<decltype(std::declval<ScalarType>() / other)>{
+    return vector3<decltype(v.x / other)>(
+      divide(v.x, other, strat),
+      divide(v.y, other, strat),
+      divide(v.z, other, strat));
+  }
+  // Default to rounding towards zero. (TODO: is it wise to have any default here?
+  // It's not like we use division much.  But we don't want to use shifting
+  // without considering that shifting rounds down towards negative infinity, too.)
+  typedef rounding_strategy<round_down, negative_mirrors_positive> default_rounding_strategy;
+
+  // In C++11 integer division rounds towards zero,
+  // which is often what we want for vectors; IEEE754 floating point division,
+  // by default, rounds to nearest and to even for ties.
+  template<typename OtherType> auto operator/(OtherType const& other)const
+  -> vector3<decltype(x / other)> {
+    return vector3<decltype(x / other)>(x/other, y/other, z/other);
   }
   vector3& operator/=(ScalarType other) {
-    x = divide_rounding_towards_zero(x, other); y = divide_rounding_towards_zero(y, other); z = divide_rounding_towards_zero(z, other); return *this;
+    x /= other; y /= other; z /= other;
+    return *this;
   }
   // Multiplying two vectors is usually a type-error mistake, so
   // you have to say you're doing it in words:
-  template<typename OtherType> vector3 multiply_piecewise_by(vector3<OtherType> const& other)const {
-    return vector3(x * other.x, y * other.y, z * other.z);
+  template<typename OtherType> auto multiply_piecewise_by(vector3<OtherType> const& other)const
+  -> vector3<decltype(x * other.x)> {
+    return vector3<decltype(x * other.x)>(x * other.x, y * other.y, z * other.z);
   }
-  template<typename OtherType> vector3 divide_piecewise_by(vector3<OtherType> const& other)const {
-    return vector3(x / other.x, y / other.y, z / other.z);
+  template<typename OtherType, typename RoundingStrategy>
+  auto divide_piecewise_by(vector3<OtherType> const& other, RoundingStrategy strat)const
+  -> vector3<decltype(x / other.x)> {
+    return vector3<decltype(x / other.x)>(
+      divide(x, other.x, strat),
+      divide(y, other.y, strat),
+      divide(z, other.z, strat));
   }
   // Careful, shift operators on builtin types (ScalarType?) are only
   // defined for shift >= 0 && shift < bits_in_type
@@ -191,24 +227,37 @@ public:
   bool operator==(vector3 const& other)const {return x == other.x && y == other.y && z == other.z; }
   bool operator!=(vector3 const& other)const {return x != other.x || y != other.y || z != other.z; }
   
-  // Do not try to use this if either vector has an unsigned ScalarType. It might work in some situations, but why would you ever do that anyway?
-  // You are required to specify an output type, because of the risk of overflow. Make sure to choose one that can fit the squares of the numbers you're dealing with.
-  template<typename OutputType, typename OtherType> OutputType dot(vector3<OtherType> const& other)const {
-    return (OutputType)x * (OutputType)other.x +
-           (OutputType)y * (OutputType)other.y +
-           (OutputType)z * (OutputType)other.z;
+  // Do not try to use this if either vector has an unsigned ScalarType.
+  // It might work in some situations, but why would you ever do that anyway?
+  //
+  // You are required to specify an output representation type, because of the
+  // risk of overflow. Make sure to choose one that can fit the squares of the
+  // numbers you're dealing with.
+  template<typename OutputRepr, typename OtherType>
+  auto dot(vector3<OtherType> const& other)const
+  -> decltype(numeric_representation_cast<OutputRepr>(x) * numeric_representation_cast<OutputRepr>(other.x)) {
+    return
+      numeric_representation_cast<OutputRepr>(x) * numeric_representation_cast<OutputRepr>(other.x) +
+      numeric_representation_cast<OutputRepr>(y) * numeric_representation_cast<OutputRepr>(other.y) +
+      numeric_representation_cast<OutputRepr>(z) * numeric_representation_cast<OutputRepr>(other.z);
   }
 
   typedef lasercake_int<int64_t>::type int64_type_to_use_with_dot;
-  ScalarType magnitude_within_32_bits()const { return ScalarType(get_primitive_int(i64sqrt(dot<int64_type_to_use_with_dot>(*this)))); }
+  ScalarType magnitude_within_32_bits()const {
+    return ScalarType(i64sqrt(dot<int64_type_to_use_with_dot>(*this)));
+  }
   
   // Choose these the way you'd choose dot's output type (see the comment above)
   // we had trouble making these templates, so now they just always use int64_t
   bool magnitude_within_32_bits_is_less_than(ScalarType amount)const {
-    return dot<int64_type_to_use_with_dot>(*this) < (int64_type_to_use_with_dot)amount * (int64_type_to_use_with_dot)amount;
+    return dot<int64_type_to_use_with_dot>(*this) <
+          numeric_representation_cast<int64_type_to_use_with_dot>(amount)
+        * numeric_representation_cast<int64_type_to_use_with_dot>(amount);
   }
   bool magnitude_within_32_bits_is_greater_than(ScalarType amount)const {
-    return dot<int64_type_to_use_with_dot>(*this) > (int64_type_to_use_with_dot)amount * (int64_type_to_use_with_dot)amount;
+    return dot<int64_type_to_use_with_dot>(*this) >
+          numeric_representation_cast<int64_type_to_use_with_dot>(amount)
+        * numeric_representation_cast<int64_type_to_use_with_dot>(amount);
   }
   bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
 

@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_OBJECT_AND_TILE_ITERATION_HPP__
 #define LASERCAKE_OBJECT_AND_TILE_ITERATION_HPP__
 
+#include <utility>
+
 #include "tile_iteration.hpp"
 #include "data_structures/bbox_collision_detector_iteration.hpp"
 
@@ -38,14 +40,14 @@
 
 namespace visit_collidable_tiles_and_objects_impl {
 
-typedef lasercake_int<int64_t>::type cost_type;
+typedef fine_scalar cost_type;
 //typedef faux_optional<cost_type> optional_cost_type;
 
 inline cost_type cost_for(octant_number octant, objects_collision_detector::bounding_box bbox) {
   return
-    (LASERCAKE_OCTANT_X_POSITIVE(octant) ? cost_type(bbox.min(X)) : -cost_type(bbox.max(X))) +
-    (LASERCAKE_OCTANT_Y_POSITIVE(octant) ? cost_type(bbox.min(Y)) : -cost_type(bbox.max(Y))) +
-    (LASERCAKE_OCTANT_Z_POSITIVE(octant) ? cost_type(bbox.min(Z)) : -cost_type(bbox.max(Z)));
+    (LASERCAKE_OCTANT_X_POSITIVE(octant) ? cost_type(bbox.min(X)*fine_units) : -cost_type(bbox.max(X)*fine_units)) +
+    (LASERCAKE_OCTANT_Y_POSITIVE(octant) ? cost_type(bbox.min(Y)*fine_units) : -cost_type(bbox.max(Y)*fine_units)) +
+    (LASERCAKE_OCTANT_Z_POSITIVE(octant) ? cost_type(bbox.min(Z)*fine_units) : -cost_type(bbox.max(Z)*fine_units));
 }
 inline cost_type cost_for(octant_number octant, tile_location loc) {
   vector3<tile_coordinate> const& coords = loc.coords();
@@ -101,9 +103,8 @@ struct tile_visitor {
   octant_number octant_;
   //get_cost<Visitor> get_cost_;
   typedef decltype(
-    static_cast<objects_collision_detector*>(nullptr)->iterate(
-      *static_cast<get_cost<Visitor>*>(nullptr)
-    ).begin()) objects_iterator;
+    std::declval<objects_collision_detector>().iterate(
+        std::declval<get_cost<Visitor>>()  ).begin()) objects_iterator;
   objects_iterator obj_i_;
   objects_iterator obj_end_;
   Visitor& visitor_;

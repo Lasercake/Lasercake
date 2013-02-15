@@ -19,8 +19,6 @@
 
 */
 
-
-
 /*
 
 t1, t2, t3
@@ -113,23 +111,28 @@ lt*(Dy2 - Dy1) = sl1x * ol2x*y2 - sl2x * ol2x*y1
 
 #include "polygon_collision_detection.hpp"
 
+namespace geom {
+
 using boost::none;
 
-typedef polygon_rational_type rational;
 
 
 
 
 namespace {
 
-vector3<polygon_int_type> cross_product(vector3<polygon_int_type> a, vector3<polygon_int_type> b) {
-  return vector3<polygon_int_type>(
-    (a(Y) * b(Z)) - (b(Y) * a(Z)),
-    (a(Z) * b(X)) - (b(Z) * a(X)),
-    (a(X) * b(Y)) - (b(X) * a(Y))
+
+template<typename T1, typename T2>
+vector3<decltype(std::declval<T1>() * std::declval<T2>() * pseudo)>
+cross_product(vector3<T1> a, vector3<T2> b) {
+  return vector3<decltype(std::declval<T1>() * std::declval<T2>() * pseudo)>(
+    ((a(Y) * b(Z)) - (b(Y) * a(Z)))*pseudo,
+    ((a(Z) * b(X)) - (b(Z) * a(X)))*pseudo,
+    ((a(X) * b(Y)) - (b(X) * a(Y)))*pseudo
   );
 }
-vector3<polygon_int_type> plane_normal(vector3<polygon_int_type> p1, vector3<polygon_int_type> p2, vector3<polygon_int_type> p3) {
+
+pseudovect2 plane_normal(vect p1, vect p2, vect p3) {
   return cross_product(p2 - p1, p3 - p1);
   /*return vector3<polygon_int_type>(
     (p1(Y) * (p2(Z) - p3(Z))) + (p2(Y) * (p3(Z) - p1(Z))) + (p3(Y) * (p1(Z) - p2(Z))),
@@ -137,24 +140,31 @@ vector3<polygon_int_type> plane_normal(vector3<polygon_int_type> p1, vector3<pol
     (p1(X) * (p2(Y) - p3(Y))) + (p2(X) * (p3(Y) - p1(Y))) + (p3(X) * (p1(Y) - p2(Y)))
   );*/
 }
-vector3<polygon_int_type> forcedly_directed_plane_normal(vector3<polygon_int_type> p1, vector3<polygon_int_type> p2, vector3<polygon_int_type> p3, vector3<polygon_int_type> interior_direction) {
-  const vector3<polygon_int_type> arbitrary_normal = plane_normal(p1, p2, p3);
-  if (interior_direction.dot<polygon_int_type>(arbitrary_normal) > 0) {
-    return -arbitrary_normal;
+vect2 forcedly_directed_plane_normal(vect p1, vect p2, vect p3, vect interior_direction) {
+  const pseudovect2 arbitrary_normal = plane_normal(p1, p2, p3);
+  return imbue_sign(interior_direction.dot<polygon_int_type>(arbitrary_normal), -arbitrary_normal);
+
+#if 0
+  if (interior_direction.dot<pseudocoord3>(arbitrary_normal) > 0) {
+    return -arbitrary_normal/pseudo;
   }
   else {
-    return arbitrary_normal;
+    return arbitrary_normal/pseudo;
   }
+#endif
 }
 
-bool vectors_are_parallel(vector3<polygon_int_type> const& v1, vector3<polygon_int_type> const& v2) {
+bool vectors_are_parallel(vect const& v1, vect const& v2) {
   return (v1(X) * v2(Y) == v2(X) * v1(Y)) && (v1(X) * v2(Z) == v2(X) * v1(Z)) && (v1(Y) * v2(Z) == v2(Y) * v1(Z));
 }
 
-faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face_onesided(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps2) {
-  for (auto const& p : ps2.base_points_and_outward_facing_normals) {
+faux_optional<base_point_and_outward_facing_normal>
+get_excluding_face_onesided(
+      std::vector<vect> const& vs1,
+      polyhedron_planes_info_for_intersection const& ps2) {
+  for (base_point_and_outward_facing_normal const& p : ps2.base_points_and_outward_facing_normals) {
     bool excludes_entire = true;
-    for (vector3<polygon_int_type> v : vs1) {
+    for (vect v : vs1) {
       if (p.second.dot<polygon_int_type>(v - p.first) <= 0) {
         excludes_entire = false;
         break;
@@ -168,14 +178,17 @@ faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> g
 }
 
 
-void populate_with_plane_info(convex_polyhedron const& p, std::vector<plane_as_base_point_and_normal>& collector) {
+void populate_with_plane_info(
+      convex_polyhedron const& p,
+      std::vector<plane_as_base_point_and_normal>& collector) {
   for (uint8_t i = 0; i < p.face_info().size(); i += p.face_info()[i] + 1) {
     collector.push_back(plane_as_base_point_and_normal(
         p.vertices()[p.face_info()[i + 1]],
-        // relying on the fact that the first three vertices of each face are in the proper order.
+        // relying on the fact that the first three vertices
+        // of each face are in the proper order.
         plane_normal(p.vertices()[p.face_info()[i + 1]],
                      p.vertices()[p.face_info()[i + 2]],
-                     p.vertices()[p.face_info()[i + 3]])
+                     p.vertices()[p.face_info()[i + 3]]) / pseudo
       ));
   }
 }
@@ -219,14 +232,18 @@ So we only need to consider edge-edge planes where e1's faces are both on one si
 
 
 
-void populate_with_relating_planes__faces_onesided(std::vector<plane_as_base_point_and_normal> pA_planes, convex_polyhedron const& pB, bool A_is_1, std::vector<pair_of_parallel_supporting_planes>& planes_collector) {
-  for (auto const& plane : pA_planes) {
+void populate_with_relating_planes__faces_onesided(
+      std::vector<plane_as_base_point_and_normal> pA_planes,
+      convex_polyhedron const& pB,
+      bool A_is_1,
+      std::vector<pair_of_parallel_supporting_planes>& planes_collector) {
+  for (plane_as_base_point_and_normal const& plane : pA_planes) {
     bool found_any_points = false;
-    vector3<polygon_int_type> closest_point;
-    polygon_int_type closest_dotprod;
-    for (auto const& v : pB.vertices()) {
+    vect closest_point;
+    coord3 closest_dotprod;
+    for (vect const& v : pB.vertices()) {
       // We subtract base_point just to minimize integer size; the behavior should be the same either way.
-      const auto dotprod = (v - plane.base_point).dot<polygon_int_type>(plane.normal);
+      const coord3 dotprod = (v - plane.base_point).dot<polygon_int_type>(plane.normal);
       if ((!found_any_points) || (dotprod < closest_dotprod)) {
         found_any_points = true;
         closest_dotprod = dotprod;
@@ -240,7 +257,10 @@ void populate_with_relating_planes__faces_onesided(std::vector<plane_as_base_poi
   }
 }
 
-void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedron const& p2, std::vector<pair_of_parallel_supporting_planes>& planes_collector) {
+void populate_with_relating_planes(
+      convex_polyhedron const& p1,
+      convex_polyhedron const& p2,
+      std::vector<pair_of_parallel_supporting_planes>& planes_collector) {
   std::vector<plane_as_base_point_and_normal> p1_planes; p1_planes.reserve(p1.num_faces());
   populate_with_plane_info(p1, p1_planes);
   std::vector<plane_as_base_point_and_normal> p2_planes; p2_planes.reserve(p2.num_faces());
@@ -249,39 +269,45 @@ void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedro
   populate_with_relating_planes__faces_onesided(p1_planes, p2, true, planes_collector);
   populate_with_relating_planes__faces_onesided(p2_planes, p1, false, planes_collector);
 
-  for (auto e1 : p1.edges()) {
-    const auto e1v1 = p1.vertices()[e1.vert_1];
-    const auto e1v2 = p1.vertices()[e1.vert_2];
-    const auto e1d = e1v2 - e1v1;
-    const auto e1f1 = p1_planes[e1.face_1];
-    const auto e1f2 = p1_planes[e1.face_2];
+  for (convex_polyhedron::edge e1 : p1.edges()) {
+    const vect e1v1 = p1.vertices()[e1.vert_1];
+    const vect e1v2 = p1.vertices()[e1.vert_2];
+    const vect e1d = e1v2 - e1v1;
+    const plane_as_base_point_and_normal e1f1 = p1_planes[e1.face_1];
+    const plane_as_base_point_and_normal e1f2 = p1_planes[e1.face_2];
 
     // a vector:
     // - perpendicular to e1d
     // - parallel to the plane of e1f1
     // - pointing towards e1
     // (the term 'discriminant' is just because it discriminates between cases, not any standard mathematical usage.)
-    auto e1f1_discriminant = cross_product(e1d, e1f1.normal);
-    if (e1f1_discriminant.dot<polygon_int_type>(e1f2.normal) < 0) e1f1_discriminant = -e1f1_discriminant;
-    auto e1f2_discriminant = cross_product(e1d, e1f2.normal);
-    if (e1f2_discriminant.dot<polygon_int_type>(e1f1.normal) < 0) e1f2_discriminant = -e1f2_discriminant;
+    // These dot<>s produce pseudocoord5!
+    const pseudovect3 e1f1_discriminant_pre = cross_product(e1d, e1f1.normal);
+    const vect3 e1f1_discriminant = imbue_sign(
+      e1f1_discriminant_pre.dot<polygon_int_type>(e1f2.normal), e1f1_discriminant_pre);
+    const pseudovect3 e1f2_discriminant_pre = cross_product(e1d, e1f2.normal);
+    const vect3 e1f2_discriminant = imbue_sign(
+      e1f2_discriminant_pre.dot<polygon_int_type>(e1f1.normal), e1f2_discriminant_pre);
     
     for (auto e2 : p2.edges()) {
-      const auto e2v1 = p2.vertices()[e2.vert_1];
-      const auto e2v2 = p2.vertices()[e2.vert_2];
-      const auto e2d = e2v2 - e2v1;
-      const auto e2f1 = p2_planes[e2.face_1];
-      const auto e2f2 = p2_planes[e2.face_2];
+      const vect e2v1 = p2.vertices()[e2.vert_1];
+      const vect e2v2 = p2.vertices()[e2.vert_2];
+      const vect e2d = e2v2 - e2v1;
+      const plane_as_base_point_and_normal e2f1 = p2_planes[e2.face_1];
+      const plane_as_base_point_and_normal e2f2 = p2_planes[e2.face_2];
 
       if (vectors_are_parallel(e1d, e2d)) continue;
       
       // TODO: perhaps only compute these once for each edge in p2
-      auto e2f1_discriminant = cross_product(e2d, e2f1.normal);
-      if (e2f1_discriminant.dot<polygon_int_type>(e2f2.normal) < 0) e2f1_discriminant = -e2f1_discriminant;
-      auto e2f2_discriminant = cross_product(e2d, e2f2.normal);
-      if (e2f2_discriminant.dot<polygon_int_type>(e2f1.normal) < 0) e2f2_discriminant = -e2f2_discriminant;
+      const pseudovect3 e2f1_discriminant_pre = cross_product(e2d, e2f1.normal);
+      const vect3 e2f1_discriminant = imbue_sign(
+        e2f1_discriminant_pre.dot<polygon_int_type>(e2f2.normal), e2f1_discriminant_pre);
+      const pseudovect3 e2f2_discriminant_pre = cross_product(e2d, e2f2.normal);
+      const vect3 e2f2_discriminant = imbue_sign(
+        e2f2_discriminant_pre.dot<polygon_int_type>(e2f1.normal), e2f2_discriminant_pre);
 
-      vector3<polygon_int_type> proposed_normal = cross_product(e1d, e2d);
+      pseudovect2 proposed_normal_initial = cross_product(e1d, e2d);
+      vect2 proposed_normal;
 
       // The proposed normal has to be on the proper side of all four discriminants
       // in order to represent a meaningful plane that's not a face.
@@ -294,16 +320,14 @@ void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedro
       // but sometimes an edge-to-face collision wouldn't be caught any other way.
       // TODO handle this more nicely
       {
-        auto dotprod1 = proposed_normal.dot<polygon_int_type>(e1f1_discriminant);
-        if (dotprod1 < 0) {
-          proposed_normal = -proposed_normal;
+        const pseudocoord5 dotprod1 = proposed_normal_initial.dot<polygon_int_type>(e1f1_discriminant);
+        if (dotprod1 != 0) {
+          proposed_normal = imbue_sign(dotprod1, proposed_normal_initial);
         }
-        if (dotprod1 == 0) {
-          auto dotprod2 = proposed_normal.dot<polygon_int_type>(e1f2_discriminant);
-          if (dotprod1 < 0) {
-            proposed_normal = -proposed_normal;
-          }
+        else {
+          const pseudocoord5 dotprod2 = proposed_normal_initial.dot<polygon_int_type>(e1f2_discriminant);
           assert(dotprod2 != 0);
+          proposed_normal = imbue_sign(dotprod2, proposed_normal_initial);
         }
       }
       if (proposed_normal.dot<polygon_int_type>(e1f2_discriminant) < 0) continue;
@@ -316,8 +340,11 @@ void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedro
   }
 }
 
-potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_polyhedron const& p1, convex_polyhedron const& p2, vector3<polygon_int_type> velocity) {
-  if (velocity == vector3<polygon_int_type>(0,0,0)) {
+potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(
+      convex_polyhedron const& p1,
+      convex_polyhedron const& p2,
+      geom_velocity_vect velocity) {
+  if (velocity == 0) {
     // Hack - we don't have a way to indicate "At all times", which this might be.
     // We don't need to, anyway. So just indicate "never" regardless.
     return potential_running_into_a_polyhedron_info();
@@ -326,23 +353,27 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
   std::vector<pair_of_parallel_supporting_planes> relating_planes;
   populate_with_relating_planes(p1, p2, relating_planes);
 
-  optional_rational min;
-  optional_rational max;
+  optional_rational_time min;
+  optional_rational_time max;
   potential_running_into_a_polyhedron_info result;
   plane_as_base_point_and_normal arbitrary_plane_hit_first;
-  for (auto const& plane : relating_planes) {
-    // We subtract base_point just to minimize integer size; the behavior should be the same either way.
-    const auto vel_dotprod = velocity.dot<polygon_int_type>(plane.p1_to_p2_normal);
-    const auto disp_dotprod = (plane.p2_base_point - plane.p1_base_point).dot<polygon_int_type>(plane.p1_to_p2_normal);
+  for (pair_of_parallel_supporting_planes const& plane : relating_planes) {
+    typedef decltype(geom_velocity_scalar()*coord2()) coord3_per_second;
+    const coord3_per_second vel_dotprod = velocity.dot<polygon_int_type>(plane.p1_to_p2_normal);
+    const coord3 disp_dotprod = (plane.p2_base_point - plane.p1_base_point).dot<polygon_int_type>(plane.p1_to_p2_normal);
     if (vel_dotprod == 0) {
       if (disp_dotprod > 0) {
-        // We're moving parallel to the plane and the point is outside the plane. So we will never be on the inside.
+        // We're moving parallel to the plane and the point is outside
+        // the plane. So we will never be on the inside.
         return result;
       }
-      // Otherwise we're moving parallel to the plane and we're on the INSIDE of the plane, so this plane will never restrict when the point is inside the polyhedron.
+      // Otherwise we're moving parallel to the plane and we're on the
+      // INSIDE of the plane, so this plane will never restrict when the
+      // point is inside the polyhedron.
     }
     else {
-      const rational moment(disp_dotprod, vel_dotprod);
+      const rational_time moment = make_non_normalized_rational_physical_quantity(
+                                    disp_dotprod, vel_dotprod);
       if (vel_dotprod < 0) {
         //
         if (!max || (moment < *max)) {
@@ -352,7 +383,8 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
       else {
         if (!min || (moment > *min)) {
           min = moment;
-          result.arbitrary_plane_hit_first = plane_as_base_point_and_normal(plane.p1_base_point, plane.p1_to_p2_normal);
+          result.arbitrary_plane_hit_first = plane_as_base_point_and_normal(
+              plane.p1_base_point, plane.p1_to_p2_normal);
         }
       }
       if (min && max && (*min > *max)) return potential_running_into_a_polyhedron_info();
@@ -366,29 +398,30 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
   result.max = *max;
 
 
-  assert(result.arbitrary_plane_hit_first.normal != vector3<polygon_int_type>(0,0,0));
+  assert(result.arbitrary_plane_hit_first.normal != 0);
 
   // If we start out intersecting them, find the plane across which we could most quickly exit.
   // The movement code uses this: if the movement is INTO this plane then it's blocked, if it's
   // OUT OF this plane then it's fudged by allowing it not to collide.
-  if (result.min <= rational(0) && result.max >= rational(0)) {
-    const rational no_excl_dist(-1);
-    rational closest_excl_dist = no_excl_dist;
-    for (auto const& plane : relating_planes) {
+  if (result.min <= rational_time(0) && result.max >= rational_time(0)) {
+    optional_rational_coord closest_excl_dist;
+    for (pair_of_parallel_supporting_planes const& plane : relating_planes) {
       // NOTE: The magnitude calculation seems unavoidable here,
-      // because the rule is "if we went directly outwards through the plane", i.e. in the direction of the normal,
+      // because the rule is "if we went directly outwards through the plane",
+      // i.e. in the direction of the normal,
       // but the normals may have differing magnitudes.
       // This calcuation has problems:
       // 1) Rounding error
       // 2) Seemingly unneeded extra height limit on the normal
-      rational this_excl_dist(
+      const rational_coord this_excl_dist = make_non_normalized_rational_physical_quantity(
           (plane.p1_base_point - plane.p2_base_point)
           .dot<polygon_int_type>(plane.p1_to_p2_normal),
           // divided by
           plane.p1_to_p2_normal.magnitude_within_32_bits());
-      if (closest_excl_dist == no_excl_dist || this_excl_dist < closest_excl_dist) {
+      if (!closest_excl_dist || this_excl_dist < *closest_excl_dist) {
         closest_excl_dist = this_excl_dist;
-        result.arbitrary_plane_of_closest_exclusion = plane_as_base_point_and_normal(plane.p1_base_point, plane.p1_to_p2_normal);
+        result.arbitrary_plane_of_closest_exclusion = plane_as_base_point_and_normal(
+            plane.p1_base_point, plane.p1_to_p2_normal);
       }
     }
   }
@@ -399,32 +432,44 @@ potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_poly
 bool polyhedra_volume_intersect (convex_polyhedron const& p1, convex_polyhedron const& p2) {
   std::vector<pair_of_parallel_supporting_planes> relating_planes;
   populate_with_relating_planes(p1, p2, relating_planes);
-  for (auto const& plane : relating_planes) {
+  for (pair_of_parallel_supporting_planes const& plane : relating_planes) {
     if ((plane.p2_base_point - plane.p1_base_point)
-          .dot<polygon_int_type>(plane.p1_to_p2_normal) >= polygon_int_type(0)) {
+          .dot<polygon_int_type>(plane.p1_to_p2_normal) >= coord3(0)) {
       return false;
     }
   }
   return true;
 }
 
-faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs1, polyhedron_planes_info_for_intersection ps1, std::vector<vector3<polygon_int_type>> const& vs2, polyhedron_planes_info_for_intersection ps2) {
+faux_optional<base_point_and_outward_facing_normal> get_excluding_face(
+      std::vector<vect> const& vs1,
+      polyhedron_planes_info_for_intersection ps1,
+      std::vector<vect> const& vs2,
+      polyhedron_planes_info_for_intersection ps2) {
   if (auto result = get_excluding_face_onesided(vs1, ps2)) return result;
   if (auto result = get_excluding_face_onesided(vs2, ps1)) return result;
   return none;
 }
 
-void compute_planes_info_for_intersection(convex_polyhedron const& ph, polyhedron_planes_info_for_intersection& collector) {
+void compute_planes_info_for_intersection(
+      convex_polyhedron const& ph,
+      polyhedron_planes_info_for_intersection& collector) {
   for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
     collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
         ph.vertices()[ph.face_info()[i + 1]],
-        // relying on the fact that the first three vertices of each face are in the proper order.
-        plane_normal(ph.vertices()[ph.face_info()[i + 1]], ph.vertices()[ph.face_info()[i + 2]], ph.vertices()[ph.face_info()[i + 3]])
+        // relying on the fact that the first three vertices of each face
+        // are in the proper order.
+        plane_normal(ph.vertices()[ph.face_info()[i + 1]],
+                     ph.vertices()[ph.face_info()[i + 2]],
+                     ph.vertices()[ph.face_info()[i + 3]]) / pseudo
       ));
   }
 }
 
-faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, convex_polyhedron const& other) {
+faux_optional<base_point_and_outward_facing_normal> get_excluding_face(
+      std::vector<vect> const& vs,
+      polyhedron_planes_info_for_intersection ps,
+      convex_polyhedron const& other) {
   polyhedron_planes_info_for_intersection other_ps;
   compute_planes_info_for_intersection(other, other_ps);
   return get_excluding_face(vs, ps, other.vertices(), other_ps);
@@ -432,36 +477,44 @@ faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> g
 
 // TODO do sweep_intersects(stuff, bounding_box) in a more efficient way
 // (This was just the simplest implementation I could think of)
-void compute_info_for_intersection(bounding_box const& bb, std::vector<vector3<polygon_int_type>>& vertex_collector, polyhedron_planes_info_for_intersection& plane_collector) {
+void compute_info_for_intersection(
+      bounding_box const& bb,
+      std::vector<vect>& vertex_collector,
+      polyhedron_planes_info_for_intersection& plane_collector) {
   vertex_collector.push_back(bb.min());
-  vertex_collector.push_back(vector3<polygon_int_type>(bb.max(X),bb.min(Y),bb.min(Z)));
-  vertex_collector.push_back(vector3<polygon_int_type>(bb.min(X),bb.max(Y),bb.min(Z)));
-  vertex_collector.push_back(vector3<polygon_int_type>(bb.max(X),bb.max(Y),bb.min(Z)));
-  vertex_collector.push_back(vector3<polygon_int_type>(bb.min(X),bb.min(Y),bb.max(Z)));
-  vertex_collector.push_back(vector3<polygon_int_type>(bb.max(X),bb.min(Y),bb.max(Z)));
-  vertex_collector.push_back(vector3<polygon_int_type>(bb.min(X),bb.max(Y),bb.max(Z)));
+  vertex_collector.push_back(vect(bb.max(X),bb.min(Y),bb.min(Z)));
+  vertex_collector.push_back(vect(bb.min(X),bb.max(Y),bb.min(Z)));
+  vertex_collector.push_back(vect(bb.max(X),bb.max(Y),bb.min(Z)));
+  vertex_collector.push_back(vect(bb.min(X),bb.min(Y),bb.max(Z)));
+  vertex_collector.push_back(vect(bb.max(X),bb.min(Y),bb.max(Z)));
+  vertex_collector.push_back(vect(bb.min(X),bb.max(Y),bb.max(Z)));
   vertex_collector.push_back(bb.max());
   plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
-      bb.min(), vector3<polygon_int_type>(-1,0,0)));
+      bb.min(), vect2(-1*coord2(), 0, 0)));
   plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
-      bb.min(), vector3<polygon_int_type>(0,-1,0)));
+      bb.min(), vect2(0, -1*coord2(),0)));
   plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
-      bb.min(), vector3<polygon_int_type>(0,0,-1)));
+      bb.min(), vect2(0, 0, -1*coord2())));
   plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
-      bb.max(), vector3<polygon_int_type>(1,0,0)));
+      bb.max(), vect2(1*coord2(), 0, 0)));
   plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
-      bb.max(), vector3<polygon_int_type>(0,1,0)));
+      bb.max(), vect2(0, 1*coord2(), 0)));
   plane_collector.base_points_and_outward_facing_normals.push_back(std::make_pair(
-      bb.max(), vector3<polygon_int_type>(0,0,1)));
+      bb.max(), vect2(0, 0, 1*coord2())));
 }
-faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(std::vector<vector3<polygon_int_type>> const& vs, polyhedron_planes_info_for_intersection ps, bounding_box const& other) {
-  std::vector<vector3<polygon_int_type>> other_vs;
+faux_optional<base_point_and_outward_facing_normal> get_excluding_face(
+      std::vector<vect> const& vs,
+      polyhedron_planes_info_for_intersection ps,
+      bounding_box const& other) {
+  std::vector<vect> other_vs;
   polyhedron_planes_info_for_intersection other_ps;
   compute_info_for_intersection(other, other_vs, other_ps);
   return get_excluding_face(vs, ps, other_vs, other_ps);
 }
 
-faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(convex_polyhedron const& p1, convex_polyhedron const& p2) {
+faux_optional<base_point_and_outward_facing_normal> get_excluding_face(
+      convex_polyhedron const& p1,
+      convex_polyhedron const& p2) {
   polyhedron_planes_info_for_intersection ps1;
   polyhedron_planes_info_for_intersection ps2;
   compute_planes_info_for_intersection(p1, ps1);
@@ -469,15 +522,19 @@ faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> g
   return get_excluding_face(p1.vertices(), ps1, p2.vertices(), ps2);
 }
 
-faux_optional<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> get_excluding_face(convex_polyhedron const& p, bounding_box const& bb) {
+faux_optional<base_point_and_outward_facing_normal> get_excluding_face(
+      convex_polyhedron const& p,
+      bounding_box const& bb) {
   polyhedron_planes_info_for_intersection ps1;
-  std::vector<vector3<polygon_int_type>> vs2;
+  std::vector<vect> vs2;
   polyhedron_planes_info_for_intersection ps2;
   compute_planes_info_for_intersection(p, ps1);
   compute_info_for_intersection(bb, vs2, ps2);
   return get_excluding_face(p.vertices(), ps1, vs2, ps2);
 }
 
+// TODO change from int to size_t and fix anywhere else
+// in this file (polygon_collision_detection.cpp) that uses int.
 template<typename VectorType, int ArraySize> class arrayvector {
 private:
   std::array<typename VectorType::value_type, ArraySize> first_n_values_;
@@ -544,7 +601,7 @@ public:
 void convex_polyhedron::init_other_info_from_vertices() {
   caller_correct_if(vertices_.size() <= 255, "You can't make a polyhedron with more than 255 points.");
   caller_correct_if(vertices_.size() >= 4, "You can't make a polyhedron with fewer than 4 points.");
-  std::vector<vector3<polygon_int_type>> const& vs = vertices_;
+  std::vector<vect> const& vs = vertices_;
   
   // Algorithm: For each point, expand the polyhedron to include that point.
   // When you're done, you'll have the correct answer.
@@ -552,7 +609,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
   struct face_building_info {
     face_building_info(){}
     arrayvector<std::vector<int>, 8> verts;
-    vector3<polygon_int_type> normal;
+    vect2 normal;
     int final_idx;
   };
   typedef std::list<face_building_info>::iterator face_reference_t;
@@ -581,7 +638,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
     }
   }
   assert(first_four_noncoplanar_verts[2] != -1);
-  auto f3norm = plane_normal(vs[0], vs[first_four_noncoplanar_verts[1]], vs[first_four_noncoplanar_verts[2]]);
+  pseudovect2 f3norm = plane_normal(vs[0], vs[first_four_noncoplanar_verts[1]], vs[first_four_noncoplanar_verts[2]]);
   for (int i = first_four_noncoplanar_verts[2]+1; i < (int)vs.size(); ++i) {
     if ((vs[i] - vs[0]).dot<polygon_int_type>(f3norm) != 0) {
       first_four_noncoplanar_verts[3] = i;
@@ -601,8 +658,8 @@ void convex_polyhedron::init_other_info_from_vertices() {
     const int i3 = first_four_noncoplanar_verts[(q+2) % 4];
     const int i4 = first_four_noncoplanar_verts[(q+3) % 4];
     f.verts.push_back(i2); f.verts.push_back(i3); f.verts.push_back(i4);
-    f.normal = plane_normal(vs[i2],vs[i3],vs[i4]);
-    if ((vs[i2] - vs[i1]).dot<polygon_int_type>(f.normal) < 0) f.normal = -f.normal;
+    const pseudovect2 normal_pre = plane_normal(vs[i2],vs[i3],vs[i4]);
+    f.normal = imbue_sign((vs[i2] - vs[i1]).dot<polygon_int_type>(normal_pre), normal_pre);
   }
   for(int q = 0; q < 4; ++q) {
     for(int j = q + 1; j < 4; ++j) {
@@ -632,7 +689,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
     bool exposed = false;
     for (auto& f : faces) {
       assert(!f.verts.empty());
-      polygon_int_type dotprod = (vs[i] - vs[f.verts.front()]).dot<polygon_int_type>(f.normal);
+      const coord3 dotprod = (vs[i] - vs[f.verts.front()]).dot<polygon_int_type>(f.normal);
       //std::cerr << i << "!" << dotprod << "!\n";
       if (dotprod > 0) {
         exposed = true;
@@ -647,12 +704,12 @@ void convex_polyhedron::init_other_info_from_vertices() {
       for (auto l = lines.begin(); l != lines.end(); ) {
         assert(l->face_1 != faces.end());
         assert(l->face_2 != faces.end());
-        auto& f1 = *l->face_1;
-        auto& f2 = *l->face_2;
+        face_building_info& f1 = *l->face_1;
+        face_building_info& f2 = *l->face_2;
         assert(!f1.verts.empty());
         assert(!f2.verts.empty());
-        const polygon_int_type dotprod1 = (vs[i] - vs[f1.verts.front()]).dot<polygon_int_type>(f1.normal);
-        const polygon_int_type dotprod2 = (vs[i] - vs[f2.verts.front()]).dot<polygon_int_type>(f2.normal);
+        const coord3 dotprod1 = (vs[i] - vs[f1.verts.front()]).dot<polygon_int_type>(f1.normal);
+        const coord3 dotprod2 = (vs[i] - vs[f2.verts.front()]).dot<polygon_int_type>(f2.normal);
         //std::cerr << dotprod1 << ", " << dotprod2 << "\n";
         // Both <=0: we're inside both, the line is unaffected
         // Both >0: we're outside both, the line will just be purged
@@ -723,12 +780,18 @@ void convex_polyhedron::init_other_info_from_vertices() {
             new_face.verts.push_back(i);
             new_face.verts.push_back(l->vert_1);
             new_face.verts.push_back(l->vert_2);
-            new_face.normal = plane_normal(vs[i], vs[l->vert_1], vs[l->vert_2]);
+            const pseudovect2 normal = plane_normal(vs[i], vs[l->vert_1], vs[l->vert_2]);
+            // To make the normal's sign meaningful, we make sure it's
+            // pointing away from an existing part of the polyhedron.
+            // The reason it iterates through the first four vertices
+            // is that up to three of them may be coplanar with it - but
+            // any that are noncoplanar are guaranteed to be on the same side.
+            new_face.normal = normal / pseudo;
             for (int q = 0; q < 4; ++q) {
               const int idx = first_four_noncoplanar_verts[q];
               if ((i != idx) && (l->vert_1 != idx) && (l->vert_2 != idx)) {
                 if ((vs[i] - vs[idx]).dot<polygon_int_type>(new_face.normal) < 0) {
-                  new_face.normal = -new_face.normal;
+                  new_face.normal = -normal / pseudo;
                   break;
                 }
               }
@@ -741,11 +804,11 @@ void convex_polyhedron::init_other_info_from_vertices() {
       }
       
       for (auto f = faces.begin(); f != faces.end(); ) {
-        polygon_int_type dotprod = (vs[i] - vs[*f->verts.begin()]).dot<polygon_int_type>(f->normal);
+        const coord3 dotprod = (vs[i] - vs[*f->verts.begin()]).dot<polygon_int_type>(f->normal);
         if (dotprod > 0) faces.erase(f++);
         else ++f;
       }
-      for (int lv = 0; lv < (int)verts_of_potential_new_lines.size(); ) {
+      for (int lv = 0; lv < verts_of_potential_new_lines.size(); ) {
         bool eliminate = false;
         for (auto pv : verts_of_preexisting_lines) {
           if (pv == verts_of_potential_new_lines[lv]) {
@@ -769,7 +832,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
         l.face_1 = faces.end();
         for (auto fr : new_and_old_faces) {
           if (fr != l.face_1) {
-            const polygon_int_type dotprod = (vs[lv] - vs[*fr->verts.begin()]).dot<polygon_int_type>(fr->normal);
+            const coord3 dotprod = (vs[lv] - vs[*fr->verts.begin()]).dot<polygon_int_type>(fr->normal);
             //std::cerr<<dotprod<<"...\n";
             assert(dotprod <= 0);
             if (dotprod == 0) {
@@ -792,8 +855,8 @@ void convex_polyhedron::init_other_info_from_vertices() {
           lines.push_back(l);
         }
         else {
-          for (auto fr : old_faces) {
-            for (auto& eraser : fr->verts) {
+          for (face_reference_t fr : old_faces) {
+            for (int& eraser : fr->verts) {
               if (eraser == lv) {
                 eraser = fr->verts.back();
                 fr->verts.pop_back();
@@ -807,14 +870,14 @@ void convex_polyhedron::init_other_info_from_vertices() {
   }
   
   std::vector<bool> existences_of_points(vertices_.size(), false);
-  for (auto& f : faces) {
+  for (face_building_info& f : faces) {
     for (int v : f.verts) {
       existences_of_points[v] = true;
     }
   }
   std::vector<int> vertex_id_map(vertices_.size());
   int next_vert_id = 0;
-  for (int i = 0; i < (int)vertices_.size(); ++i) {
+  for (size_t i = 0; i < vertices_.size(); ++i) {
     if (existences_of_points[i]) {
       vertices_[next_vert_id] = vertices_[i];
       vertex_id_map[i] = next_vert_id;
@@ -831,16 +894,19 @@ void convex_polyhedron::init_other_info_from_vertices() {
     for (int vid : f.verts) {
       face_info_.push_back(vertex_id_map[vid]);
     }
-    // Hack: we rely on the fact that this makes the *first three* points have a reliable outwards
-    // normal vector. So sort them that way.
+    // Hack: we rely on the fact that this makes the *first three*
+    // points have a reliable outwards normal vector. So sort them that way.
     // Really we should sort ALL OF THEM that way
-    if (plane_normal(vertices_[face_info_[face_idx + 1]], vertices_[face_info_[face_idx + 2]], vertices_[face_info_[face_idx + 3]]).dot<polygon_int_type>(f.normal) < 0) {
+    if (plane_normal(vertices_[face_info_[face_idx + 1]],
+                     vertices_[face_info_[face_idx + 2]],
+                     vertices_[face_info_[face_idx + 3]]
+                    ).dot<polygon_int_type>(f.normal) < 0) {
       const int temp = face_info_[face_idx + 2];
       face_info_[face_idx + 2] = face_info_[face_idx + 3];
       face_info_[face_idx + 3] = temp;
     }
   }
-  for (auto const& l : lines) {
+  for (line_building_info const& l : lines) {
     //std::cerr << l.vert_1 << l.vert_2 << vertices_.size();
     //if (vertex_id_map.find(l.vert_1) != vertex_id_map.end() && vertex_id_map.find(l.vert_2) != vertex_id_map.end())
     edges_.push_back(edge(
@@ -849,31 +915,34 @@ void convex_polyhedron::init_other_info_from_vertices() {
       ));
   }
 }
-convex_polyhedron::convex_polyhedron(std::vector<vector3<polygon_int_type>> const& vs):vertices_(vs) {
+convex_polyhedron::convex_polyhedron(std::vector<vect> const& vs):vertices_(vs) {
   init_other_info_from_vertices();
 }
 convex_polyhedron::convex_polyhedron(bounding_box const& bb) {
   vertices_.push_back(bb.min());
-  vertices_.push_back(vector3<polygon_int_type>(bb.max(X),bb.min(Y),bb.min(Z)));
-  vertices_.push_back(vector3<polygon_int_type>(bb.min(X),bb.max(Y),bb.min(Z)));
-  vertices_.push_back(vector3<polygon_int_type>(bb.max(X),bb.max(Y),bb.min(Z)));
-  vertices_.push_back(vector3<polygon_int_type>(bb.min(X),bb.min(Y),bb.max(Z)));
-  vertices_.push_back(vector3<polygon_int_type>(bb.max(X),bb.min(Y),bb.max(Z)));
-  vertices_.push_back(vector3<polygon_int_type>(bb.min(X),bb.max(Y),bb.max(Z)));
+  vertices_.push_back(vect(bb.max(X),bb.min(Y),bb.min(Z)));
+  vertices_.push_back(vect(bb.min(X),bb.max(Y),bb.min(Z)));
+  vertices_.push_back(vect(bb.max(X),bb.max(Y),bb.min(Z)));
+  vertices_.push_back(vect(bb.min(X),bb.min(Y),bb.max(Z)));
+  vertices_.push_back(vect(bb.max(X),bb.min(Y),bb.max(Z)));
+  vertices_.push_back(vect(bb.min(X),bb.max(Y),bb.max(Z)));
   vertices_.push_back(bb.max());
   init_other_info_from_vertices();
 }
 
-convex_polyhedron::convex_polyhedron(convex_polyhedron const& start_shape, vector3<polygon_int_type> displacement, vector3<polygon_int_type> max_error) {
+convex_polyhedron::convex_polyhedron(
+      convex_polyhedron const& start_shape,
+      vect displacement,
+      vect max_error) {
   // Compute a maximum sweep with possible rounding error.
   // The resulting polyhedron will represent the union of all
   // of p + a*dirs[0] + b*dirs[1] + c*dirs[2] + d.dirs[3]
   // for p \in start_shape, a,b,c,d \in [0,1]
   
-  std::array<vector3<polygon_int_type>, 4> dirs = {{
-    vector3<polygon_int_type>(max_error(X), 0, 0),
-    vector3<polygon_int_type>(0, max_error(Y), 0),
-    vector3<polygon_int_type>(0, 0, max_error(Z)),
+  std::array<vect, 4> dirs = {{
+    vect(max_error(X), 0, 0),
+    vect(0, max_error(Y), 0),
+    vect(0, 0, max_error(Z)),
     displacement
   }};
   // Collapse parallel dirs.
@@ -885,10 +954,10 @@ convex_polyhedron::convex_polyhedron(convex_polyhedron const& start_shape, vecto
     }
   }
   std::array<bool, 4> dir_existences = {{
-    dirs[0] != vector3<polygon_int_type>(0,0,0),
-    dirs[1] != vector3<polygon_int_type>(0,0,0),
-    dirs[2] != vector3<polygon_int_type>(0,0,0),
-    dirs[3] != vector3<polygon_int_type>(0,0,0)
+    dirs[0] != 0,
+    dirs[1] != 0,
+    dirs[2] != 0,
+    dirs[3] != 0
   }};
   
   // In order from "fewest to most components" to make things more efficient in one place.
@@ -900,8 +969,8 @@ convex_polyhedron::convex_polyhedron(convex_polyhedron const& start_shape, vecto
     0x7, 0xB, 0xD, 0xE,
     0xF
   }};*/
-  const std::array<vector3<polygon_int_type>, 16> vectors_by_combo = {{
-    /*0x0*/ vector3<polygon_int_type>(0,0,0),
+  const std::array<vect, 16> vectors_by_combo = {{
+    /*0x0*/ 0,
     /*0x1*/ dirs[0],
     /*0x2*/           dirs[1],
     /*0x3*/ dirs[0] + dirs[1],
@@ -938,15 +1007,17 @@ convex_polyhedron::convex_polyhedron(convex_polyhedron const& start_shape, vecto
   // Eliminate whatever vertices we can eliminate with complete confidence;
   // We'll leave some incorrect (i.e. strictly interior) vertices around,
   //   but init_other_info_from_vertices() will catch them.
-  std::vector<arrayvector<std::vector<vector3<polygon_int_type>>, 8>> normals_by_point_idx(start_shape.vertices().size());
+  std::vector<arrayvector<std::vector<vect2>, 8>> normals_by_point_idx(start_shape.vertices().size());
   for (uint8_t i = 0; i < start_shape.face_info().size(); i += start_shape.face_info()[i] + 1) {
     for (uint8_t j = 0; j < start_shape.face_info()[i]; ++j) {
       normals_by_point_idx[start_shape.face_info()[i + j + 1]].push_back(
-        // relying on the fact that the first three vertices of each face are in the proper order.
+        // relying on the fact that the first three vertices
+        // of each face are in the proper order.
         plane_normal(
           start_shape.vertices()[start_shape.face_info()[i + 1]],
           start_shape.vertices()[start_shape.face_info()[i + 2]],
-          start_shape.vertices()[start_shape.face_info()[i + 3]]));
+          start_shape.vertices()[start_shape.face_info()[i + 3]]) / pseudo
+      );
     }
   }
   
@@ -956,8 +1027,8 @@ convex_polyhedron::convex_polyhedron(convex_polyhedron const& start_shape, vecto
       if (dir_existences[dir]) {
         bool p_plus_vector_is_shadowed = true;
         bool p_minus_vector_is_shadowed = true;
-        for (auto const& normal : normals_by_point_idx[vert_idx]) {
-          const polygon_int_type dotprod = dirs[dir].dot<polygon_int_type>(normal);
+        for (vect2 const& normal : normals_by_point_idx[vert_idx]) {
+          const coord3 dotprod = dirs[dir].dot<polygon_int_type>(normal);
           if (dotprod > 0) {
             p_plus_vector_is_shadowed = false;
             if (!p_minus_vector_is_shadowed) break;
@@ -1405,7 +1476,7 @@ convex_polyhedron::convex_polyhedron(convex_polyhedron const& start_shape, vecto
 }
 
 
-bool bounding_box::contains(vector3<polygon_int_type> const& v)const {
+bool bounding_box::contains(vect const& v)const {
   if (!is_anywhere_) return false;
   return (v.x >= min_.x && v.x <= max_.x &&
           v.y >= min_.y && v.y <= max_.y &&
@@ -1482,7 +1553,7 @@ void convex_polygon::setup_cache_if_needed()const {
   
   // Translate everything to a more convenient location. Translations are linear and hence preserve everything we need.
   cache_.translation_amount = -vertices_[0];
-  for (vector3<polygon_int_type>& v : cache_.adjusted_vertices) v += cache_.translation_amount;
+  for (vect& v : cache_.adjusted_vertices) v += cache_.translation_amount;
   
   cache_.amount_twisted = 0;
   while (true) {
@@ -1493,7 +1564,7 @@ void convex_polygon::setup_cache_if_needed()const {
     // These are rotations, which are linear and hence preserve everything we need.
     
     ++cache_.amount_twisted;
-    for (vector3<polygon_int_type>& v : cache_.adjusted_vertices) v = vector3<polygon_int_type>(v.y, v.z, v.x);
+    for (vect& v : cache_.adjusted_vertices) v = vect(v.y, v.z, v.x);
     
     assert_if_ASSERT_EVERYTHING(cache_.amount_twisted <= 2);
   }
@@ -1508,24 +1579,24 @@ void convex_polygon::setup_cache_if_needed()const {
   // and because of that, hereafter we just don't need to refer to the z coordinates at all.
 }
 
-void bounding_box::translate(vector3<polygon_int_type> t) {
+void bounding_box::translate(vect t) {
   min_ += t; max_ += t;
 }
 
-void line_segment::translate(vector3<polygon_int_type> t) {
-  for (vector3<polygon_int_type>& v : ends) v += t;
+void line_segment::translate(vect t) {
+  for (vect& v : ends) v += t;
 }
 
-void convex_polygon::translate(vector3<polygon_int_type> t) {
-  for (vector3<polygon_int_type>& v : vertices_) v += t;
+void convex_polygon::translate(vect t) {
+  for (vect& v : vertices_) v += t;
   cache_.translation_amount -= t;
 }
 
-void convex_polyhedron::translate(vector3<polygon_int_type> t) {
-  for (vector3<polygon_int_type>& v : vertices_) v += t;
+void convex_polyhedron::translate(vect t) {
+  for (vect& v : vertices_) v += t;
 }
 
-void shape::translate(vector3<polygon_int_type> t) {
+void shape::translate(vect t) {
   for (     line_segment& l : segments_ ) l.translate(t);
   for (   convex_polygon& p : polygons_ ) p.translate(t);
   for (convex_polyhedron& p : polyhedra_) p.translate(t);
@@ -1535,19 +1606,19 @@ void shape::translate(vector3<polygon_int_type> t) {
 
 bounding_box line_segment::bounds()const {
   bounding_box result;
-  for (vector3<polygon_int_type> const& v : ends) result.combine_with(bounding_box(v));
+  for (vect const& v : ends) result.combine_with(bounding_box(v));
   return result;
 }
 
 bounding_box convex_polygon::bounds()const {
   bounding_box result;
-  for (vector3<polygon_int_type> const& v : vertices_) result.combine_with(bounding_box(v));
+  for (vect const& v : vertices_) result.combine_with(bounding_box(v));
   return result;
 }
 
 bounding_box convex_polyhedron::bounds()const {
   bounding_box result;
-  for (vector3<polygon_int_type> const& v : vertices_) result.combine_with(bounding_box(v));
+  for (vect const& v : vertices_) result.combine_with(bounding_box(v));
   return result;
 }
 
@@ -1562,7 +1633,7 @@ bounding_box shape::bounds()const {
   return bounds_cache_;
 }
 
-vector3<polygon_int_type> shape::arbitrary_interior_point()const {
+vect shape::arbitrary_interior_point()const {
   if (!segments_.empty()) return segments_[0].ends[0];
   if (!polygons_.empty()) return polygons_[0].get_vertices()[0];
   if (!polyhedra_.empty()) return polyhedra_[0].vertices()[0];
@@ -1570,20 +1641,34 @@ vector3<polygon_int_type> shape::arbitrary_interior_point()const {
   caller_error("Trying to get an arbitrary interior point of a shape that contains no points");
 }
 
+struct compare_less {
+  template<typename T>
+  bool operator()(T const& t1, T const& t2) { return t1 < t2; }
+};
+struct compare_greater {
+  template<typename T>
+  bool operator()(T const& t1, T const& t2) { return t2 < t1; }
+};
+
 namespace /*anonymous*/ {
 namespace get_intersection_line_segment_bounding_box_helper {
 enum should_keep_going { RETURN_NONE_IMMEDIATELY, KEEP_GOING };
 template<bool less>
-should_keep_going check(which_dimension_type dim, rational& intersecting_min, rational& intersecting_max, line_segment const& l, bounding_box const& bb) {
-  typename boost::conditional<less, std::less<rational>, std::greater<rational> >::type compare;
-  vector3<polygon_int_type> const& bb_min_or_max = less ? bb.min() : bb.max();
-  vector3<polygon_int_type> const& bb_max_or_min = less ? bb.max() : bb.min();
-  rational& intersecting_min_or_max = less ? intersecting_min : intersecting_max;
+should_keep_going check(
+      which_dimension_type dim,
+      dimensionless_rational& intersecting_min,
+      dimensionless_rational& intersecting_max,
+      line_segment const& l,
+      bounding_box const& bb) {
+  typename boost::conditional<less, compare_less, compare_greater>::type compare;
+  vect const& bb_min_or_max = less ? bb.min() : bb.max();
+  vect const& bb_max_or_min = less ? bb.max() : bb.min();
+  dimensionless_rational& intersecting_min_or_max = less ? intersecting_min : intersecting_max;
   if (l.ends[0][dim] == l.ends[1][dim]) {
     if (compare(l.ends[0][dim], bb_min_or_max[dim])) return RETURN_NONE_IMMEDIATELY;
   }
   else {
-    const rational checkval(
+    const dimensionless_rational checkval = make_non_normalized_rational_physical_quantity(
       (l.ends[1][dim] > l.ends[0][dim] ? bb_min_or_max[dim] : bb_max_or_min[dim]) - l.ends[0][dim],
       l.ends[1][dim] - l.ends[0][dim]
     );
@@ -1597,7 +1682,7 @@ should_keep_going check(which_dimension_type dim, rational& intersecting_min, ra
 }
 } /* end anonymous namespace */
 
-optional_rational get_first_intersection(line_segment const& l, bounding_box const& bb) {
+optional_dimensionless_rational get_first_intersection(line_segment const& l, bounding_box const& bb) {
   if (!bb.is_anywhere()) return none;
   
   // Check for common, simple cases to save time.
@@ -1607,10 +1692,10 @@ optional_rational get_first_intersection(line_segment const& l, bounding_box con
   if (l.ends[0](X) > bb.max(X) && l.ends[1](X) > bb.max(X)) return none;
   if (l.ends[0](Y) > bb.max(Y) && l.ends[1](Y) > bb.max(Y)) return none;
   if (l.ends[0](Z) > bb.max(Z) && l.ends[1](Z) > bb.max(Z)) return none;
-  if (bb.contains(l.ends[0])) return rational(0);
+  if (bb.contains(l.ends[0])) return dimensionless_rational(0);
   
-  rational intersecting_min(0);
-  rational intersecting_max(1);
+  dimensionless_rational intersecting_min(0);
+  dimensionless_rational intersecting_max(1);
 
   using namespace get_intersection_line_segment_bounding_box_helper;
 
@@ -1626,11 +1711,11 @@ optional_rational get_first_intersection(line_segment const& l, bounding_box con
 
 namespace /*anonymous*/ {
 namespace get_intersection_line_segment_convex_polygon_helper {
-optional_rational planar_get_first_intersection(
-              polygon_int_type sl1x, polygon_int_type sl1y,
-              polygon_int_type sl2x, polygon_int_type sl2y,
-              polygon_int_type ol1x, polygon_int_type ol1y,
-              polygon_int_type ol2x, polygon_int_type ol2y) {
+optional_dimensionless_rational planar_get_first_intersection(
+              coord sl1x, coord sl1y,
+              coord sl2x, coord sl2y,
+              coord ol1x, coord ol1y,
+              coord ol2x, coord ol2y) {
   // assume ol1 is (0, 0)
   ol2x -= ol1x;
   sl1x -= ol1x;
@@ -1641,43 +1726,51 @@ optional_rational planar_get_first_intersection(
   if (ol2x == 0) {
     return planar_get_first_intersection(sl1y, sl1x, sl2y, sl2x, 0, 0, ol2y, ol2x);
   }
-  const polygon_int_type D = ol2x;
-  const polygon_int_type A = -ol2y;
-  const polygon_int_type Dy1 = D*sl1y + A*sl1x;
-  const polygon_int_type Dy2 = D*sl2y + A*sl2x;
-  const polygon_int_type Dy2mDy1 = Dy2 - Dy1;
-  const polygon_int_type ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
+  const coord D = ol2x;
+  const coord A = -ol2y;
+  const coord2 Dy1 = D*sl1y + A*sl1x;
+  const coord2 Dy2 = D*sl2y + A*sl2x;
+  const coord2 Dy2mDy1 = Dy2 - Dy1;
+  const coord3 ltx_Dy2mDy1 = sl1x * Dy2 - sl2x * Dy1;
   if (ltx_Dy2mDy1 < 0 || ltx_Dy2mDy1 > ol2x*Dy2mDy1) return none;
-  else                                               return rational(Dy1, Dy1 - Dy2);
+  else return make_non_normalized_rational_physical_quantity(Dy1, Dy1 - Dy2);
 }
 }
 } /* end anonymous namespace */
 
-optional_rational get_first_intersection(line_segment l, convex_polygon const& p) {
+optional_dimensionless_rational get_first_intersection(line_segment l, convex_polygon const& p) {
   using namespace get_intersection_line_segment_convex_polygon_helper;
   
   p.setup_cache_if_needed();
   polygon_collision_info_cache const& c = p.get_cache();
   
   // Translate and twist, as we did with the polygon.
-  for (vector3<polygon_int_type>& v : l.ends) v += c.translation_amount;
-  for (vector3<polygon_int_type>& v : l.ends) v = vector3<polygon_int_type>(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
+  for (vect& v : l.ends) v += c.translation_amount;
+  for (vect& v : l.ends) v = vect(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
   // Now skew the z values. Skews are linear and hence preserve everything we need.
   // The line's z values are scaled up as well as skewed.
-  for (vector3<polygon_int_type>& v : l.ends) { v.z = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y); }
+  std::array<coord3, 2> skewed_z;
+  for (size_t i = 0; i != 2; ++i) {
+    vect const& v = l.ends[i];
+    skewed_z[i] = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y);
+  }
   
-  if (sign(l.ends[0].z) == sign(l.ends[1].z)) {
-    if (l.ends[0].z != 0) {
+  if (sign(skewed_z[0]) == sign(skewed_z[1])) {
+    if (skewed_z[0] != 0) {
       // If the endpoints are on the same side, they're not colliding, obviously!
       return none;
     }
     else {
       // Now, we need to do 2D line vs. polygon collisions, which are just a bunch of 2D line vs. line collisions.
       // We just ignore the z values for these purposes.
-      optional_rational result;
+      optional_dimensionless_rational result;
       for (size_t i = 0; i < c.adjusted_vertices.size(); ++i) {
         const int next_i = (i + 1) % c.adjusted_vertices.size();
-        optional_rational here = planar_get_first_intersection(l.ends[0].x, l.ends[0].y, l.ends[1].x, l.ends[1].y, c.adjusted_vertices[i].x, c.adjusted_vertices[i].y, c.adjusted_vertices[next_i].x, c.adjusted_vertices[next_i].y);
+        const optional_dimensionless_rational here =
+            planar_get_first_intersection(
+              l.ends[0].x, l.ends[0].y, l.ends[1].x, l.ends[1].y,
+              c.adjusted_vertices[i].x, c.adjusted_vertices[i].y,
+              c.adjusted_vertices[next_i].x, c.adjusted_vertices[next_i].y);
         if (here && (!result || *here < *result)) {
           result = *here;
         }
@@ -1686,22 +1779,24 @@ optional_rational get_first_intersection(line_segment l, convex_polygon const& p
     }
   }
   
-  const polygon_int_type denom2 = l.ends[1].z - l.ends[0].z;
+  const coord3 denom2 = skewed_z[1] - skewed_z[0];
   // Find the point in the plane (scaled up by denom2, which was scaled up by denom...)
   
-  const vector3<polygon_int_type> point_in_plane_times_denom2(
-    l.ends[1].z*l.ends[0].x - l.ends[0].z*l.ends[1].x,
-    l.ends[1].z*l.ends[0].y - l.ends[0].z*l.ends[1].y,
+  const vect4 point_in_plane_times_denom2(
+    skewed_z[1]*l.ends[0].x - skewed_z[0]*l.ends[1].x,
+    skewed_z[1]*l.ends[0].y - skewed_z[0]*l.ends[1].y,
     0
   );
   
   // Don't assume which clockwiseness the polygon is - but the point can never be on the same side of all the lines if it's outside the polygon, and always will be if it's inside.
-  polygon_int_type previous_clockwiseness = 0;
+  dimensionless previous_clockwiseness = 0;
   for (size_t i = 0; i < c.adjusted_vertices.size(); ++i) {
     const size_t next_i = (i + 1) % c.adjusted_vertices.size();
-    const polygon_int_type clockwiseness = sign(
-        ((point_in_plane_times_denom2.y - c.adjusted_vertices[i].y*denom2) * (c.adjusted_vertices[next_i].x - c.adjusted_vertices[i].x))
-      - ((point_in_plane_times_denom2.x - c.adjusted_vertices[i].x*denom2) * (c.adjusted_vertices[next_i].y - c.adjusted_vertices[i].y))
+    const dimensionless clockwiseness = sign( //vect5 here:
+        ((point_in_plane_times_denom2.y - c.adjusted_vertices[i].y*denom2)
+            * (c.adjusted_vertices[next_i].x - c.adjusted_vertices[i].x))
+      - ((point_in_plane_times_denom2.x - c.adjusted_vertices[i].x*denom2)
+            * (c.adjusted_vertices[next_i].y - c.adjusted_vertices[i].y))
     );
     if (clockwiseness != 0) {
       if (previous_clockwiseness == 0) {
@@ -1713,17 +1808,18 @@ optional_rational get_first_intersection(line_segment l, convex_polygon const& p
     }
   }
   
-  return rational(l.ends[0].z, l.ends[0].z - l.ends[1].z);
+  return make_non_normalized_rational_physical_quantity(
+            skewed_z[0],   skewed_z[0] - skewed_z[1]);
 }
 
-optional_rational get_first_intersection(line_segment l, convex_polyhedron const& p) {
-  rational min_intersecting(0);
-  rational max_intersecting(1);
+optional_dimensionless_rational get_first_intersection(line_segment l, convex_polyhedron const& p) {
+  dimensionless_rational min_intersecting(0);
+  dimensionless_rational max_intersecting(1);
   
   polyhedron_planes_info_for_intersection planes_info;
   compute_planes_info_for_intersection(p, planes_info);
   
-  for (auto const& base_point_and_normal : planes_info.base_points_and_outward_facing_normals) {
+  for (base_point_and_outward_facing_normal const& base_point_and_normal : planes_info.base_points_and_outward_facing_normals) {
     /*
       Relative to the base point:
         the plane is defined by the normal vector
@@ -1737,8 +1833,12 @@ optional_rational get_first_intersection(line_segment l, convex_polyhedron const
     // if lv dot normal is greater than zero, they're pointing in the same direction, so we're going OUT of this face.
     // if lv dot normal is less than zero, they're pointing in opposite directions, so we're going INTO this face.
     // if it's zero, then we're parallel to the surface, which means we're either totally cool or need to be eliminated completely.
-    polygon_int_type l0_dot_normal = (l.ends[0] - base_point_and_normal.first).dot<polygon_int_type>(base_point_and_normal.second);
-    polygon_int_type lv_dot_normal = (l.ends[1] - l.ends[0]).dot<polygon_int_type>(base_point_and_normal.second);
+    const coord3 l0_dot_normal =
+        (l.ends[0] - base_point_and_normal.first)
+          .dot<polygon_int_type>(base_point_and_normal.second);
+    const coord3 lv_dot_normal =
+        (l.ends[1] - l.ends[0])
+          .dot<polygon_int_type>(base_point_and_normal.second);
     if (lv_dot_normal == 0) {
       // This determines whether we started inside the plane or outside of it.
       if (l0_dot_normal > 0) {
@@ -1746,7 +1846,8 @@ optional_rational get_first_intersection(line_segment l, convex_polyhedron const
       }
     }
     else {
-      rational intersection_point(-l0_dot_normal, lv_dot_normal);
+      const dimensionless_rational intersection_point = make_non_normalized_rational_physical_quantity(
+        -l0_dot_normal, lv_dot_normal);
       if (lv_dot_normal > 0) {
         if (intersection_point < max_intersecting) {
           max_intersecting = intersection_point;
@@ -1766,7 +1867,6 @@ optional_rational get_first_intersection(line_segment l, convex_polyhedron const
 
 namespace /*anonymous*/ {
 std::array<line_segment, 12> edges_of_bounding_box_as_line_segments(bounding_box b) {
-  typedef vector3<polygon_int_type> vect;
   std::array<line_segment, 12> result = {{
     line_segment(vect(b.min(X), b.min(Y), b.min(Z)),
                  vect(b.max(X), b.min(Y), b.min(Z))),
@@ -1799,7 +1899,7 @@ std::array<line_segment, 12> edges_of_bounding_box_as_line_segments(bounding_box
 }
   
 bool nonshape_intersects_onesided(convex_polygon const& p1, convex_polygon const& p2) {
-  std::vector<vector3<polygon_int_type>> const& vs = p1.get_vertices();
+  std::vector<vect> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
     if (get_first_intersection(line_segment(vs[i], vs[next_i]), p2)) return true;
@@ -1814,7 +1914,7 @@ bool nonshape_intersects(convex_polygon const& p1, convex_polygon const& p2) {
 bool nonshape_intersects(convex_polygon const& p1, convex_polyhedron const& p2) {
   // Wait. What if the polygon is a giant slice through the polyhedron?
   std::cerr << "Warning: Polygon-polyhedron collisions not fully implemented yet!";
-  std::vector<vector3<polygon_int_type>> const& vs = p1.get_vertices();
+  std::vector<vect> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
     if (get_first_intersection(line_segment(vs[i], vs[next_i]), p2)) return true;
@@ -1825,7 +1925,7 @@ bool nonshape_intersects(convex_polygon const& p1, convex_polyhedron const& p2) 
 bool nonshape_intersects(convex_polygon const& p, bounding_box const& bb) {
   if (!bb.is_anywhere()) return false;
   
-  std::vector<vector3<polygon_int_type>> const& vs = p.get_vertices();
+  std::vector<vect> const& vs = p.get_vertices();
   if (bb.contains(vs[0])) return true;
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();
@@ -1943,26 +2043,29 @@ bool shape::volume_intersects(shape const& other)const {
   return false;
 }
 
-optional_rational get_first_intersection(line_segment const& l, shape const& s) {
-  optional_rational result;
+optional_dimensionless_rational get_first_intersection(line_segment const& l, shape const& s) {
+  optional_dimensionless_rational result;
   for (convex_polygon const& p : s.get_polygons()) {
-    const optional_rational here = get_first_intersection(l, p);
+    const optional_dimensionless_rational here = get_first_intersection(l, p);
     if (here && (!result || *here < *result)) {
       result = *here;
     }
   }
   for (convex_polyhedron const& p : s.get_polyhedra()) {
-    const optional_rational here = get_first_intersection(l, p);
+    const optional_dimensionless_rational here = get_first_intersection(l, p);
     if (here && (!result || *here < *result)) {
       result = *here;
     }
   }
   for (bounding_box const& bb : s.get_boxes()) {
-    const optional_rational here = get_first_intersection(l, bb);
+    const optional_dimensionless_rational here = get_first_intersection(l, bb);
     if (here && (!result || *here < *result)) {
       result = *here;
     }
   }
   return result;
 }
+
+} /* end namespace geom */
+
 

@@ -28,33 +28,81 @@
 #include <array>
 
 #include "../utils.hpp"
+#include "../units.hpp"
+// possible TODO UNITS templatize instead of using fine_units specifically;
+#include "../world_constants.hpp"
 #include "misc_structures.hpp"
 
 // So that we can make implicit conversions between their and our bbox:
 #include "bbox_collision_detector.hpp"
 
-// 64 bits though these ints are, you can't really do collision detection with them except for things
-//  with a max distance of about 14 bits between any of the parts of them.
 
-typedef lasercake_int<int64_t>::type polygon_int_type;
+namespace geom {
+// 64 bits though these ints are, you can't really do collision detection
+// with them except for things with a max distance of about (???) bits between
+// any of the parts of them.
 
-typedef non_normalized_rational<polygon_int_type> polygon_rational_type;
-typedef faux_optional<polygon_rational_type> optional_rational;
+typedef lint64_t polygon_int_type;
+typedef polygon_int_type dimensionless;
+
+typedef physical_quantity<non_normalized_rational<dimensionless>, seconds_t> rational_time;
+typedef faux_optional<rational_time> optional_rational_time;
+
+typedef physical_quantity<non_normalized_rational<dimensionless>, fine_units_t> rational_coord;
+typedef faux_optional<rational_coord> optional_rational_coord;
+
+typedef non_normalized_rational<dimensionless> dimensionless_rational;
+typedef faux_optional<dimensionless_rational> optional_dimensionless_rational;
+
+typedef typename units_pow<fine_units_t, 2>::type fine_units2_t;
+typedef typename units_pow<fine_units_t, 3>::type fine_units3_t;
+typedef typename units_pow<fine_units_t, 4>::type fine_units4_t;
+typedef typename units_pow<fine_units_t, 5>::type fine_units5_t;
+typedef typename units_prod<fine_units_t, pseudo_t>::type pseudo_fine_units_t;
+typedef typename units_prod<fine_units2_t, pseudo_t>::type pseudo_fine_units2_t;
+typedef typename units_prod<fine_units3_t, pseudo_t>::type pseudo_fine_units3_t;
+typedef typename units_prod<fine_units4_t, pseudo_t>::type pseudo_fine_units4_t;
+typedef typename units_prod<fine_units5_t, pseudo_t>::type pseudo_fine_units5_t;
+
+typedef physical_quantity<polygon_int_type, fine_units_t> coord;
+typedef physical_quantity<polygon_int_type, fine_units2_t> coord2;
+typedef physical_quantity<polygon_int_type, fine_units3_t> coord3;
+typedef physical_quantity<polygon_int_type, fine_units4_t> coord4;
+typedef physical_quantity<polygon_int_type, fine_units5_t> coord5;
+typedef physical_quantity<polygon_int_type, pseudo_fine_units_t> pseudocoord;
+typedef physical_quantity<polygon_int_type, pseudo_fine_units2_t> pseudocoord2;
+typedef physical_quantity<polygon_int_type, pseudo_fine_units3_t> pseudocoord3;
+typedef physical_quantity<polygon_int_type, pseudo_fine_units4_t> pseudocoord4;
+typedef physical_quantity<polygon_int_type, pseudo_fine_units5_t> pseudocoord5;
+typedef vector3<coord> vect;
+typedef vector3<coord2> vect2;
+typedef vector3<coord3> vect3;
+typedef vector3<coord4> vect4;
+typedef vector3<coord5> vect5;
+typedef vector3<pseudocoord> pseudovect;
+typedef vector3<pseudocoord2> pseudovect2;
+typedef vector3<pseudocoord3> pseudovect3;
+typedef vector3<pseudocoord4> pseudovect4;
+typedef vector3<pseudocoord5> pseudovect5;
+
+// TODO check if these ought be the same as the world_constants units
+typedef typename units_prod<fine_units_t, dim::second<(-1)>>::type geom_velocity_units_t;
+typedef physical_quantity<polygon_int_type, geom_velocity_units_t> geom_velocity_scalar;
+typedef vector3<geom_velocity_scalar> geom_velocity_vect;
 
 struct polygon_collision_info_cache {
   polygon_collision_info_cache():is_valid(false){}
   bool is_valid;
-  vector3<polygon_int_type> translation_amount;
-  polygon_int_type denom;
-  polygon_int_type a_times_denom;
-  polygon_int_type b_times_denom;
+  vect translation_amount;
+  coord2 denom;
+  coord2 a_times_denom;
+  coord2 b_times_denom;
   int amount_twisted;
-  std::vector<vector3<polygon_int_type>> adjusted_vertices;
+  std::vector<vect> adjusted_vertices;
 };
 
 class bounding_box {
 public:
-  typedef vector3<polygon_int_type> vect;
   bounding_box():is_anywhere_(false){}
   explicit bounding_box(vect loc):is_anywhere_(true),min_(loc),max_(loc){}
 private:
@@ -93,28 +141,28 @@ public:
     return result;
   }
   static bounding_box min_and_size(vect min, vect size) {
-    bounding_box result(min, min + (size - vect(1,1,1)));
+    bounding_box result(min, min + (size - vect(1*fine_units, 1*fine_units, 1*fine_units)));
     return result;
   }
   static bounding_box size_and_max(vect size, vect max) {
-    bounding_box result(max - (size - vect(1,1,1)), max);
+    bounding_box result(max - (size - vect(1*fine_units, 1*fine_units, 1*fine_units)), max);
     return result;
   }
 
   vect min()const { return min_; }
   vect max()const { return max_; }
   vect size_minus_one()const { return max_-min_; }
-  vect size()const { return size_minus_one() + vect(1,1,1); }
+  vect size()const { return size_minus_one() + vect(1*fine_units, 1*fine_units, 1*fine_units); }
   
-  polygon_int_type min(which_dimension_type dim)const { return min_(dim); }
-  polygon_int_type max(which_dimension_type dim)const { return max_(dim); }
-  polygon_int_type size_minus_one(which_dimension_type dim)const { return max_(dim)-min_(dim); }
-  polygon_int_type size(which_dimension_type dim)const { return size_minus_one(dim) + 1; }
+  coord min(which_dimension_type dim)const { return min_(dim); }
+  coord max(which_dimension_type dim)const { return max_(dim); }
+  coord size_minus_one(which_dimension_type dim)const { return max_(dim)-min_(dim); }
+  coord size(which_dimension_type dim)const { return size_minus_one(dim) + 1*fine_units; }
 
   void set_min_holding_max_constant(vect min) { min_ = min; }
   void set_max_holding_min_constant(vect max) { max_ = max; }
-  void set_min_holding_max_constant(which_dimension_type dim, polygon_int_type min) { min_.set(dim, min); }
-  void set_max_holding_min_constant(which_dimension_type dim, polygon_int_type max) { max_.set(dim, max); }
+  void set_min_holding_max_constant(which_dimension_type dim, coord min) { min_.set(dim, min); }
+  void set_max_holding_min_constant(which_dimension_type dim, coord max) { max_.set(dim, max); }
   //easy to write the rest as they become necessary
 
   bool is_anywhere()const { return is_anywhere_; }
@@ -128,6 +176,8 @@ public:
 
   // Implicit conversions to/from bbox_collision_detector bounding_box
   // for convenience interacting with it.
+  // Note: the bbox_collision_detector bounding_box is unit-less,
+  // so we sketchily remove the units from the values here.
   typedef collision_detector::bounding_box<64, 3> equivalent_collision_detector_bounding_box;
   operator equivalent_collision_detector_bounding_box()const {
     caller_correct_if(is_anywhere(), "Trying to pass nowhere-bounds to bbox_collision_detector, which has no such concept");
@@ -136,21 +186,29 @@ public:
     typedef equivalent_collision_detector_bounding_box::coordinate_array uint_array;
     
     uint_array uint_min = {{
-      uint_t(get_primitive_int(min(X))),
-      uint_t(get_primitive_int(min(Y))),
-      uint_t(get_primitive_int(min(Z)))
+      uint_t(get_primitive_int(get(min(X), fine_units))),
+      uint_t(get_primitive_int(get(min(Y), fine_units))),
+      uint_t(get_primitive_int(get(min(Z), fine_units)))
     }};
     uint_array uint_max = {{
-      uint_t(get_primitive_int(max(X))),
-      uint_t(get_primitive_int(max(Y))),
-      uint_t(get_primitive_int(max(Z)))
+      uint_t(get_primitive_int(get(max(X), fine_units))),
+      uint_t(get_primitive_int(get(max(Y), fine_units))),
+      uint_t(get_primitive_int(get(max(Z), fine_units)))
     }};
     return equivalent_collision_detector_bounding_box::min_and_max(uint_min, uint_max);
   }
   bounding_box(equivalent_collision_detector_bounding_box const& b) {
     typedef int64_t int_t; // a modulo conversion
-    min_ = vect(int_t(b.min(X)), int_t(b.min(Y)), int_t(b.min(Z)));
-    max_ = vect(int_t(b.max(X)), int_t(b.max(Y)), int_t(b.max(Z)));
+    min_ = vect(
+      coord(int_t(b.min(X)), fine_units),
+      coord(int_t(b.min(Y)), fine_units),
+      coord(int_t(b.min(Z)), fine_units)
+    );
+    max_ = vect(
+      coord(int_t(b.max(X)), fine_units),
+      coord(int_t(b.max(Y)), fine_units),
+      coord(int_t(b.max(Z)), fine_units)
+    );
     is_anywhere_ = true;
   }
 };
@@ -167,11 +225,11 @@ inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
 
 // TODO: rays and lines
 struct line_segment {
-  line_segment(std::array<vector3<polygon_int_type>, 2> ends):ends(ends){}
-  line_segment(vector3<polygon_int_type> end1, vector3<polygon_int_type> end2):ends({{end1, end2}}){}
-  std::array<vector3<polygon_int_type>, 2> ends;
+  line_segment(std::array<vect, 2> ends):ends(ends){}
+  line_segment(vect end1, vect end2):ends({{end1, end2}}){}
+  std::array<vect, 2> ends;
   
-  void translate(vector3<polygon_int_type> t);
+  void translate(vect t);
   bounding_box bounds()const;
 };
 inline std::ostream& operator<<(std::ostream& os, line_segment const& l) {
@@ -181,13 +239,13 @@ inline std::ostream& operator<<(std::ostream& os, line_segment const& l) {
 struct convex_polygon {
   // The structure simply trusts that you will provide a convex, coplanar sequence of points. Failure to do so will result in undefined behavior.
   void setup_cache_if_needed()const;
-  convex_polygon(std::vector<vector3<polygon_int_type>> const& vertices):vertices_(vertices){ caller_error_if(vertices_.size() < 3, "Trying to construct a polygon with fewer than three vertices"); } // And there's also something wrong with a polygon where all the points are collinear, but it's more complicated to check that.
+  convex_polygon(std::vector<vect> const& vertices):vertices_(vertices){ caller_error_if(vertices_.size() < 3, "Trying to construct a polygon with fewer than three vertices"); } // And there's also something wrong with a polygon where all the points are collinear, but it's more complicated to check that.
   polygon_collision_info_cache const& get_cache()const { return cache_; }
-  std::vector<vector3<polygon_int_type>> const& get_vertices()const { return vertices_; }
-  void translate(vector3<polygon_int_type> t);
+  std::vector<vect> const& get_vertices()const { return vertices_; }
+  void translate(vect t);
   bounding_box bounds()const;
 private:
-  std::vector<vector3<polygon_int_type>> vertices_;
+  std::vector<vect> vertices_;
   mutable polygon_collision_info_cache cache_;
 };
 inline std::ostream& operator<<(std::ostream& os, convex_polygon const& p) {
@@ -210,23 +268,24 @@ public:
   };
   
   // constructors are currently quadratic in the number of vertices
-  convex_polyhedron(std::vector<vector3<polygon_int_type>> const& vs);
+  convex_polyhedron(std::vector<vect> const& vs);
   convex_polyhedron(bounding_box const& bb);
   // construct as a sweep
-  // Note that the signs of the max_error vector coordinates MUST be equal to the signs of v coordinates, or 0.
-  convex_polyhedron(convex_polyhedron const& start_shape, vector3<polygon_int_type> displacement, vector3<polygon_int_type> max_error);
+  // Note that the signs of the max_error vector coordinates
+  // MUST be equal to the signs of v coordinates, or 0.
+  convex_polyhedron(convex_polyhedron const& start_shape, vect displacement, vect max_error);
   
-  std::vector<vector3<polygon_int_type>> const& vertices()const { return vertices_; }
+  std::vector<vect> const& vertices()const { return vertices_; }
   std::vector<edge> const& edges()const { return edges_; }
   std::vector<uint8_t> const& face_info()const { return face_info_; }
   uint8_t const& num_faces()const { return num_faces_; }
-  void translate(vector3<polygon_int_type> t);
+  void translate(vect t);
   bounding_box bounds()const;
   
 private:
   void init_other_info_from_vertices();
   uint8_t num_faces_;
-  std::vector<vector3<polygon_int_type>> vertices_;
+  std::vector<vect> vertices_;
   std::vector<edge> edges_;
   std::vector<uint8_t> face_info_;
 };
@@ -250,13 +309,13 @@ public:
   
   shape(shape const& o):bounds_cache_(o.bounds_cache_),bounds_cache_is_valid_(o.bounds_cache_is_valid_),segments_(o.segments_),polygons_(o.polygons_),polyhedra_(o.polyhedra_),boxes_(o.boxes_) {}
   
-  void translate(vector3<polygon_int_type> t);
+  void translate(vect t);
   
   bool intersects(shape const& other)const;
   bool intersects(bounding_box const& other)const;
   bool volume_intersects(shape const& other)const;
   bounding_box bounds()const;
-  vector3<polygon_int_type> arbitrary_interior_point()const;
+  vect arbitrary_interior_point()const;
   
   lasercake_vector<     line_segment>::type const& get_segments ()const { return segments_ ; }
   lasercake_vector<   convex_polygon>::type const& get_polygons ()const { return polygons_ ; }
@@ -300,30 +359,38 @@ inline std::ostream& operator<<(std::ostream& os, shape const& sh) {
   return os << '}';
 }
 
-// returns (was there an intersection?, what fraction of the length of the line segment was the first)
-optional_rational get_first_intersection(line_segment const& other, shape const& s);
-optional_rational get_first_intersection(line_segment const& l, bounding_box const& bb);
-optional_rational get_first_intersection(line_segment l, convex_polygon const& p);
+// returns (was there an intersection?, what fraction of the length
+//          of the line segment was the first)
+optional_dimensionless_rational get_first_intersection(
+                                  line_segment const& other, shape const& s);
+optional_dimensionless_rational get_first_intersection(
+                                  line_segment const& l, bounding_box const& bb);
+optional_dimensionless_rational get_first_intersection(
+                                  line_segment l, convex_polygon const& p);
 
-// Polyhedron sweep intersection stuff... could possibly use some cleanup (here and in object_motion.cpp)
+// Polyhedron sweep intersection stuff... could possibly use some
+// cleanup (here and in object_motion.cpp)
+typedef std::pair<vect, vect2> base_point_and_outward_facing_normal;
+
 struct polyhedron_planes_info_for_intersection {
-  std::vector<std::pair<vector3<polygon_int_type>, vector3<polygon_int_type>>> base_points_and_outward_facing_normals;
+  std::vector<base_point_and_outward_facing_normal> base_points_and_outward_facing_normals;
 };
 
+// These planes have a meaningful facing; they are isomorphic to half-spaces.
 struct plane_as_base_point_and_normal {
-  vector3<polygon_int_type> base_point;
-  vector3<polygon_int_type> normal;
+  vect base_point;
+  vect2 normal;
   
-  plane_as_base_point_and_normal(vector3<polygon_int_type> base_point, vector3<polygon_int_type> normal):base_point(base_point),normal(normal){}
+  plane_as_base_point_and_normal(vect base_point, vect2 normal):base_point(base_point),normal(normal){}
   plane_as_base_point_and_normal(){}
 };
 
 
 struct pair_of_parallel_supporting_planes {
-  pair_of_parallel_supporting_planes(vector3<polygon_int_type> p1_base_point, vector3<polygon_int_type> p2_base_point, vector3<polygon_int_type> p1_to_p2_normal):p1_base_point(p1_base_point),p2_base_point(p2_base_point),p1_to_p2_normal(p1_to_p2_normal){}
-  vector3<polygon_int_type> p1_base_point;
-  vector3<polygon_int_type> p2_base_point;
-  vector3<polygon_int_type> p1_to_p2_normal;
+  pair_of_parallel_supporting_planes(vect p1_base_point, vect p2_base_point, vect2 p1_to_p2_normal):p1_base_point(p1_base_point),p2_base_point(p2_base_point),p1_to_p2_normal(p1_to_p2_normal){}
+  vect p1_base_point;
+  vect p2_base_point;
+  vect2 p1_to_p2_normal;
 };
 void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedron const& p2, std::vector<pair_of_parallel_supporting_planes>& planes_collector);
 
@@ -331,19 +398,28 @@ void populate_with_relating_planes(convex_polyhedron const& p1, convex_polyhedro
 struct potential_running_into_a_polyhedron_info {
   potential_running_into_a_polyhedron_info():is_anywhere(false){}
   bool is_anywhere;
-  polygon_rational_type min;
-  polygon_rational_type max;
+  rational_time min;
+  rational_time max;
   plane_as_base_point_and_normal arbitrary_plane_hit_first;
   plane_as_base_point_and_normal arbitrary_plane_of_closest_exclusion;
 };
 
-potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(convex_polyhedron const& p1, convex_polyhedron const& p2, vector3<polygon_int_type> velocity);
+potential_running_into_a_polyhedron_info when_do_polyhedra_intersect(
+      convex_polyhedron const& p1,
+      convex_polyhedron const& p2,
+      geom_velocity_vect velocity);
 
 
 /*bool intersects(line_segment l, convex_polygon const& p);
 bool intersects(convex_polygon const& p1, convex_polygon const& p2);
 bool intersects(line_segment const& l, std::vector<convex_polygon> const& ps);
 bool intersects(std::vector<convex_polygon> const& ps1, std::vector<convex_polygon> const& ps2);*/
+
+} /* end namespace geom */
+
+// TODO really? Also TODO rename this cpp/hpp?
+using geom::bounding_box;
+using geom::shape;
 
 #endif
 
