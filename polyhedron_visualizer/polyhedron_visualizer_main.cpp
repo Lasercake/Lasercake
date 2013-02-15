@@ -101,7 +101,7 @@ static void createSurface (int fullscreen)
 	}
 }
 
-typedef lasercake_int<int64_t>::type time_int_type;
+typedef lint64_t time_int_type;
 typedef non_normalized_rational<time_int_type> time_type;
 typedef faux_optional<time_type> optional_time;
 

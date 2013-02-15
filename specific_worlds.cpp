@@ -576,7 +576,7 @@ SCENARIO_NAMED("pressure_tunnel_ground") {
 }
 SCENARIO_NAMED("stepped_pools") {
     return worldgen_from_tilespec([](coords l)->tile_contents {
-      typedef lasercake_int<int64_t>::type number;
+      typedef lint64_t number;
       const number block_width = 30;
       const number border_width = 3;
       const number block_height_shift = 30;

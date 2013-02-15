@@ -242,7 +242,7 @@ public:
       numeric_representation_cast<OutputRepr>(z) * numeric_representation_cast<OutputRepr>(other.z);
   }
 
-  typedef lasercake_int<int64_t>::type int64_type_to_use_with_dot;
+  typedef lint64_t int64_type_to_use_with_dot;
   ScalarType magnitude_within_32_bits()const {
     return ScalarType(i64sqrt(dot<int64_type_to_use_with_dot>(*this)));
   }

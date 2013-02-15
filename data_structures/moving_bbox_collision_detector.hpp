@@ -30,8 +30,8 @@ namespace moving_bbox_collision_detector_internals {
 const size_t MIN_NICE_NODE_SIZE = 2;
 
 typedef int object_id;
-//typedef lasercake_int<int64_t>::type time_int_type;
-typedef lasercake_int<int32_t>::type time_int_type;
+//typedef lint64_t time_int_type;
+typedef lint32_t time_int_type;
 typedef non_normalized_rational<time_int_type> time_type;
 //typedef faux_optional<time_type> optional_time;
 typedef boost::random::uniform_int_distribution<int64_t> uniform_random;

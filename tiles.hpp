@@ -68,8 +68,8 @@ using std::unordered_set;
 // worldblocks worth of those as necessary at all the edges,
 // just to be extra cautious. Currently we just rely on the user
 // not bothering to go nearly that far from the world-center coordinate.
-typedef lasercake_int<int32_t>::type tile_coordinate;
-typedef lasercake_int<int32_t>::type tile_coordinate_signed_type;
+typedef lint32_t tile_coordinate;
+typedef lint32_t tile_coordinate_signed_type;
 
 struct tile_bounding_box {
   vector3<tile_coordinate> min_;

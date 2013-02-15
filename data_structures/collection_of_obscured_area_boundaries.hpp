@@ -29,7 +29,7 @@
 
 namespace collection_of_obscured_area_boundaries_impl {
 
-typedef lasercake_int<int64_t>::type coord_int_type;
+typedef lint64_t coord_int_type;
 typedef non_normalized_rational<coord_int_type> coord_type;
 
 struct bounds_2d {
