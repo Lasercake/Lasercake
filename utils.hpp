@@ -45,6 +45,14 @@
 template<typename Int> struct lasercake_int {
   typedef typename maybe_bounds_checked_int<Int>::type type;
 };
+typedef typename lasercake_int< uint8_t>::type  luint8_t;
+typedef typename lasercake_int<  int8_t>::type   lint8_t;
+typedef typename lasercake_int<uint16_t>::type luint16_t;
+typedef typename lasercake_int< int16_t>::type  lint16_t;
+typedef typename lasercake_int<uint32_t>::type luint32_t;
+typedef typename lasercake_int< int32_t>::type  lint32_t;
+typedef typename lasercake_int<uint64_t>::type luint64_t;
+typedef typename lasercake_int< int64_t>::type  lint64_t;
 
 template<typename Map>
 typename Map::mapped_type* find_as_pointer(Map& m, typename Map::key_type const& k) {

@@ -269,31 +269,28 @@ struct common_bounds_checked_int :
 #define INT(...) __VA_ARGS__
 #define BOOL(...) bool
 
-#define BOUNDS_CHECKED_INT_BIN_OP(opname, checking_type_name, return_type_macro, ...) \
+#define BOUNDS_CHECKED_INT_BIN_OP(opname, checking_type_name, return_type_macro) \
 template<typename Int1, Int1 Min1, Int1 Max1, typename Int2, Int2 Min2, Int2 Max2> \
 inline return_type_macro(typename common_bounds_checked_int<Int1,Min1,Max1,Int2,Min2,Max2>::type) \
 operator opname(bounds_checked_int<Int1,Min1,Max1> a, bounds_checked_int<Int2,Min2,Max2> b) { \
   typedef typename common_bounds_checked_int<Int1,Min1,Max1,Int2,Min2,Max2>::type result_type; \
   typedef typename bounds_checked_int_impl::checking<Int1,Int2>::checking_type_name checking_type; \
-  __VA_ARGS__ \
   return return_type_macro(result_type)(checking_type(a.get()) opname checking_type(b.get())); } \
 template<typename Int, Int Min, Int Max, typename Int2> \
 inline typename boost::enable_if<bounds_checked_int_impl::superior_to<Int, Int2>, return_type_macro(bounds_checked_int<Int,Min,Max>) >::type \
 operator opname(bounds_checked_int<Int,Min,Max> a, Int2 b) { \
   typedef bounds_checked_int<Int,Min,Max> result_type; \
   typedef typename bounds_checked_int_impl::checking<Int,Int2>::checking_type_name checking_type; \
-  __VA_ARGS__ \
   return return_type_macro(result_type)(checking_type(a.get()) opname checking_type(b)); } \
 template<typename Int, Int Min, Int Max, typename Int2> \
 inline typename boost::enable_if<bounds_checked_int_impl::superior_to<Int, Int2>, return_type_macro(bounds_checked_int<Int,Min,Max>) >::type \
 operator opname(Int2 a, bounds_checked_int<Int,Min,Max> b) { \
   typedef bounds_checked_int<Int,Min,Max> result_type; \
   typedef typename bounds_checked_int_impl::checking<Int2,Int>::checking_type_name checking_type; \
-  __VA_ARGS__ \
   return return_type_macro(result_type)(checking_type(a) opname checking_type(b.get())); }
 
-#define BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(opname, checking_type_name, ...) \
-BOUNDS_CHECKED_INT_BIN_OP(opname, checking_type_name, INT, __VA_ARGS__) \
+#define BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(opname, checking_type_name) \
+BOUNDS_CHECKED_INT_BIN_OP(opname, checking_type_name, INT) \
 template<typename Int1, Int1 Min1, Int1 Max1, typename Int2, Int2 Min2, Int2 Max2> \
 inline typename boost::enable_if<bounds_checked_int_impl::superior_to<Int1, Int2>, bounds_checked_int<Int1,Min1,Max1> >::type& \
 operator opname##=(bounds_checked_int<Int1,Min1,Max1>& a, bounds_checked_int<Int2,Min2,Max2> b) { \
@@ -306,8 +303,8 @@ operator opname##=(bounds_checked_int<Int,Min,Max>& a, Int2 b) { \
 BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(+, type)
 BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(-, signed_type)
 BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(*, type)
-BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(/, type, caller_correct_if(b, "divide by zero");)
-BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(%, type, caller_correct_if(b, "divide by zero");)
+BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(/, type)
+BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(%, type)
 BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(&, bit_math::type)
 BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(|, bit_math::type)
 BOUNDS_CHECKED_INT_BIN_OP_WITH_ASSIGN(^, bit_math::type)

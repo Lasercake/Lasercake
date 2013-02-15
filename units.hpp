@@ -42,7 +42,7 @@
 //   physical_quantity<int32_t, meters_t>.
 // Most operations on a physical_quantity type require the dimensions to
 // remain the same (the numeric type follows the numeric promotions of the
-// base type[2]).  Multiplication and division multiply or divide the quantities'
+// base type).  Multiplication and division multiply or divide the quantities'
 // unit types; e.g. dividing meters by seconds gives you a quantity
 // with unit type meters per second.
 //
@@ -70,11 +70,6 @@
 // types with their underlying numeric type should not change code behavior.
 // This is just a checking mechanism.
 // Overflow/underflow and undefined behavior are forbidden.
-//
-// [2] For convenience, because you probably don't want modulo
-// behavior in units, physical_quantity wraps the numeric type in
-// lasercake_int which may bounds_checked_int the contained type.
-// We may make this configurable in the future.
 
 // In current implementation (half-intentionally),
 // units<> * T not supported, but T * units<> is.
@@ -385,11 +380,6 @@ namespace dim {
 template<typename...DimensionKind> struct units;
 template<typename Num, typename Units> class physical_quantity;
 
-template<typename Num>
-struct physical_quantity_representation_type {
-  typedef typename lasercake_int<Num>::type type;
-};
-
 typedef units<> trivial_units;
 template<typename Units> struct is_trivial_units : boost::false_type {};
 template<> struct is_trivial_units<trivial_units> : boost::true_type {};
@@ -548,12 +538,17 @@ struct get_primitive_int_type< physical_quantity<Num, Units> > { typedef Num typ
 template<typename...U>
 struct get_primitive_int_type< units<U...> > { typedef void type; };
 
+template<typename Num>
+struct get_physical_quantity_base_type { typedef Num type; };
+template<typename Num, typename Units>
+struct get_physical_quantity_base_type< physical_quantity<Num, Units> > { typedef Num type; };
+
 // You probably should rarely use this overload of get_primitive_int;
 // sometimes get_primitive_int(get(var, units)) is what you want
 // to do for clarity.
 template<typename Num, typename Units>
 inline Num get_primitive_int(physical_quantity<Num, Units> a) {
-  return get(a, Units());
+  return get_primitive_int(get(a, Units()));
 }
 
 // Using this template lets you provide a non-primitive Num type
@@ -561,12 +556,12 @@ inline Num get_primitive_int(physical_quantity<Num, Units> a) {
 // be the base numeric type (which is what we intend to do).
 template<typename Num, typename Units>
 struct make_physical_quantity_type {
-  typedef physical_quantity<typename get_primitive_int_type<Num>::type, Units> type;
+  typedef physical_quantity<typename get_physical_quantity_base_type<Num>::type, Units> type;
   static inline type construct(typename type::base_type i) { return type(i, Units()); }
 };
 template<typename Num>
 struct make_physical_quantity_type<Num, units<>> {
-  typedef typename physical_quantity_representation_type<typename get_primitive_int_type<Num>::type>::type type;
+  typedef typename get_physical_quantity_base_type<Num>::type type;
   static inline type construct(type i) { return i; }
 };
 
@@ -576,9 +571,9 @@ inline Num make(Num i, units<>) { return i; }
 template<typename Num>
 inline Num get(Num i, units<>) { return i; }
 template<typename Num, typename...U>
-inline physical_quantity<typename get_primitive_int_type<Num>::type, units<U...>>
+inline physical_quantity<Num, units<U...>>
 make(Num i, units<U...> u) {
-  return physical_quantity<typename get_primitive_int_type<Num>::type, units<U...>>(i, u);
+  return physical_quantity<Num, units<U...>>(i, u);
 }
 // (get(physical_quantity<>) defined in-class)
 
@@ -591,12 +586,12 @@ template<
 class physical_quantity {
 public:
   // helpful typedefs
-  typedef typename physical_quantity_representation_type<Num>::type base_type;
+  typedef Num base_type;
   typedef Units units;
 
   template<typename OtherNum>
   struct rebase {
-    typedef physical_quantity<typename get_primitive_int_type<OtherNum>::type, Units> type;
+    typedef physical_quantity<typename get_physical_quantity_base_type<OtherNum>::type, Units> type;
   };
 
   typedef physical_quantity<Num, typename units_recip<Units>::type> reciprocal_type;
@@ -930,6 +925,8 @@ typedef units<dim::kilogram<1>, dim::meter<2>, dim::second<(-3)>, dim::ampere<(-
 
 // === SI prefixes ===
 
+typedef units<dim::ratio<10>> deca_t;
+typedef units<dim::ratio<100>> hecto_t;
 typedef units<dim::ratio<1000>> kilo_t;
 typedef units<dim::ratio<1000000>> mega_t;
 typedef units<dim::ratio<1000000000>> giga_t;
@@ -937,6 +934,8 @@ typedef units<dim::ratio<1000000000000>> tera_t;
 typedef units<dim::ratio<1000000000000000>> peta_t;
 typedef units<dim::ratio<1000000000000000000>> exa_t;
 
+typedef units<dim::ratio<1, 10>> deci_t;
+typedef units<dim::ratio<1, 100>> centi_t;
 typedef units<dim::ratio<1, 1000>> milli_t;
 typedef units<dim::ratio<1, 1000000>> micro_t;
 typedef units<dim::ratio<1, 1000000000>> nano_t;
@@ -944,6 +943,8 @@ typedef units<dim::ratio<1, 1000000000000>> pico_t;
 typedef units<dim::ratio<1, 1000000000000000>> femto_t;
 typedef units<dim::ratio<1, 1000000000000000000>> atto_t;
 
+constexpr auto deca = deca_t();
+constexpr auto hecto = hecto_t();
 constexpr auto kilo = kilo_t();
 constexpr auto mega = mega_t();
 constexpr auto giga = giga_t();
@@ -951,6 +952,8 @@ constexpr auto tera = tera_t();
 constexpr auto peta = peta_t();
 constexpr auto exa  = exa_t();
 
+constexpr auto deci = deci_t();
+constexpr auto centi = centi_t();
 constexpr auto milli = milli_t();
 constexpr auto micro = micro_t();
 constexpr auto nano  = nano_t();
@@ -1010,7 +1013,8 @@ struct numeric_representation_cast_impl<physical_quantity<Target, Units>, Num> {
 };
 template<typename Target, typename Units, typename Num>
 struct numeric_representation_cast_impl<Target, physical_quantity<Num, Units>> {
-  typedef typename make_physical_quantity_type<typename get_units<Target>::representation_type, Units>::type
+  typedef typename make_physical_quantity_type<
+    typename numeric_representation_cast_impl<Target, Num>::target_type, Units>::type
       target_type;
 };
 template<typename Target, typename Units, typename Num, typename Units1>
@@ -1069,7 +1073,7 @@ invalid_get_units overload_find_units_type(...); //unimplemented
 
 template<typename Num, typename Units>
 struct get_units_impl<physical_quantity<Num, Units>> : units_impl::units_result<Units> {
-  typedef typename physical_quantity_representation_type<Num>::type representation_type;
+  typedef Num representation_type;
   static const bool is_nonunit_type = false;
   static const bool is_nonunit_scalar = false;
 };

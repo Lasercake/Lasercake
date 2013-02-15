@@ -34,6 +34,10 @@ using namespace gl_data_preparation;
 
 namespace /* anonymous */ {
 
+// Units: we *could* use units with the floating-point numbers,
+// but we'd have to cast them away with every GL call, which would
+// get tedious.  Hmm.
+
 template<typename Int>
 inline vector3<GLfloat> cast_vector3_to_float(vector3<Int> v) {
   return vector3<GLfloat>(get_primitive_float(v.x), get_primitive_float(v.y), get_primitive_float(v.z));
@@ -43,14 +47,31 @@ inline vector3<double> cast_vector3_to_double(vector3<Int> v) {
   return vector3<double>(get_primitive_double(v.x), get_primitive_double(v.y), get_primitive_double(v.z));
 }
 
+inline GLfloat convert_distance_to_GL(fine_scalar distance) {
+  return get_primitive_float(distance / fine_units);
+}
+inline vector3<GLfloat> convert_displacement_to_GL(vector3<fine_scalar> distance) {
+  return cast_vector3_to_float(distance / fine_units);
+}
+
+inline double convert_distance_to_double(fine_scalar distance) {
+  return get_primitive_double(distance / fine_units);
+}
+inline vector3<double> convert_displacement_to_double(vector3<fine_scalar> distance) {
+  return cast_vector3_to_double(distance / fine_units);
+}
+
+static const vector3<GLfloat> tile_size_float = convert_displacement_to_GL(tile_size);
+static const vector3<double> tile_size_double = convert_displacement_to_double(tile_size);
+
 inline vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
-  return cast_vector3_to_float(input - view_center);
+  return cast_vector3_to_float((input - view_center) / fine_units);
 }
 
 inline vector3<GLfloat> convert_tile_coordinates_to_GL(vector3<double> view_center_double, vector3<tile_coordinate> input) {
   // (Floats don't have enough precision to represent tile_coordinates exactly,
   // which before subtraction they must do. Doubles do.)
-  vector3<double> tile_fine_scalar_min = cast_vector3_to_double(input).multiply_piecewise_by(cast_vector3_to_double(tile_size));
+  vector3<double> tile_fine_scalar_min = cast_vector3_to_double(input).multiply_piecewise_by(tile_size_double);
   vector3<GLfloat> tile_gl_min(tile_fine_scalar_min - view_center_double);
   return tile_gl_min;
 }
@@ -123,12 +144,12 @@ void push_quad(gl_collection& coll,
 // TODO allow choosing each polygon vertex's color?
 void push_convex_polygon(vector3<fine_scalar> const& view_loc,
                          gl_collection& coll,
-                         std::vector<vector3<polygon_int_type> > const& vertices,
+                         std::vector<geom::vect> const& vertices,
                          color const& c) {
   if(vertices.size() >= 3) {
     // draw convex polygon via (sides - 2) triangles
-    std::vector< vector3<polygon_int_type> >::const_iterator vertices_i = vertices.begin();
-    const std::vector< vector3<polygon_int_type> >::const_iterator vertices_end = vertices.end();
+    std::vector<geom::vect>::const_iterator vertices_i = vertices.begin();
+    const std::vector<geom::vect>::const_iterator vertices_end = vertices.end();
     const vertex first_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));
     ++vertices_i;
     vertex prev_vertex(convert_coordinates_to_GL(view_loc, *vertices_i));
@@ -204,15 +225,15 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
 
     if (fwd) {
       view_loc_for_local_display += vector3<fine_scalar>(
-        fine_scalar(get_primitive_double(tile_width) * std::cos(local_view_direction)) / 10,
-        fine_scalar(get_primitive_double(tile_width) * std::sin(local_view_direction)) / 10,
+        fine_scalar(numeric_representation_cast<double>(tile_width) * std::cos(local_view_direction)) / 10,
+        fine_scalar(numeric_representation_cast<double>(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
     if (back) {
       view_loc_for_local_display -= vector3<fine_scalar>(
-        fine_scalar(get_primitive_double(tile_width) * std::cos(local_view_direction)) / 10,
-        fine_scalar(get_primitive_double(tile_width) * std::sin(local_view_direction)) / 10,
+        fine_scalar(numeric_representation_cast<double>(tile_width) * std::cos(local_view_direction)) / 10,
+        fine_scalar(numeric_representation_cast<double>(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
@@ -306,9 +327,9 @@ void prepare_tile(world const& w, gl_collection& coll, tile_location const& loc,
   bool draw_y_close_side;
   bool draw_z_close_side;
 
-  const vector3<double> tile_fine_scalar_min = cast_vector3_to_double(coords).multiply_piecewise_by(cast_vector3_to_double(tile_size));
+  const vector3<double> tile_fine_scalar_min = cast_vector3_to_double(coords).multiply_piecewise_by(tile_size_double);
   const vector3<GLfloat> tile_gl_min = vector3<GLfloat>(tile_fine_scalar_min - view_loc_double);
-  const vector3<GLfloat> tile_gl_max = tile_gl_min + cast_vector3_to_float(tile_size);
+  const vector3<GLfloat> tile_gl_max = tile_gl_min + tile_size_float;
   vector3<GLfloat> tile_gl_near;
   vector3<GLfloat> tile_gl_far;
   if(x_close_side == 0) {
@@ -402,20 +423,21 @@ struct bbox_tile_prep_visitor {
     prepare_tile(w, coll, loc, view_loc_double, view_tile_loc_rounded_down);
 
     if (view.drawing_debug_stuff && is_fluid(loc.stuff_at().contents())) {
-      vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
+      const vector3<GLfloat> locv = convert_tile_coordinates_to_GL(view_loc_double, loc.coords());
       if (tile_physics_impl::active_fluid_tile_info const* fluid =
             find_as_pointer(tile_physics_impl::get_state(w.tile_physics()).active_fluids, loc)) {
+        const vector3<GLfloat> line_base = locv + tile_size_float / 2;
         push_line(coll,
-                  locv + cast_vector3_to_float(tile_size)/2,
-                  locv + cast_vector3_to_float(tile_size)/2 + cast_vector3_to_float(fluid->velocity),
+                  line_base,
+                  line_base + cast_vector3_to_float(fluid->velocity / tile_physics_sub_tile_units),
                   color(0x00ff0077));
 
         for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
           const sub_tile_distance prog = fluid->progress[dir];
           if (prog > 0) {
             const vector3<GLfloat> directed_prog(
-              (vector3<double>(cardinal_direction_vectors[dir]) * get_primitive_double(prog)) /
-              get_primitive_double(tile_physics_impl::progress_necessary(dir)));
+              (vector3<double>(cardinal_direction_vectors[dir]) * numeric_representation_cast<double>(prog)) /
+              numeric_representation_cast<double>(tile_physics_impl::progress_necessary(dir)));
 
             push_line(coll,
                         vertex(locv.x + 0.51, locv.y + 0.5, locv.z + 0.1),
@@ -488,8 +510,8 @@ void prepare_shape(vector3<fine_scalar> view_loc, gl_collection& coll,
               shape_color);
   }
 
-  lasercake_vector<convex_polygon>::type const& obj_polygons = object_shape.get_polygons();
-  for (convex_polygon const& polygon : obj_polygons) {
+  lasercake_vector<geom::convex_polygon>::type const& obj_polygons = object_shape.get_polygons();
+  for (geom::convex_polygon const& polygon : obj_polygons) {
     push_convex_polygon(view_loc, coll, polygon.get_vertices(), shape_color);
 #if 0
     // shared_ptr<mobile_object> objp = boost::dynamic_pointer_cast<mobile_object>(*(w.get_object(id)));
@@ -503,10 +525,10 @@ void prepare_shape(vector3<fine_scalar> view_loc, gl_collection& coll,
     }
 #endif
   }
-  lasercake_vector<convex_polyhedron>::type const& obj_polyhedra = object_shape.get_polyhedra();
-  for (convex_polyhedron const& ph : obj_polyhedra) {
+  lasercake_vector<geom::convex_polyhedron>::type const& obj_polyhedra = object_shape.get_polyhedra();
+  for (geom::convex_polyhedron const& ph : obj_polyhedra) {
     for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
-      std::vector<vector3<polygon_int_type>> poly;
+      std::vector<geom::vect> poly;
       for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
         poly.push_back(ph.vertices()[ph.face_info()[i + j + 1]]);
       }
@@ -542,25 +564,28 @@ void view_on_the_world::prepare_gl_data(
   else if (view_type == LOCAL) {
     view_loc = view_loc_for_local_display;
     view_towards = view_loc + vector3<fine_scalar>(
-      (100*get_primitive_double(tile_width)) * std::cos(local_view_direction),
-      (100*get_primitive_double(tile_width)) * std::sin(local_view_direction),
+      fine_scalar(100*numeric_representation_cast<double>(tile_width) * std::cos(local_view_direction)),
+      fine_scalar(100*numeric_representation_cast<double>(tile_width) * std::sin(local_view_direction)),
       0
     );
   }
   else if (view_type == GLOBAL) {
-    double game_time_in_seconds = get_primitive_double(w.game_time_elapsed()) / get_primitive_double(time_units_per_second);
+    const double game_time_in_seconds =
+      numeric_representation_cast<double>(w.game_time_elapsed())
+        / identity(time_units / seconds) / seconds;
     view_towards = surveilled_by_global_display;
+    const auto global_view_dist_double = numeric_representation_cast<double>(global_view_dist);
     view_loc = surveilled_by_global_display + vector3<fine_scalar>(
-      get_primitive_double(global_view_dist) * std::cos(game_time_in_seconds * 3 / 4),
-      get_primitive_double(global_view_dist) * std::sin(game_time_in_seconds * 3 / 4),
-      get_primitive_double(global_view_dist / 2) + get_primitive_double(global_view_dist / 4) * std::sin(game_time_in_seconds / 2)
+      fine_scalar(global_view_dist_double * std::cos(game_time_in_seconds * 3 / 4)),
+      fine_scalar(global_view_dist_double * std::sin(game_time_in_seconds * 3 / 4)),
+      fine_scalar(global_view_dist_double / 2 + global_view_dist_double / 4 * std::sin(game_time_in_seconds / 2))
     );
   }
 
-  const vector3<double> view_loc_double(cast_vector3_to_double(view_loc));
+  const vector3<double> view_loc_double(cast_vector3_to_double(view_loc / fine_units));
   const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
 
-  gl_data.facing = cast_vector3_to_float(view_towards - view_loc);
+  gl_data.facing = convert_displacement_to_GL(view_towards - view_loc);
   gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
   {
     const heads_up_display_text everywhere_hud_text = {
@@ -701,7 +726,7 @@ void view_on_the_world::prepare_gl_data(
         get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(segment_bbox, view_loc))
       );
       const vector3<GLfloat> locvf_next = locvf1 + dlocvf_per_step * (i+1);
-      const float apparent_laser_height = get_primitive_float(tile_height) / 2;
+      const GLfloat apparent_laser_height = convert_distance_to_GL(tile_height) / 2;
       push_quad(coll,
                 vertex(locvf.x, locvf.y, locvf.z),
                 vertex(locvf.x, locvf.y, locvf.z + apparent_laser_height),

@@ -48,9 +48,6 @@ BOOST_AUTO_TEST_CASE( boundses ) {
     BOOST_CHECK_EQUAL(i, u32(8u));
     BOOST_CHECK_EQUAL(i--, u32(8u));
     BOOST_CHECK_EQUAL(i, u32(7u));
-    BOOST_CHECK_THROW(u32(1) / 0u, std::logic_error);
-    BOOST_CHECK_THROW(u32(0) / 0u, std::logic_error);
-    BOOST_CHECK_THROW(-1 / i32(0), std::logic_error);
   }
 
   {

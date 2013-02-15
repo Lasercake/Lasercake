@@ -40,14 +40,14 @@
 
 namespace visit_collidable_tiles_and_objects_impl {
 
-typedef lasercake_int<int64_t>::type cost_type;
+typedef fine_scalar cost_type;
 //typedef faux_optional<cost_type> optional_cost_type;
 
 inline cost_type cost_for(octant_number octant, objects_collision_detector::bounding_box bbox) {
   return
-    (LASERCAKE_OCTANT_X_POSITIVE(octant) ? cost_type(bbox.min(X)) : -cost_type(bbox.max(X))) +
-    (LASERCAKE_OCTANT_Y_POSITIVE(octant) ? cost_type(bbox.min(Y)) : -cost_type(bbox.max(Y))) +
-    (LASERCAKE_OCTANT_Z_POSITIVE(octant) ? cost_type(bbox.min(Z)) : -cost_type(bbox.max(Z)));
+    (LASERCAKE_OCTANT_X_POSITIVE(octant) ? cost_type(bbox.min(X)*fine_units) : -cost_type(bbox.max(X)*fine_units)) +
+    (LASERCAKE_OCTANT_Y_POSITIVE(octant) ? cost_type(bbox.min(Y)*fine_units) : -cost_type(bbox.max(Y)*fine_units)) +
+    (LASERCAKE_OCTANT_Z_POSITIVE(octant) ? cost_type(bbox.min(Z)*fine_units) : -cost_type(bbox.max(Z)*fine_units));
 }
 inline cost_type cost_for(octant_number octant, tile_location loc) {
   vector3<tile_coordinate> const& coords = loc.coords();

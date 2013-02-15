@@ -594,17 +594,18 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
   }
 }
   
-fine_scalar persistent_water_group_info::get_pressure_at_height(tile_coordinate height)const {
+pressure persistent_water_group_info::get_pressure_at_height(tile_coordinate height)const {
   // The pressure computation here is a kludge. The main difference between it and "the height of the top level minus the height of the current level" is that it doesn't make teeny water towers on top of oceans exert pressure over the whole ocean.
-  map<tile_coordinate, fine_scalar>::iterator iter = pressure_caches.lower_bound(height);
+  map<tile_coordinate, pressure>::iterator iter = pressure_caches.lower_bound(height);
   tile_coordinate current_height = 0;
-  fine_scalar current_pressure = 0;
+  pressure current_pressure = 0;
   if (iter == pressure_caches.end()) {
     auto foo = num_tiles_by_height.rbegin();
     assert_if_ASSERT_EVERYTHING(foo != num_tiles_by_height.rend());
     current_height = foo->first;
     if (height > current_height) return 0;
-    pressure_caches.insert(make_pair(current_height, 0));
+    pressure_caches.insert(
+      decltype(pressure_caches)::value_type(current_height, 0));
     // TODO make less stupid
     width_of_widest_level_so_far_caches.erase(current_height);
     width_of_widest_level_so_far_caches.insert(make_pair(current_height, foo->second));
@@ -1300,9 +1301,9 @@ void replace_substance_impl(
 struct wanted_move {
   tile_location src;
   cardinal_direction dir;
-  sub_tile_distance amount_of_the_push_that_sent_us_over_the_threshold;
+  sub_tile_velocity velocity_of_the_push_that_sent_us_over_the_threshold;
   sub_tile_distance excess_progress;
-  wanted_move(tile_location src,cardinal_direction dir,sub_tile_distance a,sub_tile_distance e):src(src),dir(dir),amount_of_the_push_that_sent_us_over_the_threshold(a),excess_progress(e){}
+  wanted_move(tile_location src,cardinal_direction dir,sub_tile_velocity a,sub_tile_distance e):src(src),dir(dir),velocity_of_the_push_that_sent_us_over_the_threshold(a),excess_progress(e){}
 };
 
 // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
@@ -1313,6 +1314,8 @@ int obstructiveness(tile_contents tc) {
   else if (tc == AIR) return 1;
   else assert(false); // reaching this would mean we implemented a new material type but forgot to set its obstructiveness
 }
+
+const sub_tile_velocity st_gravity_acceleration_magnitude = sub_tile_velocity(gravity_acceleration_magnitude * identity(tile_physics_sub_tile_units / fine_distance_units) / identity(fixed_frame_lengths * fixed_frame_lengths / seconds / seconds) * fixed_frame_lengths);
 
 void update_fluids_impl(state_t& state) {
   // For short:
@@ -1342,16 +1345,18 @@ void update_fluids_impl(state_t& state) {
     value_for_each_cardinal_direction<sub_tile_distance> new_progress(0);
     
     // Gravity applies to everyone
-    fluid.velocity += gravity_acceleration;
+    fluid.velocity.z -= st_gravity_acceleration_magnitude;
       
     // Slight air resistance proportional to the square of the velocity (mostly there to make a natural cap velocity for falling water)
-    fluid.velocity -= vector3<sub_tile_distance>(vector3<large_sub_tile_distance>(fluid.velocity)
-                                * fluid.velocity.magnitude_within_32_bits() / air_resistance_constant);
+    fluid.velocity -= vector3<sub_tile_velocity>(
+        vector3<large_sub_tile_velocity>(fluid.velocity) * fluid.velocity.magnitude_within_32_bits()
+        / (air_resistance_constant) * fixed_frame_lengths);
 
     // Relatively large friction against the ground
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       if (fluid.blockage_amount_this_frame[dir] > 0) {
-        vector3<sub_tile_distance> copy_stationary_in_blocked_direction = fluid.velocity; copy_stationary_in_blocked_direction -= project_onto_cardinal_direction(copy_stationary_in_blocked_direction, dir);
+        vector3<sub_tile_velocity> copy_stationary_in_blocked_direction = fluid.velocity; copy_stationary_in_blocked_direction -= project_onto_cardinal_direction(copy_stationary_in_blocked_direction, dir);
+        static const sub_tile_velocity friction_amount = fluid_friction_constant * fixed_frame_lengths;
         if (copy_stationary_in_blocked_direction.magnitude_within_32_bits_is_less_than(friction_amount)) {
           fluid.velocity -= copy_stationary_in_blocked_direction;
         }
@@ -1390,14 +1395,19 @@ void update_fluids_impl(state_t& state) {
           }
           else {
             persistent_water_group_info const& group = get_water_group_by_grouped_tile(state, adj_loc);
-            const fine_scalar pressure = group.get_pressure_at_height(opposite_loc.coords().z);
+            const pressure pressure = group.get_pressure_at_height(opposite_loc.coords().z);
             if (pressure > 0) { // Hack - TODO examine the fact that "0 pressure" forces velocity to be at least 0 away from the tile (incorrect behavior for tiles directly above the group) and if the principles that causes that problem also causes subtler problems.
-              const sub_tile_distance amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_distance>(-cardinal_direction_vectors[dir]);
+              const sub_tile_velocity amount_of_vel_in_pressure_receiving_dir = fluid.velocity.dot<sub_tile_velocity>(-cardinal_direction_vectors[dir]);
               // This velocity pushes us towards opposite_loc, and pressure is a measure of how much water wants to
               // *go to* the height pressure is being measured at, so we measure at opposite_loc.
-              const sub_tile_distance deficiency_of_vel = sub_tile_distance(i64sqrt(2*pressure)) - amount_of_vel_in_pressure_receiving_dir;
+              const sub_tile_velocity deficiency_of_vel = sub_tile_velocity(i64sqrt(
+                    // "2gh"
+                    ((2 * gravity_acceleration_magnitude * pressure) / pressure_per_depth_in_tile_heights) * tile_height
+                    * identity(tile_physics_sub_tile_units * tile_physics_sub_tile_units / fine_distance_units / fine_distance_units)
+                    / identity(fixed_frame_lengths * fixed_frame_lengths / seconds / seconds)
+                  )) - amount_of_vel_in_pressure_receiving_dir;
               if (deficiency_of_vel > 0) {
-                fluid.velocity += vector3<sub_tile_distance>(-cardinal_direction_vectors[dir]) * deficiency_of_vel;
+                fluid.velocity += vector3<lint32_t>(-cardinal_direction_vectors[dir]) * deficiency_of_vel;
               }
             }
           }
@@ -1407,8 +1417,8 @@ void update_fluids_impl(state_t& state) {
     
     // Velocity causes progress.
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
-      const sub_tile_distance dp = fluid.velocity.dot<sub_tile_distance>(cardinal_direction_vectors[dir]);
-      if (dp > 0) new_progress[dir] += dp;
+      const sub_tile_velocity dp = fluid.velocity.dot<sub_tile_velocity>(cardinal_direction_vectors[dir]);
+      if (dp > 0) new_progress[dir] += dp * fixed_frame_lengths;
     }
     
     // Water that's blocked, but can go around in a diagonal direction, also makes "progress" towards all those possible directions (so it'll go in a random direction if it could go around in several different diagonals, without having to 'choose' one right away and gain velocity only in that direction). The main purpose of this is to make it so that water doesn't stack nicely in pillars, or sit still on steep slopes.
@@ -1443,9 +1453,10 @@ void update_fluids_impl(state_t& state) {
     
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       sub_tile_distance& progress_ref = fluid.progress[dir];
+      static const sub_tile_distance idle_progress_reduction_amount = idle_progress_reduction_rate * fixed_frame_lengths;
       if (new_progress[dir] == 0) {
-        if (progress_ref < idle_progress_reduction_rate) progress_ref = 0;
-        else progress_ref -= idle_progress_reduction_rate;
+        if (progress_ref < idle_progress_reduction_amount) progress_ref = 0;
+        else progress_ref -= idle_progress_reduction_amount;
       }
       else {
         assert_if_ASSERT_EVERYTHING(new_progress[dir] >= 0);
@@ -1453,7 +1464,7 @@ void update_fluids_impl(state_t& state) {
         assert_if_ASSERT_EVERYTHING(progress_ref <= progress_necessary(dir));
         progress_ref += new_progress[dir];
         if (progress_ref > progress_necessary(dir)) {
-          wanted_moves.insert(wanted_move(loc, dir, new_progress[dir], progress_ref - progress_necessary(dir)), state.rng);
+          wanted_moves.insert(wanted_move(loc, dir, new_progress[dir] / fixed_frame_lengths, progress_ref - progress_necessary(dir)), state.rng);
           progress_ref = progress_necessary(dir);
         }
       }
@@ -1517,10 +1528,10 @@ void update_fluids_impl(state_t& state) {
       disturbed_tiles.insert(dst);
       
       // If a tile moves, we're now content to assume that it was moving because it had a realistic velocity in that direction, so we should continue with that assumption.
-      const sub_tile_distance amount_of_new_vel_in_movement_dir = dst_fluid.velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
-      const sub_tile_distance deficiency_of_new_vel_in_movement_dir = move.amount_of_the_push_that_sent_us_over_the_threshold - amount_of_new_vel_in_movement_dir;
+      const sub_tile_velocity amount_of_new_vel_in_movement_dir = dst_fluid.velocity.dot<sub_tile_velocity>(cardinal_direction_vectors[move.dir]);
+      const sub_tile_velocity deficiency_of_new_vel_in_movement_dir = move.velocity_of_the_push_that_sent_us_over_the_threshold - amount_of_new_vel_in_movement_dir;
       if (deficiency_of_new_vel_in_movement_dir > 0) {
-        dst_fluid.velocity += vector3<sub_tile_distance>(cardinal_direction_vectors[move.dir]) * deficiency_of_new_vel_in_movement_dir;
+        dst_fluid.velocity += cardinal_direction_vectors[move.dir] * deficiency_of_new_vel_in_movement_dir;
       }
       
       // Don't lose movement to rounding error during progress over multiple tiles:
@@ -1564,16 +1575,16 @@ void update_fluids_impl(state_t& state) {
         
         // MEGA-HACK - I have no idea how this is supposed to work, I just experimented
         // and eventually decided that this was better than the other things I came up with.
-        const sub_tile_distance our_vel_in_movement_dir = src_fluid.velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
+        const sub_tile_velocity our_vel_in_movement_dir = src_fluid.velocity.dot<sub_tile_velocity>(cardinal_direction_vectors[move.dir]);
         if (our_vel_in_movement_dir > min_convincing_speed) {
-          sub_tile_distance dst_vel_in_movement_dir;
+          sub_tile_velocity dst_vel_in_movement_dir;
           auto i = active_fluids.find(dst);
-          if (i == active_fluids.end()) dst_vel_in_movement_dir = inactive_fluid_velocity.dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
-          else                          dst_vel_in_movement_dir = i->second.velocity     .dot<sub_tile_distance>(cardinal_direction_vectors[move.dir]);
-          const sub_tile_distance excess_vel = our_vel_in_movement_dir - dst_vel_in_movement_dir;
-          const sub_tile_distance vel_transfer = std::max(excess_vel / 2, our_vel_in_movement_dir - min_convincing_speed);
+          if (i == active_fluids.end()) dst_vel_in_movement_dir = inactive_fluid_velocity.dot<sub_tile_velocity>(cardinal_direction_vectors[move.dir]);
+          else                          dst_vel_in_movement_dir = i->second.velocity     .dot<sub_tile_velocity>(cardinal_direction_vectors[move.dir]);
+          const sub_tile_velocity excess_vel = our_vel_in_movement_dir - dst_vel_in_movement_dir;
+          const sub_tile_velocity vel_transfer = std::max(excess_vel / 2, our_vel_in_movement_dir - min_convincing_speed);
           if (vel_transfer > 0) {
-            const vector3<sub_tile_distance> change_vector = (vector3<sub_tile_distance>(cardinal_direction_vectors[move.dir]) * vel_transfer);
+            const vector3<sub_tile_velocity> change_vector = (vector3<lint32_t>(cardinal_direction_vectors[move.dir]) * vel_transfer);
             src_fluid.velocity -= change_vector;
             //if ((move.dir != zminus) || (vel_transfer > gravity_acceleration_magnitude)) {
             if (is_fluid(dst.stuff_at().contents())) {
@@ -1669,7 +1680,9 @@ void update_fluids_impl(state_t& state) {
       // Be a little paranoid about making sure fluids obeys all the proper conditions of inactivity
       for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
         if (dir == zminus) {
-          if (fluid.blockage_amount_this_frame[dir] > min_convincing_speed + (-gravity_acceleration.z) || fluid.blockage_amount_this_frame[dir] <= min_convincing_speed) {
+          if ((fluid.blockage_amount_this_frame[dir] > min_convincing_speed * fixed_frame_lengths +
+                (st_gravity_acceleration_magnitude * fixed_frame_lengths))
+              || (fluid.blockage_amount_this_frame[dir] <= min_convincing_speed * fixed_frame_lengths)) {
             goto fake_continue;
           }
         }

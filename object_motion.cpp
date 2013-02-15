@@ -24,38 +24,26 @@
 
 namespace /*anonymous*/ {
 
-typedef lasercake_int<int64_t>::type time_int_type;
-typedef non_normalized_rational<time_int_type> time_type;
+typedef lint64_t time_int_type;
+typedef physical_quantity<non_normalized_rational<time_int_type>, fixed_frame_lengths_t> time_type;
 typedef faux_optional<time_type> optional_time;
 
-vector3<fine_scalar> movement_delta_from_start_to(vector3<fine_scalar> const& velocity, time_type end_time) {
+vector3<distance> movement_delta_from_start_to(vector3<velocity1d> const& velocity, time_type end_time) {
   // TODO is this the right rounding strategy? I did not change
   // the effect but maybe round-to-even or -odd is better? -Isaac
-  return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
+  const auto end_time_rat = make_units_split_rational(end_time);
+  return divide(velocity * end_time_rat.numerator, end_time_rat.denominator * identity(fixed_frame_lengths / seconds),
     rounding_strategy<round_to_nearest_with_ties_rounding_up, negative_mirrors_positive>());
 }
 
-vector3<fine_scalar> movement_delta_rounding_up(vector3<fine_scalar> const& velocity, time_type end_time) {
-  return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
+vector3<distance> movement_delta_rounding_up(vector3<velocity1d> const& velocity, time_type end_time) {
+  const auto end_time_rat = make_units_split_rational(end_time);
+  return divide(velocity * end_time_rat.numerator, end_time_rat.denominator * identity(fixed_frame_lengths / seconds),
     rounding_strategy<round_up, negative_mirrors_positive>());
 }
 
-vector3<fine_scalar> movement_delta_rounding_down(vector3<fine_scalar> const& velocity, time_type end_time) {
-  return divide(velocity * end_time.numerator, end_time.denominator * velocity_scale_factor,
-    rounding_strategy<round_down, negative_mirrors_positive>());
-}
-
-vector3<fine_scalar> movement_delta_intermediate(vector3<fine_scalar> const& velocity, time_type min, time_type max) {
-  return movement_delta_from_start_to(velocity, max) - movement_delta_from_start_to(velocity, min);
-}
-
-// You can round up by up to 1.
-// Something you're facing head-on can round up in the other direction by up to 1.
-// 
-const fine_scalar max_error_dist = 2;
-
-
-time_type round_time_downwards(time_type time, time_int_type max_meaningful_precision) {
+time_type round_time_downwards(time_type time_with_units, time_int_type max_meaningful_precision) {
+  auto time = make_units_split_rational(time_with_units);
   if (time.denominator < 0) {
     time.numerator = -time.numerator;
     time.denominator = -time.denominator;
@@ -74,7 +62,12 @@ time_type round_time_downwards(time_type time, time_int_type max_meaningful_prec
   return time;
 }
 
-time_type round_time_upwards(time_type time, time_int_type max_meaningful_precision) {
+#if 0
+Disabled due to the "round up" system not playing nicely with units.
+TODO: Make nice rounding modes for >>
+
+time_type round_time_upwards(time_type time_with_units, time_int_type max_meaningful_precision) {
+  auto time = make_units_split_rational(time_with_units);
   if (time.denominator < 0) {
     time.numerator = -time.numerator;
     time.denominator = -time.denominator;
@@ -92,49 +85,52 @@ time_type round_time_upwards(time_type time, time_int_type max_meaningful_precis
   }
   return time;
 }
+#endif
 
 // This is essentially arbitrary - beyond a certain value it doesn't really matter, but there's no clear cutoff.
-time_int_type max_meaningful_time_precision(vector3<fine_scalar> const& velocity) {
-  return 16+std::max(std::max(std::abs(velocity(X)),std::abs(velocity(Y))),std::abs(velocity(Z))) * 16 / velocity_scale_factor;
+time_int_type max_meaningful_time_precision(vector3<velocity1d> const& velocity) {
+  return 16+(std::max(std::max(std::abs(velocity(X)),std::abs(velocity(Y))),std::abs(velocity(Z))) / velocity_units) / 2;
 }
 
 
 struct get_first_moment_of_intersection_results {
   optional_time time;
-  vector3<fine_scalar> normal;
+  geom::vect2 normal;
   operator bool()const { return time; }
 };
 
-get_first_moment_of_intersection_results get_first_moment_of_intersection(shape const* s1, shape const* s2, vector3<fine_scalar> s1_velocity, vector3<fine_scalar> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
+get_first_moment_of_intersection_results get_first_moment_of_intersection(shape const* s1, shape const* s2, vector3<velocity1d> s1_velocity, vector3<velocity1d> s2_velocity, time_type s1_last_time_updated, time_type s2_last_time_updated) {
   // Standardize: s1 is the one whose position is up-to-date.
   if (s2_last_time_updated > s1_last_time_updated) {
     return get_first_moment_of_intersection(s2, s1, s2_velocity, s1_velocity, s2_last_time_updated, s1_last_time_updated);
   }
 
-  const auto relative_velocity = s1_velocity - s2_velocity;
+  const vector3<velocity1d> relative_velocity = s1_velocity - s2_velocity;
   get_first_moment_of_intersection_results results;
   
   // We currently don't care too much about a bit of rounding error.
   shape s2t(*s2);
-  s2t.translate(movement_delta_from_start_to(-relative_velocity, s1_last_time_updated - s2_last_time_updated));
+  vector3<distance> relative_displacement = movement_delta_from_start_to(-relative_velocity, s1_last_time_updated - s2_last_time_updated);
+  s2t.translate(relative_displacement);
 
   // Hack? - only polyhedra and bboxes work
   // Hack - Pointlessly wasting processor time to make this code simpler
-  std::vector<convex_polyhedron> p1s(s1->get_polyhedra().begin(), s1->get_polyhedra().end());
-  std::vector<convex_polyhedron> p2s(s2t.get_polyhedra().begin(), s2t.get_polyhedra().end());
+  std::vector<geom::convex_polyhedron> p1s(s1->get_polyhedra().begin(), s1->get_polyhedra().end());
+  std::vector<geom::convex_polyhedron> p2s(s2t.get_polyhedra().begin(), s2t.get_polyhedra().end());
   for (auto bb : s1->get_boxes()) {
-    p1s.push_back(convex_polyhedron(bb));
+    p1s.push_back(geom::convex_polyhedron(bb));
   }
   for (auto bb : s2t.get_boxes()) {
-    p2s.push_back(convex_polyhedron(bb));
+    p2s.push_back(geom::convex_polyhedron(bb));
   }
   for (auto const& p1 : p1s) {
     for (auto const& p2 : p2s) {
-      auto coll_info = when_do_polyhedra_intersect(p1,p2,relative_velocity / velocity_scale_factor);
-      if ((coll_info.is_anywhere) && (coll_info.max >= polygon_rational_type(0)) && (coll_info.min <= (time_type(1) - s1_last_time_updated))) {
-        if ((coll_info.min >= polygon_rational_type(0)) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<fine_scalar>(relative_velocity) > 0)) {
-          if (!results.time || (coll_info.min < *results.time)) {
-            results.time = ((coll_info.min > polygon_rational_type(0)) ? coll_info.min : polygon_rational_type(0));
+      // Hack, TODO fix: pretending that the velocity is a per-frame velocity not a per-second velocity, then reinterpreting the output accordingly
+      auto coll_info = when_do_polyhedra_intersect(p1,p2,relative_velocity / (identity(fixed_frame_lengths / seconds) * seconds / fixed_frame_lengths));
+      if ((coll_info.is_anywhere) && (coll_info.max >= geom::rational_time(0)) && (coll_info.min * fixed_frame_lengths / seconds <= (time_type(1 * fixed_frame_lengths) - s1_last_time_updated))) {
+        if ((coll_info.min >= geom::rational_time(0)) || (coll_info.arbitrary_plane_of_closest_exclusion.normal.dot<lint64_t>(relative_velocity) > 0)) {
+          if (!results.time || (coll_info.min * fixed_frame_lengths / seconds < *results.time)) {
+            results.time = ((coll_info.min > geom::rational_time(0)) ? coll_info.min * fixed_frame_lengths / seconds : time_type(0));
             // TODO: Make it so that it prefers axis-aligned normals again in order to avoid
             // hitting the sides of elements of flat surfaces, or solve that problem in another way?
             results.normal = coll_info.arbitrary_plane_hit_first.normal;
@@ -155,11 +151,11 @@ get_first_moment_of_intersection_results get_first_moment_of_intersection(shape 
 
 
 struct collision_info {
-  collision_info(time_type t,time_type ct,vector3<fine_scalar> n,object_or_tile_identifier o1,int v1,object_or_tile_identifier o2,int v2):
+  collision_info(time_type t,time_type ct,geom::vect2 n,object_or_tile_identifier o1,int v1,object_or_tile_identifier o2,int v2):
     time(t),computation_time(ct),normal(n),oid1(o1),validation1(v1),oid2(o2),validation2(v2){}
   time_type time;
   time_type computation_time;
-  vector3<fine_scalar> normal; // to the plane of collision
+  geom::vect2 normal; // to the plane of collision
   object_or_tile_identifier oid1;
   int validation1;
   object_or_tile_identifier oid2;
@@ -184,7 +180,7 @@ inline std::ostream& operator<<(std::ostream& os, moving_object_info const& moi)
 void update_object_to_time(boost::shared_ptr<mobile_object>& obj, shape& personal_space_shape, shape& detail_shape, moving_object_info& inf, time_type time) {
   caller_error_if(time < inf.last_time_updated, "You can't go back in time!");
   if (time > inf.last_time_updated) {
-    vector3<fine_scalar> delta = movement_delta_from_start_to(obj->velocity(), time - inf.last_time_updated);
+    vector3<distance> delta = movement_delta_from_start_to(obj->velocity(), time - inf.last_time_updated);
     personal_space_shape.translate(delta);
     detail_shape.translate(delta);
     //std::cerr << "(this message may be out-of-date/misleading) Moving object by " << delta << "; ignoring updated already " << movement_delta_from_start_to(obj->velocity(), time) << "; full delta " << movement_delta_from_start_to(obj->velocity(), time_type(1)) << "\n";
@@ -193,7 +189,7 @@ void update_object_to_time(boost::shared_ptr<mobile_object>& obj, shape& persona
   }
 }
 void update_object_for_whole_frame(boost::shared_ptr<mobile_object>& obj, shape& personal_space_shape, shape& detail_shape) {
-  vector3<fine_scalar> delta = movement_delta_from_start_to(obj->velocity(), time_type(1));
+  vector3<distance> delta = movement_delta_from_start_to(obj->velocity(), time_type(1 * fixed_frame_lengths));
   personal_space_shape.translate(delta);
   detail_shape.translate(delta);
     //std::cerr << "!Moving object by " << delta << "\n";
@@ -204,8 +200,8 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
   
   bounding_box sweep_bounds = personal_space_shape->bounds();
   // Round up, so that our sweep bounds contains all area we might reach.
-  auto delta = movement_delta_rounding_up(obj->velocity(), time_type(1) - min_time);
-  if (delta != vector3<fine_scalar>(0,0,0)) {
+  auto delta = movement_delta_rounding_up(obj->velocity(), time_type(1 * fixed_frame_lengths) - min_time);
+  if (delta != 0) {
     sweep_bounds.translate(delta);
     sweep_bounds.combine_with(personal_space_shape->bounds());
     assert(sweep_bounds != personal_space_shape->bounds());
@@ -229,7 +225,7 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
         //std::cerr << "Considering " << id << ", " << other_id << "\n";
       shape const* opss = find_as_pointer(w.get_object_personal_space_shapes(), other_id);
       assert(opss);
-      vector3<fine_scalar> other_velocity(0,0,0);
+      vector3<velocity1d> other_velocity(0,0,0);
       if (boost::shared_ptr<mobile_object> const* other_obj = find_as_pointer(moving_objects, other_id)) {
         other_velocity = (*other_obj)->velocity();
         //std::cerr << "Other velocity is relevant." << obj->velocity() << (*other_obj)->velocity();
@@ -261,7 +257,7 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
     const auto i1 = objects_info.find(id);
     const time_type ltu1 = (i1 == objects_info.end()) ? time_type(0) : i1->second.last_time_updated;
     assert(ltu1 == min_time); // TODO just use this instead and not pass the min_time argument?
-    if (auto result = get_first_moment_of_intersection(personal_space_shape, &t, obj->velocity(), vector3<fine_scalar>(0,0,0), ltu1, time_type(0))) {
+    if (auto result = get_first_moment_of_intersection(personal_space_shape, &t, obj->velocity(), vector3<velocity1d>(0,0,0), ltu1, time_type(0))) {
       assert(result.time);
       assert(*result.time >= min_time);
       anticipated_collisions.push(collision_info(
@@ -323,7 +319,7 @@ void update_moving_objects_impl(
   // they don't end up falling through the ground.
   // Possibly omit them here somehow.
   for (auto& p : moving_objects) {
-    p.second->velocity_ += gravity_acceleration;
+    p.second->velocity_ += gravity_acceleration / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths;
   }
   
   objects_collision_detector sweep_box_cd;
@@ -340,7 +336,7 @@ void update_moving_objects_impl(
       // Check any tile it happens to be in for whether there's water there.
       // If some tiles are water and some aren't, this is arbitrary, but in that case, it'll crash into a surface water on its first step, which will make this same adjustment.
       if (is_water(w.make_tile_location(get_arbitrary_containing_tile_coordinates(personal_space_shape->arbitrary_interior_point()), CONTENTS_ONLY).stuff_at().contents())) {
-        const fine_scalar current_speed = obj->velocity().magnitude_within_32_bits();
+        const velocity1d current_speed = obj->velocity().magnitude_within_32_bits();
         if (current_speed > max_object_speed_through_water) {
           obj->velocity_ = obj->velocity() * max_object_speed_through_water / current_speed;
         }
@@ -403,7 +399,7 @@ void update_moving_objects_impl(
           // TODO: collapse this duplicate code (between the object-tile case and the object-object case)
           if (tile_location const* locp = collision.oid2.get_tile_location()) {
             if (is_water(locp->stuff_at().contents())) {
-              const fine_scalar current_speed = obj1->velocity().magnitude_within_32_bits();
+              const velocity1d current_speed = obj1->velocity().magnitude_within_32_bits();
               if (current_speed > max_object_speed_through_water) {
                 update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
                 ++inf1.invalidation_counter; // required in case update_object_to_time did nothing
@@ -447,8 +443,8 @@ void update_moving_objects_impl(
             //assert_about_overlaps(moving_objects, personal_space_shapes,objects_info);
             
             auto relative_velocity = obj1->velocity() - obj2->velocity();
-            auto veldiff_num = (collision.normal * relative_velocity.dot<fine_scalar>(collision.normal));
-            auto veldiff_denom = collision.normal.dot<fine_scalar>(collision.normal);
+            auto veldiff_num = (collision.normal * relative_velocity.dot<lint64_t>(collision.normal));
+            auto veldiff_denom = collision.normal.dot<lint64_t>(collision.normal);
             // Hack: To avoid getting locked in a nonzero velocity due to rounding error,
             // make sure to round down your eventual velocity!
             // Note: This changes each object's velocity by -2/3 of the total difference,
@@ -458,15 +454,15 @@ void update_moving_objects_impl(
             // Also push the objects away from each other a little if the surface isn't axis-aligned.
             // This is a bit of a hack and might violate conservation of energy.
             if (((collision.normal(X) != 0) + (collision.normal(Y) != 0) + (collision.normal(Z) != 0)) > 1) {
-              obj1->velocity_ -= relative_velocity * 4 / relative_velocity.magnitude_within_32_bits();
-              obj2->velocity_ += relative_velocity * 4 / relative_velocity.magnitude_within_32_bits();
+              obj1->velocity_ -= (relative_velocity * 4 / relative_velocity.magnitude_within_32_bits()) * fine_distance_units / seconds;
+              obj2->velocity_ += (relative_velocity * 4 / relative_velocity.magnitude_within_32_bits()) * fine_distance_units / seconds;
             }
             
             //obj1->velocity_ = (obj1->velocity() + obj2->velocity()) / 2;
             //obj2->velocity_ = obj1->velocity();
             
-            if (failsafe_mode) obj1->velocity_ = vector3<fine_scalar>(0,0,0);
-            if (failsafe_mode) obj2->velocity_ = vector3<fine_scalar>(0,0,0);
+            if (failsafe_mode) obj1->velocity_ = vector3<velocity1d>(0,0,0);
+            if (failsafe_mode) obj2->velocity_ = vector3<velocity1d>(0,0,0);
           
             // If we updated anything about the objects, they might have new collisions.
             // If we *didn't*, they won't repeat the same collision again, since we have
@@ -487,9 +483,9 @@ void update_moving_objects_impl(
               update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
               //std::cerr << "!!!" << inf1.last_time_updated << "\n";
               const auto old_vel = obj1->velocity();
-              auto vel_change = (collision.normal * obj1->velocity().dot<fine_scalar>(collision.normal));
-              if (vel_change != vector3<fine_scalar>(0,0,0)) {
-                fine_scalar vel_change_denom = collision.normal.dot<fine_scalar>(collision.normal);
+              auto vel_change = (collision.normal * obj1->velocity().dot<lint64_t>(collision.normal));
+              if (vel_change != 0) {
+                auto vel_change_denom = collision.normal.dot<lint64_t>(collision.normal);
                 // Hack: To avoid getting locked in a nonzero velocity due to rounding error,
                 // make sure to round down your eventual velocity!
                 //std::cerr << obj1->velocity();
@@ -499,9 +495,9 @@ void update_moving_objects_impl(
               // Also push the objects away from each other a little if the surface isn't axis-aligned.
               // This is a bit of a hack and might violate conservation of energy.
               if (((collision.normal(X) != 0) + (collision.normal(Y) != 0) + (collision.normal(Z) != 0)) > 1) {
-                obj1->velocity_ -= old_vel * 4 / old_vel.magnitude_within_32_bits();
+                obj1->velocity_ -= (old_vel * 4 / old_vel.magnitude_within_32_bits()) * fine_distance_units / seconds;
               }
-              if (failsafe_mode) obj1->velocity_ = vector3<fine_scalar>(0,0,0);
+              if (failsafe_mode) obj1->velocity_ = vector3<velocity1d>(0,0,0);
               if (obj1->velocity() != old_vel) ++inf1.invalidation_counter;
               else {
                 std::cerr << "Warning: No velocity change on collision. This can potentially cause overlaps.\n";
@@ -534,7 +530,7 @@ void update_moving_objects_impl(
       //std::cerr << "Minimally so.\n";
     }
     else {
-      update_object_to_time(obj, *opss, *ods, inf->second, time_type(1));
+      update_object_to_time(obj, *opss, *ods, inf->second, time_type(1 * fixed_frame_lengths));
       //std::cerr << "Quite so.\n";
     }
     
