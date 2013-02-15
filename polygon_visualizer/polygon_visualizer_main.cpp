@@ -101,14 +101,18 @@ static void createSurface (int fullscreen)
 	}
 }
 
+inline geom::vect vect_literal(geom::polygon_int_type x, geom::polygon_int_type y, geom::polygon_int_type z) {
+  return geom::vect(x*fine_units, y*fine_units, z*fine_units);
+}
+
 struct floating_line {
-  std::array<vector3<int64_t>, 2> ends;
+  std::array<geom::vect, 2> ends;
   bool collided;
 };
 
 struct floating_poly {
-  std::array<vector3<int64_t>, 2> ends;
-  std::vector<vector3<int64_t>> vertices;
+  std::array<geom::vect, 2> ends;
+  std::vector<geom::vect> vertices;
   bool collided;
 };
 
@@ -127,17 +131,17 @@ std::vector<floating_poly> polys;
 
 for (int i = 0; i < 50; ++i) {
   floating_line foo;
-  vector3<int64_t> first(uniform_random(0, 1023)(rng), uniform_random(0, 1023)(rng), uniform_random(300, 399)(rng));
-  vector3<int64_t> diff(uniform_random(-99, 99)(rng), uniform_random(-99, 99)(rng), uniform_random(10, 109)(rng));
+  const geom::vect first = vect_literal(uniform_random(0, 1023)(rng), uniform_random(0, 1023)(rng), uniform_random(300, 399)(rng));
+  const geom::vect diff = vect_literal(uniform_random(-99, 99)(rng), uniform_random(-99, 99)(rng), uniform_random(10, 109)(rng));
   foo.ends[0] = first;
   foo.ends[1] = first + diff;
   lines.push_back(foo);
 }
 for (int i = 0; i < 50; ++i) {
   floating_poly foo;
-  vector3<int64_t> first(uniform_random(0, 1023)(rng), uniform_random(0, 1023)(rng), uniform_random(-300, -201)(rng));
-  vector3<int64_t> diff1(uniform_random(0, 199)(rng), uniform_random(0, 199)(rng), uniform_random(5, 24)(rng));
-  vector3<int64_t> diff2(uniform_random(-250, -51)(rng), uniform_random(-250, -51)(rng), uniform_random(5, 24)(rng));
+  const geom::vect first = vect_literal(uniform_random(0, 1023)(rng), uniform_random(0, 1023)(rng), uniform_random(-300, -201)(rng));
+  const geom::vect diff1 = vect_literal(uniform_random(0, 199)(rng), uniform_random(0, 199)(rng), uniform_random(5, 24)(rng));
+  const geom::vect diff2 = vect_literal(uniform_random(-250, -51)(rng), uniform_random(-250, -51)(rng), uniform_random(5, 24)(rng));
   foo.vertices.push_back(first);
   foo.vertices.push_back(first+diff1);
   foo.vertices.push_back(first+diff1+diff2);
@@ -148,15 +152,15 @@ for (int i = 0; i < 50; ++i) {
     laer.push_back(vector3<int64_t>(-20, 20, 20));
     laer.push_back(vector3<int64_t>(20, 20, 0));
     laer.push_back(vector3<int64_t>(0, -20, 0));
-    convex_polygon oafe(laer);
-    line_segment flwj(vector3<int64_t>(2, 4, 50));
-    line_segment flwj(vector3<int64_t>(-2, -3, -50));*/
-    std::vector<vector3<int64_t>> laer;
-    laer.push_back(vector3<int64_t>(-20, 20, 0));
-    laer.push_back(vector3<int64_t>(20, 20, 0));
-    laer.push_back(vector3<int64_t>(0, -20, 0));
-    convex_polygon oafe(laer);
-    line_segment flwj(vector3<int64_t>(0, 0, 50), vector3<int64_t>(0, 0, -50));
+    geom::convex_polygon oafe(laer);
+    geom::line_segment flwj(vector3<int64_t>(2, 4, 50));
+    geom::line_segment flwj(vector3<int64_t>(-2, -3, -50));*/
+    std::vector<geom::vect> laer;
+    laer.push_back(vect_literal(-20, 20, 0));
+    laer.push_back(vect_literal(20, 20, 0));
+    laer.push_back(vect_literal(0, -20, 0));
+    geom::convex_polygon oafe(laer);
+    geom::line_segment flwj(vect_literal(0, 0, 50), vect_literal(0, 0, -50));
     assert(shape(flwj).intersects(oafe));
  }
     
@@ -204,16 +208,16 @@ for (int i = 0; i < 50; ++i) {
       if (foo.collided) glColor3f(1.0,0.0,1.0);
       else              glColor3f(0.0,0.0,1.0);
       glBegin(GL_LINES);
-        glVertex3f(0.01*foo.ends[0].x, 0.01*foo.ends[0].y, 0.01*foo.ends[0].z);
-        glVertex3f(0.01*foo.ends[1].x, 0.01*foo.ends[1].y, 0.01*foo.ends[1].z);
+        glVertex3f(0.01*foo.ends[0].x/fine_units, 0.01*foo.ends[0].y/fine_units, 0.01*foo.ends[0].z/fine_units);
+        glVertex3f(0.01*foo.ends[1].x/fine_units, 0.01*foo.ends[1].y/fine_units, 0.01*foo.ends[1].z/fine_units);
       glEnd();
     }
     for (floating_poly& foo : polys) {
       if (foo.collided) glColor3f(1.0,1.0,0.0);
       else              glColor3f(0.0,1.0,0.0);
       glBegin(GL_POLYGON);
-        for (vector3<int64_t>& v : foo.vertices)
-          glVertex3f(0.01*v.x, 0.01*v.y, 0.01*v.z);
+        for (geom::vect& v : foo.vertices)
+          glVertex3f(0.01*v.x/fine_units, 0.01*v.y/fine_units, 0.01*v.z/fine_units);
       glEnd();
     }
     
@@ -227,16 +231,16 @@ for (int i = 0; i < 50; ++i) {
     //doing stuff code here
 	++frame;
     for (floating_line& foo : lines) {
-      for (vector3<int64_t>& v : foo.ends) --v.z;
+      for (geom::vect& v : foo.ends) { v.z -= 1*fine_units; }
       foo.collided = false;
     }
     for (floating_poly& foo : polys) {
-      for (vector3<int64_t>& v : foo.vertices) ++v.z;
+      for (geom::vect& v : foo.vertices) { v.z += 1*fine_units; }
       foo.collided = false;
     }
     for (floating_line& foo : lines) {
       for (floating_poly& bar : polys) {
-        if (shape(line_segment(foo.ends)).intersects(convex_polygon(bar.vertices))) {
+        if (shape(geom::line_segment(foo.ends)).intersects(geom::convex_polygon(bar.vertices))) {
           foo.collided = true;
           bar.collided = true;
       std::cerr << "GRONK\n";
