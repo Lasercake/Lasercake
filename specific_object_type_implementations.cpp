@@ -156,7 +156,7 @@ void update_location(vector3<distance>& location_, world& w, object_identifier i
   location_ = middle;
 }
 
-void float_above_ground(vector3<velocity>& velocity_, world& w, object_identifier id) {
+void float_above_ground(vector3<velocity1d>& velocity_, world& w, object_identifier id) {
   const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(id)->second.bounds();
   const vector3<distance> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
   const vector3<distance> bottom_middle(middle(X), middle(Y), shape_bounds.min(Z));
@@ -177,7 +177,7 @@ void float_above_ground(vector3<velocity>& velocity_, world& w, object_identifie
   distance deficiency = target_height - shape_bounds.min(Z);
   if (deficiency > 0) {
     // goal: decay towards levitating...
-    velocity target_vel = (deficiency * 15 / 4) / seconds
+    velocity1d target_vel = (deficiency * 15 / 4) / seconds
       // Hack: Add in the one-frame acceleration due to gravity, so that it meets an equilibrium at the specified height.
       // TODO: Figure out a nicer way for the object-motion system to interact with the autonomous-object system.
       + (gravity_acceleration_magnitude / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths);
@@ -297,7 +297,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
       if(object_identifier const* oidp = hit_thing.get_object_identifier()) {
         if (shared_ptr<object>* obj = w.get_object(*oidp)) {
           if (shared_ptr<mobile_object> mobj = boost::dynamic_pointer_cast<mobile_object>(*obj)) {
-            const vector3<acceleration> tractor_beam_acceleration = -(facing_ * 45) / seconds / seconds;
+            const vector3<acceleration1d> tractor_beam_acceleration = -(facing_ * 45) / seconds / seconds;
             mobj->velocity_ += tractor_beam_acceleration / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths;
           }
         }
@@ -523,7 +523,7 @@ void random_walk_rocket::update(world& w, input_representation::input_news_t con
     velocity_[Z] = 0;
   }
 
-  const uniform_int_distribution<velocity_hack>
+  const uniform_int_distribution<velocity1d>
           random_delta(-tile_width / seconds,
                         tile_width / seconds);
   velocity_[X] += random_delta(rng);

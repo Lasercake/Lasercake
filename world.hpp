@@ -156,16 +156,14 @@ public:
   virtual ~object() {}
 };
 
-typedef velocity velocity_hack;
-
 class mobile_object : virtual public object {
 public:
   //virtual void move_due_to_velocity() = 0;
 
   mobile_object():velocity_(0,0,0){}
-  mobile_object(vector3<velocity_hack> velocity):velocity_(velocity){}
-  vector3<velocity_hack> const& velocity() const { return velocity_; }
-  vector3<velocity_hack> velocity_;
+  mobile_object(vector3<velocity1d> velocity):velocity_(velocity){}
+  vector3<velocity1d> const& velocity() const { return velocity_; }
+  vector3<velocity1d> velocity_;
 };
 
 // The player can use these objects.

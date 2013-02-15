@@ -73,8 +73,8 @@ constexpr auto fixed_frame_lengths = fixed_frame_lengths_t();
 // (on 32bit, and possibly 64bit platform multiply/divides) and smaller storage.
 
 typedef physical_quantity<lint64_t, fine_distance_units_t> distance;
-typedef physical_quantity<lint64_t, velocity_units_t> velocity;
-typedef physical_quantity<lint64_t, acceleration_units_t> acceleration;
+typedef physical_quantity<lint64_t, velocity_units_t> velocity1d;
+typedef physical_quantity<lint64_t, acceleration_units_t> acceleration1d;
 typedef physical_quantity<lint64_t, density_units_t> density;
 typedef physical_quantity<lint64_t, pressure_units_t> pressure;
 typedef physical_quantity<lint32_t, tile_physics_sub_tile_units_t> sub_tile_distance;
@@ -97,8 +97,8 @@ const distance tile_height = 1 * tile_heights * identity(fine_units / tile_heigh
 const vector3<distance> tile_size(tile_width, tile_width, tile_height);
 
 // Standard (Earth-equivalent) gravity: precisely 9.80665 m/s2
-const acceleration gravity_acceleration_magnitude = divide(9806650 * (micro*meters) / (seconds*seconds), identity((micro*meters) / fine_distance_units), rounding_strategy<rounding_strategies::round_to_nearest_with_ties_rounding_to_even>());
-const vector3<acceleration> gravity_acceleration(0, 0, -gravity_acceleration_magnitude);
+const acceleration1d gravity_acceleration_magnitude = divide(9806650 * (micro*meters) / (seconds*seconds), identity((micro*meters) / fine_distance_units), rounding_strategy<rounding_strategies::round_to_nearest_with_ties_rounding_to_even>());
+const vector3<acceleration1d> gravity_acceleration(0, 0, -gravity_acceleration_magnitude);
 
 const auto water_density_kgm3 = 1000*kilograms/(meters*meters*meters);
 const density water_density = water_density_kgm3 * identity(density_units / (kilograms/(meters*meters*meters)));
@@ -123,7 +123,7 @@ const vector3<sub_tile_velocity> inactive_fluid_velocity(0, 0, -min_convincing_s
 // I just kept this at the value it was at duing the unitization.
 // I suppose in the long run we'll use a more nuanced water-drag system.
 // In the short run, TODO: Change it to 15 m/s (somewhat slower than the current value) because that's about the top speed of typical modern submarines.
-const velocity max_object_speed_through_water = (tile_width * 30 / 16) / seconds;
+const velocity1d max_object_speed_through_water = (tile_width * 30 / 16) / seconds;
 
 #if 0
 const time_unit time_units_per_second = 2*2*2*2 * 3*3*3 * 5*5 * 7 * 11;
