@@ -1,5 +1,102 @@
 
 
+struct edge {
+  references to two corners, maybe
+};
+struct corner {
+  references to two edges, possibly adjoining ("real corner"), possibly not ("virtual corner")
+};
+
+struct face_info {
+  which face
+  any number of outer edge loops identifying lit areas (some are shadows from above, some are the edges of the face)
+  any number of inner edge loops identifying isolated shadows within those lit areas
+  (note that edge loops and corner loops are the same thing, do it as you will)
+  Canonical ordering: Loops with light on the inside are clockwise when viewed from the outer side of the face; loops with dark on the inside are counterclockwise.
+};
+
+
+/* Lit areas move around and change proportions. (not considered a change)
+ Changes:
+ outer loops' convex corners run into the edges of the faces they're on (or if faces are not convex, outer loops' edges with the concave corners of the face)
+ corners/edges of a lit area run into each other.
+
+ I think noticing those things about every lit area notices all shadow transitions.
+ If any shadow intrudes from the outside, it intruded through an edge; therefore, it crossed the physical edge of a face above.
+ */
+
+struct shadow_change {
+  face reference f
+  edge reference e
+  corner reference c
+  maybe an invalidatable record of when/how it was computed
+};
+
+
+
+struct lighting_distribution {
+public:
+  void do_shadow_change(time t, shadow_change c) {
+    If it's not still correct, bail
+
+    // Edge is closer to the sun than corner, or further away
+    // Corner edges span edge, or are on the same side
+    
+    On c.f:
+      // Nothing new is added because both c.c and c.e were here already.
+      // SO this isn't too hard.
+      The old connections are: c.e to its neighbors, c.c.e1 to c.c.e2
+      Switch to: c.e's previous neighbor -> c.e -> c.c.e1, c.c.e2 -> c.e -> its next neighbor
+
+    // Shadow changes will also be caused either above here or below here
+    
+    if (c.c or c.e is a part of the face boundary) {
+      if (it's c.e, the more common case) {
+        Get whatever face that part of c.e was touching, f2:
+        if (c.c crosses the boundary) {
+          On c.f:
+            c.c.e1 -> c.c.e2 -> c.e
+            becomes
+            c.c.e1 -> c.e
+          On f2:
+            c.e -> c.c.e2
+            becomes
+            c.e -> c.c.e1 -> c.c.e2
+          (Or all of that but with c.e on the other side)
+        }
+        else {
+          
+          On c.f:
+            c.c.e1 -> c.c.e2
+            becomes
+            c.c.e1 -> c.e -> c.c.e2
+          On f2:
+            c.e
+            becomes
+            c.e -> c.c.e1 -> c.c.e2 -> c.e
+        }
+      }
+      else (it's c.c) {
+        On c.f:
+          The edge loop was: c.e
+          Now it is: c.e -> c.c.e1 -> c.c.e2 -> c.e
+      }
+    }
+  }
+  
+  void advance_to_time(time t) {
+    while (the first of shadow_changes is before t) {
+      do_shadow_change (pop the first of shadow_changes)
+    }
+  }
+private:
+  heap<time, shadow_change> shadow_changes;
+}
+
+
+
+
+#if 0
 struct tile_face {
   tile_location tile;
   cardinal_direction which_face;
@@ -162,3 +259,4 @@ private:
   unordered_map<tile_face, tile_shadow_info> shadow_info;
   unordered_multimap<tile_edge, tile_face> faces_by_shadow_edge; // we need to do this reverse lookup sometimes
 }
+#endif
