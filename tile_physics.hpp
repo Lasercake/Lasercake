@@ -35,7 +35,7 @@ struct state_t;
 inline sub_tile_distance progress_necessary(cardinal_direction dir) {
   return sub_tile_distance(
     tile_size[which_dimension_is_cardinal_direction(dir)]
-    * identity(tile_physics_sub_tile_distance_units / fine_units));
+    * identity(tile_physics_sub_tile_distance_units / fine_distance_units));
 }
 
 struct active_fluid_tile_info {

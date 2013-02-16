@@ -27,9 +27,9 @@
 #include "gl_data_abstract.hpp"
 
 struct gl_data_preparation_config {
-  gl_data_preparation_config(fine_scalar view_radius, object_identifier view_from)
+  gl_data_preparation_config(distance view_radius, object_identifier view_from)
    : view_radius(view_radius), view_from(view_from) {}
-  fine_scalar view_radius;
+  distance view_radius;
   object_identifier view_from;
   // TODO do we also want the config to be able to specify
   // a view *location* (that's not an object)?
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, gl_data_preparation_config con
 
 class view_on_the_world {
 public:
-  view_on_the_world(vector3<fine_scalar> approx_initial_center);
+  view_on_the_world(vector3<distance> approx_initial_center);
 
   // Call this every frame that you want user-input to have view-related effects.
   void input(input_representation::input_news_t const& input_news);
@@ -53,11 +53,11 @@ public:
   void prepare_gl_data(world /*TODO const*/& w, gl_data_preparation_config c, abstract_gl_data& result);
 
   // TODO make private and/or trailing underscore
-  vector3<fine_scalar> view_loc_for_local_display;
+  vector3<distance> view_loc_for_local_display;
   enum { GLOBAL, LOCAL, ROBOT } view_type;
   double local_view_direction;
-  vector3<fine_scalar> surveilled_by_global_display;
-  fine_scalar global_view_dist;
+  vector3<distance> surveilled_by_global_display;
+  distance global_view_dist;
   bool drawing_regular_stuff;
   bool drawing_debug_stuff;
 };

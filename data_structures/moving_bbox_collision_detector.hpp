@@ -422,7 +422,7 @@ public:
       root.bounds.max[dim] = 1;
     }
   }
-  void insert(moving_bbox_collision_detector_internals::object_id const& id, bounding_box const& bbox, vector3<fine_scalar> vel) {
+  void insert(moving_bbox_collision_detector_internals::object_id const& id, bounding_box const& bbox, vector3<distance> vel) {
     moving_bbox_collision_detector_internals::moving_object<3> o;
     o.id = id;
     for (int dim = 0; dim < 3; ++dim) {
@@ -435,7 +435,7 @@ public:
   bool erase(moving_bbox_collision_detector_internals::object_id const& id) {
     std::cerr << "Aah! Erasing is unimplemented!\n";
   }
-  void get_objects_overlapping(std::vector<moving_bbox_collision_detector_internals::object_id>& results, bounding_box const& bbox, vector3<fine_scalar> vel)const {
+  void get_objects_overlapping(std::vector<moving_bbox_collision_detector_internals::object_id>& results, bounding_box const& bbox, vector3<distance> vel)const {
     o.id = id;
     for (int dim = 0; dim < 3; ++dim) {
       o.phys_bounds.min[dim] = bbox.min(dim) * 2;

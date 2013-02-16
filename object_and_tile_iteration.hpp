@@ -40,24 +40,24 @@
 
 namespace visit_collidable_tiles_and_objects_impl {
 
-typedef fine_scalar cost_type;
+typedef distance cost_type;
 //typedef faux_optional<cost_type> optional_cost_type;
 
 inline cost_type cost_for(octant_number octant, objects_collision_detector::bounding_box bbox) {
   return
-    (LASERCAKE_OCTANT_X_POSITIVE(octant) ? cost_type(bbox.min(X)*fine_units) : -cost_type(bbox.max(X)*fine_units)) +
-    (LASERCAKE_OCTANT_Y_POSITIVE(octant) ? cost_type(bbox.min(Y)*fine_units) : -cost_type(bbox.max(Y)*fine_units)) +
-    (LASERCAKE_OCTANT_Z_POSITIVE(octant) ? cost_type(bbox.min(Z)*fine_units) : -cost_type(bbox.max(Z)*fine_units));
+    (LASERCAKE_OCTANT_X_POSITIVE(octant) ? cost_type(bbox.min(X)*fine_distance_units) : -cost_type(bbox.max(X)*fine_distance_units)) +
+    (LASERCAKE_OCTANT_Y_POSITIVE(octant) ? cost_type(bbox.min(Y)*fine_distance_units) : -cost_type(bbox.max(Y)*fine_distance_units)) +
+    (LASERCAKE_OCTANT_Z_POSITIVE(octant) ? cost_type(bbox.min(Z)*fine_distance_units) : -cost_type(bbox.max(Z)*fine_distance_units));
 }
 inline cost_type cost_for(octant_number octant, tile_location loc) {
   vector3<tile_coordinate> const& coords = loc.coords();
   return
-    (LASERCAKE_OCTANT_X_POSITIVE(octant) ?  cost_type(lower_bound_in_fine_units(coords(X), X))
-                                         : -cost_type(upper_bound_in_fine_units(coords(X), X))) +
-    (LASERCAKE_OCTANT_Y_POSITIVE(octant) ?  cost_type(lower_bound_in_fine_units(coords(Y), Y))
-                                         : -cost_type(upper_bound_in_fine_units(coords(Y), Y))) +
-    (LASERCAKE_OCTANT_Z_POSITIVE(octant) ?  cost_type(lower_bound_in_fine_units(coords(Z), Z))
-                                         : -cost_type(upper_bound_in_fine_units(coords(Z), Z)));
+    (LASERCAKE_OCTANT_X_POSITIVE(octant) ?  cost_type(lower_bound_in_fine_distance_units(coords(X), X))
+                                         : -cost_type(upper_bound_in_fine_distance_units(coords(X), X))) +
+    (LASERCAKE_OCTANT_Y_POSITIVE(octant) ?  cost_type(lower_bound_in_fine_distance_units(coords(Y), Y))
+                                         : -cost_type(upper_bound_in_fine_distance_units(coords(Y), Y))) +
+    (LASERCAKE_OCTANT_Z_POSITIVE(octant) ?  cost_type(lower_bound_in_fine_distance_units(coords(Z), Z))
+                                         : -cost_type(upper_bound_in_fine_distance_units(coords(Z), Z)));
 }
 
 // for object iteration:

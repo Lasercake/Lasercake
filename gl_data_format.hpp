@@ -208,8 +208,8 @@ inline glm::mat4 make_projection_matrix(float aspect_ratio) {
   return glm::perspective(
     float(fovy_degrees),
     float(aspect_ratio),
-    get_primitive_float(near_clipping_plane/fine_units),
-    get_primitive_float(far_clipping_plane/fine_units)
+    get_primitive_float(near_clipping_plane/fine_distance_units),
+    get_primitive_float(far_clipping_plane/fine_distance_units)
   );
 }
 const vector3<float> view_from(0);

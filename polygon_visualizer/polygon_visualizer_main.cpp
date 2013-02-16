@@ -102,7 +102,7 @@ static void createSurface (int fullscreen)
 }
 
 inline geom::vect vect_literal(geom::geometry_int_type x, geom::geometry_int_type y, geom::geometry_int_type z) {
-  return geom::vect(x*fine_units, y*fine_units, z*fine_units);
+  return geom::vect(x*fine_distance_units, y*fine_distance_units, z*fine_distance_units);
 }
 
 struct floating_line {
@@ -208,8 +208,8 @@ for (int i = 0; i < 50; ++i) {
       if (foo.collided) glColor3f(1.0,0.0,1.0);
       else              glColor3f(0.0,0.0,1.0);
       glBegin(GL_LINES);
-        glVertex3f(0.01*foo.ends[0].x/fine_units, 0.01*foo.ends[0].y/fine_units, 0.01*foo.ends[0].z/fine_units);
-        glVertex3f(0.01*foo.ends[1].x/fine_units, 0.01*foo.ends[1].y/fine_units, 0.01*foo.ends[1].z/fine_units);
+        glVertex3f(0.01*foo.ends[0].x/fine_distance_units, 0.01*foo.ends[0].y/fine_distance_units, 0.01*foo.ends[0].z/fine_distance_units);
+        glVertex3f(0.01*foo.ends[1].x/fine_distance_units, 0.01*foo.ends[1].y/fine_distance_units, 0.01*foo.ends[1].z/fine_distance_units);
       glEnd();
     }
     for (floating_poly& foo : polys) {
@@ -217,7 +217,7 @@ for (int i = 0; i < 50; ++i) {
       else              glColor3f(0.0,1.0,0.0);
       glBegin(GL_POLYGON);
         for (geom::vect& v : foo.vertices)
-          glVertex3f(0.01*v.x/fine_units, 0.01*v.y/fine_units, 0.01*v.z/fine_units);
+          glVertex3f(0.01*v.x/fine_distance_units, 0.01*v.y/fine_distance_units, 0.01*v.z/fine_distance_units);
       glEnd();
     }
     
@@ -231,11 +231,11 @@ for (int i = 0; i < 50; ++i) {
     //doing stuff code here
 	++frame;
     for (floating_line& foo : lines) {
-      for (geom::vect& v : foo.ends) { v.z -= 1*fine_units; }
+      for (geom::vect& v : foo.ends) { v.z -= 1*fine_distance_units; }
       foo.collided = false;
     }
     for (floating_poly& foo : polys) {
-      for (geom::vect& v : foo.vertices) { v.z += 1*fine_units; }
+      for (geom::vect& v : foo.vertices) { v.z += 1*fine_distance_units; }
       foo.collided = false;
     }
     for (floating_line& foo : lines) {

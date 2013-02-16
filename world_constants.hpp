@@ -53,8 +53,8 @@ typedef typename units_prod<tile_physics_sub_tile_distance_units_t, units_pow<fi
 //typedef typename units_prod<kilograms_t, fine_distance_units_t::pow<(-3)>>::type density_units_t;
 
 
-//constexpr auto velocity_units = fine_units / /* units_factor<30>() / ? */ seconds;
-//constexpr auto tile_physics_sub_tile_units = fine_units / units_factor<30>();
+//constexpr auto velocity_units = fine_distance_units / /* units_factor<30>() / ? */ seconds;
+//constexpr auto tile_physics_sub_tile_units = fine_distance_units / units_factor<30>();
 
 
 constexpr auto tile_widths = tile_widths_t();
@@ -88,16 +88,9 @@ typedef physical_quantity<lint64_t, tile_physics_sub_tile_velocity_units_t> larg
 typedef physical_quantity<lint64_t, time_units_t> time_unit;
 
 
-typedef distance fine_scalar; // TODO replace fine_scalar->distance.
-typedef fine_distance_units_t fine_units_t; // TODO
-constexpr auto fine_units = fine_units_t(); // TODO
-
-
-
-
 //ok...
-const distance tile_width = 1 * tile_widths * identity(fine_units / tile_widths);
-const distance tile_height = 1 * tile_heights * identity(fine_units / tile_heights);
+const distance tile_width = 1 * tile_widths * identity(fine_distance_units / tile_widths);
+const distance tile_height = 1 * tile_heights * identity(fine_distance_units / tile_heights);
 const vector3<distance> tile_size(tile_width, tile_width, tile_height);
 
 // Standard (Earth-equivalent) gravity: precisely 9.80665 m/s2
@@ -159,12 +152,12 @@ const time_unit time_units_per_second = 2*2*2*2 * 3*3*3 * 5*5 * 7 * 11;
 const time_unit fixed_frames_per_second = 30;
 const time_unit time_units_per_fixed_frame = time_units_per_second / fixed_frames_per_second;
 
-const fine_scalar tile_width = 2000;
-const fine_scalar tile_height = 400;
-const vector3<fine_scalar> tile_size(tile_width, tile_width, tile_height);
+const distance tile_width = 2000;
+const distance tile_height = 400;
+const vector3<distance> tile_size(tile_width, tile_width, tile_height);
 
 // Velocity is currently in units of (fine_unit / second).  We might change this.
-const fine_scalar velocity_scale_factor = fixed_frames_per_second;
+const distance velocity_scale_factor = fixed_frames_per_second;
 
 const sub_tile_distance min_convincing_speed           = velocity_scale_factor * tile_width / 50;
 const sub_tile_distance gravity_acceleration_magnitude = velocity_scale_factor * tile_width / 200;
@@ -180,7 +173,7 @@ const sub_tile_distance idle_progress_reduction_rate = 20 * velocity_scale_facto
 
 const vector3<sub_tile_distance> inactive_fluid_velocity(0, 0, -min_convincing_speed);
 
-const fine_scalar max_object_speed_through_water = tile_width * velocity_scale_factor / 16;
+const distance max_object_speed_through_water = tile_width * velocity_scale_factor / 16;
 #endif
 
 #endif

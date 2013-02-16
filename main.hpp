@@ -55,7 +55,7 @@ using input_representation::input_news_t;
 struct config_struct {
   std::string scenario;
   bool crazy_lasers;
-  fine_scalar view_radius;
+  distance view_radius;
   bool have_gui;
   bool run_drawing_code;
   bool initially_drawing_debug_stuff;
@@ -87,7 +87,7 @@ public:
   Q_INVOKABLE void init(worldgen_function_t worldgen, config_struct config);
   Q_INVOKABLE void new_input_as_of(time_unit moment, input_news_t new_input);
   //actually_prepare_graphics=false still sends frame_output_ready with useful debug info.
-  Q_INVOKABLE void prepare_graphics(input_news_t input_since_last_prepare, fine_scalar view_radius, bool actually_prepare_graphics);
+  Q_INVOKABLE void prepare_graphics(input_news_t input_since_last_prepare, distance view_radius, bool actually_prepare_graphics);
 
 Q_SIGNALS:
   void sim_frame_done(time_unit moment);

@@ -29,7 +29,7 @@
 
 #include "../utils.hpp"
 #include "../units.hpp"
-// possible TODO UNITS templatize instead of using fine_units specifically;
+// possible TODO UNITS templatize instead of using fine_distance_units specifically;
 #include "../world_constants.hpp"
 #include "misc_structures.hpp"
 
@@ -48,32 +48,32 @@ typedef geometry_int_type dimensionless;
 typedef physical_quantity<non_normalized_rational<dimensionless>, seconds_t> rational_time;
 typedef faux_optional<rational_time> optional_rational_time;
 
-typedef physical_quantity<non_normalized_rational<dimensionless>, fine_units_t> rational_coord;
+typedef physical_quantity<non_normalized_rational<dimensionless>, fine_distance_units_t> rational_coord;
 typedef faux_optional<rational_coord> optional_rational_coord;
 
 typedef non_normalized_rational<dimensionless> dimensionless_rational;
 typedef faux_optional<dimensionless_rational> optional_dimensionless_rational;
 
-typedef typename units_pow<fine_units_t, 2>::type fine_units2_t;
-typedef typename units_pow<fine_units_t, 3>::type fine_units3_t;
-typedef typename units_pow<fine_units_t, 4>::type fine_units4_t;
-typedef typename units_pow<fine_units_t, 5>::type fine_units5_t;
-typedef typename units_prod<fine_units_t, pseudo_t>::type pseudo_fine_units_t;
-typedef typename units_prod<fine_units2_t, pseudo_t>::type pseudo_fine_units2_t;
-typedef typename units_prod<fine_units3_t, pseudo_t>::type pseudo_fine_units3_t;
-typedef typename units_prod<fine_units4_t, pseudo_t>::type pseudo_fine_units4_t;
-typedef typename units_prod<fine_units5_t, pseudo_t>::type pseudo_fine_units5_t;
+typedef typename units_pow<fine_distance_units_t, 2>::type fine_distance_units2_t;
+typedef typename units_pow<fine_distance_units_t, 3>::type fine_distance_units3_t;
+typedef typename units_pow<fine_distance_units_t, 4>::type fine_distance_units4_t;
+typedef typename units_pow<fine_distance_units_t, 5>::type fine_distance_units5_t;
+typedef typename units_prod<fine_distance_units_t, pseudo_t>::type pseudo_fine_distance_units_t;
+typedef typename units_prod<fine_distance_units2_t, pseudo_t>::type pseudo_fine_distance_units2_t;
+typedef typename units_prod<fine_distance_units3_t, pseudo_t>::type pseudo_fine_distance_units3_t;
+typedef typename units_prod<fine_distance_units4_t, pseudo_t>::type pseudo_fine_distance_units4_t;
+typedef typename units_prod<fine_distance_units5_t, pseudo_t>::type pseudo_fine_distance_units5_t;
 
-typedef physical_quantity<geometry_int_type, fine_units_t> coord;
-typedef physical_quantity<geometry_int_type, fine_units2_t> coord2;
-typedef physical_quantity<geometry_int_type, fine_units3_t> coord3;
-typedef physical_quantity<geometry_int_type, fine_units4_t> coord4;
-typedef physical_quantity<geometry_int_type, fine_units5_t> coord5;
-typedef physical_quantity<geometry_int_type, pseudo_fine_units_t> pseudocoord;
-typedef physical_quantity<geometry_int_type, pseudo_fine_units2_t> pseudocoord2;
-typedef physical_quantity<geometry_int_type, pseudo_fine_units3_t> pseudocoord3;
-typedef physical_quantity<geometry_int_type, pseudo_fine_units4_t> pseudocoord4;
-typedef physical_quantity<geometry_int_type, pseudo_fine_units5_t> pseudocoord5;
+typedef physical_quantity<geometry_int_type, fine_distance_units_t> coord;
+typedef physical_quantity<geometry_int_type, fine_distance_units2_t> coord2;
+typedef physical_quantity<geometry_int_type, fine_distance_units3_t> coord3;
+typedef physical_quantity<geometry_int_type, fine_distance_units4_t> coord4;
+typedef physical_quantity<geometry_int_type, fine_distance_units5_t> coord5;
+typedef physical_quantity<geometry_int_type, pseudo_fine_distance_units_t> pseudocoord;
+typedef physical_quantity<geometry_int_type, pseudo_fine_distance_units2_t> pseudocoord2;
+typedef physical_quantity<geometry_int_type, pseudo_fine_distance_units3_t> pseudocoord3;
+typedef physical_quantity<geometry_int_type, pseudo_fine_distance_units4_t> pseudocoord4;
+typedef physical_quantity<geometry_int_type, pseudo_fine_distance_units5_t> pseudocoord5;
 typedef vector3<coord> vect;
 typedef vector3<coord2> vect2;
 typedef vector3<coord3> vect3;
@@ -86,7 +86,7 @@ typedef vector3<pseudocoord4> pseudovect4;
 typedef vector3<pseudocoord5> pseudovect5;
 
 // TODO check if these ought be the same as the world_constants units
-typedef typename units_prod<fine_units_t, dim::second<(-1)>>::type geom_velocity_units_t;
+typedef typename units_prod<fine_distance_units_t, dim::second<(-1)>>::type geom_velocity_units_t;
 typedef physical_quantity<geometry_int_type, geom_velocity_units_t> geom_velocity_scalar;
 typedef vector3<geom_velocity_scalar> geom_velocity_vect;
 
@@ -141,23 +141,23 @@ public:
     return result;
   }
   static bounding_box min_and_size(vect min, vect size) {
-    bounding_box result(min, min + (size - vect(1*fine_units, 1*fine_units, 1*fine_units)));
+    bounding_box result(min, min + (size - vect(1*fine_distance_units, 1*fine_distance_units, 1*fine_distance_units)));
     return result;
   }
   static bounding_box size_and_max(vect size, vect max) {
-    bounding_box result(max - (size - vect(1*fine_units, 1*fine_units, 1*fine_units)), max);
+    bounding_box result(max - (size - vect(1*fine_distance_units, 1*fine_distance_units, 1*fine_distance_units)), max);
     return result;
   }
 
   vect min()const { return min_; }
   vect max()const { return max_; }
   vect size_minus_one()const { return max_-min_; }
-  vect size()const { return size_minus_one() + vect(1*fine_units, 1*fine_units, 1*fine_units); }
+  vect size()const { return size_minus_one() + vect(1*fine_distance_units, 1*fine_distance_units, 1*fine_distance_units); }
   
   coord min(which_dimension_type dim)const { return min_(dim); }
   coord max(which_dimension_type dim)const { return max_(dim); }
   coord size_minus_one(which_dimension_type dim)const { return max_(dim)-min_(dim); }
-  coord size(which_dimension_type dim)const { return size_minus_one(dim) + 1*fine_units; }
+  coord size(which_dimension_type dim)const { return size_minus_one(dim) + 1*fine_distance_units; }
 
   void set_min_holding_max_constant(vect min) { min_ = min; }
   void set_max_holding_min_constant(vect max) { max_ = max; }
@@ -186,28 +186,28 @@ public:
     typedef equivalent_collision_detector_bounding_box::coordinate_array uint_array;
     
     uint_array uint_min = {{
-      uint_t(get_primitive_int(get(min(X), fine_units))),
-      uint_t(get_primitive_int(get(min(Y), fine_units))),
-      uint_t(get_primitive_int(get(min(Z), fine_units)))
+      uint_t(get_primitive_int(get(min(X), fine_distance_units))),
+      uint_t(get_primitive_int(get(min(Y), fine_distance_units))),
+      uint_t(get_primitive_int(get(min(Z), fine_distance_units)))
     }};
     uint_array uint_max = {{
-      uint_t(get_primitive_int(get(max(X), fine_units))),
-      uint_t(get_primitive_int(get(max(Y), fine_units))),
-      uint_t(get_primitive_int(get(max(Z), fine_units)))
+      uint_t(get_primitive_int(get(max(X), fine_distance_units))),
+      uint_t(get_primitive_int(get(max(Y), fine_distance_units))),
+      uint_t(get_primitive_int(get(max(Z), fine_distance_units)))
     }};
     return equivalent_collision_detector_bounding_box::min_and_max(uint_min, uint_max);
   }
   bounding_box(equivalent_collision_detector_bounding_box const& b) {
     typedef int64_t int_t; // a modulo conversion
     min_ = vect(
-      coord(int_t(b.min(X)), fine_units),
-      coord(int_t(b.min(Y)), fine_units),
-      coord(int_t(b.min(Z)), fine_units)
+      coord(int_t(b.min(X)), fine_distance_units),
+      coord(int_t(b.min(Y)), fine_distance_units),
+      coord(int_t(b.min(Z)), fine_distance_units)
     );
     max_ = vect(
-      coord(int_t(b.max(X)), fine_units),
-      coord(int_t(b.max(Y)), fine_units),
-      coord(int_t(b.max(Z)), fine_units)
+      coord(int_t(b.max(X)), fine_distance_units),
+      coord(int_t(b.max(Y)), fine_distance_units),
+      coord(int_t(b.max(Z)), fine_distance_units)
     );
     is_anywhere_ = true;
   }

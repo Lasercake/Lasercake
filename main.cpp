@@ -146,26 +146,26 @@ std::string show_microseconds_per_frame_as_fps(microseconds_t monotonic_microsec
 
 object_identifier init_test_world_and_return_our_robot(
       world& w, bool crazy_lasers, bool log_microseconds = true) {
-  const vector3<fine_scalar> laser_loc = world_center_fine_coords
-    + vector3<fine_scalar>(10LL*tile_width + 2*fine_units,
-                           10LL*tile_width + 2*fine_units,
-                           10LL*tile_width + 2*fine_units);
+  const vector3<distance> laser_loc = world_center_fine_coords
+    + vector3<distance>(10LL*tile_width + 2*fine_distance_units,
+                           10LL*tile_width + 2*fine_distance_units,
+                           10LL*tile_width + 2*fine_distance_units);
   const shared_ptr<robot> baz (new robot(
-    laser_loc - vector3<fine_scalar>(0, 0, tile_width*2),
-    vector3<fine_scalar>((5<<9)*fine_units, (3<<9)*fine_units, 0 /*TODO UNITS make class vector3_direction*/)));
+    laser_loc - vector3<distance>(0, 0, tile_width*2),
+    vector3<distance>((5<<9)*fine_distance_units, (3<<9)*fine_distance_units, 0 /*TODO UNITS make class vector3_direction*/)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
   const shared_ptr<autorobot> aur (new autorobot(
-    laser_loc - vector3<fine_scalar>(tile_width*4,tile_width*4,tile_width*2),
-    vector3<fine_scalar>((5<<9)*fine_units, (3<<9)*fine_units, 0 /*TODO UNITS make class vector3_direction*/)));
+    laser_loc - vector3<distance>(tile_width*4,tile_width*4,tile_width*2),
+    vector3<distance>((5<<9)*fine_distance_units, (3<<9)*fine_distance_units, 0 /*TODO UNITS make class vector3_direction*/)));
   w.try_create_object(aur); // we just assume that this works
 
   if(crazy_lasers) {
     const shared_ptr<laser_emitter> foo (new laser_emitter(
       laser_loc,
-      vector3<fine_scalar>(5*fine_units, 3*fine_units, 1*fine_units /*TODO UNITS make class vector3_direction*/)));
+      vector3<distance>(5*fine_distance_units, 3*fine_distance_units, 1*fine_distance_units /*TODO UNITS make class vector3_direction*/)));
     const shared_ptr<laser_emitter> bar (new laser_emitter(
-      laser_loc + vector3<fine_scalar>(0,0,tile_width*2),
-      vector3<fine_scalar>(5*fine_units, 4*fine_units, -1*fine_units /*TODO UNITS make class vector3_direction*/)));
+      laser_loc + vector3<distance>(0,0,tile_width*2),
+      vector3<distance>(5*fine_distance_units, 4*fine_distance_units, -1*fine_distance_units /*TODO UNITS make class vector3_direction*/)));
     w.try_create_object(foo);
     w.try_create_object(bar);
   }
@@ -190,8 +190,8 @@ object_identifier init_test_world_and_return_our_robot(
     // around world-center.  This is an interim way to get rid of that annoying lag, at the cost
     // of a bit more of annoying startup time.
     const bounding_box initial_area = bounding_box::min_and_max(
-      world_center_fine_coords - vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80),
-      world_center_fine_coords + vector3<fine_scalar>(tile_width*80,tile_width*80,tile_width*80)
+      world_center_fine_coords - vector3<distance>(tile_width*80,tile_width*80,tile_width*80),
+      world_center_fine_coords + vector3<distance>(tile_width*80,tile_width*80,tile_width*80)
     );
     w.ensure_realization_of_space(initial_area, FULL_REALIZATION);
     w.get_tiles_exposed_to_collision_within(tiles_near_start,
@@ -265,7 +265,7 @@ void LasercakeSimulator::new_input_as_of(time_unit /*moment*/, input_news_t inpu
 }
 
 // TODO think about that input_news argument and the timing of when it's read etc.
-void LasercakeSimulator::prepare_graphics(input_news_t input_since_last_prepare, fine_scalar view_radius, bool actually_prepare_graphics) {
+void LasercakeSimulator::prepare_graphics(input_news_t input_since_last_prepare, distance view_radius, bool actually_prepare_graphics) {
   const microseconds_t microseconds_before_drawing = get_this_thread_microseconds();
   gl_data_ptr_t gl_data_ptr(new gl_data_t());
   if(actually_prepare_graphics) {
@@ -402,7 +402,7 @@ int main(int argc, char *argv[])
     config.view_radius =
       physical_quantity<lint64_t, tile_widths_t>(
           vm["view-radius"].as<uint32_t>() * tile_widths)
-      * identity(fine_units / tile_widths);
+      * identity(fine_distance_units / tile_widths);
     if(!config.run_drawing_code) {
       config.have_gui = false;
     }
@@ -448,7 +448,7 @@ int main(int argc, char *argv[])
   qRegisterMetaType<frame_output_t>("frame_output_t");
   qRegisterMetaType<gl_data_ptr_t>("gl_data_ptr_t");
   qRegisterMetaType<config_struct>("config_struct");
-  qRegisterMetaType<fine_scalar>("fine_scalar");
+  qRegisterMetaType<distance>("distance");
   qRegisterMetaType<time_unit>("time_unit");
 
   QFontDatabase::addApplicationFont(":/resources/VC_Granger_ch8plus.ttf");
@@ -790,7 +790,7 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
     Q_ARG(worldgen_function_t, worldgen), Q_ARG(config_struct, config_));
 
   QMetaObject::invokeMethod(&*simulator_, "prepare_graphics", Qt::AutoConnection,
-    Q_ARG(input_news_t, input_news_t()), Q_ARG(fine_scalar, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
+    Q_ARG(input_news_t, input_news_t()), Q_ARG(distance, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
 }
 
 void LasercakeController::invoke_simulation_step_() {
@@ -814,7 +814,7 @@ void LasercakeController::invoke_simulation_step_() {
     QMetaObject::invokeMethod(&*simulator_, "new_input_as_of", Qt::QueuedConnection,
       Q_ARG(time_unit, game_time_), Q_ARG(input_news_t, input_news));
     QMetaObject::invokeMethod(&*simulator_, "prepare_graphics", Qt::QueuedConnection,
-      Q_ARG(input_news_t, input_news), Q_ARG(fine_scalar, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
+      Q_ARG(input_news_t, input_news), Q_ARG(distance, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
   }
 }
 

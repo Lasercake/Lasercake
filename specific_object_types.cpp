@@ -74,7 +74,7 @@ namespace laserbeam {
       }
       const tile_bounding_box tile_bbox = cube_bbox_to_tile_bounding_box(bbox);
       const geom::optional_dimensionless_rational new_distance =
-        geom::get_first_intersection(beam_, convert_to_fine_units(tile_bbox));
+        geom::get_first_intersection(beam_, convert_to_fine_distance_units(tile_bbox));
       if(new_distance) {
         assert_if_ASSERT_EVERYTHING(*new_distance >= latest_distance_);
         latest_distance_ = *new_distance;
@@ -167,12 +167,12 @@ void float_above_ground(vector3<velocity1d>& velocity_, world& w, object_identif
     tile_location loc_below_bottom_middle =
       w.make_tile_location(tile_containing_bottom_middle, COMPLETELY_IMAGINARY).get_neighbor<zminus>(CONTENTS_ONLY);
     if (loc_below_bottom_middle.stuff_at().contents() != AIR) {
-      target_height = lower_bound_in_fine_units(loc_below_bottom_middle.coords()(Z), Z) + tile_height * 9 / 4;
+      target_height = lower_bound_in_fine_distance_units(loc_below_bottom_middle.coords()(Z), Z) + tile_height * 9 / 4;
     }
     else {
       loc_below_bottom_middle = loc_below_bottom_middle.get_neighbor<zminus>(CONTENTS_ONLY);
       if (loc_below_bottom_middle.stuff_at().contents() != AIR) {
-        target_height = lower_bound_in_fine_units(loc_below_bottom_middle.coords()(Z), Z) + tile_height * 9 / 4;
+        target_height = lower_bound_in_fine_distance_units(loc_below_bottom_middle.coords()(Z), Z) + tile_height * 9 / 4;
       }
     }
   }

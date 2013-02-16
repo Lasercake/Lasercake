@@ -109,32 +109,32 @@ inline vector3<double> cast_vector3_to_double(vector3<Int> v) {
   return vector3<double>(get_primitive_double(v.x), get_primitive_double(v.y), get_primitive_double(v.z));
 }
 
-inline GLfloat convert_distance_to_GL(fine_scalar distance) {
-  return get_primitive_float(distance / fine_units);
+inline GLfloat convert_distance_to_GL(distance distance) {
+  return get_primitive_float(distance / fine_distance_units);
 }
-inline vector3<GLfloat> convert_displacement_to_GL(vector3<fine_scalar> distance) {
-  return cast_vector3_to_float(distance / fine_units);
+inline vector3<GLfloat> convert_displacement_to_GL(vector3<distance> distance) {
+  return cast_vector3_to_float(distance / fine_distance_units);
 }
 
-inline double convert_distance_to_double(fine_scalar distance) {
-  return get_primitive_double(distance / fine_units);
+inline double convert_distance_to_double(distance distance) {
+  return get_primitive_double(distance / fine_distance_units);
 }
-inline vector3<double> convert_displacement_to_double(vector3<fine_scalar> distance) {
-  return cast_vector3_to_double(distance / fine_units);
+inline vector3<double> convert_displacement_to_double(vector3<distance> distance) {
+  return cast_vector3_to_double(distance / fine_distance_units);
 }
 
 static const vector3<GLfloat> tile_size_float = convert_displacement_to_GL(tile_size);
 static const vector3<double> tile_size_double = convert_displacement_to_double(tile_size);
 
-inline vector3<GLfloat> convert_coordinates_to_GL(vector3<fine_scalar> view_center, vector3<fine_scalar> input) {
-  return cast_vector3_to_float((input - view_center) / fine_units);
+inline vector3<GLfloat> convert_coordinates_to_GL(vector3<distance> view_center, vector3<distance> input) {
+  return cast_vector3_to_float((input - view_center) / fine_distance_units);
 }
 
 inline vector3<GLfloat> convert_tile_coordinates_to_GL(vector3<double> view_center_double, vector3<tile_coordinate> input) {
   // (Floats don't have enough precision to represent tile_coordinates exactly,
   // which before subtraction they must do. Doubles do.)
-  vector3<double> tile_fine_scalar_min = cast_vector3_to_double(input).multiply_piecewise_by(tile_size_double);
-  vector3<GLfloat> tile_gl_min(tile_fine_scalar_min - view_center_double);
+  vector3<double> tile_distance_min = cast_vector3_to_double(input).multiply_piecewise_by(tile_size_double);
+  vector3<GLfloat> tile_gl_min(tile_distance_min - view_center_double);
   return tile_gl_min;
 }
 
@@ -204,7 +204,7 @@ void push_quad(gl_collection& coll,
 }
 
 // TODO allow choosing each polygon vertex's color?
-void push_convex_polygon(vector3<fine_scalar> const& view_loc,
+void push_convex_polygon(vector3<distance> const& view_loc,
                          gl_collection& coll,
                          std::vector<geom::vect> const& vertices,
                          color const& c) {
@@ -225,17 +225,17 @@ void push_convex_polygon(vector3<fine_scalar> const& view_loc,
 }
 
 
-fine_scalar manhattan_distance_to_bounding_box(bounding_box b, vector3<fine_scalar> const& v) {
-  const fine_scalar xdist = (v(X) < b.min(X)) ? (b.min(X) - v(X)) : (v(X) > b.max(X)) ? (v(X) - b.max(X)) : 0;
-  const fine_scalar ydist = (v(Y) < b.min(Y)) ? (b.min(Y) - v(Y)) : (v(Y) > b.max(Y)) ? (v(Y) - b.max(Y)) : 0;
-  const fine_scalar zdist = (v(Z) < b.min(Z)) ? (b.min(Z) - v(Z)) : (v(Z) > b.max(Z)) ? (v(Z) - b.max(Z)) : 0;
+distance manhattan_distance_to_bounding_box(bounding_box b, vector3<distance> const& v) {
+  const distance xdist = (v(X) < b.min(X)) ? (b.min(X) - v(X)) : (v(X) > b.max(X)) ? (v(X) - b.max(X)) : 0;
+  const distance ydist = (v(Y) < b.min(Y)) ? (b.min(Y) - v(Y)) : (v(Y) > b.max(Y)) ? (v(Y) - b.max(Y)) : 0;
+  const distance zdist = (v(Z) < b.min(Z)) ? (b.min(Z) - v(Z)) : (v(Z) > b.max(Z)) ? (v(Z) - b.max(Z)) : 0;
   return xdist + ydist + zdist;
 }
 
-tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_box b, vector3<fine_scalar> const& v) {
-  const fine_scalar xdist = (v(X) < b.min(X)) ? (b.min(X) - v(X)) : (v(X) > b.max(X)) ? (v(X) - b.max(X)) : 0;
-  const fine_scalar ydist = (v(Y) < b.min(Y)) ? (b.min(Y) - v(Y)) : (v(Y) > b.max(Y)) ? (v(Y) - b.max(Y)) : 0;
-  const fine_scalar zdist = (v(Z) < b.min(Z)) ? (b.min(Z) - v(Z)) : (v(Z) > b.max(Z)) ? (v(Z) - b.max(Z)) : 0;
+tile_coordinate tile_manhattan_distance_to_bounding_box_rounding_down(bounding_box b, vector3<distance> const& v) {
+  const distance xdist = (v(X) < b.min(X)) ? (b.min(X) - v(X)) : (v(X) > b.max(X)) ? (v(X) - b.max(X)) : 0;
+  const distance ydist = (v(Y) < b.min(Y)) ? (b.min(Y) - v(Y)) : (v(Y) > b.max(Y)) ? (v(Y) - b.max(Y)) : 0;
+  const distance zdist = (v(Z) < b.min(Z)) ? (b.min(Z) - v(Z)) : (v(Z) > b.max(Z)) ? (v(Z) - b.max(Z)) : 0;
   // Like (xdist / tile_width + ydist / tile_width + zdist / tile_height) but more precise:
   return (xdist + ydist + (zdist * tile_width / tile_height)) / tile_width;
 }
@@ -254,11 +254,11 @@ tile_coordinate tile_manhattan_distance_to_tile_bounding_box(tile_bounding_box b
 
 
 
-view_on_the_world::view_on_the_world(vector3<fine_scalar> approx_initial_center)
+view_on_the_world::view_on_the_world(vector3<distance> approx_initial_center)
 : view_loc_for_local_display(approx_initial_center),
   view_type(ROBOT),
   local_view_direction(0),
-  surveilled_by_global_display(approx_initial_center + vector3<fine_scalar>(5*tile_width, 5*tile_width, 5*tile_width)),
+  surveilled_by_global_display(approx_initial_center + vector3<distance>(5*tile_width, 5*tile_width, 5*tile_width)),
   global_view_dist(20*tile_width),
   drawing_regular_stuff(true),
   drawing_debug_stuff(true)
@@ -286,16 +286,16 @@ void view_on_the_world::input(input_representation::input_news_t const& input_ne
     const bool down = input_news.is_currently_pressed("down") || input_news.is_currently_pressed("x");
 
     if (fwd) {
-      view_loc_for_local_display += vector3<fine_scalar>(
-        fine_scalar(numeric_representation_cast<double>(tile_width) * std::cos(local_view_direction)) / 10,
-        fine_scalar(numeric_representation_cast<double>(tile_width) * std::sin(local_view_direction)) / 10,
+      view_loc_for_local_display += vector3<distance>(
+        distance(numeric_representation_cast<double>(tile_width) * std::cos(local_view_direction)) / 10,
+        distance(numeric_representation_cast<double>(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
     if (back) {
-      view_loc_for_local_display -= vector3<fine_scalar>(
-        fine_scalar(numeric_representation_cast<double>(tile_width) * std::cos(local_view_direction)) / 10,
-        fine_scalar(numeric_representation_cast<double>(tile_width) * std::sin(local_view_direction)) / 10,
+      view_loc_for_local_display -= vector3<distance>(
+        distance(numeric_representation_cast<double>(tile_width) * std::cos(local_view_direction)) / 10,
+        distance(numeric_representation_cast<double>(tile_width) * std::sin(local_view_direction)) / 10,
         0
       );
     }
@@ -389,8 +389,8 @@ void prepare_tile(world const& w, gl_collection& coll, tile_location const& loc,
   bool draw_y_close_side;
   bool draw_z_close_side;
 
-  const vector3<double> tile_fine_scalar_min = cast_vector3_to_double(coords).multiply_piecewise_by(tile_size_double);
-  const vector3<GLfloat> tile_gl_min = vector3<GLfloat>(tile_fine_scalar_min - view_loc_double);
+  const vector3<double> tile_distance_min = cast_vector3_to_double(coords).multiply_piecewise_by(tile_size_double);
+  const vector3<GLfloat> tile_gl_min = vector3<GLfloat>(tile_distance_min - view_loc_double);
   const vector3<GLfloat> tile_gl_max = tile_gl_min + tile_size_float;
   vector3<GLfloat> tile_gl_near;
   vector3<GLfloat> tile_gl_far;
@@ -547,7 +547,7 @@ struct bbox_tile_prep_visitor {
   world& w;
 };
 
-void prepare_shape(vector3<fine_scalar> view_loc, gl_collection& coll,
+void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
                    shape const& object_shape, color shape_color) {
   lasercake_vector<bounding_box>::type const& obj_bboxes = object_shape.get_boxes();
   for (bounding_box const& bbox : obj_bboxes) {
@@ -635,21 +635,21 @@ void view_on_the_world::prepare_gl_data(
   gl_collections_by_distance.resize(max_gl_collection);
 
   //These values are computed every GL-preparation-frame.
-  vector3<fine_scalar> view_loc;
-  vector3<fine_scalar> view_towards;
+  vector3<distance> view_loc;
+  vector3<distance> view_towards;
 
   if (view_type == ROBOT) {
     assert(config.view_from != NO_OBJECT);
     bounding_box b = w.get_object_personal_space_shapes().find(config.view_from)->second.bounds();
     view_loc = ((b.min() + b.max()) / 2);
-    vector3<fine_scalar> facing = boost::dynamic_pointer_cast<object_with_eye_direction>(w.get_objects().find(config.view_from)->second)->get_facing();
+    vector3<distance> facing = boost::dynamic_pointer_cast<object_with_eye_direction>(w.get_objects().find(config.view_from)->second)->get_facing();
     view_towards = view_loc + facing;
   }
   else if (view_type == LOCAL) {
     view_loc = view_loc_for_local_display;
-    view_towards = view_loc + vector3<fine_scalar>(
-      fine_scalar(100*numeric_representation_cast<double>(tile_width) * std::cos(local_view_direction)),
-      fine_scalar(100*numeric_representation_cast<double>(tile_width) * std::sin(local_view_direction)),
+    view_towards = view_loc + vector3<distance>(
+      distance(100*numeric_representation_cast<double>(tile_width) * std::cos(local_view_direction)),
+      distance(100*numeric_representation_cast<double>(tile_width) * std::sin(local_view_direction)),
       0
     );
   }
@@ -659,14 +659,14 @@ void view_on_the_world::prepare_gl_data(
         / identity(time_units / seconds) / seconds;
     view_towards = surveilled_by_global_display;
     const auto global_view_dist_double = numeric_representation_cast<double>(global_view_dist);
-    view_loc = surveilled_by_global_display + vector3<fine_scalar>(
-      fine_scalar(global_view_dist_double * std::cos(game_time_in_seconds * 3 / 4)),
-      fine_scalar(global_view_dist_double * std::sin(game_time_in_seconds * 3 / 4)),
-      fine_scalar(global_view_dist_double / 2 + global_view_dist_double / 4 * std::sin(game_time_in_seconds / 2))
+    view_loc = surveilled_by_global_display + vector3<distance>(
+      distance(global_view_dist_double * std::cos(game_time_in_seconds * 3 / 4)),
+      distance(global_view_dist_double * std::sin(game_time_in_seconds * 3 / 4)),
+      distance(global_view_dist_double / 2 + global_view_dist_double / 4 * std::sin(game_time_in_seconds / 2))
     );
   }
 
-  const vector3<double> view_loc_double(cast_vector3_to_double(view_loc / fine_units));
+  const vector3<double> view_loc_double(cast_vector3_to_double(view_loc / fine_distance_units));
   const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
 
   const vector3<GLfloat> facing = convert_displacement_to_GL(view_towards - view_loc);
@@ -688,11 +688,11 @@ void view_on_the_world::prepare_gl_data(
   // to a tile; so adjust that.  TODO: are all the signs correct?
   frustum view_frustum_in_fine_distance_units_for_view_tile_loc
     = view_frustum_in_fine_distance_units;
-  const vector3<float> view_tile_loc_rounding_error_in_fine_units
-    = cast_vector3_to_float(view_loc - lower_bound_in_fine_units(view_tile_loc_rounded_down));
+  const vector3<float> view_tile_loc_rounding_error_in_fine_distance_units
+    = cast_vector3_to_float(view_loc - lower_bound_in_fine_distance_units(view_tile_loc_rounded_down));
   for(glm::vec4& half_space : view_frustum_in_fine_distance_units_for_view_tile_loc.half_spaces) {
     half_space.w -= vector3<float>(half_space.x, half_space.y, half_space.z)
-                      .dot<float>(view_tile_loc_rounding_error_in_fine_units);
+                      .dot<float>(view_tile_loc_rounding_error_in_fine_distance_units);
   }
   const frustum view_frustum_in_tile_count_units =
     convert_frustum_from_fine_distance_units_to_tile_count_units(view_frustum_in_fine_distance_units_for_view_tile_loc);
@@ -772,10 +772,10 @@ void view_on_the_world::prepare_gl_data(
   if(gl_data.tint_everything_with_this_color.a == 0xff) { return; }
 
 
-  const fine_scalar view_dist = config.view_radius;
+  const distance view_dist = config.view_radius;
   const bounding_box fine_view_bounds = bounding_box::min_and_max(
-      view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
-      view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
+      view_loc - vector3<distance>(view_dist,view_dist,view_dist),
+      view_loc + vector3<distance>(view_dist,view_dist,view_dist)
     );
   const tile_bounding_box tile_view_bounds_pre = get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(fine_view_bounds);
   // This is perhaps suboptimal

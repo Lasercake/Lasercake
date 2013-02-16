@@ -35,8 +35,8 @@ class dull_ghost : public autonomous_object {
 public:
   virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
 private:
-  vector3<fine_scalar> location_;
-  vector3<fine_scalar> facing_;//double view_direction;
+  vector3<distance> location_;
+  vector3<distance> facing_;//double view_direction;
 };
 
 class circling_surveillance_ghost : public autonomous_object {
@@ -46,69 +46,69 @@ private:
   // circles a particular location at a distance
   // currently, the angle of view is a function of the current time, lol;
   // a trigonometric function, too, so we can't call it except in display code.
-  vector3<fine_scalar> surveilled_location_;
-  fine_scalar view_dist_;
+  vector3<distance> surveilled_location_;
+  distance view_dist_;
 };
 #endif
 
 class robot : public mobile_object, public autonomous_object, public object_with_eye_direction, public object_with_player_instructions {
 public:
-  robot(vector3<fine_scalar> location, vector3<fine_scalar> facing):location_(location),facing_(facing),carrying_(false){}
+  robot(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing),carrying_(false){}
   
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
   
   virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
-  vector3<fine_scalar> get_facing()const { return facing_; }
+  vector3<distance> get_facing()const { return facing_; }
   vector3<tile_coordinate> get_building_tile(world& w)const; // TODO: This use of world& should be able to be world const&
 
   std::string player_instructions()const;
 private:
-  vector3<fine_scalar> location_;
-  vector3<fine_scalar> facing_;
+  vector3<distance> location_;
+  vector3<distance> facing_;
   int carrying_;
 };
 
 class laser_emitter : public mobile_object, public autonomous_object, public object_with_eye_direction {
 public:
-  laser_emitter(vector3<fine_scalar> location, vector3<fine_scalar> facing):location_(location),facing_(facing){}
+  laser_emitter(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing){}
   
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
   
   virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier id);
-  vector3<fine_scalar> get_facing()const { return facing_; }
+  vector3<distance> get_facing()const { return facing_; }
 private:
-  vector3<fine_scalar> location_;
-  vector3<fine_scalar> facing_;
+  vector3<distance> location_;
+  vector3<distance> facing_;
 };
 
 class autorobot : public mobile_object, public autonomous_object, public object_with_eye_direction {
 public:
-  autorobot(vector3<fine_scalar> location, vector3<fine_scalar> facing);
+  autorobot(vector3<distance> location, vector3<distance> facing);
 
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
 
   virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
-  vector3<fine_scalar> get_facing()const { return facing_; }
+  vector3<distance> get_facing()const { return facing_; }
 private:
-  vector3<fine_scalar> location_;
-  vector3<fine_scalar> initial_location_;
-  vector3<fine_scalar> facing_;
+  vector3<distance> location_;
+  vector3<distance> initial_location_;
+  vector3<distance> facing_;
   int carrying_;
 };
 
 class random_walk_rocket : public mobile_object, public autonomous_object {
 public:
-  random_walk_rocket(vector3<fine_scalar> location, vector3<fine_scalar> facing);
+  random_walk_rocket(vector3<distance> location, vector3<distance> facing);
 
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
 
   virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
 private:
-  vector3<fine_scalar> initial_location_;
+  vector3<distance> initial_location_;
 };
 
 
