@@ -568,6 +568,23 @@ SCENARIO_NAMED("spiky") {
 SCENARIO_NAMED("spiky3") {
     return worldgen_from_column_spec(spiky3());
 }
+// These are worst cases in terms of number of non-interior (theoretically
+// visible) tiles within a radius; useful to test as a stress-test and
+// because someone might intentionally build them (to be mean, or more
+// likely, because it's actually useful for some in-game-engineering
+// reason).
+SCENARIO_NAMED("spiky_checkerboard") {
+    return worldgen_from_column_spec([](world_column_builder& b, coord x, coord y, coord, coord) {
+      b.specify_lowest(ROCK);
+      b.specify(wcc - (1<<14) + (((x ^ y) & 1) << 18), AIR);
+    });
+}
+SCENARIO_NAMED("spiky_3dcheckerboard") {
+    return worldgen_from_tilespec([](coords l) {
+      return ((l.x ^ l.y ^ l.z) & 1) ? ROCK : AIR;
+    });
+}
+
 SCENARIO_NAMED("pressure_tunnel") {
     return pressure_tunnel(false);
 }
