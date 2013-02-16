@@ -94,10 +94,13 @@ void gl_renderer::output_gl_data_to_OpenGL(
   //glEnable(GL_DEPTH_TEST)
   //glDepthFunc(GL_LEQUAL);
   glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
-  glLoadIdentity();
 
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
   // TODO convert these GLU calls to plain GL calls?
   gluPerspective(80, (double(viewport_width) / viewport_height), 0.1*tile_width_double, 300.0*tile_width_double);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
   gluLookAt(0, 0, 0,
             gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
             gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);
