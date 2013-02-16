@@ -103,6 +103,14 @@
     #define DETECTED_uint128_t __uint128_t
   #endif
 
+  #if (!__clang__ && !BOOST_INTEL && ((__GNUC__ < 4) || (__GNUC__ == 4 && __GNUC_MINOR__ < 7)))
+    #define LASERCAKE_GCC_LESS_THAN_4_7 1
+  #endif
+
+  #if LASERCAKE_GCC_LESS_THAN_4_7
+    #define override
+  #endif
+
   // Don't use LASERCAKE_IT_SEEMS_TO_BE_WINDOWS outside this fake feature
   // detection section if you can help it! Ask about specific features
   // instead.

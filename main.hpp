@@ -150,14 +150,13 @@ Q_SIGNALS:
   void key_changed(input_representation::key_change_t);
 
 protected:
-  // overriding virtual functions
-  bool event(QEvent*);
-  //void keyPressEvent(QKeyEvent*);
-  //void keyReleaseEvent(QKeyEvent*);
-  void focusOutEvent(QFocusEvent*);
-  void resizeEvent(QResizeEvent*);
-  void paintEvent(QPaintEvent*);
-  void closeEvent(QCloseEvent*);
+  bool event(QEvent*) override;
+  //void keyPressEvent(QKeyEvent*) override;
+  //void keyReleaseEvent(QKeyEvent*) override;
+  void focusOutEvent(QFocusEvent*) override;
+  void resizeEvent(QResizeEvent*) override;
+  void paintEvent(QPaintEvent*) override;
+  void closeEvent(QCloseEvent*) override;
 
 private:
   void key_change_(QKeyEvent* event, bool pressed);
