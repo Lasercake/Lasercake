@@ -227,6 +227,7 @@ std::string robot::player_instructions()const {
     "up, w: look up; "
     "down, x: look down\n"
     "space: jump\n" //hmm should we have a jump and have it do this
+    "c: dig\n"
     "l: fire dual lasers\n"
     "m: make digging robot that goes towards the current facing"
     " and leaves rubble at the current location\n"
@@ -279,13 +280,23 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   const object_or_tile_identifier digging_laser_target = laser_find(w, my_id, location_, digging_laser_delta, true, &result_delta);
   if (input_news.num_times_pressed("c")) {
     if (tile_location const* locp = digging_laser_target.get_tile_location()) {
+#if 0
       if ((carrying_ < robot_max_carrying_capacity) &&
           (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
         ++carrying_;
         w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
       }
+#endif
+      if (locp->stuff_at().contents() == ROCK) {
+        w.replace_substance(*locp, ROCK, RUBBLE);
+      }
+      else if (locp->stuff_at().contents() == RUBBLE) {
+        // hack?
+        get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_distance>(facing_ * tile_width * 6 / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units)) / seconds / identity(fixed_frame_lengths / seconds);
+      }
     }
   }
+#if 0
   else if (input_news.num_times_pressed("v") && (carrying_ > 0) && digging_laser_target == NO_OBJECT) {
     --carrying_;
     const tile_location target_loc = w.make_tile_location(
@@ -294,6 +305,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     assert(target_loc.stuff_at().contents() == AIR);
     w.replace_substance(target_loc, AIR, RUBBLE);
   }
+#endif
   else if (digging_laser_target != NO_OBJECT) {
     // hack - draw a thing indicating where we'd hit
     vector3<distance> hitloc = location_ + result_delta;
