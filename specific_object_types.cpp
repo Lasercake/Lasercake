@@ -234,6 +234,7 @@ std::string robot::player_instructions()const {
     "p: create solar panel\n"
     "o: create refinery\n"
     "b: create conveyor belt\n"
+    "v: rotate conveyor belt\n"
     "r: fire rockets\n"
     //"(c, v: commented-out ability to pick up things, too bad.)\n"
     ;
@@ -294,6 +295,15 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
       else if (locp->stuff_at().contents() == RUBBLE) {
         // hack way to speed the tile?
         get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_distance>(facing_ * tile_width * 6 / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units)) / seconds / identity(fixed_frame_lengths / seconds);
+      }
+    }
+  }
+  else if (input_news.num_times_pressed("v")) {
+    if (object_identifier const* oidp = digging_laser_target.get_object_identifier()) {
+      if (shared_ptr<object>* obj = w.get_object(*oidp)) {
+        if (shared_ptr<conveyor_belt> belt = boost::dynamic_pointer_cast<conveyor_belt>(*obj)) {
+          belt->rotate();
+        }
       }
     }
   }
@@ -650,13 +660,21 @@ void conveyor_belt::update(world& w, input_representation::input_news_t const&, 
   vector3<sub_tile_velocity>& tile_vel = get_state(w.tile_physics()).active_fluids[loc].velocity;
   sub_tile_velocity target_vel = sub_tile_velocity((tile_width / seconds) * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
   sub_tile_velocity one_frame_acceleration = sub_tile_velocity((20 * meters / seconds / seconds) * identity(tile_physics_sub_tile_distance_units / meters) / identity(fixed_frame_lengths / seconds) / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths);
-  if (tile_vel.x < target_vel) {
-    tile_vel.x += one_frame_acceleration;
-    if (tile_vel.x > target_vel) tile_vel.x = target_vel;
+  if (is_a_positive_directional_cardinal_direction(direction_)) {
+    if (tile_vel(which_dimension_is_cardinal_direction(direction_)) < target_vel) {
+      tile_vel[which_dimension_is_cardinal_direction(direction_)] += one_frame_acceleration;
+      if (tile_vel(which_dimension_is_cardinal_direction(direction_)) > target_vel) tile_vel[which_dimension_is_cardinal_direction(direction_)] = target_vel;
+    }
   }
-  if (tile_vel.z < 0) {
-    tile_vel.z += one_frame_acceleration;
-    if (tile_vel.z > 0) tile_vel.z = 0;
+  else {
+    if (-tile_vel(which_dimension_is_cardinal_direction(direction_)) < target_vel) {
+      tile_vel[which_dimension_is_cardinal_direction(direction_)] -= one_frame_acceleration;
+      if (-tile_vel(which_dimension_is_cardinal_direction(direction_)) > target_vel) tile_vel[which_dimension_is_cardinal_direction(direction_)] = -target_vel;
+    }
+  }
+  if (tile_vel(Z) < 0) {
+    tile_vel[Z] += one_frame_acceleration;
+    if (tile_vel(Z) > 0) tile_vel[Z] = 0;
   }
 }
 

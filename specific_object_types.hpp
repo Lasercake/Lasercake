@@ -141,13 +141,22 @@ private:
 
 class conveyor_belt : public tile_aligned_object, public autonomous_object {
 public:
-  conveyor_belt(vector3<tile_coordinate> location):initial_location_(location){}
+  conveyor_belt(vector3<tile_coordinate> location):initial_location_(location),direction_(xplus){}
   virtual shape get_initial_personal_space_shape()const;
   virtual shape get_initial_detail_shape()const;
 
   virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
+  
+  cardinal_direction direction()const {return direction_;}
+  void rotate() {
+    direction_ =
+            (direction_ == xplus ) ? yplus  :
+            (direction_ == yplus ) ? xminus :
+            (direction_ == xminus) ? yminus : xplus;
+  }
 private:
   vector3<tile_coordinate> initial_location_;
+  cardinal_direction direction_;
 };
 
 
