@@ -2,7 +2,11 @@
 
 import os, sys, subprocess, re, shutil, hashlib
 
-MAKE_PARALLEL_JOBS = 3
+try:
+	import multiprocessing
+	MAKE_PARALLEL_JOBS = multiprocessing.cpu_count() + 1
+except (ImportError,NotImplementedError):
+	MAKE_PARALLEL_JOBS = 2
 
 make_flags = ['-j'+str(MAKE_PARALLEL_JOBS)]
 
