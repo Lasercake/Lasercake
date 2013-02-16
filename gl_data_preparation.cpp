@@ -38,6 +38,62 @@ static_assert(boost::is_same<header_GLubyte, GLubyte>::value, "consistent GL typ
 abstract_gl_data::abstract_gl_data() : data_(*new gl_all_data()) {}
 abstract_gl_data::~abstract_gl_data() { delete &data_; }
 
+std::ostream& operator<<(std::ostream& os, glm::vec4 v) {
+  return os << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
+}
+
+// what about shifting the bounding-cube to near the main thing, or float rounding error...
+template<typename Bbox>
+inline bool overlaps(frustum const& f, Bbox const& bbox) {
+  //std::cerr << "frustoverlaps?\n";
+  for(glm::vec4 const& half_space : f.half_spaces) {
+    const glm::vec4 extremity(
+      get_primitive_int(bbox.min(X)) + (-int(half_space.x >= 0) & get_primitive_int(bbox.size_minus_one(X))),
+      get_primitive_int(bbox.min(Y)) + (-int(half_space.y >= 0) & get_primitive_int(bbox.size_minus_one(Y))),
+      get_primitive_int(bbox.min(Z)) + (-int(half_space.z >= 0) & get_primitive_int(bbox.size_minus_one(Z))),
+      1
+    );
+    //std::cerr << "frustoverlaps  " << half_space << "  " << extremity << "\n";
+    if(glm::dot(half_space, extremity) < 0) {
+      //std::cerr << "frustoverlaps=no\n";
+      return false;
+    }
+  }
+  //std::cerr << "frustoverlaps!!\n";
+  return true;
+}
+template<typename Bbox>
+inline bool subsumes(frustum const& f, Bbox const& bbox) {
+  //std::cerr << "frustsubsumes?\n";
+  for(glm::vec4 const& half_space : f.half_spaces) {
+    const glm::vec4 extremity(
+      get_primitive_int(bbox.min(X)) + (-int(half_space.x < 0) & get_primitive_int(bbox.size_minus_one(X))),
+      get_primitive_int(bbox.min(Y)) + (-int(half_space.y < 0) & get_primitive_int(bbox.size_minus_one(Y))),
+      get_primitive_int(bbox.min(Z)) + (-int(half_space.z < 0) & get_primitive_int(bbox.size_minus_one(Z))),
+      1
+    );
+    //std::cerr << "frustsubsumes  " << half_space << "  " << extremity << "\n";
+    if(glm::dot(half_space, extremity) < 0) {
+      //std::cerr << "frustsubsumes=no\n";
+      return false;
+    }
+  }
+  //std::cerr << "frustsubsumes!!\n";
+  return true;
+}
+
+// there's not really any need for it to be normalized, though we easily could
+// half_space = glm::normalize(half_space)
+frustum convert_frustum_from_fine_distance_units_to_tile_count_units(frustum f) {
+  for(glm::vec4& half_space : f.half_spaces) {
+    half_space.x *= get_primitive_int(tile_width);
+    half_space.y *= get_primitive_int(tile_width);
+    half_space.z *= get_primitive_int(tile_height);
+    // w unchanged
+  }
+  return f;
+}
+
 namespace /* anonymous */ {
 
 // Units: we *could* use units with the floating-point numbers,
@@ -415,13 +471,30 @@ void prepare_tile(world const& w, gl_collection& coll, tile_location const& loc,
   }
 }
 
+// 0 seemed to be the best values speed wise: which means,
+// of course, that it's as if we deleted the code that
+// implements these numbers.
+const num_bits_type tile_exponent_below_which_we_dont_filter = 0;
+// Don't waste time checking against frustums for too-small benefit.
+const num_bits_type tile_exponent_below_which_we_dont_filter_frustums = 0;
 
 struct bbox_tile_prep_visitor {
   tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
-    //within() - over/subs
+    const num_bits_type exp = bbox.size_exponent_in_each_dimension();
+    if(exp < tile_exponent_below_which_we_dont_filter) return true;
     if(!overlaps(bounds_, bbox)) return false;
-    if(subsumes(bounds_, bbox)) return true;
+    power_of_two_bounding_cube<3, tile_coordinate_signed_type> mostly_centred_bbox(
+      vector3<tile_coordinate>(bbox.min()) - view_tile_loc_rounded_down, exp);
+    if((exp >= tile_exponent_below_which_we_dont_filter_frustums)
+        && !overlaps(tile_view_frustum_, mostly_centred_bbox)) return false;
+    if(subsumes(bounds_, bbox) &&
+      ((exp < tile_exponent_below_which_we_dont_filter_frustums)
+        || subsumes(tile_view_frustum_, mostly_centred_bbox))
+    ) {
+      return true;
+    }
     return indeterminate;
+    //maybe have "tribool within()" like overlaps()/subsumes()?
   }
   bool collidable_tile(tile_location const& loc) {
     gl_collection& coll = gl_collections_by_distance.at(
@@ -469,6 +542,7 @@ struct bbox_tile_prep_visitor {
   vector3<double> view_loc_double;
   vector3<tile_coordinate> view_tile_loc_rounded_down;
   tile_bounding_box bounds_;
+  frustum tile_view_frustum_;
   view_on_the_world& view;
   world& w;
 };
@@ -555,7 +629,9 @@ void view_on_the_world::prepare_gl_data(
   gl_collections_by_distance.clear();
   // Calculate a bit conservatively; no harm doing so:
   const size_t max_gl_collection = get_primitive<size_t>(
-    2*(config.view_radius / tile_width) + (config.view_radius / tile_height) + 5);
+    2*(config.view_radius / tile_width) + (config.view_radius / tile_height)
+    + 3*((1<<tile_exponent_below_which_we_dont_filter)-1)
+    + 5);
   gl_collections_by_distance.resize(max_gl_collection);
 
   //These values are computed every GL-preparation-frame.
@@ -593,8 +669,33 @@ void view_on_the_world::prepare_gl_data(
   const vector3<double> view_loc_double(cast_vector3_to_double(view_loc / fine_units));
   const vector3<tile_coordinate> view_tile_loc_rounded_down(get_min_containing_tile_coordinates(view_loc));
 
-  gl_data.facing = convert_displacement_to_GL(view_towards - view_loc);
-  gl_data.facing_up = vector3<GLfloat>(0, 0, 1);
+  const vector3<GLfloat> facing = convert_displacement_to_GL(view_towards - view_loc);
+  const vector3<GLfloat> facing_up(0, 0, 1);
+  gl_data.facing = facing;
+  gl_data.facing_up = facing_up;
+  frustum view_frustum_in_fine_distance_units = make_frustum_from_matrix(
+    make_projection_matrix(float(pretend_aspect_ratio_value_when_culling))
+    * make_view_matrix(facing, facing_up)
+  );
+  // be conservative: don't cull things too near the edge of the frustum;
+  // fight rounding error!
+  // The 1000 was empirically more useful than just 10 or 0.00001.
+  // It probably should be a multiple of tile_width, though I'm not sure.
+  for(glm::vec4& half_space : view_frustum_in_fine_distance_units.half_spaces) {
+    half_space.w += 1000.00001;
+  }
+  // We use tile units comparisons when the view center has been rounded
+  // to a tile; so adjust that.  TODO: are all the signs correct?
+  frustum view_frustum_in_fine_distance_units_for_view_tile_loc
+    = view_frustum_in_fine_distance_units;
+  const vector3<float> view_tile_loc_rounding_error_in_fine_units
+    = cast_vector3_to_float(view_loc - lower_bound_in_fine_units(view_tile_loc_rounded_down));
+  for(glm::vec4& half_space : view_frustum_in_fine_distance_units_for_view_tile_loc.half_spaces) {
+    half_space.w -= vector3<float>(half_space.x, half_space.y, half_space.z)
+                      .dot<float>(view_tile_loc_rounding_error_in_fine_units);
+  }
+  const frustum view_frustum_in_tile_count_units =
+    convert_frustum_from_fine_distance_units_to_tile_count_units(view_frustum_in_fine_distance_units_for_view_tile_loc);
   {
     const heads_up_display_text everywhere_hud_text = {
       "Esc: quit; Tab: switch robot; "
@@ -676,7 +777,13 @@ void view_on_the_world::prepare_gl_data(
       view_loc - vector3<fine_scalar>(view_dist,view_dist,view_dist),
       view_loc + vector3<fine_scalar>(view_dist,view_dist,view_dist)
     );
-  const tile_bounding_box tile_view_bounds = get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(fine_view_bounds);
+  const tile_bounding_box tile_view_bounds_pre = get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(fine_view_bounds);
+  // This is perhaps suboptimal
+  const tile_coordinate tshift = (tile_coordinate(1) << tile_exponent_below_which_we_dont_filter) - tile_coordinate(1);
+  const vector3<tile_coordinate> tshift3(tshift, tshift, tshift);
+  const tile_bounding_box tile_view_bounds = tile_bounding_box::min_and_size(
+    tile_view_bounds_pre.min() - tshift3, tile_view_bounds_pre.size() + tshift3*2);
+  
   //Uncomment this 'if' to see how inefficient the current (Dec 2012) implementation of
   //world::ensure_realization_of_space() is for large spaces (e.g. lasercake -v200).
   //if(w.game_time_elapsed() % (time_units_per_second/3) == 0)
@@ -787,7 +894,8 @@ void view_on_the_world::prepare_gl_data(
 
   if (this->drawing_regular_stuff) {
     w.visit_collidable_tiles(bbox_tile_prep_visitor{
-      gl_collections_by_distance, view_loc_double, view_tile_loc_rounded_down, tile_view_bounds, *this, w
+      gl_collections_by_distance, view_loc_double, view_tile_loc_rounded_down,
+      tile_view_bounds, view_frustum_in_tile_count_units, *this, w
     });
   }
 }

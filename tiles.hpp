@@ -72,21 +72,23 @@ typedef lint32_t tile_coordinate;
 typedef lint32_t tile_coordinate_signed_type;
 
 struct tile_bounding_box {
-  vector3<tile_coordinate> min_;
-  vector3<tile_coordinate> size_;
+  typedef vector3<tile_coordinate> vect;
+  vect min_;
+  vect size_;
   tile_bounding_box(){}
-  tile_bounding_box(vector3<tile_coordinate> coords):min_(coords),size_(1,1,1){}
-  tile_bounding_box(vector3<tile_coordinate> min, vector3<tile_coordinate> size):min_(min),size_(size){}
-  vector3<tile_coordinate> min()const { return min_; }
-  vector3<tile_coordinate> size()const { return size_; }
-  vector3<tile_coordinate> max()const { return min_ + (size_ - vector3<tile_coordinate>(1,1,1)); }
-  vector3<tile_coordinate> size_minus_one()const { return size_ - vector3<tile_coordinate>(1,1,1); }
+  tile_bounding_box(vect coords):min_(coords),size_(1,1,1){}
+  tile_bounding_box(vect min, vect size):min_(min),size_(size){}
+  static tile_bounding_box min_and_size(vect min, vect size) { return tile_bounding_box(min, size); }
+  vect min()const { return min_; }
+  vect size()const { return size_; }
+  vect max()const { return min_ + (size_ - vect(1,1,1)); }
+  vect size_minus_one()const { return size_ - vect(1,1,1); }
   tile_coordinate min(which_dimension_type dim)const { return min_(dim); }
   tile_coordinate size(which_dimension_type dim)const { return size_(dim); }
   tile_coordinate max(which_dimension_type dim)const { return min_(dim) + (size_(dim) - 1); }
   tile_coordinate size_minus_one(which_dimension_type dim)const { return size_(dim) - 1; }
 
-  bool contains(vector3<tile_coordinate> v) {
+  bool contains(vect v) {
     return (v.x >= min_.x && v.x <= min_.x + (size_.x - 1) &&
             v.y >= min_.y && v.y <= min_.y + (size_.y - 1) &&
             v.z >= min_.z && v.z <= min_.z + (size_.z - 1));
@@ -104,7 +106,7 @@ struct tile_bounding_box {
       && min(Z) <= o.min(Z) && (o.min(Z)+o.size(Z)) <= (min(Z)+size(Z));
   }
 
-  class iterator : public boost::iterator_facade<iterator, vector3<tile_coordinate>, boost::forward_traversal_tag, vector3<tile_coordinate>>
+  class iterator : public boost::iterator_facade<iterator, vect, boost::forward_traversal_tag, vect>
   {
     public:
       iterator(){}
@@ -120,9 +122,9 @@ struct tile_bounding_box {
           }
         }
       }
-      vector3<tile_coordinate> dereference()const { return data_.first; }
+      vect dereference()const { return data_.first; }
 
-      explicit iterator(pair<vector3<tile_coordinate>, tile_bounding_box const*> data):data_(data){}
+      explicit iterator(pair<vect, tile_bounding_box const*> data):data_(data){}
 
       friend inline std::ostream& operator<<(std::ostream& os, tile_bounding_box::iterator const& it) {
         return os << '{' << it.data_.second << "@" << it.data_.first << '}';
@@ -130,10 +132,10 @@ struct tile_bounding_box {
     private:
       friend class boost::iterator_core_access;
       friend struct tile_bounding_box;
-      pair<vector3<tile_coordinate>, tile_bounding_box const*> data_;
+      pair<vect, tile_bounding_box const*> data_;
 
   };
-  typedef vector3<tile_coordinate> value_type;
+  typedef vect value_type;
   typedef value_type reference;
   typedef value_type const_reference;
   typedef value_type* pointer;
@@ -144,7 +146,7 @@ struct tile_bounding_box {
   typedef std::ptrdiff_t difference_type;
 
   iterator begin()const{ return iterator(make_pair(min(), this)); }
-  iterator end()const{ return iterator(make_pair(min() + vector3<tile_coordinate>(0, 0, size(Z)), this)); }
+  iterator end()const{ return iterator(make_pair(min() + vect(0, 0, size(Z)), this)); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, tile_bounding_box const& bb) {

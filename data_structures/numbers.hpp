@@ -836,6 +836,8 @@ template<typename IntType> struct non_normalized_rational {
   non_normalized_rational(IntType n, IntType d):numerator(n),denominator(d){ caller_error_if(denominator == 0, "Constructing a rational with denominator zero..."); }
   non_normalized_rational(IntType n):numerator(n),denominator(1){}
   non_normalized_rational():numerator(0),denominator(1){}
+  explicit operator float()const { return float(double(numerator) / double(denominator)); }
+  explicit operator double()const { return double(numerator) / double(denominator); }
   bool operator< (non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
     const auto prod1 = width_doubling_multiply(numerator, o.denominator);

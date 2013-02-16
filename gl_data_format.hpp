@@ -31,9 +31,14 @@
 
 #include <string>
 #include <vector>
+#include <array>
 #include <ostream>
 #include <stdlib.h> //malloc
 #include <string.h> //memcpy
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_access.hpp>
 
 #include "world_constants.hpp"
 
@@ -48,6 +53,7 @@ typedef unsigned char header_GLubyte;
 // TODO maybe make vector3<GLfloat> and vertex the same thing?
 // Is vector3<GLfloat>'s layout required to be the same as that of
 // this struct? I believe so.  typedef vector3<GLfloat> vertex; ?
+// TODO use glm types?
 struct vertex {
   vertex() {}
 
@@ -187,6 +193,52 @@ struct gl_all_data {
   vector3<header_GLfloat> facing;
   vector3<header_GLfloat> facing_up;
 };
+
+
+
+const int32_t fovy_degrees = 80;
+const non_normalized_rational<int32_t> pretend_aspect_ratio_value_when_culling(2,1);
+const distance near_clipping_plane = tile_width / 10;
+const distance far_clipping_plane = tile_width * 300;
+// TODO: we can, with some more work,
+// use non-floating-point matrices for several things.
+// Which would allow main-simulation code to filter based on
+// view frustums, for example.
+inline glm::mat4 make_projection_matrix(float aspect_ratio) {
+  return glm::perspective(
+    float(fovy_degrees),
+    float(aspect_ratio),
+    get_primitive_float(near_clipping_plane/fine_units),
+    get_primitive_float(far_clipping_plane/fine_units)
+  );
+}
+const vector3<float> view_from(0);
+inline glm::mat4 make_view_matrix(vector3<float> view_towards, vector3<float> up) {
+  return glm::lookAt(
+    glm::vec3(view_from.x, view_from.y, view_from.z),
+    glm::vec3(view_towards.x, view_towards.y, view_towards.z),
+    glm::vec3(up.x, up.y, up.z)
+  );
+}
+
+// TODO glm has glm::detail::tmat4x4<> etc, needed to templatize
+// this, if I want to templatize it.
+struct frustum {
+  enum direction {
+    LEFT, RIGHT, BOTTOM, TOP, NEAR, FAR
+  };
+  std::array<glm::vec4, 6> half_spaces;
+};
+inline frustum make_frustum_from_matrix(glm::mat4 m) {
+  frustum result;
+  result.half_spaces[frustum::LEFT]   = glm::normalize(glm::row(m, 3) + glm::row(m, 0));
+  result.half_spaces[frustum::RIGHT]  = glm::normalize(glm::row(m, 3) - glm::row(m, 0));
+  result.half_spaces[frustum::BOTTOM] = glm::normalize(glm::row(m, 3) + glm::row(m, 1));
+  result.half_spaces[frustum::TOP]    = glm::normalize(glm::row(m, 3) - glm::row(m, 1));
+  result.half_spaces[frustum::NEAR]   = glm::normalize(glm::row(m, 3) + glm::row(m, 2));
+  result.half_spaces[frustum::FAR]    = glm::normalize(glm::row(m, 3) - glm::row(m, 2));
+  return result;
+}
 
 } // end namespace gl_data_format
 
