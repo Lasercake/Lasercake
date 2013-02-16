@@ -22,6 +22,7 @@
 #include <GL/glew.h>
 
 #include "gl_data_preparation.hpp"
+#include "gl_data_format.hpp"
 #include "world.hpp"
 
 #include "specific_object_types.hpp"
@@ -29,10 +30,13 @@
 
 #include "tile_iteration.hpp"
 
-using namespace gl_data_preparation;
+using namespace gl_data_format;
 
 static_assert(boost::is_same<header_GLfloat, GLfloat>::value, "consistent GL types");
 static_assert(boost::is_same<header_GLubyte, GLubyte>::value, "consistent GL types");
+
+abstract_gl_data::abstract_gl_data() : data_(*new gl_all_data()) {}
+abstract_gl_data::~abstract_gl_data() { delete &data_; }
 
 namespace /* anonymous */ {
 
@@ -414,6 +418,7 @@ void prepare_tile(world const& w, gl_collection& coll, tile_location const& loc,
 
 struct bbox_tile_prep_visitor {
   tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
+    //within() - over/subs
     if(!overlaps(bounds_, bbox)) return false;
     if(subsumes(bounds_, bbox)) return true;
     return indeterminate;
@@ -542,8 +547,9 @@ void prepare_shape(vector3<fine_scalar> view_loc, gl_collection& coll,
 void view_on_the_world::prepare_gl_data(
   world /*TODO const*/& w,
   gl_data_preparation_config config,
-  gl_data_preparation::gl_all_data& gl_data //result
+  abstract_gl_data& abstract_gl_data //result
 ) {
+  gl_all_data& gl_data = abstract_gl_data.data();
   //for short
   gl_collectionplex& gl_collections_by_distance = gl_data.stuff_to_draw_as_gl_collections_by_distance;
   gl_collections_by_distance.clear();

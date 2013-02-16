@@ -35,7 +35,7 @@
 #include "world.hpp"
 #include "gl_rendering.hpp"
 
-typedef gl_data_preparation::gl_all_data gl_data_t;
+typedef abstract_gl_data gl_data_t;
 
 //is a pointer to avoid copying around all that data
 typedef shared_ptr<gl_data_t> gl_data_ptr_t;

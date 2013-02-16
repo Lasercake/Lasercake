@@ -1,6 +1,6 @@
 /*
 
-    Copyright Eli Dupree and Isaac Dupree, 2011, 2012
+    Copyright Eli Dupree and Isaac Dupree, 2011, 2012, 2013
     
     This file is part of Lasercake.
 
@@ -63,9 +63,6 @@
 #include "specific_object_types.hpp"
 
 #include "tests/test_main.hpp"
-
-static_assert(boost::is_same<gl_data_preparation::header_GLfloat, GLfloat>::value, "consistent GL types");
-static_assert(boost::is_same<gl_data_preparation::header_GLubyte, GLubyte>::value, "consistent GL types");
 
 namespace /* anonymous */ {
 
@@ -324,28 +321,6 @@ boost::program_options::typed_value<bool>* bool_switch_off(bool* v = nullptr) {
 }
 
 } /* end anonymous namespace */
-
-void gl_renderer::render_2d_text_overlay_(
-    gl_data_preparation::gl_all_data const& gl_data,
-    viewport_dimension viewport_width,
-    viewport_dimension viewport_height,
-    LasercakeGLWidget& gl_widget
-) {
-  QPainter painter(&gl_widget);
-  painter.setRenderHint(QPainter::Antialiasing);
-  const QString text = QString::fromUtf8(gl_data.hud_text.text.c_str());
-  painter.setOpacity(gl_data.hud_text.c.a / 255.0);
-  painter.setPen(QColor(gl_data.hud_text.c.r, gl_data.hud_text.c.g, gl_data.hud_text.c.b));
-  painter.setFont(QFont(gl_data.hud_text.font_name.c_str(), gl_data.hud_text.point_size));
-  painter.drawText(
-    gl_data.hud_text.horizontal_margin_in_pixels,
-    gl_data.hud_text.vertical_margin_in_pixels,
-    viewport_width - 2*gl_data.hud_text.horizontal_margin_in_pixels,
-    viewport_height - 2*gl_data.hud_text.vertical_margin_in_pixels,
-    Qt::AlignBottom | Qt::AlignHCenter | Qt::TextWordWrap,
-    text);
-  painter.end();
-}
 
 int debug_test_sim_avoiding_qt_and_trying_to_be_very_deterministic(config_struct config) {
   std::cerr << "Constructing worldgen\n";

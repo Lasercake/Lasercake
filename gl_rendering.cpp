@@ -28,9 +28,9 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "gl_rendering.hpp"
-#include "gl_data_preparation.hpp"
+#include "gl_data_format.hpp"
 
-using namespace gl_data_preparation;
+using namespace gl_data_format;
 
 #define BUFFER_OFFSET(i) ((void*)(i))
 const GLuint INVALID_BUFFER_ID = 0;
@@ -56,7 +56,7 @@ static const float tile_width_float = get_primitive_float(get(tile_width, fine_u
 static const float tile_height_float = get_primitive_float(get(tile_height, fine_units));
 
 void gl_renderer::output_gl_data_to_OpenGL(
-    gl_data_preparation::gl_all_data const& gl_data,
+    abstract_gl_data const& abstract_gl_data,
     viewport_dimension viewport_width,
     viewport_dimension viewport_height,
     LasercakeGLWidget& gl_widget
@@ -65,6 +65,8 @@ void gl_renderer::output_gl_data_to_OpenGL(
   // throw exceptions, to simplify dealing with OpenGL context state.
   // When allocating, e.g. via std::vector, wrap it in a try/catch
   // and do something sensible if there's an exception.
+
+  gl_all_data const& gl_data = abstract_gl_data.data();
 
   if(!state_) {
     try {
@@ -184,5 +186,5 @@ void gl_renderer::output_gl_data_to_OpenGL(
   glDrawArrays(GL_QUADS, 0, 4);
   glBindBufferARB(GL_ARRAY_BUFFER, INVALID_BUFFER_ID);
 
-  render_2d_text_overlay_(gl_data, viewport_width, viewport_height, gl_widget);
+  render_2d_text_overlay_(abstract_gl_data, viewport_width, viewport_height, gl_widget);
 }

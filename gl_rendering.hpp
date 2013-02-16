@@ -23,14 +23,11 @@
 #define LASERCAKE_GL_RENDERING_HPP__
 
 #include <boost/scoped_ptr.hpp>
+#include "gl_data_abstract.hpp"
 
 // Avoid including any Qt headers because Qt headers and GLEW
 // headers do not get along.
 class LasercakeGLWidget;
-
-namespace gl_data_preparation {
-  struct gl_all_data;
-}
 
 typedef int viewport_dimension; // Qt uses 'int' for sizes.
 
@@ -47,7 +44,7 @@ class gl_renderer {
 public:
   // These functions must be called with the relevant GL context active.
   void output_gl_data_to_OpenGL(
-      gl_data_preparation::gl_all_data const& gl_data,
+      abstract_gl_data const& gl_data,
       viewport_dimension viewport_width,
       viewport_dimension viewport_height,
       LasercakeGLWidget& gl_widget
@@ -62,7 +59,7 @@ public:
 private:
   // implemented in main.cpp using Qt:
   void render_2d_text_overlay_(
-      gl_data_preparation::gl_all_data const& gl_data,
+      abstract_gl_data const& gl_data,
       viewport_dimension viewport_width,
       viewport_dimension viewport_height,
       LasercakeGLWidget& gl_widget
