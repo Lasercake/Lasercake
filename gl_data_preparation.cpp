@@ -323,7 +323,7 @@ inline color compute_tile_color(world const& w, tile_location const& loc) {
   auto foo = w.tile_litnesses_.find(coords);
   if(foo != w.tile_litnesses_.end()) illumination = foo->second;
   illumination += 24;
-  if (illumination > 128) illumination = 128;
+  if (true || illumination > 128) illumination = 128;
   uint32_t r = 0;
   uint32_t g = 0;
   uint32_t b = 0;
