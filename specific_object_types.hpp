@@ -122,5 +122,22 @@ private:
 };
 
 
+// I don't know if "refinery" is a correct term for just extracting metal from ore.
+// "smelter" might be correct (this device probably uses a more efficient process
+//    than smelting per se, but there's precedent for using "smelter" generally)
+class refinery : public tile_aligned_object, public autonomous_object {
+public:
+  refinery(vector3<tile_coordinate> location):initial_location_(location),waste_rock_inside_(0),metal_inside_(0){}
+  virtual shape get_initial_personal_space_shape()const;
+  virtual shape get_initial_detail_shape()const;
+
+  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
+private:
+  vector3<tile_coordinate> initial_location_;
+  int waste_rock_inside_;
+  int metal_inside_;
+};
+
+
 #endif
 

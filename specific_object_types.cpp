@@ -227,6 +227,7 @@ std::string robot::player_instructions()const {
     "m: make digging robot that goes towards the current facing"
     " and leaves rubble at the current location\n"
     "p: create solar panel\n"
+    "o: create refinery\n"
     "r: fire rockets\n"
     //"(c, v: commented-out ability to pick up things, too bad.)\n"
     ;
@@ -325,6 +326,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   if (input_news.num_times_pressed("p")) {
     const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w)));
     w.try_create_object(sol);
+  }
+  if (input_news.num_times_pressed("o")) {
+    const shared_ptr<refinery> ref (new refinery(get_building_tile(w)));
+    w.try_create_object(ref);
   }
   if (input_news.is_currently_pressed("r")) {
     const uniform_int_distribution<distance> random_delta(-tile_width, tile_width);
@@ -560,6 +565,39 @@ shape solar_panel::get_initial_personal_space_shape()const {
 shape solar_panel::get_initial_detail_shape()const {
   return tile_shape(initial_location_);
 }
-  
+
+
+
+shape refinery::get_initial_personal_space_shape()const {
+  return shape(bounding_box::min_and_max(lower_bound_in_fine_distance_units(initial_location_ - vector3<tile_coordinate>(1,1,0)), upper_bound_in_fine_distance_units(initial_location_ + vector3<tile_coordinate>(1,1,4))));
+}
+shape refinery::get_initial_detail_shape()const {
+  return get_initial_personal_space_shape();
+}
+
+
+void refinery::update(world& w, input_representation::input_news_t const&, object_identifier) {
+  tile_location             input_loc =
+      w.make_tile_location(initial_location_ - vector3<tile_coordinate_signed_type>(2, 0, 0), FULL_REALIZATION);
+  tile_location waste_rock_output_loc =
+      w.make_tile_location(initial_location_ + vector3<tile_coordinate_signed_type>(2, 0, 3), FULL_REALIZATION);
+  tile_location      metal_output_loc =
+      w.make_tile_location(initial_location_ + vector3<tile_coordinate_signed_type>(0, 2, 3), FULL_REALIZATION);
+
+  if ((input_loc.stuff_at().contents() == RUBBLE) && (waste_rock_inside_ < 100) && (metal_inside_ < 100))  {
+    w.replace_substance(input_loc, RUBBLE, AIR);
+    waste_rock_inside_ += 80;
+    metal_inside_ += 20;
+  }
+  if ((waste_rock_inside_ >= 100) && (waste_rock_output_loc.stuff_at().contents() == AIR)) {
+    w.replace_substance(waste_rock_output_loc, AIR, RUBBLE);
+    waste_rock_inside_ -= 100;
+  }
+  if ((     metal_inside_ >= 100) && (     metal_output_loc.stuff_at().contents() == AIR)) {
+    w.replace_substance(     metal_output_loc, AIR, RUBBLE);
+         metal_inside_ -= 100;
+  }
+}
+
 
 
