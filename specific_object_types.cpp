@@ -233,6 +233,7 @@ std::string robot::player_instructions()const {
     " and leaves rubble at the current location\n"
     "p: create solar panel\n"
     "o: create refinery\n"
+    "b: create conveyor belt\n"
     "r: fire rockets\n"
     //"(c, v: commented-out ability to pick up things, too bad.)\n"
     ;
