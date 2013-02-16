@@ -106,7 +106,8 @@ object_or_tile_identifier laser_find(
     object_identifier dont_hit_this,
     vector3<distance> source,
     vector3<distance> beam_vector,
-    bool add_laser_sfx
+    bool add_laser_sfx,
+    vector3<distance>* result_beam_vector_ptr = nullptr
 ) {
   const geom::line_segment beam(source, source + beam_vector);
   const laserbeam::beam_first_contact_finder finder(w, beam, dont_hit_this);
@@ -127,10 +128,13 @@ object_or_tile_identifier laser_find(
   if(add_laser_sfx) {
     if(hit_thing != object_or_tile_identifier()) {
       // TODO do I have to worry about overflow?
-      w.add_laser_sfx(source, multiply_rational_into(beam_vector, best_intercept_point));
+      vector3<distance> result_beam_vector = multiply_rational_into(beam_vector, best_intercept_point);
+      w.add_laser_sfx(source, result_beam_vector);
+      if (result_beam_vector_ptr) *result_beam_vector_ptr = result_beam_vector;
     }
     else {
       w.add_laser_sfx(source, beam_vector);
+      if (result_beam_vector_ptr) *result_beam_vector_ptr = beam_vector;
     }
   }
   return hit_thing;
@@ -270,27 +274,39 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   }
   facing_ = facing_ * tile_width / facing_.magnitude_within_32_bits();
   
-  vector3<distance> beam_delta = facing_ * 3 / 2;
-  
-  if (input_news.is_currently_pressed("c") || input_news.is_currently_pressed("v")) {
-    const object_or_tile_identifier hit_thing = laser_find(w, my_id, location_, beam_delta, true);
-    if (input_news.is_currently_pressed("c")) {
-      if (tile_location const* locp = hit_thing.get_tile_location()) {
-        if ((carrying_ < robot_max_carrying_capacity) &&
-            (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
-          ++carrying_;
-          w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
-        }
+  vector3<distance> digging_laser_delta = facing_ * 3 / 2;
+  vector3<distance> result_delta;
+  const object_or_tile_identifier digging_laser_target = laser_find(w, my_id, location_, digging_laser_delta, true, &result_delta);
+  if (input_news.num_times_pressed("c")) {
+    if (tile_location const* locp = digging_laser_target.get_tile_location()) {
+      if ((carrying_ < robot_max_carrying_capacity) &&
+          (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
+        ++carrying_;
+        w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
       }
     }
-    else if (input_news.is_currently_pressed("v") && (carrying_ > 0)) {
-      --carrying_;
-      const tile_location target_loc = w.make_tile_location(
-          get_random_containing_tile_coordinates(location_ + beam_delta, w.get_rng()),
-          FULL_REALIZATION);
-      w.replace_substance(target_loc, AIR, RUBBLE);
-    }
   }
+  else if (input_news.num_times_pressed("v") && (carrying_ > 0) && digging_laser_target == NO_OBJECT) {
+    --carrying_;
+    const tile_location target_loc = w.make_tile_location(
+        get_random_containing_tile_coordinates(location_ + digging_laser_delta, w.get_rng()),
+        FULL_REALIZATION);
+    assert(target_loc.stuff_at().contents() == AIR);
+    w.replace_substance(target_loc, AIR, RUBBLE);
+  }
+  else if (digging_laser_target != NO_OBJECT) {
+    // hack - draw a thing indicating where we'd hit
+    vector3<distance> hitloc = location_ + result_delta;
+    w.add_laser_sfx(hitloc + vector3<distance>(-100*fine_distance_units, -100*fine_distance_units, -100*fine_distance_units),
+                             vector3<distance>( 200*fine_distance_units,  200*fine_distance_units,  200*fine_distance_units));
+    w.add_laser_sfx(hitloc + vector3<distance>( 100*fine_distance_units,  100*fine_distance_units, -100*fine_distance_units),
+                             vector3<distance>(-200*fine_distance_units, -200*fine_distance_units,  200*fine_distance_units));
+    w.add_laser_sfx(hitloc + vector3<distance>(-100*fine_distance_units,  100*fine_distance_units, -100*fine_distance_units),
+                             vector3<distance>( 200*fine_distance_units, -200*fine_distance_units,  200*fine_distance_units));
+    w.add_laser_sfx(hitloc + vector3<distance>( 100*fine_distance_units, -100*fine_distance_units, -100*fine_distance_units),
+                             vector3<distance>(-200*fine_distance_units,  200*fine_distance_units,  200*fine_distance_units));
+  }
+    
   if (input_news.is_currently_pressed("l")) {
     const vector3<distance> offset(-facing_.y / 4, facing_.x / 4, 0);
     const vector3<distance> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
