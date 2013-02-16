@@ -157,11 +157,15 @@ inline std::ostream& operator<<(std::ostream& os, tile_bounding_box const& bb) {
 
 Whether tiles are water or not
  -- dictates, at one tile distance --
-Whether water tiles are "sticky water" ("fewer than two adjacent tiles are air") or "free water" (at least two adjacent air tiles)
+Whether water tiles are "sticky water" ("fewer than two adjacent tiles are
+air") or "free water" (at least two adjacent air tiles)
  -- dictates, at one tile distance --
-Whether sticky water tiles are "interior water" ("every adjacent tile is sticky water") or "membrane water" ("at least one tile is not a sticky water tile")
+Whether sticky water tiles are "interior water" ("every adjacent tile is sticky
+water") or "membrane water" ("at least one tile is not a sticky water tile")
 
-This is a one-way dictation - the latter things don't affect the former things at all (until they cause water to actually move, anyway). It's not an exact dictation
+This is a one-way dictation - the latter things don't affect the former things
+at all (until they cause water to actually move, anyway). It's not an exact
+dictation.
 
 */
 
@@ -205,8 +209,10 @@ public:
   // Air is expected to always be marked "interior".
 
   // For tile based physics (e.g. water movement)
-  // This is so that we don't have to search the collision-detector for relevant objects at every tile.
-  bool there_is_an_object_here_that_affects_the_tile_based_physics()const { return tile_data_ & there_is_an_object_here_that_affects_the_tile_based_physics_mask; }
+  // This is so that we don't have to search the collision-detector for
+  // relevant objects at every tile.
+  bool there_is_an_object_here_that_affects_the_tile_based_physics()const {
+    return tile_data_ & there_is_an_object_here_that_affects_the_tile_based_physics_mask; }
   bool is_interior()const { return tile_data_ & interior_bit_mask; }
   tile_contents contents()const{ return (tile_contents)(tile_data_ & contents_mask); }
 
@@ -314,7 +320,11 @@ struct tile_compare_xyz { bool operator()(tile_location const& i, tile_location 
 struct tile_compare_yzx { bool operator()(tile_location const& i, tile_location const& j)const; };
 struct tile_compare_zxy { bool operator()(tile_location const& i, tile_location const& j)const; };
 
-inline std::array<tile_location, num_cardinal_directions> get_all_neighbors(tile_location const& loc, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
+inline std::array<tile_location, num_cardinal_directions>
+get_all_neighbors(
+      tile_location const& loc,
+      level_of_tile_realization_needed realineeded = FULL_REALIZATION
+) {
   return std::array<tile_location, num_cardinal_directions>({{
     loc.get_neighbor<0>(realineeded),
     loc.get_neighbor<1>(realineeded),
@@ -325,8 +335,16 @@ inline std::array<tile_location, num_cardinal_directions> get_all_neighbors(tile
   }});
 }
 
-inline std::array<tile_location, num_cardinal_directions-2> get_perpendicular_neighbors(tile_location const& loc, cardinal_direction dir, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
-  std::array<tile_location, num_cardinal_directions-2> result = {{trivial_invalid_location(),trivial_invalid_location(),trivial_invalid_location(),trivial_invalid_location()}};
+inline std::array<tile_location, num_cardinal_directions-2>
+get_perpendicular_neighbors(
+      tile_location const& loc,
+      cardinal_direction dir,
+      level_of_tile_realization_needed realineeded = FULL_REALIZATION
+) {
+  std::array<tile_location, num_cardinal_directions-2> result = {{
+    trivial_invalid_location(), trivial_invalid_location(),
+    trivial_invalid_location(), trivial_invalid_location()
+  }};
   size_t i = 0;
   if (cardinal_directions_are_perpendicular(dir, 0)) { result[i++] = loc.get_neighbor<0>(realineeded); }
   if (cardinal_directions_are_perpendicular(dir, 1)) { result[i++] = loc.get_neighbor<1>(realineeded); }
@@ -337,7 +355,13 @@ inline std::array<tile_location, num_cardinal_directions-2> get_perpendicular_ne
   assert(i == 4);
   return result;
 }
-inline std::array<tile_location, num_cardinal_directions> get_perpendicular_neighbors_numbered_as_neighbors(tile_location const& loc, cardinal_direction dir, level_of_tile_realization_needed realineeded = FULL_REALIZATION) {
+
+inline std::array<tile_location, num_cardinal_directions>
+get_perpendicular_neighbors_numbered_as_neighbors(
+      tile_location const& loc,
+      cardinal_direction dir,
+      level_of_tile_realization_needed realineeded = FULL_REALIZATION
+) {
   return std::array<tile_location, num_cardinal_directions>({{
     cardinal_directions_are_perpendicular(dir, 0) ? loc.get_neighbor<0>(realineeded) : trivial_invalid_location(),
     cardinal_directions_are_perpendicular(dir, 1) ? loc.get_neighbor<1>(realineeded) : trivial_invalid_location(),
@@ -461,7 +485,8 @@ inline vector3<tile_coordinate> get_max_containing_tile_coordinates(vector3<fine
 inline vector3<tile_coordinate> get_arbitrary_containing_tile_coordinates(vector3<fine_scalar> v) {
   return get_min_containing_tile_coordinates(v);
 }
-inline lasercake_vector<vector3<tile_coordinate>>::type get_all_containing_tile_coordinates(vector3<fine_scalar> v) {
+inline lasercake_vector<vector3<tile_coordinate>>::type
+get_all_containing_tile_coordinates(vector3<fine_scalar> v) {
   lasercake_vector<vector3<tile_coordinate>>::type result;
   if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
     result.push_back(get_min_containing_tile_coordinates(v));

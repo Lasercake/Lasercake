@@ -106,19 +106,22 @@ public:
     // heyy.. first, just ask every wb and fill and see how it speeds ^_^
     const tile_coordinate min_z = bounds.min(Z);
     const tile_coordinate max_z = bounds.max(Z);
-    std::array<world_column_builder, worldblock_dimension*worldblock_dimension>& worldblock_column = already_computed_columns_[make_pair(bounds.min(X), bounds.min(Y))];
+    std::array<world_column_builder, worldblock_dimension*worldblock_dimension>& worldblock_column =
+      already_computed_columns_[make_pair(bounds.min(X), bounds.min(Y))];
     // Hack - if there is any data in the worldblock_column,
     // assume it has all the information we need. (TODO.)
     if(worldblock_column[0].len) {
       size_t column_base_idx = 0;
       for (tile_coordinate x = bounds.min(X); x != bounds.min(X) + bounds.size(X); ++x) {
-        for (tile_coordinate y = bounds.min(Y); y != bounds.min(Y) + bounds.size(Y); ++y, column_base_idx += worldblock_y_factor) {
+        for (tile_coordinate y = bounds.min(Y); y != bounds.min(Y) + bounds.size(Y);
+             ++y, column_base_idx += worldblock_y_factor) {
           world_column_builder& b = worldblock_column[column_base_idx / worldblock_y_factor];
           size_t arr_i = 0;
           while(b.arr[arr_i+1].min <= min_z) {++arr_i;}
           for (tile_coordinate z = bounds.min(Z); z != bounds.min(Z) + bounds.size(Z); ++z) {
             if(b.arr[arr_i+1].min == z) {++arr_i;}
-            wb->tile_data_uint8_array[column_base_idx + get_primitive_int(z - wb->global_position_.z)] = (b.arr[arr_i].contents | tile::interior_bit_mask);
+            wb->tile_data_uint8_array[column_base_idx + get_primitive_int(z - wb->global_position_.z)]
+              = (b.arr[arr_i].contents | tile::interior_bit_mask);
           }
         }
       }
@@ -126,7 +129,8 @@ public:
     else {
       size_t column_base_idx = 0;
       for (tile_coordinate x = bounds.min(X); x != bounds.min(X) + bounds.size(X); ++x) {
-        for (tile_coordinate y = bounds.min(Y); y != bounds.min(Y) + bounds.size(Y); ++y, column_base_idx += worldblock_y_factor) {
+        for (tile_coordinate y = bounds.min(Y); y != bounds.min(Y) + bounds.size(Y);
+             ++y, column_base_idx += worldblock_y_factor) {
           world_column_builder& b = worldblock_column[column_base_idx / worldblock_y_factor];
           column_spec_(b, x, y, min_z, max_z);
           // This is a bit of a hack:
@@ -141,16 +145,21 @@ public:
             //worldblock_dimension_type z_idx_begin = 0;
             for (tile_coordinate z = bounds.min(Z); z != bounds.min(Z) + bounds.size(Z); ++z) {
               if(b.arr[arr_i+1].min == z) {++arr_i;}
-              wb->tile_data_uint8_array[column_base_idx + get_primitive_int(z - wb->global_position_.z)] = (b.arr[arr_i].contents | tile::interior_bit_mask);
+              wb->tile_data_uint8_array[column_base_idx + get_primitive_int(z - wb->global_position_.z)]
+                = (b.arr[arr_i].contents | tile::interior_bit_mask);
             }
           #else
             for (size_t i = 0; i != b.len - 1 /*due to the hack of +1 end thing*/; ++i) {
               world_column_builder::spec_from spec = b.arr[i];
               world_column_builder::spec_from next_spec = b.arr[i+1];
               if (spec.min <= max_z && next_spec.min > min_z) {
-                worldblock_dimension_type z_idx_begin = std::max(0, get_primitive_int(spec.min - wb->global_position_.z));
-                worldblock_dimension_type z_idx_end = std::min(worldblock_dimension, get_primitive_int(next_spec.min - wb->global_position_.z));
-                memset(&wb->tiles_[column_base_idx + z_idx_begin], spec.contents | tile::interior_bit_mask, z_idx_end - z_idx_begin);
+                worldblock_dimension_type z_idx_begin =
+                  std::max(0, get_primitive_int(spec.min - wb->global_position_.z));
+                worldblock_dimension_type z_idx_end =
+                  std::min(worldblock_dimension, get_primitive_int(next_spec.min - wb->global_position_.z));
+                memset(&wb->tiles_[column_base_idx + z_idx_begin],
+                       spec.contents | tile::interior_bit_mask,
+                       z_idx_end - z_idx_begin);
               }
             }
           #endif
@@ -160,8 +169,9 @@ public:
   }
 private:
   Functor column_spec_;
-  std::unordered_map<std::pair<tile_coordinate, tile_coordinate>, std::array<world_column_builder, worldblock_dimension*worldblock_dimension> >
-    already_computed_columns_;
+  std::unordered_map<std::pair<tile_coordinate, tile_coordinate>,
+                     std::array<world_column_builder, worldblock_dimension*worldblock_dimension>
+  > already_computed_columns_;
 };
 }
 template<typename Functor>

@@ -27,10 +27,12 @@
 
 // fine_distance_units: Fine as opposed to coarse, that is.
 
-// time_units: Choose a number that makes lots of frames-per-second values multiply in evenly.
-// TODO if we use this more and want a different representation, that would be fine too.
-// TODO where it doesn't already, code should refer to some kind of time unit more,
-//        rather than implicitly relying on frames being a fixed duration.
+// time_units: Choose a number that makes lots of frames-per-second values
+//    multiply in evenly.
+// TODO if we use this more and want a different representation, that would
+//    be fine too.
+// TODO where it doesn't already, code should refer to some kind of time unit
+//    more, rather than implicitly relying on frames being a fixed duration.
 
 typedef units<dim::ratio<10>, dim::meter<1>> tile_widths_t;
 typedef units<dim::ratio< 2>, dim::meter<1>> tile_heights_t;
@@ -45,7 +47,8 @@ typedef pascals_t pressure_units_t;
 // This is a stupid unit but it exists currently:
 typedef typename units_prod<seconds_t, dim::ratio<1, 30>>::type fixed_frame_lengths_t;
 
-
+typedef typename units_prod<tile_physics_sub_tile_units_t, units_pow<fixed_frame_lengths_t, (-1)> >::type
+  tile_physics_sub_tile_velocity_units_t;
 
 //typedef typename units_prod<kilograms_t, fine_distance_units_t::pow<(-3)>>::type density_units_t;
 
@@ -58,6 +61,7 @@ constexpr auto tile_widths = tile_widths_t();
 constexpr auto tile_heights = tile_heights_t();
 constexpr auto fine_distance_units = fine_distance_units_t();
 constexpr auto tile_physics_sub_tile_units = tile_physics_sub_tile_units_t();
+constexpr auto tile_physics_sub_tile_velocity_units = tile_physics_sub_tile_velocity_units_t();
 constexpr auto time_units = time_units_t();
 constexpr auto velocity_units = velocity_units_t();
 constexpr auto acceleration_units = acceleration_units_t();
@@ -79,8 +83,8 @@ typedef physical_quantity<lint64_t, density_units_t> density;
 typedef physical_quantity<lint64_t, pressure_units_t> pressure;
 typedef physical_quantity<lint32_t, tile_physics_sub_tile_units_t> sub_tile_distance;
 typedef physical_quantity<lint64_t, tile_physics_sub_tile_units_t> large_sub_tile_distance;
-typedef physical_quantity<lint32_t, units_prod<tile_physics_sub_tile_units_t, units_pow<fixed_frame_lengths_t, -1>>::type> sub_tile_velocity;
-typedef physical_quantity<lint64_t, units_prod<tile_physics_sub_tile_units_t, units_pow<fixed_frame_lengths_t, -1>>::type> large_sub_tile_velocity;
+typedef physical_quantity<lint32_t, tile_physics_sub_tile_velocity_units_t> sub_tile_velocity;
+typedef physical_quantity<lint64_t, tile_physics_sub_tile_velocity_units_t> large_sub_tile_velocity;
 typedef physical_quantity<lint64_t, time_units_t> time_unit;
 
 
@@ -106,13 +110,16 @@ const vector3<acceleration1d> gravity_acceleration(0, 0, -gravity_acceleration_m
 const auto water_density_kgm3 = 1000*kilograms/(meters*meters*meters);
 const density water_density = water_density_kgm3 * identity(density_units / (kilograms/(meters*meters*meters)));
 
-// The tile physics constants are improper constants because they refer to frame length.
-// I made the tile velocities still be in distance-per-frame during unitification
-// because making them be per-second would add a lot of divisions, and I didn't want to mess up the
-// delicate balance of the fluid physics. - Eli
+// The tile physics constants are improper constants because they refer to
+// frame length.
+// I made the tile velocities still be in distance-per-frame during
+// unitification because making them be per-second would add a lot of
+// divisions, and I didn't want to mess up the delicate balance of the
+// fluid physics. - Eli
 const auto fluid_friction_constant = sub_tile_velocity(tile_width * identity(tile_physics_sub_tile_units / fine_distance_units) / (1800 * fixed_frame_lengths)) / fixed_frame_lengths;
 
-// was originally conceptualized as "the terminal velocity should be half a tile height per frame", hence the strange value.
+// was originally conceptualized as "the terminal velocity should be
+// half a tile height per frame", hence the strange value.
 const sub_tile_distance air_resistance_constant = sub_tile_distance((tile_height / fixed_frame_lengths) * (tile_height / fixed_frame_lengths) * identity(fixed_frame_lengths * fixed_frame_lengths / seconds / seconds) * identity(tile_physics_sub_tile_units / fine_distance_units) / (4 * gravity_acceleration_magnitude));
 
 const pressure pressure_per_depth_in_tile_heights =
@@ -125,7 +132,9 @@ const vector3<sub_tile_velocity> inactive_fluid_velocity(0, 0, -min_convincing_s
 
 // I just kept this at the value it was at duing the unitization.
 // I suppose in the long run we'll use a more nuanced water-drag system.
-// In the short run, TODO: Change it to 15 m/s (somewhat slower than the current value) because that's about the top speed of typical modern submarines.
+// In the short run, TODO: Change it to 15 m/s (somewhat slower than the
+// current value) because that's about the top speed of typical modern
+// submarines.
 const velocity1d max_object_speed_through_water = (tile_width * 30 / 16) / seconds;
 
 #if 0

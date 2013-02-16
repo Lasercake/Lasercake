@@ -167,18 +167,22 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     else return tiles_[random_tile(rng)].contents();
   }
 
-  // Water that starts out in a worldblock starts out inactive (observing the rule "the landscape takes zero time to process").
+  // Water that starts out in a worldblock starts out inactive (observing the
+  // rule "the landscape takes zero time to process").
   //
   // We would have to make special rules for worldblocks that start out with
   // active water in them, because it could invalidate iterators into the
-  // active_water_tiles map, because worldblocks can be created essentially any time in the processing.
+  // active_water_tiles map, because worldblocks can be created essentially
+  // any time in the processing.
   //
-  // If we try to use a level-X value from a worldblock while it's busy computing a realization
-  // level less-than-or-equal-to X, then we justly receive get an assertion failure.
-  // Realizing a worldblock at a given level must not require same-level information.
+  // If we try to use a level-X value from a worldblock while it's busy
+  // computing a realization level less-than-or-equal-to X, then we justly
+  // receive get an assertion failure. Realizing a worldblock at a given level
+  // must not require same-level information.
   worldblock& worldblock::ensure_realization_impl(level_of_tile_realization_needed realineeded) {
     assert(this->is_constructed());
-    caller_correct_if(realineeded >= COMPLETELY_IMAGINARY && realineeded <= FULL_REALIZATION, "Calling ensure_realization with an invalid realization level");
+    caller_correct_if(realineeded >= COMPLETELY_IMAGINARY && realineeded <= FULL_REALIZATION,
+                      "Calling ensure_realization with an invalid realization level");
     
     if ((              realineeded >= CONTENTS_ONLY) &&
         (current_tile_realization_ <  CONTENTS_ONLY)) {
@@ -218,7 +222,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       }
 
       if(!contents_are_all_in_the_same_interiorness_class) {
-        // initialize_tile_neighbor_interiorness_within_worldblock initializes both the specified tile and its neighbors.
+        // initialize_tile_neighbor_interiorness_within_worldblock
+        // initializes both the specified tile and its neighbors.
         size_t idx = 0;
         for (worldblock_dimension_type x = 0; x != worldblock_dimension; ++x) {
           for (worldblock_dimension_type y = 0; y != worldblock_dimension; ++y) {

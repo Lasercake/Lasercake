@@ -42,7 +42,8 @@ namespace laserbeam {
          || bbox.size_minus_one(Z) >= too_many_tiles_high);
   }
   struct beam_first_contact_finder {
-    beam_first_contact_finder(world const& w, geom::line_segment beam, object_or_tile_identifier ignore):w_(w),beam_(beam) {ignores_.insert(ignore);}
+    beam_first_contact_finder(world const& w, geom::line_segment beam, object_or_tile_identifier ignore)
+      : w_(w), beam_(beam) {ignores_.insert(ignore);}
     typedef geom::dimensionless_rational cost_type;
     typedef geom::optional_dimensionless_rational result_type;
     result_type min_cost(world_collision_detector::bounding_box const& bbox) const {
@@ -163,7 +164,8 @@ void float_above_ground(vector3<velocity1d>& velocity_, world& w, object_identif
   const auto tiles_containing_bottom_middle = get_all_containing_tile_coordinates(bottom_middle);
   distance target_height = shape_bounds.min(Z);
   for(vector3<tile_coordinate> tile_containing_bottom_middle : tiles_containing_bottom_middle) {
-    tile_location loc_below_bottom_middle = w.make_tile_location(tile_containing_bottom_middle, COMPLETELY_IMAGINARY).get_neighbor<zminus>(CONTENTS_ONLY);
+    tile_location loc_below_bottom_middle =
+      w.make_tile_location(tile_containing_bottom_middle, COMPLETELY_IMAGINARY).get_neighbor<zminus>(CONTENTS_ONLY);
     if (loc_below_bottom_middle.stuff_at().contents() != AIR) {
       target_height = lower_bound_in_fine_units(loc_below_bottom_middle.coords()(Z), Z) + tile_height * 9 / 4;
     }
@@ -182,7 +184,11 @@ void float_above_ground(vector3<velocity1d>& velocity_, world& w, object_identif
       // TODO: Figure out a nicer way for the object-motion system to interact with the autonomous-object system.
       + (gravity_acceleration_magnitude / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths);
     if (velocity_.z < target_vel) {
-      velocity_.z = std::min(velocity_.z + gravity_acceleration_magnitude * 5 / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths, target_vel);
+      velocity_.z =
+        std::min(velocity_.z +
+                    gravity_acceleration_magnitude * 5
+                      / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths,
+                 target_vel);
     }
   }
 }
@@ -278,7 +284,9 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     }
     else if (input_news.is_currently_pressed("v") && (carrying_ > 0)) {
       --carrying_;
-      const tile_location target_loc = w.make_tile_location(get_random_containing_tile_coordinates(location_ + beam_delta, w.get_rng()), FULL_REALIZATION);
+      const tile_location target_loc = w.make_tile_location(
+          get_random_containing_tile_coordinates(location_ + beam_delta, w.get_rng()),
+          FULL_REALIZATION);
       w.replace_substance(target_loc, AIR, RUBBLE);
     }
   }
@@ -287,7 +295,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     const vector3<distance> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
     for (int i = 0; i < 2; ++i)
     {
-      const object_or_tile_identifier hit_thing = laser_find(w, my_id, i ? (location_ + offset) : (location_ - offset), beam_vector, true);
+      const object_or_tile_identifier hit_thing = laser_find(
+          w, my_id,
+          (i ? (location_ + offset) : (location_ - offset)),
+          beam_vector, true);
       if(tile_location const* locp = hit_thing.get_tile_location()) {
         if (locp->stuff_at().contents() == ROCK) {
           w.replace_substance(*locp, ROCK, RUBBLE);
@@ -296,8 +307,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
       if(object_identifier const* oidp = hit_thing.get_object_identifier()) {
         if (shared_ptr<object>* obj = w.get_object(*oidp)) {
           if (shared_ptr<mobile_object> mobj = boost::dynamic_pointer_cast<mobile_object>(*obj)) {
-            const vector3<acceleration1d> tractor_beam_acceleration = -(facing_ * 45) / seconds / seconds;
-            mobj->velocity_ += tractor_beam_acceleration / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths;
+            const vector3<acceleration1d> tractor_beam_acceleration =
+              -(facing_ * 45) / seconds / seconds;
+            mobj->velocity_ += tractor_beam_acceleration
+              / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths;
           }
         }
       }
@@ -326,7 +339,9 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
 }
 
 vector3<tile_coordinate> robot::get_building_tile(world& w)const { // TODO: This use of world& should be able to be world const&
-  tile_location first_guess = w.make_tile_location(get_min_containing_tile_coordinates(location_ + facing_ * 2), CONTENTS_ONLY);
+  tile_location first_guess = w.make_tile_location(
+      get_min_containing_tile_coordinates(location_ + facing_ * 2),
+      CONTENTS_ONLY);
   tile_location loc = first_guess;
   tile_location locd = loc.get_neighbor<zminus>(CONTENTS_ONLY);
   if ((loc.stuff_at().contents() == AIR) && (locd.stuff_at().contents() != AIR)) return loc.coords();
@@ -366,7 +381,8 @@ void laser_emitter::update(world& w, input_representation::input_news_t const&, 
       facing_.x = random_delta(w.get_rng());//TODO implement vector3_location
       facing_.y = random_delta(w.get_rng());
       facing_.z = random_delta(w.get_rng());
-    } while (facing_.magnitude_within_32_bits_is_greater_than(1023*fine_distance_units) || facing_.magnitude_within_32_bits_is_less_than(512*fine_distance_units));
+    } while (facing_.magnitude_within_32_bits_is_greater_than(1023*fine_distance_units)
+              || facing_.magnitude_within_32_bits_is_less_than(512*fine_distance_units));
 
     fire_standard_laser(w, my_id, location_, facing_);
   }
@@ -388,10 +404,16 @@ shape autorobot::get_initial_detail_shape()const {
 
 //hack impl.
 bool once_a_second(world& w, int num = 1, int denom = 1) {
-  return ((w.game_time_elapsed() / time_units * num / denom) % (identity(time_units / seconds) * seconds / time_units)) == 0;
+  return ((w.game_time_elapsed() / time_units * num / denom)
+          % (identity(time_units / seconds) * seconds / time_units))
+    == 0;
 }
 
-autorobot::autorobot(vector3<distance> location, vector3<distance> facing):location_(location),initial_location_(((location / tile_width) * tile_width) + vector3<distance>(tile_width / 2, tile_width / 2, 0)),facing_(facing),carrying_(0){
+autorobot::autorobot(vector3<distance> location, vector3<distance> facing)
+  : location_(location),
+    initial_location_(((location / tile_width) * tile_width) + vector3<distance>(tile_width / 2, tile_width / 2, 0)),
+    facing_(facing),
+    carrying_(0) {
   distance bigger_dir;
   if (std::abs(facing_.x) > std::abs(facing_.y)) {
     bigger_dir = facing.x;
@@ -449,8 +471,8 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
     const vector3<distance> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
     const vector3<distance> top_middle(middle(X), middle(Y), shape_bounds.max(Z) + tile_height / 4);
     /*const vector3<distance> top_middle(
-      boost::random::uniform_int_distribution<get_primitive_int_type<distance>::type>(shape_bounds.min(X), shape_bounds.max(X))(rng),
-      boost::random::uniform_int_distribution<get_primitive_int_type<distance>::type>(shape_bounds.min(Y), shape_bounds.max(Y))(rng),
+      uniform_int_distribution<distance>(shape_bounds.min(X), shape_bounds.max(X))(rng),
+      uniform_int_distribution<distance>(shape_bounds.min(Y), shape_bounds.max(Y))(rng),
       shape_bounds.max(Z));*/
     vector3<distance> beam_vector_1 = facing_;
     beam_vector_1[Z] -= tile_height / 2;
@@ -507,7 +529,8 @@ shape random_walk_rocket::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
-random_walk_rocket::random_walk_rocket(vector3<distance> location, vector3<distance> facing):initial_location_(location){
+random_walk_rocket::random_walk_rocket(vector3<distance> location, vector3<distance> facing)
+    : initial_location_(location) {
   velocity_ = (facing * tile_width * 120) / facing.magnitude_within_32_bits() / seconds;
 }
 

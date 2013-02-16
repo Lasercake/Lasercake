@@ -216,7 +216,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   const worldblock_dimension_type worldblock_z_factor = 1;
 
   // x, y and z < worldblock_dimension
-  inline worldblock_dimension_type interleave_worldblock_local_coords(worldblock_dimension_type x, worldblock_dimension_type y, worldblock_dimension_type z) {
+  inline worldblock_dimension_type interleave_worldblock_local_coords(
+        worldblock_dimension_type x, worldblock_dimension_type y, worldblock_dimension_type z) {
     static const int16_t table[worldblock_dimension] = {
       0x0, 0x1, 0x8, 0x9, 0x40, 0x41, 0x48, 0x49,
       0x200, 0x201, 0x208, 0x209, 0x240, 0x241, 0x248, 0x249
@@ -226,12 +227,15 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 
   class worldblock {
   public:
-    worldblock() : neighbors_(nullptr), current_tile_realization_(COMPLETELY_IMAGINARY), is_busy_realizing_(false),
-      count_of_non_interior_tiles_here_(0), w_(nullptr), non_interior_bitmap_large_scale_(0), non_interior_bitmap_small_scale_{} {}
-    void construct(world* w, vector3<tile_coordinate> global_position) { w_ = w; global_position_ = global_position; }
+    worldblock() : neighbors_(nullptr), current_tile_realization_(COMPLETELY_IMAGINARY),
+      is_busy_realizing_(false), count_of_non_interior_tiles_here_(0), w_(nullptr),
+      non_interior_bitmap_large_scale_(0), non_interior_bitmap_small_scale_{} {}
+    void construct(world* w, vector3<tile_coordinate> global_position) {
+      w_ = w; global_position_ = global_position; }
     bool is_constructed() const { return w_ != nullptr; }
     tile_bounding_box bounding_box()const {
-      return tile_bounding_box(global_position_, vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
+      return tile_bounding_box(global_position_,
+        vector3<tile_coordinate>(worldblock_dimension,worldblock_dimension,worldblock_dimension));
     }
     tile_location global_position_loc() {
       return tile_location(global_position_, 0, this);
@@ -265,7 +269,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     void realize_nonexistent_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded);
 
     // an implementation detail of ensure_realization
-    template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(size_t this_x, size_t this_y, size_t this_z, size_t that_x, size_t that_y, size_t that_z);
+    template<cardinal_direction Dir> void check_local_caches_cross_worldblock_neighbor(
+      size_t this_x, size_t this_y, size_t this_z, size_t that_x, size_t that_y, size_t that_z);
     tile_contents estimate_most_frequent_tile_contents_type()const;
 
     // contains static member functions that, as part of worldblock, are
@@ -312,7 +317,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 // the worldblock, making them initialized to 'interior' (worldblock
 // will take care of detecting the true interiorness), and not marked
 // as anything else.
-typedef std::function<void (the_decomposition_of_the_world_into_blocks_impl::worldblock*, tile_bounding_box)> worldgen_function_t;
+typedef std::function<void (the_decomposition_of_the_world_into_blocks_impl::worldblock*, tile_bounding_box)>
+  worldgen_function_t;
 
 
 typedef unordered_map<object_identifier, shape> object_shapes_t;
@@ -408,9 +414,11 @@ void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shif
   
   object_identifier try_create_object(shared_ptr<object> obj);
   
-  // If objects overlap with the new position, returns their IDs. If not, changes the shape and returns an empty set.
+  //  If objects overlap with the new position, returns their IDs. If not,
+  //  changes the shape and returns an empty set.
   //unordered_set<object_or_tile_identifier> try_to_change_personal_space_shape(object_identifier id, shape const& new_shape);
-  // Objects can't fail to change their detail shape, but it may cause effects (like blocking a laser beam)
+  //  Objects can't fail to change their detail shape, but it may cause
+  //  effects (like blocking a laser beam)
   //void change_detail_shape(object_identifier id, shape const& new_shape);
 
   typedef std::vector<std::pair<vector3<distance>, vector3<distance>>> laser_sfxes_type;
@@ -420,8 +428,11 @@ void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shif
   laser_sfxes_type const& get_laser_sfxes()const { return laser_sfxes_; }
 
   // TODO: Either
-  // 1) split this function into a personal_space version and a detail version, or
-  // 2) make it explicit that it's the bounding box including both (that's what it is currently, or at least what it SHOULD be currently), or
+  // 1) split this function into a personal_space version and a
+  //      detail version, or
+  // 2) make it explicit that it's the bounding box including both
+  //      (that's what it is currently, or at least what it SHOULD be
+  //       currently), or
   // 3) remove it / come up with something different to replace it with
   bounding_box get_bounding_box_of_object_or_tile(object_or_tile_identifier id)const;
   shape get_personal_space_shape_of_object_or_tile(object_or_tile_identifier id)const;
@@ -447,17 +458,21 @@ void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shif
   // want to make sure to capture.
   template<typename Visitor> void visit_collidable_tiles(Visitor&& visitor);
 
-  // Include object_and_tile_iteration.hpp to use visit_collidable_tiles_and_objects.
-  // This function is a HACK because, among other things, it is not very precise
-  // in the ordering among objects (though tiles will all be in a correct order).
+  // Include object_and_tile_iteration.hpp to use
+  // visit_collidable_tiles_and_objects.  This function is a HACK because
+  // among other things, it is not very precise in the ordering among objects
+  // (though tiles will all be in a correct order).
   template<typename Visitor> void visit_collidable_tiles_and_objects(/*bounding_box bbox,*/ Visitor&& visitor);
 
 private:
-  friend class the_decomposition_of_the_world_into_blocks_impl::worldblock; // No harm in doing this, because worldblock is by definition already hacky.
+  // No harm in doing this, because worldblock is by definition already hacky:
+  friend class the_decomposition_of_the_world_into_blocks_impl::worldblock;
   
   time_unit current_game_time_;
   
-  // This map uses the same coordinates as worldblock::global_position - i.e. worldblocks' coordinates are multiples of worldblock_dimension, and it is an error to give a coordinate that's not.
+  // This map uses the same coordinates as worldblock::global_position -
+  // i.e. worldblocks' coordinates are multiples of worldblock_dimension,
+  // and it is an error to give a coordinate that's not.
   unordered_map<vector3<tile_coordinate>, the_decomposition_of_the_world_into_blocks_impl::worldblock> blocks_; 
 
   tile_physics_state_t tile_physics_state_;
@@ -485,7 +500,8 @@ private:
   large_fast_noncrypto_rng rng_;
   
   
-  the_decomposition_of_the_world_into_blocks_impl::worldblock* ensure_realization_of_and_get_worldblock_(vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
+  the_decomposition_of_the_world_into_blocks_impl::worldblock* ensure_realization_of_and_get_worldblock_(
+    vector3<tile_coordinate> position, level_of_tile_realization_needed realineeded);
   
   // Used only in the worldblock stuff
   void initialize_tile_water_group_caches_(tile_location const& loc);

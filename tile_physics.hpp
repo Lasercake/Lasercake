@@ -69,8 +69,10 @@ struct persistent_water_group_info {
 
   tile_location get_and_erase_random_pushable_tile_below_weighted_by_pressure(tile_coordinate height);
 
-  bool mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(state_t& state, tile_location const& loc, active_fluids_t& active_fluids);
-  bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state_t& state, tile_location const& loc, active_fluids_t& active_fluids);
+  bool mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(
+    state_t& state, tile_location const& loc, active_fluids_t& active_fluids);
+  bool mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(
+    state_t& state, tile_location const& loc, active_fluids_t& active_fluids);
 };
 
 typedef unordered_map<water_group_identifier, persistent_water_group_info> persistent_water_groups_t;

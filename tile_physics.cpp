@@ -708,7 +708,8 @@ void push_water_into_pushable_tile(state_t& state,
 }
 
 
-bool persistent_water_group_info::mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(state_t& state, tile_location const& loc, active_fluids_t& active_fluids) {
+bool persistent_water_group_info::mark_tile_as_suckable_and_return_true_if_it_is_immediately_sucked_away(
+      state_t& state, tile_location const& loc, active_fluids_t& active_fluids) {
   if (!pushable_tiles_by_height.any_below(loc.coords().z)) {
     suckable_tiles_by_height.insert(loc);
     return false;
@@ -718,7 +719,8 @@ bool persistent_water_group_info::mark_tile_as_suckable_and_return_true_if_it_is
   push_water_into_pushable_tile(state, pushed_tile, active_fluids);
   return true;
 }
-bool persistent_water_group_info::mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state_t& state, tile_location const& loc, active_fluids_t& active_fluids) {
+bool persistent_water_group_info::mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(
+      state_t& state, tile_location const& loc, active_fluids_t& active_fluids) {
   if (!suckable_tiles_by_height.any_above(loc.coords().z)) {
     pushable_tiles_by_height.insert(loc);
     return false;
@@ -1616,18 +1618,23 @@ void update_fluids_impl(state_t& state) {
       active_fluid_tile_info& fluid = p.second;
       const auto lower_loc = loc.get_neighbor<zminus>(CONTENTS_ONLY);
       const auto lower_stuff = lower_loc.stuff_at().contents();
-      bool anywhere_downwards_is_a_supporting_tile = ((lower_stuff == GROUPABLE_WATER) || (obstructiveness(lower_stuff) > obstructiveness(GROUPABLE_WATER)));
+      bool anywhere_downwards_is_a_supporting_tile = ((lower_stuff == GROUPABLE_WATER)
+                    || (obstructiveness(lower_stuff) > obstructiveness(GROUPABLE_WATER)));
       if (!anywhere_downwards_is_a_supporting_tile) {
         const auto adj_neighbors = get_perpendicular_neighbors(lower_loc, zminus, CONTENTS_ONLY);
         for (tile_location adj_neighbor : adj_neighbors) {
           const auto adj_lower_stuff = adj_neighbor.stuff_at().contents();
-          if ((adj_lower_stuff == GROUPABLE_WATER) || (obstructiveness(adj_lower_stuff) > obstructiveness(GROUPABLE_WATER))) {
+          if ((adj_lower_stuff == GROUPABLE_WATER)
+                || (obstructiveness(adj_lower_stuff) > obstructiveness(GROUPABLE_WATER))) {
             anywhere_downwards_is_a_supporting_tile = true;
             break;
           }
         }
       }
-      const bool should_be_groupable = anywhere_downwards_is_a_supporting_tile && (std::max(std::abs(fluid.velocity(X)), std::abs(fluid.velocity(Y))) <= min_convincing_speed/2) && (fluid.velocity(Z) <= inactive_fluid_velocity(Z));
+      const bool should_be_groupable = anywhere_downwards_is_a_supporting_tile
+          && (std::max(std::abs(fluid.velocity(X)), std::abs(fluid.velocity(Y)))
+                  <= min_convincing_speed/2)
+          && (fluid.velocity(Z) <= inactive_fluid_velocity(Z));
       if (should_be_groupable && (stuff == UNGROUPABLE_WATER)) {
         //water_to_become_groupable.push_back(loc);
         replace_substance(state, loc, UNGROUPABLE_WATER, GROUPABLE_WATER);

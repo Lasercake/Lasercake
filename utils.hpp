@@ -259,7 +259,9 @@ public:
           numeric_representation_cast<int64_type_to_use_with_dot>(amount)
         * numeric_representation_cast<int64_type_to_use_with_dot>(amount);
   }
-  bool operator<(vector3 const& other)const { return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z)))); }
+  bool operator<(vector3 const& other)const {
+    return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z))));
+  }
 
   friend inline std::ostream& operator<<(std::ostream& os, vector3 const& v) {
     return os << '(' << v.x << ", " << v.y << ", " << v.z << ')';
@@ -359,7 +361,10 @@ template<> struct cdir_info<zplus> {
 
 // This ordering must match the dir ordering above.
 // Sadly C++ isn't supporting C99's = { [cdiridx_xminus] = cdir_xminus, [...] };.
-const vector3<neighboring_tile_differential> cardinal_direction_vectors[num_cardinal_directions] = { cdir_info<xminus>::as_vector(), cdir_info<yminus>::as_vector(), cdir_info<zminus>::as_vector(), cdir_info<xplus>::as_vector(), cdir_info<yplus>::as_vector(), cdir_info<zplus>::as_vector() };
+const vector3<neighboring_tile_differential> cardinal_direction_vectors[num_cardinal_directions] = {
+  cdir_info<xminus>::as_vector(), cdir_info<yminus>::as_vector(), cdir_info<zminus>::as_vector(),
+  cdir_info<xplus>::as_vector(), cdir_info<yplus>::as_vector(), cdir_info<zplus>::as_vector()
+};
 
 template<cardinal_direction Dir, typename ThingWithCoordinates>
 ThingWithCoordinates next_in_direction(ThingWithCoordinates const& t) {
@@ -383,7 +388,8 @@ inline cardinal_direction cardinal_direction_of_dimension_and_positiveness(which
                                       dim + positive*3);
 }
 
-template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_direction(vector3<ScalarType> src, cardinal_direction dir) {
+template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_direction(
+      vector3<ScalarType> src, cardinal_direction dir) {
   vector3<ScalarType> result(0,0,0);
   result[which_dimension_is_cardinal_direction(dir)] = src[which_dimension_is_cardinal_direction(dir)];
   return result;
@@ -392,7 +398,10 @@ template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_d
 
 template<typename ValueType> class value_for_each_cardinal_direction {
 public:
-  explicit value_for_each_cardinal_direction(ValueType const& iv/*initial_value*/) : data({{iv,iv,iv,iv,iv,iv}}) { static_assert(num_cardinal_directions == 6, "fix {{iv,iv,...}} to have the right number"); }
+  explicit value_for_each_cardinal_direction(ValueType const& iv/*initial_value*/)
+      : data({{iv,iv,iv,iv,iv,iv}}) {
+    static_assert(num_cardinal_directions == 6, "fix {{iv,iv,...}} to have the right number");
+  }
   template<cardinal_direction Dir> ValueType      & get()      { return data[Dir]; }
   template<cardinal_direction Dir> ValueType const& get()const { return data[Dir]; }
   ValueType      & operator[](cardinal_direction const& dir)      { return data[dir]; }
@@ -533,11 +542,15 @@ struct lasercake_nice_deleter {
 
 template<typename T>
 struct lasercake_set {
-  typedef std::unordered_set<T, std::hash<T>, std::equal_to<T>, typename lasercake_nice_allocator<T>::type > type;
+  typedef std::unordered_set<T, std::hash<T>, std::equal_to<T>,
+              typename lasercake_nice_allocator<T>::type
+          > type;
 };
 template<typename K, typename V>
 struct lasercake_map {
-  typedef std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, typename lasercake_nice_allocator< std::pair<const K, V> >::type > type;
+  typedef std::unordered_map<K, V, std::hash<K>, std::equal_to<K>,
+              typename lasercake_nice_allocator< std::pair<const K, V> >::type
+          > type;
 };
 template<typename T>
 struct lasercake_vector {
