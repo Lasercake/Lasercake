@@ -20,6 +20,12 @@ Lasercake currently depends on the following libraries:
               but if you're developing you might need
               it; ./generate-boostbcp.py has relevant
               comments too.)
+- optionally, GLEW (we bundle a copy of GLEW - just a
+              few C files - so you don't need it installed.
+              We haven't yet implemented a CMake option to use
+              system GLEW; if you don't want to use the
+              bundled GLEW just ask us to implement such
+              an option.)
 
 ### tools ###
 
@@ -45,14 +51,22 @@ your computer.
 
 These build instructions have been tested on:
 
-* Linux [Arch Linux as well as Debian Testing, x86_64, June 2012].
+* Linux [Arch Linux as well as Debian Testing, x86_64, Feb 2013].
 
 * Mac OS X 10.6
       [using MacPorts qt4-mac and gcc47;
       cmake -DCMAKE_C_COMPILER=gcc-mp-4.7 -DCMAKE_CXX_COMPILER=g++-mp-4.7
       Run Lasercake and then click on it in the dock to bring the
       window to the front... our Mac integration needs improvement!
-      2012-12-17: I'm getting crashes that I'm having trouble debugging.]
+      2012-12-17: I'm getting crashes that I'm having trouble debugging.
+      2013-02-14: It's working better now, but perhaps it's because of
+        https://trac.macports.org/ticket/35770
+        also see
+          https://trac.macports.org/ticket/34288
+      ..newer versions in MacPorts apparently don't include the new libstdc++,
+      and so system C++11 library features on Mac reliably would require
+      a new system std lib, namely (so I hear) libc++ in OS X 10.7.
+      ]
 
 * MinGW [Cross-compiling for Windows from Linux;
       I currently have to manually copy all needed .dlls to be
