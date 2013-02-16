@@ -173,6 +173,7 @@ public:
   bounds_checked_int operator++(int) { bounds_checked_int p = *this; ++*this; return p; }
   bounds_checked_int operator--(int) { bounds_checked_int p = *this; --*this; return p; }
 
+  bool operator!()const { return !val_; } // work around GCC 4.6 ambiguous conversion bug
   operator unspecified_bool_type() const { return val_ ? &unspecified_bool_::member : nullptr; }
 
   int_type get() const { return val_; }
