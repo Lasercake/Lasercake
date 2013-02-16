@@ -200,17 +200,17 @@ void float_above_ground(vector3<velocity1d>& velocity_, world& w, object_identif
 } /* end anonymous namespace */
 
 shape robot::get_initial_personal_space_shape()const {
-  /*return shape(geom::convex_polyhedron(bounding_box::min_and_max(
+  return shape(geom::convex_polyhedron(bounding_box::min_and_max(
     location_ - vector3<distance>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
     location_ + vector3<distance>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
-  )));*/
-  std::vector<vector3<distance>> verts;
+  )));
+  /*std::vector<vector3<distance>> verts;
   verts.push_back(location_ + vector3<distance>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10));
   verts.push_back(location_ + vector3<distance>(tile_width * 3 / 10, -tile_width * 3 / 10, tile_width * 3 / 10));
   verts.push_back(location_ + vector3<distance>(-tile_width * 3 / 10, -tile_width * 3 / 10, tile_width * 3 / 10));
   verts.push_back(location_ + vector3<distance>(-tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10));
   verts.push_back(location_ + vector3<distance>(0, 0, -tile_width * 3 / 10));
-  return shape(geom::convex_polyhedron(verts));
+  return shape(geom::convex_polyhedron(verts));*/
 }
 
 shape robot::get_initial_detail_shape()const {
@@ -241,7 +241,7 @@ std::string robot::player_instructions()const {
 
 void robot::update(world& w, input_representation::input_news_t const& input_news, object_identifier my_id) {
   update_location(location_, w, my_id);
-  //float_above_ground(velocity_, w, my_id);
+  float_above_ground(velocity_, w, my_id);
 
   // TODO is this the best rounding strategy? (do we care here?)
   velocity_.x = divide(velocity_.x, 2, rounding_strategy<round_down, negative_mirrors_positive>());
