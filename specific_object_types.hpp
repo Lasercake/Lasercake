@@ -139,5 +139,17 @@ private:
 };
 
 
+class conveyor_belt : public tile_aligned_object, public autonomous_object {
+public:
+  conveyor_belt(vector3<tile_coordinate> location):initial_location_(location){}
+  virtual shape get_initial_personal_space_shape()const;
+  virtual shape get_initial_detail_shape()const;
+
+  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
+private:
+  vector3<tile_coordinate> initial_location_;
+};
+
+
 #endif
 

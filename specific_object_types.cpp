@@ -291,7 +291,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
         w.replace_substance(*locp, ROCK, RUBBLE);
       }
       else if (locp->stuff_at().contents() == RUBBLE) {
-        // hack?
+        // hack way to speed the tile?
         get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_distance>(facing_ * tile_width * 6 / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units)) / seconds / identity(fixed_frame_lengths / seconds);
       }
     }
@@ -358,6 +358,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   if (input_news.num_times_pressed("o")) {
     const shared_ptr<refinery> ref (new refinery(get_building_tile(w)));
     w.try_create_object(ref);
+  }
+  if (input_news.num_times_pressed("b")) {
+    const shared_ptr<conveyor_belt> con (new conveyor_belt(get_building_tile(w)));
+    w.try_create_object(con);
   }
   if (input_news.is_currently_pressed("r")) {
     const uniform_int_distribution<distance> random_delta(-tile_width, tile_width);
@@ -624,6 +628,34 @@ void refinery::update(world& w, input_representation::input_news_t const&, objec
   if ((     metal_inside_ >= 100) && (     metal_output_loc.stuff_at().contents() == AIR)) {
     w.replace_substance(     metal_output_loc, AIR, RUBBLE);
          metal_inside_ -= 100;
+  }
+}
+
+
+
+
+
+shape conveyor_belt::get_initial_personal_space_shape()const {
+  return shape(bounding_box::min_and_max(lower_bound_in_fine_distance_units(initial_location_), upper_bound_in_fine_distance_units(initial_location_) - vector3<distance>(0, 0, tile_height * 4 / 5)));
+}
+shape conveyor_belt::get_initial_detail_shape()const {
+  return get_initial_personal_space_shape();
+}
+
+
+void conveyor_belt::update(world& w, input_representation::input_news_t const&, object_identifier) {
+  tile_location loc = w.make_tile_location(initial_location_, FULL_REALIZATION);
+  // hack way to speed the tile?
+  vector3<sub_tile_velocity>& tile_vel = get_state(w.tile_physics()).active_fluids[loc].velocity;
+  sub_tile_velocity target_vel = sub_tile_velocity((tile_width / seconds) * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
+  sub_tile_velocity one_frame_acceleration = sub_tile_velocity((20 * meters / seconds / seconds) * identity(tile_physics_sub_tile_distance_units / meters) / identity(fixed_frame_lengths / seconds) / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths);
+  if (tile_vel.x < target_vel) {
+    tile_vel.x += one_frame_acceleration;
+    if (tile_vel.x > target_vel) tile_vel.x = target_vel;
+  }
+  if (tile_vel.z < 0) {
+    tile_vel.z += one_frame_acceleration;
+    if (tile_vel.z > 0) tile_vel.z = 0;
   }
 }
 
