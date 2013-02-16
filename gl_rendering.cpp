@@ -23,6 +23,9 @@
 #include <array>
 
 #include <GL/glew.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "gl_rendering.hpp"
 #include "gl_data_preparation.hpp"
@@ -49,8 +52,8 @@ struct gl_renderer::state_t_ {
 gl_renderer::gl_renderer() {}
 gl_renderer::~gl_renderer() {}
 
-static const double tile_width_double = get_primitive_double(get(tile_width, fine_units));
-static const double tile_height_double = get_primitive_double(get(tile_height, fine_units));
+static const float tile_width_float = get_primitive_float(get(tile_width, fine_units));
+static const float tile_height_float = get_primitive_float(get(tile_height, fine_units));
 
 void gl_renderer::output_gl_data_to_OpenGL(
     gl_data_preparation::gl_all_data const& gl_data,
@@ -97,13 +100,22 @@ void gl_renderer::output_gl_data_to_OpenGL(
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  // TODO convert these GLU calls to plain GL calls?
-  gluPerspective(80, (double(viewport_width) / viewport_height), 0.1*tile_width_double, 300.0*tile_width_double);
+  const glm::mat4 projection_matrix = glm::perspective(
+    80.0f,
+    float(viewport_width) / float(viewport_height),
+    0.1f*tile_width_float,
+    300.0f*tile_width_float
+  );
+  glLoadMatrixf(glm::value_ptr(projection_matrix));
+
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-  gluLookAt(0, 0, 0,
-            gl_data.facing.x, gl_data.facing.y, gl_data.facing.z,
-            gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z);
+  const glm::mat4 view_matrix = glm::lookAt(
+    glm::vec3(0, 0, 0),
+    glm::vec3(gl_data.facing.x, gl_data.facing.y, gl_data.facing.z),
+    glm::vec3(gl_data.facing_up.x, gl_data.facing_up.y, gl_data.facing_up.z)
+  );
+  glLoadMatrixf(glm::value_ptr(view_matrix));
 
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);

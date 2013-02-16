@@ -12,6 +12,9 @@ Lasercake currently depends on the following libraries:
 
 - Qt (at least 4.8) -- http://qt-project.org/
 - OpenGL
+- GLM -- a small header-only C++ library that
+         we should (TODO) include a copy of for your
+         convenience -- http://glm.g-truc.net/
 
 - optionally, Glib (for a small speed improvement. To
                    disable, pass -DGLIB=OFF to cmake)
