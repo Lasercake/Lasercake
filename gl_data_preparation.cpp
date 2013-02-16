@@ -431,7 +431,7 @@ struct bbox_tile_prep_visitor {
         const vector3<GLfloat> line_base = locv + tile_size_float / 2;
         push_line(coll,
                   line_base,
-                  line_base + cast_vector3_to_float(fluid->velocity / tile_physics_sub_tile_units),
+                  line_base + cast_vector3_to_float(fluid->velocity / tile_physics_sub_tile_velocity_units),
                   color(0x00ff0077));
 
         for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {

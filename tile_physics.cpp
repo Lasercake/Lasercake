@@ -1317,7 +1317,11 @@ int obstructiveness(tile_contents tc) {
   else assert(false); // reaching this would mean we implemented a new material type but forgot to set its obstructiveness
 }
 
-const sub_tile_velocity st_gravity_acceleration_magnitude = sub_tile_velocity(gravity_acceleration_magnitude * identity(tile_physics_sub_tile_units / fine_distance_units) / identity(fixed_frame_lengths * fixed_frame_lengths / seconds / seconds) * fixed_frame_lengths);
+const sub_tile_velocity st_gravity_acceleration_magnitude =
+  sub_tile_velocity(gravity_acceleration_magnitude
+      * identity(tile_physics_sub_tile_distance_units / fine_distance_units)
+      / identity(fixed_frame_lengths * fixed_frame_lengths / seconds / seconds)
+      * fixed_frame_lengths);
 
 void update_fluids_impl(state_t& state) {
   // For short:
@@ -1405,7 +1409,7 @@ void update_fluids_impl(state_t& state) {
               const sub_tile_velocity deficiency_of_vel = sub_tile_velocity(i64sqrt(
                     // "2gh"
                     ((2 * gravity_acceleration_magnitude * pressure) / pressure_per_depth_in_tile_heights) * tile_height
-                    * identity(tile_physics_sub_tile_units * tile_physics_sub_tile_units / fine_distance_units / fine_distance_units)
+                    * identity(tile_physics_sub_tile_distance_units * tile_physics_sub_tile_distance_units / fine_distance_units / fine_distance_units)
                     / identity(fixed_frame_lengths * fixed_frame_lengths / seconds / seconds)
                   )) - amount_of_vel_in_pressure_receiving_dir;
               if (deficiency_of_vel > 0) {

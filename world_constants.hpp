@@ -37,7 +37,7 @@
 typedef units<dim::ratio<10>, dim::meter<1>> tile_widths_t;
 typedef units<dim::ratio< 2>, dim::meter<1>> tile_heights_t;
 typedef units<dim::ratio< 1, 200>, dim::meter<1>> fine_distance_units_t;
-typedef typename units_prod<fine_distance_units_t, dim::ratio<1, 30>>::type tile_physics_sub_tile_units_t;
+typedef typename units_prod<fine_distance_units_t, dim::ratio<1, 30>>::type tile_physics_sub_tile_distance_units_t;
 typedef units<dim::ratio<1, (2*2*2*2 * 3*3*3 * 5*5 * 7 * 11)>, dim::second<1>> time_units_t;
 typedef typename units_prod<fine_distance_units_t, dim::second<(-1)>>::type velocity_units_t;
 typedef typename units_prod<fine_distance_units_t, dim::second<(-2)>>::type acceleration_units_t;
@@ -47,7 +47,7 @@ typedef pascals_t pressure_units_t;
 // This is a stupid unit but it exists currently:
 typedef typename units_prod<seconds_t, dim::ratio<1, 30>>::type fixed_frame_lengths_t;
 
-typedef typename units_prod<tile_physics_sub_tile_units_t, units_pow<fixed_frame_lengths_t, (-1)> >::type
+typedef typename units_prod<tile_physics_sub_tile_distance_units_t, units_pow<fixed_frame_lengths_t, (-1)> >::type
   tile_physics_sub_tile_velocity_units_t;
 
 //typedef typename units_prod<kilograms_t, fine_distance_units_t::pow<(-3)>>::type density_units_t;
@@ -60,7 +60,7 @@ typedef typename units_prod<tile_physics_sub_tile_units_t, units_pow<fixed_frame
 constexpr auto tile_widths = tile_widths_t();
 constexpr auto tile_heights = tile_heights_t();
 constexpr auto fine_distance_units = fine_distance_units_t();
-constexpr auto tile_physics_sub_tile_units = tile_physics_sub_tile_units_t();
+constexpr auto tile_physics_sub_tile_distance_units = tile_physics_sub_tile_distance_units_t();
 constexpr auto tile_physics_sub_tile_velocity_units = tile_physics_sub_tile_velocity_units_t();
 constexpr auto time_units = time_units_t();
 constexpr auto velocity_units = velocity_units_t();
@@ -81,8 +81,8 @@ typedef physical_quantity<lint64_t, velocity_units_t> velocity1d;
 typedef physical_quantity<lint64_t, acceleration_units_t> acceleration1d;
 typedef physical_quantity<lint64_t, density_units_t> density;
 typedef physical_quantity<lint64_t, pressure_units_t> pressure;
-typedef physical_quantity<lint32_t, tile_physics_sub_tile_units_t> sub_tile_distance;
-typedef physical_quantity<lint64_t, tile_physics_sub_tile_units_t> large_sub_tile_distance;
+typedef physical_quantity<lint32_t, tile_physics_sub_tile_distance_units_t> sub_tile_distance;
+typedef physical_quantity<lint64_t, tile_physics_sub_tile_distance_units_t> large_sub_tile_distance;
 typedef physical_quantity<lint32_t, tile_physics_sub_tile_velocity_units_t> sub_tile_velocity;
 typedef physical_quantity<lint64_t, tile_physics_sub_tile_velocity_units_t> large_sub_tile_velocity;
 typedef physical_quantity<lint64_t, time_units_t> time_unit;
@@ -116,18 +116,34 @@ const density water_density = water_density_kgm3 * identity(density_units / (kil
 // unitification because making them be per-second would add a lot of
 // divisions, and I didn't want to mess up the delicate balance of the
 // fluid physics. - Eli
-const auto fluid_friction_constant = sub_tile_velocity(tile_width * identity(tile_physics_sub_tile_units / fine_distance_units) / (1800 * fixed_frame_lengths)) / fixed_frame_lengths;
+const auto fluid_friction_constant =
+    sub_tile_velocity(
+      tile_width
+      * identity(tile_physics_sub_tile_distance_units / fine_distance_units)
+      / (1800 * fixed_frame_lengths))
+  / fixed_frame_lengths;
 
 // was originally conceptualized as "the terminal velocity should be
 // half a tile height per frame", hence the strange value.
-const sub_tile_distance air_resistance_constant = sub_tile_distance((tile_height / fixed_frame_lengths) * (tile_height / fixed_frame_lengths) * identity(fixed_frame_lengths * fixed_frame_lengths / seconds / seconds) * identity(tile_physics_sub_tile_units / fine_distance_units) / (4 * gravity_acceleration_magnitude));
+const sub_tile_distance air_resistance_constant =
+    sub_tile_distance(
+      (tile_height / fixed_frame_lengths) * (tile_height / fixed_frame_lengths)
+      * identity(fixed_frame_lengths * fixed_frame_lengths / seconds / seconds)
+      * identity(tile_physics_sub_tile_distance_units / fine_distance_units)
+      / (4 * gravity_acceleration_magnitude));
 
 const pressure pressure_per_depth_in_tile_heights =
     water_density_kgm3 * gravity_acceleration_magnitude * tile_height
     / (identity(fine_distance_units / meters) * identity(fine_distance_units / meters));
 
-const sub_tile_velocity idle_progress_reduction_rate = sub_tile_velocity((tile_width * identity(tile_physics_sub_tile_units / fine_distance_units) / 100) / fixed_frame_lengths);
-const sub_tile_velocity min_convincing_speed         = sub_tile_velocity((tile_width * identity(tile_physics_sub_tile_units / fine_distance_units) / 50 ) / fixed_frame_lengths);
+const sub_tile_velocity idle_progress_reduction_rate =
+    sub_tile_velocity(
+      (tile_width * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / 100)
+      / fixed_frame_lengths);
+const sub_tile_velocity min_convincing_speed         =
+    sub_tile_velocity(
+      (tile_width * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / 50 )
+      / fixed_frame_lengths);
 const vector3<sub_tile_velocity> inactive_fluid_velocity(0, 0, -min_convincing_speed);
 
 // I just kept this at the value it was at duing the unitization.
