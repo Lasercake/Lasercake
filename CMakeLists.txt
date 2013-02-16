@@ -8,6 +8,7 @@ set (OPTIONS_DEFINES )
 # (option THREADS TODO: does anyone need this to compile against a Qt that has threads disabled?
 # Could be permitted, with a bit of work.  Do you have a way to test compiling that configuration?)
 option (USE_BOOSTBCP "On: Use Boost from ./boostbcp/; off: use system Boost." ON)
+option (USE_BUNDLED_GLM "On: Use glm from ./bundled_libs/; off: use system glm." ON)
 option (THREADS "On: Use Qt multithreading for parallelism; off: don't link/use threads." ON)
 option (TIMING "On: Use Boost.Chrono to count performance (e.g. FPS); off: don't count perf." ON)
 option (GLIB "Use GLib slices for some memory allocation (faster; requires glib)." ON)
@@ -15,16 +16,23 @@ option (USE_BOUNDS_CHECKED_INTS "Check for overflow of most int computations at 
 option (PARANOID "Turn on various code paranoia checks (slow)." OFF)
 option (BUILD_SELF_TESTS "Build Lasercake's self-testing code component (recommended)." ON)
 
+include (FindPkgConfig)
+set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_SOURCE_DIR}/cmake")
+
 if (GLIB)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DLASERCAKE_USE_GLIB=1)
-	include (FindPkgConfig)
-	set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_SOURCE_DIR}/cmake")
 	find_package(Glib)
 endif()
 
 find_package(Qt4 4.8 COMPONENTS QtCore QtGui QtOpenGL)
 include(${QT_USE_FILE})
 find_package(OpenGL)
+
+if (USE_BUNDLED_GLM)
+	set(GLM_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/bundled_libs/glm/")
+else()
+	find_package(GLM)
+endif()
 
 if (USE_BOOSTBCP)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DLASERCAKE_USE_BOOSTBCP=1)
@@ -107,7 +115,7 @@ set(CMAKE_CXX_FLAGS "${OUR_CXX_FLAGS_spaces} ${THEIR_CXX_FLAGS_spaces}")
 
 message(STATUS "compiler flags: ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS}")
 
-set(INCLUDE_DIRS ${BOOST_INCLUDE_DIR} ${GLEW_INCLUDE_DIR} ${GLIB_INCLUDE_DIR} ${GLIB_CONFIG_INCLUDE_DIR})
+set(INCLUDE_DIRS ${BOOST_INCLUDE_DIR} ${GLEW_INCLUDE_DIR} ${GLM_INCLUDE_DIRS} ${GLIB_INCLUDE_DIR} ${GLIB_CONFIG_INCLUDE_DIR})
 message(STATUS "qt defs: ${QT_DEFINITIONS}")
 add_definitions(${QT_DEFINITIONS})
 semicolons_to_spaces(INCLUDE_DIRS_spaces ${INCLUDE_DIRS})
