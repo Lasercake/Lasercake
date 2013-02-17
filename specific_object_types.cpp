@@ -592,6 +592,7 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
         if (loc.stuff_at().contents() == AIR) {
           w.replace_substance(loc, AIR, RUBBLE);
           --carrying_;
+          if (carrying_ <= 0) break;
         }
       }
     }
