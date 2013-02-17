@@ -158,10 +158,12 @@ protected:
   void paintEvent(QPaintEvent*) override;
   void closeEvent(QCloseEvent*) override;
 
+private Q_SLOTS:
+  void prepare_to_cleanly_close_();
+
 private:
   void key_change_(QKeyEvent* event, bool pressed);
   void invoke_render_(); //precondition: you incremented gl_thread_data_->revision
-  void prepare_to_cleanly_close_();
 
   typedef int qt_key_type_;
   // e.g. in case there can be multiple shift keys pressed at once
@@ -173,6 +175,7 @@ private:
   bool use_separate_gl_thread_;
   LasercakeGLThread thread_;
   shared_ptr<gl_thread_data_t> gl_thread_data_;
+  bool has_quit_;
 };
 
 

@@ -504,16 +504,24 @@ microseconds_t LasercakeGLThread::gl_render(gl_data_ptr_t& gl_data_ptr, Lasercak
 }
 
 void LasercakeGLWidget::invoke_render_() {
-  if(use_separate_gl_thread_) {
-    gl_thread_data_->wait_for_instruction.wakeAll();
-  }
-  else {
-    gl_thread_data_->microseconds_last_gl_render_took =
-      thread_.gl_render(gl_thread_data_->current_data, *this, gl_thread_data_->viewport_size);
+  if(!has_quit_) {
+    if(use_separate_gl_thread_) {
+      gl_thread_data_->wait_for_instruction.wakeAll();
+    }
+    else {
+      gl_thread_data_->microseconds_last_gl_render_took =
+        thread_.gl_render(gl_thread_data_->current_data, *this, gl_thread_data_->viewport_size);
+    }
   }
 }
 LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* parent)
-  : QGLWidget(parent), use_separate_gl_thread_(use_separate_gl_thread) {
+  : QGLWidget(parent),
+    input_is_grabbed_(false),
+    use_separate_gl_thread_(use_separate_gl_thread),
+    has_quit_(false) {
+  QObject::connect(
+    QCoreApplication::instance(), SIGNAL(aboutToQuit()),
+    this, SLOT(prepare_to_cleanly_close_()));
   setFocusPolicy(Qt::ClickFocus);
   //TODO setWindowFlags(), setWindow*()?
   //TODO do we want to request/check anything about the GL context?
@@ -585,19 +593,22 @@ void LasercakeGLWidget::paintEvent(QPaintEvent*) {
   invoke_render_();
 }
 void LasercakeGLWidget::prepare_to_cleanly_close_() {
-  // Some OpenGL implementations don't like being
-  // silently terminated, because they are poorly tested
-  // piles of looming kernel-exploitation vulnerabilities.
-  //
-  // Anyway, waiting for the GL thread to reach a stopping point
-  // seems to be useful for system stability.
-  {
-    QMutexLocker lock(&gl_thread_data_->gl_data_lock);
-    gl_thread_data_->quit_now = true;
-  }
-  if(use_separate_gl_thread_) {
-    gl_thread_data_->wait_for_instruction.wakeAll();
-    thread_.wait();
+  if(!has_quit_) {
+    // Some OpenGL implementations don't like being
+    // silently terminated, because they are poorly tested
+    // piles of looming kernel-exploitation vulnerabilities.
+    //
+    // Anyway, waiting for the GL thread to reach a stopping point
+    // seems to be useful for system stability.
+    {
+      QMutexLocker lock(&gl_thread_data_->gl_data_lock);
+      gl_thread_data_->quit_now = true;
+    }
+    if(use_separate_gl_thread_) {
+      gl_thread_data_->wait_for_instruction.wakeAll();
+      thread_.wait();
+    }
+    has_quit_ = true;
   }
 }
 void LasercakeGLWidget::closeEvent(QCloseEvent* event) {
