@@ -294,7 +294,13 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
       }
       else if (locp->stuff_at().contents() == RUBBLE) {
         // hack way to speed the tile?
-        get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_distance>(facing_ * tile_width * 6 / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units)) / seconds / identity(fixed_frame_lengths / seconds);
+        get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_velocity>(
+          facing_ *
+
+            // the actual value: the rest of this line is conversions
+            tile_width * 6 / seconds
+            
+          / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
       }
     }
   }
@@ -663,8 +669,8 @@ void conveyor_belt::update(world& w, input_representation::input_news_t const&, 
   if (loc.stuff_at().contents() == RUBBLE) {
     // hack way to speed the tile?
     vector3<sub_tile_velocity>& tile_vel = get_state(w.tile_physics()).active_fluids[loc].velocity;
-    sub_tile_velocity target_vel = sub_tile_velocity((tile_width / seconds) * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
-    sub_tile_velocity one_frame_acceleration = sub_tile_velocity((20 * meters / seconds / seconds) * identity(tile_physics_sub_tile_distance_units / meters) / identity(fixed_frame_lengths / seconds) / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths);
+    sub_tile_velocity target_vel((tile_width / seconds) * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
+    sub_tile_velocity one_frame_acceleration((20 * meters / seconds / seconds) * identity(tile_physics_sub_tile_distance_units / meters) / identity(fixed_frame_lengths / seconds) / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths);
     if (is_a_positive_directional_cardinal_direction(direction_)) {
       if (tile_vel(which_dimension_is_cardinal_direction(direction_)) < target_vel) {
         tile_vel[which_dimension_is_cardinal_direction(direction_)] += one_frame_acceleration;
