@@ -57,7 +57,7 @@ public:
   ~gl_renderer();
 
 private:
-  // implemented in main.cpp using Qt:
+  // implemented in gl_qt_usage.cpp using Qt:
   void render_2d_text_overlay_(
       abstract_gl_data const& gl_data,
       viewport_dimension viewport_width,
