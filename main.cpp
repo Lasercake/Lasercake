@@ -457,9 +457,11 @@ int main(int argc, char *argv[])
 
   QCoreApplication::setAttribute(Qt::AA_X11InitThreads);
   QApplication qapp(argc, argv);
-  if (!QGLFormat::hasOpenGL()) {
-    std::cerr << "OpenGL capabilities not found; giving up." << std::endl;
-    exit(1);
+  if(config.have_gui) {
+    if (!QGLFormat::hasOpenGL()) {
+      std::cerr << "OpenGL capabilities not found; giving up." << std::endl;
+      exit(1);
+    }
   }
   qRegisterMetaType<worldgen_function_t>("worldgen_function_t");
   qRegisterMetaType<input_news_t>("input_news_t");
