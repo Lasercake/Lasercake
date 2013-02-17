@@ -281,11 +281,13 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   const bool turn_up = input_news.is_currently_pressed("up")/* || input_news.is_currently_pressed("w")*/;
   const bool turn_down = input_news.is_currently_pressed("down")/* || input_news.is_currently_pressed("x")*/;
   const int64_t key_speed_factor = 22;
-  const int64_t mouse_speed_factor = 5;
+  const int64_t mouse_speed_factor = 2;
   const int64_t speed_divisor = 20*key_speed_factor;
   const int64_t turn_right_amount = mouse_speed_factor * input_news.mouse_displacement().x
+                                    + input_news.mouse_displacement().x * abs(input_news.mouse_displacement().x) / 10
                                     + key_speed_factor * (turn_right - turn_left);
   const int64_t turn_up_amount    = mouse_speed_factor * input_news.mouse_displacement().y
+                                    + input_news.mouse_displacement().y * abs(input_news.mouse_displacement().y) / 10
                                     + key_speed_factor * (turn_up - turn_down);
   if (turn_right_amount != 0) {
     const distance new_facing_x = facing_.x + turn_right_amount * facing_.y / speed_divisor;
