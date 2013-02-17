@@ -261,11 +261,12 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   const bool turn_up = input_news.is_currently_pressed("up") || input_news.is_currently_pressed("w");
   const bool turn_down = input_news.is_currently_pressed("down") || input_news.is_currently_pressed("x");
   const int64_t key_speed_factor = 22;
+  const int64_t mouse_speed_factor = 5;
   const int64_t speed_divisor = 20*key_speed_factor;
-  const int64_t turn_right_amount = input_news.mouse_displacement().x
-                                  + key_speed_factor * (turn_right - turn_left);
-  const int64_t turn_up_amount = input_news.mouse_displacement().y
-                                  + key_speed_factor * (turn_up - turn_down);
+  const int64_t turn_right_amount = mouse_speed_factor * input_news.mouse_displacement().x
+                                    + key_speed_factor * (turn_right - turn_left);
+  const int64_t turn_up_amount    = mouse_speed_factor * input_news.mouse_displacement().y
+                                    + key_speed_factor * (turn_up - turn_down);
   if (turn_right_amount != 0) {
     const distance new_facing_x = facing_.x + turn_right_amount * facing_.y / speed_divisor;
     const distance new_facing_y = facing_.y - turn_right_amount * facing_.x / speed_divisor;
@@ -283,7 +284,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   
   vector3<distance> digging_laser_delta = facing_ * 3 / 2;
   vector3<distance> result_delta;
-  const object_or_tile_identifier digging_laser_target = laser_find(w, my_id, location_, digging_laser_delta, true, &result_delta);
+  const object_or_tile_identifier digging_laser_target = laser_find(w, my_id, location_, digging_laser_delta, false, &result_delta);
   if (input_news.num_times_pressed("c")) {
     if (tile_location const* locp = digging_laser_target.get_tile_location()) {
 #if 0
