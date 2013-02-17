@@ -232,6 +232,25 @@ std::string get_world_ztree_debug_info(world const& w) {
 } /* end anonymous namespace */
 
 
+// LasercakeSimulator:
+//
+// When exiting the program, we implicitly roughly terminate the simulation
+// thread by calling C's exit() without stopping or waiting for that thread.
+//
+// The thread has no side effects visible outside the
+// program, so this doesn't lead to visible race conditions.
+//
+// (
+//   This might even be safe if we were not exiting the program
+//   (via e.g. simulator_thread_->terminate()):
+//   The simulation thread refers to no global data
+//      (except for implementations of e.g. borrowed_bitset, hmm)
+//   and has no side effects
+//      (except for Qt inter-thread communication; what if terminating
+//       it leaves a Qt-implementation mutex in a wrong state? Hmm.
+//       This could be impossiblified by using lock-free communication
+//       between ours and the sim thread).
+// )
 LasercakeSimulator::LasercakeSimulator(QObject* parent) : QObject(parent) {}
 
 void LasercakeSimulator::init(worldgen_function_t worldgen, config_struct config) {
@@ -457,7 +476,12 @@ int main(int argc, char *argv[])
   QFontDatabase::addApplicationFont(":/resources/VC_Gryffindor.ttf");
 
   LasercakeController controller(config);
-  return qapp.exec();
+  // We call exit() here rather than return so that 'controller' is not
+  // destroyed in the process of exiting the program.
+  // This makes Qt emit fewer warnings; probably makes quitting a bit faster;
+  // and we make sure not to use the destructor for any critical
+  // end-of-process stuff (if there even is any currently).
+  exit(qapp.exec());
 }
 
 microseconds_t LasercakeGLThread::gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, QSize viewport_size) {
@@ -560,8 +584,13 @@ void LasercakeGLWidget::paintEvent(QPaintEvent*) {
   }
   invoke_render_();
 }
-void LasercakeGLWidget::closeEvent(QCloseEvent* event)
-{
+void LasercakeGLWidget::prepare_to_cleanly_close_() {
+  // Some OpenGL implementations don't like being
+  // silently terminated, because they are poorly tested
+  // piles of looming kernel-exploitation vulnerabilities.
+  //
+  // Anyway, waiting for the GL thread to reach a stopping point
+  // seems to be useful for system stability.
   {
     QMutexLocker lock(&gl_thread_data_->gl_data_lock);
     gl_thread_data_->quit_now = true;
@@ -570,6 +599,9 @@ void LasercakeGLWidget::closeEvent(QCloseEvent* event)
     gl_thread_data_->wait_for_instruction.wakeAll();
     thread_.wait();
   }
+}
+void LasercakeGLWidget::closeEvent(QCloseEvent* event) {
+  prepare_to_cleanly_close_();
   QGLWidget::closeEvent(event);
 }
 
@@ -744,11 +776,11 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
   const worldgen_function_t worldgen = make_world_building_func(config_.scenario);
   if(!worldgen) {
     std::cerr << "Scenario name given that doesn't exist!: \'" << config_.scenario << "\'\n";
-    this->exit(4);
+    // This constructor is called outside of QCoreApplication::exec(),
+    // so QCoreApplication::exit() would be meaningless here
+    // (at least I think that's why QCoreApplication::exit() didn't work).
+    ::exit(4);
   }
-
-  QObject::connect(QApplication::instance(), SIGNAL(lastWindowClosed()),
-                   this,                     SLOT(quit()));
 
   if(config_.have_gui) {
     gl_widget_.reset(new LasercakeGLWidget(config_.use_opengl_thread));
@@ -784,10 +816,12 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
     Q_ARG(input_news_t, input_news_t()), Q_ARG(distance, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
 }
 
-void LasercakeController::invoke_simulation_step_() {
+// returns false if exiting the program
+bool LasercakeController::invoke_simulation_step_() {
   ++frame_;
   if(config_.exit_after_frames == frame_) {
-    this->quit();
+    QCoreApplication::quit();
+    return false;
   }
 
   // get the simulator going again as promptly as possible
@@ -807,11 +841,12 @@ void LasercakeController::invoke_simulation_step_() {
     QMetaObject::invokeMethod(&*simulator_, "prepare_graphics", Qt::QueuedConnection,
       Q_ARG(input_news_t, input_news), Q_ARG(distance, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
   }
+  return true;
 }
 
 void LasercakeController::output_new_frame(time_unit moment, frame_output_t output) {
   game_time_ = moment;
-  invoke_simulation_step_();
+  if(!invoke_simulation_step_()) {return;}
 
   microseconds_t last_gl_render_microseconds = 0;
   if(config_.have_gui) {
@@ -870,33 +905,4 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
 
   monotonic_microseconds_at_beginning_of_frame_ = end_frame_monotonic_microseconds;
 }
-
-void LasercakeController::quit() {
-  this->exit(0);
-}
-void LasercakeController::exit(int status) {
-  // this was prepare_to_exit.
-  // see puzzles in below comments
-  ::exit(status);
-#if 0
-  if(simulator_thread_) {
-    // Roughly terminate - this thread refers to no global data
-    // (except Qt thread communication - so a mutex might be in a wrong state
-    //  perhaps - and what about implementation global data like perhaps borrowed_bitset -
-    //  but anyway, we're exiting, so it doesn't really matter)
-    // Alternatively, we could call exit() here directly...
-    // Also, this could plausibly go in LasercakeSimulator's destructor.
-
-    // simulator_thread_->terminate(); is causing
-    // "Qt has caught an exception thrown from an event handler. Throwing
-    // exceptions from an event handler is not supported in Qt. You must
-    // reimplement QApplication::notify() and catch all exceptions there.",
-    // without throwing an exception itself - I haven't discovered how -
-    // so I'll just exit()...
-    simulator_thread_->terminate();
-    simulator_thread_->wait();
-  }
-#endif
-}
-
 

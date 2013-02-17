@@ -161,6 +161,7 @@ protected:
 private:
   void key_change_(QKeyEvent* event, bool pressed);
   void invoke_render_(); //precondition: you incremented gl_thread_data_->revision
+  void prepare_to_cleanly_close_();
 
   typedef int qt_key_type_;
   // e.g. in case there can be multiple shift keys pressed at once
@@ -184,11 +185,9 @@ public:
 public Q_SLOTS:
   void output_new_frame(time_unit moment, frame_output_t output);
   void key_changed(input_representation::key_change_t);
-  void quit();
-  void exit(int status);
 
 private:
-  void invoke_simulation_step_();
+  bool invoke_simulation_step_();
 
   config_struct config_;
   boost::scoped_ptr<LasercakeGLWidget> gl_widget_;
