@@ -249,17 +249,37 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   velocity_.x = divide(velocity_.x, 2, rounding_strategy<round_down, negative_mirrors_positive>());
   velocity_.y = divide(velocity_.y, 2, rounding_strategy<round_down, negative_mirrors_positive>());
   const distance xymag = i64sqrt(facing_.x*facing_.x + facing_.y*facing_.y);
-  if (input_news.is_currently_pressed("5") || input_news.is_currently_pressed("s")) {
+  /*if (input_news.is_currently_pressed("5") || input_news.is_currently_pressed("s")) {
     velocity_.x = (facing_.x * tile_width * 15 / (4 * xymag)) / seconds;
     velocity_.y = (facing_.y * tile_width * 15 / (4 * xymag)) / seconds;
+  }*/
+  if (input_news.is_currently_pressed("w") || input_news.is_currently_pressed("a") || input_news.is_currently_pressed("s") || input_news.is_currently_pressed("d")) {
+    velocity_.x = 0;
+    velocity_.y = 0;
+    if (input_news.is_currently_pressed("w")) {
+      velocity_.x += (facing_.x * tile_width * 15 / (4 * xymag)) / seconds;
+      velocity_.y += (facing_.y * tile_width * 15 / (4 * xymag)) / seconds;
+    }
+    if (input_news.is_currently_pressed("s")) {
+      velocity_.x -= (facing_.x * tile_width * 15 / (4 * xymag)) / seconds;
+      velocity_.y -= (facing_.y * tile_width * 15 / (4 * xymag)) / seconds;
+    }
+    if (input_news.is_currently_pressed("a")) {
+      velocity_.x -= (facing_.y * tile_width * 15 / (4 * xymag)) / seconds;
+      velocity_.y += (facing_.x * tile_width * 15 / (4 * xymag)) / seconds;
+    }
+    if (input_news.is_currently_pressed("d")) {
+      velocity_.x += (facing_.y * tile_width * 15 / (4 * xymag)) / seconds;
+      velocity_.y -= (facing_.x * tile_width * 15 / (4 * xymag)) / seconds;
+    }
   }
   if (input_news.is_currently_pressed("space")) {
     velocity_.z = tile_width * 15 / 4 / seconds;
   }
-  const bool turn_right = input_news.is_currently_pressed("right") || input_news.is_currently_pressed("d");
-  const bool turn_left = input_news.is_currently_pressed("left") || input_news.is_currently_pressed("a");
-  const bool turn_up = input_news.is_currently_pressed("up") || input_news.is_currently_pressed("w");
-  const bool turn_down = input_news.is_currently_pressed("down") || input_news.is_currently_pressed("x");
+  const bool turn_right = input_news.is_currently_pressed("right")/* || input_news.is_currently_pressed("d")*/;
+  const bool turn_left = input_news.is_currently_pressed("left")/* || input_news.is_currently_pressed("a")*/;
+  const bool turn_up = input_news.is_currently_pressed("up")/* || input_news.is_currently_pressed("w")*/;
+  const bool turn_down = input_news.is_currently_pressed("down")/* || input_news.is_currently_pressed("x")*/;
   const int64_t key_speed_factor = 22;
   const int64_t mouse_speed_factor = 5;
   const int64_t speed_divisor = 20*key_speed_factor;
