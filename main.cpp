@@ -609,6 +609,9 @@ void LasercakeGLWidget::prepare_to_cleanly_close_() {
     //
     // Anyway, waiting for the GL thread to reach a stopping point
     // seems to be useful for system stability.
+
+    // TODO should we catch signals like Ctrl-C
+    // in order to clean up even in their wake?
     if(use_separate_gl_thread_) {
       {
         QMutexLocker lock(&gl_thread_data_->gl_data_lock);

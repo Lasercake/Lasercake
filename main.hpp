@@ -128,8 +128,7 @@ public:
   microseconds_t gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, QSize viewport_size);
   gl_renderer gl_renderer_;
 protected:
-  // overriding virtual functions
-  void run();
+  void run() override;
 };
 
 
