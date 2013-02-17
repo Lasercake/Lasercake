@@ -42,7 +42,26 @@ std::ostream& operator<<(std::ostream& os, glm::vec4 v) {
   return os << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
 }
 
-// what about shifting the bounding-cube to near the main thing, or float rounding error...
+// These view-frustum-checking functions are tricky.
+//
+// 'float' has only 24 bits of significand, so, when preparing to
+// call these functions, if you want to avoid rounding error, you must
+// shift the bounding-box location to be near (0,0,0) rather than shifting
+// the frustum location away from (0,0,0).
+//
+// frustum has no units-checking; you must make sure that your bbox is the
+// same scale as your frustum, by scaling one to match the other if necessary.
+//
+// "x + (-int(condition) & y)" is a way of saying ((condition) ? (x+y) : (x)).
+// TODO see if branches are better here since they'd be super predictable.
+//
+// bounding-box min()+size() is not max() but rather max()+1.  (In bboxes,
+// min()+size_minus_one() = max().)  For tile bboxes, this is necessary to do
+// since we are using the tile bbox as a proxy for the fine-scalar one.
+// Consider the bbox containing only one tile; its min and max are the same,
+// but its volume is nonzero.
+// TODO what about actual fine-scalar bboxes? (We don't currently (2013-02-17)
+// pass any to this, so it doesn't matter currently and would never matter a lot.)
 template<typename Bbox>
 inline bool overlaps(frustum const& f, Bbox const& bbox) {
   //std::cerr << "frustoverlaps?\n";
