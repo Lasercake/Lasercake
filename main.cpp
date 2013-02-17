@@ -599,6 +599,10 @@ void LasercakeGLWidget::paintEvent(QPaintEvent*) {
 }
 void LasercakeGLWidget::prepare_to_cleanly_close_() {
   if(!has_quit_) {
+    // Just in case closing doesn't cause the OS to
+    // release a mouse grab, we do so explicitly.
+    ungrab_input_();
+
     // Some OpenGL implementations don't like being
     // silently terminated, because they are poorly tested
     // piles of looming kernel-exploitation vulnerabilities.
@@ -685,6 +689,37 @@ void LasercakeGLWidget::toggle_fullscreen(bool fullscreen) {
   else           { setWindowState(windowState() & ~Qt::WindowFullScreen); }
 }
 
+void LasercakeGLWidget::mousePressEvent(QMouseEvent* event) {
+  global_cursor_pos_ = event->globalPos();
+  grab_input_();
+  QGLWidget::mousePressEvent(event);
+}
+
+void LasercakeGLWidget::grab_input_() {
+  if(!has_quit_) {
+    input_is_grabbed_ = true;
+    setMouseTracking(true);
+    grabMouse();
+    //QApplication::desktop()->cursor().setShape(Qt::BlankCursor);
+    //cursor().setShape(Qt::BlankCursor);
+    setCursor(QCursor(Qt::BlankCursor));
+  }
+}
+void LasercakeGLWidget::ungrab_input_() {
+  if(input_is_grabbed_) {
+    setMouseTracking(false);
+    releaseMouse();
+    input_is_grabbed_ = false;
+  }
+}
+
+void LasercakeGLWidget::mouseMoveEvent(QMouseEvent* event) {
+  const QPoint new_global_cursor_pos = event->globalPos();
+  const QPoint displacement = new_global_cursor_pos - global_cursor_pos_;
+  QApplication::desktop()->cursor().setPos(global_cursor_pos_);
+  input_rep_mouse_displacement_ += input_representation::mouse_displacement_t(displacement.x(), displacement.y());
+}
+
 void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
   if(event->isAutoRepeat()) {
     // If we someday allow key compression, this won't be a sensible way to stop auto-repeat:
@@ -755,7 +790,8 @@ void LasercakeGLWidget::focusOutEvent(QFocusEvent*) {
 }
 
 input_representation::input_news_t LasercakeGLWidget::get_input_news()const {
-  input_representation::input_news_t result(input_rep_keys_currently_pressed_, input_rep_key_activity_);
+  input_representation::input_news_t result(
+    input_rep_keys_currently_pressed_, input_rep_key_activity_, input_rep_mouse_displacement_);
   return result;
 }
 void LasercakeGLWidget::clear_input_news() {

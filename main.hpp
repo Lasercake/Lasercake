@@ -153,6 +153,8 @@ protected:
   bool event(QEvent*) override;
   //void keyPressEvent(QKeyEvent*) override;
   //void keyReleaseEvent(QKeyEvent*) override;
+  void mouseMoveEvent(QMouseEvent* event) override;
+  void mousePressEvent(QMouseEvent* event) override;
   void focusOutEvent(QFocusEvent*) override;
   void resizeEvent(QResizeEvent*) override;
   void paintEvent(QPaintEvent*) override;
@@ -164,6 +166,8 @@ private Q_SLOTS:
 private:
   void key_change_(QKeyEvent* event, bool pressed);
   void invoke_render_(); //precondition: you incremented gl_thread_data_->revision
+  void grab_input_();
+  void ungrab_input_();
 
   typedef int qt_key_type_;
   // e.g. in case there can be multiple shift keys pressed at once
@@ -172,6 +176,9 @@ private:
   std::multiset<qt_key_type_> keys_currently_pressed_;
   input_representation::key_activity_t input_rep_key_activity_;
   input_representation::keys_currently_pressed_t input_rep_keys_currently_pressed_;
+  input_representation::mouse_displacement_t input_rep_mouse_displacement_;
+  QPoint global_cursor_pos_;
+  bool input_is_grabbed_;
   bool use_separate_gl_thread_;
   LasercakeGLThread thread_;
   shared_ptr<gl_thread_data_t> gl_thread_data_;
