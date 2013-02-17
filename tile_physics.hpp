@@ -58,7 +58,8 @@ struct persistent_water_group_info {
   map<tile_coordinate, water_tile_count> num_tiles_by_height;
   unordered_set<tile_location> surface_tiles;
 
-  mutable map<tile_coordinate, pressure> pressure_caches;
+  typedef map<tile_coordinate, pressure> pressure_caches_t;
+  mutable pressure_caches_t pressure_caches;
   mutable map<tile_coordinate, water_tile_count> width_of_widest_level_so_far_caches;
 
   //bool is_infinite;

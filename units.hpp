@@ -1089,8 +1089,9 @@ struct get_units_impl<bounds_checked_int<Int,Min,Max>> : get_units_impl<Int> {
   typedef bounds_checked_int<Int,Min,Max> representation_type;
 };
 
+template<typename T> struct identity { typedef T type; }; // work around GCC 4.6 bug
 template<typename T>
-struct get_units_impl : decltype(overload_find_units_type(std::declval<T>())) {};
+struct get_units_impl : identity<decltype(overload_find_units_type(std::declval<T>()))>::type {};
 
 
 

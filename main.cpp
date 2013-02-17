@@ -232,6 +232,25 @@ std::string get_world_ztree_debug_info(world const& w) {
 } /* end anonymous namespace */
 
 
+// LasercakeSimulator:
+//
+// When exiting the program, we implicitly roughly terminate the simulation
+// thread by calling C's exit() without stopping or waiting for that thread.
+//
+// The thread has no side effects visible outside the
+// program, so this doesn't lead to visible race conditions.
+//
+// (
+//   This might even be safe if we were not exiting the program
+//   (via e.g. simulator_thread_->terminate()):
+//   The simulation thread refers to no global data
+//      (except for implementations of e.g. borrowed_bitset, hmm)
+//   and has no side effects
+//      (except for Qt inter-thread communication; what if terminating
+//       it leaves a Qt-implementation mutex in a wrong state? Hmm.
+//       This could be impossiblified by using lock-free communication
+//       between ours and the sim thread).
+// )
 LasercakeSimulator::LasercakeSimulator(QObject* parent) : QObject(parent) {}
 
 void LasercakeSimulator::init(worldgen_function_t worldgen, config_struct config) {
@@ -387,7 +406,7 @@ int main(int argc, char *argv[])
 #if !LASERCAKE_NO_THREADS
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
-      ("use-opengl-thread", po::bool_switch(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls")
+      ("no-opengl-thread", bool_switch_off(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls")
 #endif
 #if !LASERCAKE_NO_SELF_TESTS
       ("run-self-tests", "alternate run mode: run Lasercake's self-tests")
@@ -438,9 +457,11 @@ int main(int argc, char *argv[])
 
   QCoreApplication::setAttribute(Qt::AA_X11InitThreads);
   QApplication qapp(argc, argv);
-  if (!QGLFormat::hasOpenGL()) {
-    std::cerr << "OpenGL capabilities not found; giving up." << std::endl;
-    exit(1);
+  if(config.have_gui) {
+    if (!QGLFormat::hasOpenGL()) {
+      std::cerr << "OpenGL capabilities not found; giving up." << std::endl;
+      exit(1);
+    }
   }
   qRegisterMetaType<worldgen_function_t>("worldgen_function_t");
   qRegisterMetaType<input_news_t>("input_news_t");
@@ -457,7 +478,12 @@ int main(int argc, char *argv[])
   QFontDatabase::addApplicationFont(":/resources/VC_Gryffindor.ttf");
 
   LasercakeController controller(config);
-  return qapp.exec();
+  // We call exit() here rather than return so that 'controller' is not
+  // destroyed in the process of exiting the program.
+  // This makes Qt emit fewer warnings; probably makes quitting a bit faster;
+  // and we make sure not to use the destructor for any critical
+  // end-of-process stuff (if there even is any currently).
+  exit(qapp.exec());
 }
 
 microseconds_t LasercakeGLThread::gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, QSize viewport_size) {
@@ -480,16 +506,24 @@ microseconds_t LasercakeGLThread::gl_render(gl_data_ptr_t& gl_data_ptr, Lasercak
 }
 
 void LasercakeGLWidget::invoke_render_() {
-  if(use_separate_gl_thread_) {
-    gl_thread_data_->wait_for_instruction.wakeAll();
-  }
-  else {
-    gl_thread_data_->microseconds_last_gl_render_took =
-      thread_.gl_render(gl_thread_data_->current_data, *this, gl_thread_data_->viewport_size);
+  if(!has_quit_) {
+    if(use_separate_gl_thread_) {
+      gl_thread_data_->wait_for_instruction.wakeAll();
+    }
+    else {
+      gl_thread_data_->microseconds_last_gl_render_took =
+        thread_.gl_render(gl_thread_data_->current_data, *this, gl_thread_data_->viewport_size);
+    }
   }
 }
 LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* parent)
-  : QGLWidget(parent), use_separate_gl_thread_(use_separate_gl_thread) {
+  : QGLWidget(parent),
+    input_is_grabbed_(false),
+    use_separate_gl_thread_(use_separate_gl_thread),
+    has_quit_(false) {
+  QObject::connect(
+    QCoreApplication::instance(), SIGNAL(aboutToQuit()),
+    this, SLOT(prepare_to_cleanly_close_()));
   setFocusPolicy(Qt::ClickFocus);
   //TODO setWindowFlags(), setWindow*()?
   //TODO do we want to request/check anything about the GL context?
@@ -540,7 +574,10 @@ void LasercakeGLThread::run() {
       if(last_revision_ == gl_thread_data_->revision) {
         gl_thread_data_->wait_for_instruction.wait(&gl_thread_data_->gl_data_lock);
       }
-      if(gl_thread_data_->quit_now) {return;}
+      if(gl_thread_data_->quit_now) {
+        gl_renderer_.fini();
+        return;
+      }
       gl_data_ptr = gl_thread_data_->current_data;
       last_revision_ = gl_thread_data_->revision;
       viewport_size = gl_thread_data_->viewport_size;
@@ -560,16 +597,38 @@ void LasercakeGLWidget::paintEvent(QPaintEvent*) {
   }
   invoke_render_();
 }
-void LasercakeGLWidget::closeEvent(QCloseEvent* event)
-{
-  {
-    QMutexLocker lock(&gl_thread_data_->gl_data_lock);
-    gl_thread_data_->quit_now = true;
+void LasercakeGLWidget::prepare_to_cleanly_close_() {
+  if(!has_quit_) {
+    // Just in case closing doesn't cause the OS to
+    // release a mouse grab, we do so explicitly.
+    ungrab_input_();
+
+    // Some OpenGL implementations don't like being
+    // silently terminated, because they are poorly tested
+    // piles of looming kernel-exploitation vulnerabilities.
+    //
+    // Anyway, waiting for the GL thread to reach a stopping point
+    // seems to be useful for system stability.
+
+    // TODO should we catch signals like Ctrl-C
+    // in order to clean up even in their wake?
+    if(use_separate_gl_thread_) {
+      {
+        QMutexLocker lock(&gl_thread_data_->gl_data_lock);
+        gl_thread_data_->quit_now = true;
+      }
+      gl_thread_data_->wait_for_instruction.wakeAll();
+      thread_.wait();
+    }
+    else {
+      gl_thread_data_->quit_now = true;
+      thread_.gl_renderer_.fini();
+    }
+    has_quit_ = true;
   }
-  if(use_separate_gl_thread_) {
-    gl_thread_data_->wait_for_instruction.wakeAll();
-    thread_.wait();
-  }
+}
+void LasercakeGLWidget::closeEvent(QCloseEvent* event) {
+  prepare_to_cleanly_close_();
   QGLWidget::closeEvent(event);
 }
 
@@ -633,16 +692,107 @@ void LasercakeGLWidget::toggle_fullscreen(bool fullscreen) {
   else           { setWindowState(windowState() & ~Qt::WindowFullScreen); }
 }
 
+namespace {
+input_representation::key_type mouse_button_to_input_rep(Qt::MouseButton button) {
+  switch (button) {
+    case Qt::NoButton: caller_error("invalidly pressed/released Qt::NoButton");
+    case Qt::LeftButton: return input_representation::left_mouse_button;
+    case Qt::RightButton: return input_representation::right_mouse_button;
+    case Qt::MiddleButton: return input_representation::middle_mouse_button;
+    // Are these the correct numbers?
+    case Qt::XButton1: return input_representation::mouse_button_n(4);
+    case Qt::XButton2: return input_representation::mouse_button_n(5);
+    default:
+      std::cerr << "Unknown mouse button that Qt calls " << button << "\n";
+      // give it some name anyhow, even if it's the same name
+      // for all unknown buttons
+      return input_representation::mouse_button_n(6);
+  }
+}
+}
+void LasercakeGLWidget::mousePressEvent(QMouseEvent* event) {
+  if(!input_is_grabbed_) {
+    global_cursor_pos_ = event->globalPos();
+    grab_input_();
+  }
+  else {
+    key_change_(-event->button(), mouse_button_to_input_rep(event->button()), true);
+  }
+  QGLWidget::mousePressEvent(event);
+}
+void LasercakeGLWidget::mouseReleaseEvent(QMouseEvent* event) {
+  key_change_(-event->button(), mouse_button_to_input_rep(event->button()), false);
+  QGLWidget::mouseReleaseEvent(event);
+}
+
+void LasercakeGLWidget::grab_input_() {
+  if(!has_quit_) {
+    input_is_grabbed_ = true;
+    setMouseTracking(true);
+    grabMouse();
+    //QApplication::desktop()->cursor().setShape(Qt::BlankCursor);
+    //cursor().setShape(Qt::BlankCursor);
+    setCursor(QCursor(Qt::BlankCursor));
+  }
+}
+void LasercakeGLWidget::ungrab_input_() {
+  if(input_is_grabbed_) {
+    setMouseTracking(false);
+    releaseMouse();
+    input_is_grabbed_ = false;
+  }
+}
+
+void LasercakeGLWidget::mouseMoveEvent(QMouseEvent* event) {
+  const QPoint new_global_cursor_pos = event->globalPos();
+  const QPoint displacement = new_global_cursor_pos - global_cursor_pos_;
+  QApplication::desktop()->cursor().setPos(global_cursor_pos_);
+  input_rep_mouse_displacement_ += input_representation::mouse_displacement_t(
+    displacement.x(), -displacement.y());
+}
+void LasercakeGLWidget::key_change_(
+      qt_key_type_ qkey,
+      input_representation::key_type ikey,
+      bool pressed) {
+  const input_representation::key_change_t input_rep_key_change(
+    ikey, (pressed ? input_representation::PRESSED : input_representation::RELEASED));
+  if(pressed) {
+    // Have the input_representation believe there's only one of each key,
+    // for its sanity.
+    if(keys_currently_pressed_.find(qkey) == keys_currently_pressed_.end()) {
+      //TODO use the Qt key enumeration in input_representation too
+      //as it's much more complete than anything we'll ever have.
+      input_rep_key_activity_.push_back(input_rep_key_change);
+      input_rep_keys_currently_pressed_.insert(ikey);
+      Q_EMIT key_changed(input_rep_key_change);
+    }
+    keys_currently_pressed_.insert(qkey);
+  }
+  else {
+    const auto iter = keys_currently_pressed_.find(qkey);
+    if(iter == keys_currently_pressed_.end()) {
+      // This could happen if they focus this window while holding
+      // a key down, and it not be a bug, so it's a bit silly to
+      // log this.
+      //std::cerr << "Key released but never pressed: " << qkey << " (" << q_key_event_to_input_rep_key_type(event) << ")\n";
+    }
+    else {
+      keys_currently_pressed_.erase(iter);
+      if(keys_currently_pressed_.find(qkey) == keys_currently_pressed_.end()) {
+        input_rep_key_activity_.push_back(input_rep_key_change);
+        input_rep_keys_currently_pressed_.erase(ikey);
+        Q_EMIT key_changed(input_rep_key_change);
+      }
+    }
+  }
+}
+
 void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
   if(event->isAutoRepeat()) {
     // If we someday allow key compression, this won't be a sensible way to stop auto-repeat:
     // "Note that if the event is a multiple-key compressed event that is partly due to auto-repeat, this function could return either true or false indeterminately."
     return;
   }
-  //std::cerr << "<<<" << q_key_event_to_input_rep_key_type(event) << ">>>\n";
-  const input_representation::key_type input_rep_key = q_key_event_to_input_rep_key_type(event);
-  const input_representation::key_change_t input_rep_key_change(
-    input_rep_key, (pressed ? input_representation::PRESSED : input_representation::RELEASED));
   if(pressed) {
     //TODO why handle window things here but other things in LasercakeController::key_changed?
     switch(event->key()) {
@@ -661,35 +811,9 @@ void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
         }
         break;
     }
-
-    // Have the input_representation believe there's only one of each key,
-    // for its sanity.
-    if(keys_currently_pressed_.find(event->key()) == keys_currently_pressed_.end()) {
-      //TODO use the Qt key enumeration in input_representation too
-      //as it's much more complete than anything we'll ever have.
-      input_rep_key_activity_.push_back(input_rep_key_change);
-      input_rep_keys_currently_pressed_.insert(input_rep_key);
-      Q_EMIT key_changed(input_rep_key_change);
-    }
-    keys_currently_pressed_.insert(event->key());
   }
-  else {
-    const auto iter = keys_currently_pressed_.find(event->key());
-    if(iter == keys_currently_pressed_.end()) {
-      // This could happen if they focus this window while holding
-      // a key down, and it not be a bug, so it's a bit silly to
-      // log this.
-      //std::cerr << "Key released but never pressed: " << event->key() << " (" << q_key_event_to_input_rep_key_type(event) << ")\n";
-    }
-    else {
-      keys_currently_pressed_.erase(iter);
-      if(keys_currently_pressed_.find(event->key()) == keys_currently_pressed_.end()) {
-        input_rep_key_activity_.push_back(input_rep_key_change);
-        input_rep_keys_currently_pressed_.erase(input_rep_key);
-        Q_EMIT key_changed(input_rep_key_change);
-      }
-    }
-  }
+  const input_representation::key_type input_rep_key = q_key_event_to_input_rep_key_type(event);
+  key_change_(event->key(), input_rep_key, pressed);
 }
 
 void LasercakeGLWidget::focusOutEvent(QFocusEvent*) {
@@ -703,11 +827,13 @@ void LasercakeGLWidget::focusOutEvent(QFocusEvent*) {
 }
 
 input_representation::input_news_t LasercakeGLWidget::get_input_news()const {
-  input_representation::input_news_t result(input_rep_keys_currently_pressed_, input_rep_key_activity_);
+  input_representation::input_news_t result(
+    input_rep_keys_currently_pressed_, input_rep_key_activity_, input_rep_mouse_displacement_);
   return result;
 }
 void LasercakeGLWidget::clear_input_news() {
   input_rep_key_activity_.clear();
+  input_rep_mouse_displacement_ = input_representation::mouse_displacement_t();
 }
 
 
@@ -744,22 +870,13 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
   const worldgen_function_t worldgen = make_world_building_func(config_.scenario);
   if(!worldgen) {
     std::cerr << "Scenario name given that doesn't exist!: \'" << config_.scenario << "\'\n";
-    this->exit(4);
+    // This constructor is called outside of QCoreApplication::exec(),
+    // so QCoreApplication::exit() would be meaningless here
+    // (at least I think that's why QCoreApplication::exit() didn't work).
+    ::exit(4);
   }
 
-  QObject::connect(QApplication::instance(), SIGNAL(lastWindowClosed()),
-                   this,                     SLOT(quit()));
-
   if(config_.have_gui) {
-    // TODO find out why GL threading adds a varying, roughly 30-120ms, slowdown
-    // to my graphical framerate if I use it (though improves the simulation-framerate
-    // when the GL was being slower than everything else, obviously). (stepped_pools -l)
-    //
-    // Surely I have enough CPU cores to do those in parallel?  Is it a CPU-cache thing?
-    // A Nouveau quirk?  Somehow about thread-switching latency?
-    //
-    // Running the rendering in a separate thread but waiting till it was finished gave
-    // the same speed behaviour as running it in the main thread (no slower!). -Isaac
     gl_widget_.reset(new LasercakeGLWidget(config_.use_opengl_thread));
     QObject::connect(&*gl_widget_, SIGNAL(key_changed(input_representation::key_change_t)),
                     this,         SLOT(key_changed(input_representation::key_change_t)));
@@ -793,10 +910,12 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
     Q_ARG(input_news_t, input_news_t()), Q_ARG(distance, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
 }
 
-void LasercakeController::invoke_simulation_step_() {
+// returns false if exiting the program
+bool LasercakeController::invoke_simulation_step_() {
   ++frame_;
   if(config_.exit_after_frames == frame_) {
-    this->quit();
+    QCoreApplication::quit();
+    return false;
   }
 
   // get the simulator going again as promptly as possible
@@ -816,11 +935,12 @@ void LasercakeController::invoke_simulation_step_() {
     QMetaObject::invokeMethod(&*simulator_, "prepare_graphics", Qt::QueuedConnection,
       Q_ARG(input_news_t, input_news), Q_ARG(distance, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
   }
+  return true;
 }
 
 void LasercakeController::output_new_frame(time_unit moment, frame_output_t output) {
   game_time_ = moment;
-  invoke_simulation_step_();
+  if(!invoke_simulation_step_()) {return;}
 
   microseconds_t last_gl_render_microseconds = 0;
   if(config_.have_gui) {
@@ -879,33 +999,4 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
 
   monotonic_microseconds_at_beginning_of_frame_ = end_frame_monotonic_microseconds;
 }
-
-void LasercakeController::quit() {
-  this->exit(0);
-}
-void LasercakeController::exit(int status) {
-  // this was prepare_to_exit.
-  // see puzzles in below comments
-  ::exit(status);
-#if 0
-  if(simulator_thread_) {
-    // Roughly terminate - this thread refers to no global data
-    // (except Qt thread communication - so a mutex might be in a wrong state
-    //  perhaps - and what about implementation global data like perhaps borrowed_bitset -
-    //  but anyway, we're exiting, so it doesn't really matter)
-    // Alternatively, we could call exit() here directly...
-    // Also, this could plausibly go in LasercakeSimulator's destructor.
-
-    // simulator_thread_->terminate(); is causing
-    // "Qt has caught an exception thrown from an event handler. Throwing
-    // exceptions from an event handler is not supported in Qt. You must
-    // reimplement QApplication::notify() and catch all exceptions there.",
-    // without throwing an exception itself - I haven't discovered how -
-    // so I'll just exit()...
-    simulator_thread_->terminate();
-    simulator_thread_->wait();
-  }
-#endif
-}
-
 

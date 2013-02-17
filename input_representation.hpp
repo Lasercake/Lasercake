@@ -26,7 +26,10 @@
 #include <set>
 #include <vector>
 #include <ostream>
+#include <sstream>
 //TODO try a binary search for removing headers and see what works
+
+#include "config.hpp"
 
 namespace input_representation {
 
@@ -55,6 +58,16 @@ const key_type down_arrow = "↓";
 }
 #endif
 
+const key_type left_mouse_button = "left button";
+const key_type right_mouse_button = "right button";
+const key_type middle_mouse_button = "middle button";
+// higher buttons just get numbers
+inline key_type mouse_button_n(int n) {
+  caller_error_if(n < 4, "that's one of the regular buttons");
+  std::stringstream ss;
+  ss << "button " << n;
+  return ss.str();
+}
 
 enum pressed_or_released { PRESSED, RELEASED };
 // Use set rather than unordered_set because
@@ -65,6 +78,18 @@ enum pressed_or_released { PRESSED, RELEASED };
 typedef std::set<key_type> keys_currently_pressed_t;
 typedef std::pair<key_type, pressed_or_released> key_change_t;
 typedef std::vector<key_change_t> key_activity_t;
+typedef int64_t mouse_displacement_coord_t;
+
+// X is rightwards, Y is upwards.
+struct mouse_displacement_t {
+  mouse_displacement_t() : x(0), y(0) {}
+  mouse_displacement_t(mouse_displacement_coord_t x, mouse_displacement_coord_t y) : x(x), y(y) {}
+  mouse_displacement_coord_t x;
+  mouse_displacement_coord_t y;
+  mouse_displacement_t& operator+=(mouse_displacement_t other) {
+    x += other.x; y += other.y; return *this;
+  }
+};
 
 inline bool is_currently_pressed(keys_currently_pressed_t const& keys, key_type const& k) {
   return (keys.find(k) != keys.end());
@@ -88,10 +113,12 @@ public:
 
   input_news_t(
     keys_currently_pressed_t const& keys_currently_pressed,
-    key_activity_t const& key_activity_since_last_frame
+    key_activity_t const& key_activity_since_last_frame,
+    mouse_displacement_t mouse_displacement
   ) :
     keys_currently_pressed_(keys_currently_pressed),
-    key_activity_since_last_frame_(key_activity_since_last_frame) {}
+    key_activity_since_last_frame_(key_activity_since_last_frame),
+    mouse_displacement_(mouse_displacement) {}
 
   static input_news_t merge_immediate_sequence(input_news_t const& directly_prior, input_news_t const& directly_hence) {
     input_news_t result;
@@ -133,11 +160,18 @@ public:
   keys_currently_pressed_t const& keys_currently_pressed()const { return keys_currently_pressed_; }
   key_activity_t const& key_activity_since_last_frame()const { return key_activity_since_last_frame_; }
 
-  // TODO mouse input (in some form that works despite the fact that users can have different window/screen sizes)
+  // We could, instead, store a sequence of displacements, if some input news
+  // user wants to be able to tell the difference between dragging the mouse
+  // in a circle and not moving it at all.
+  mouse_displacement_t mouse_displacement()const { return mouse_displacement_; }
+  void add_mouse_displacement(mouse_displacement_t add) {
+    mouse_displacement_ += add;
+  }
 
 private:
   keys_currently_pressed_t keys_currently_pressed_;
   key_activity_t key_activity_since_last_frame_;
+  mouse_displacement_t mouse_displacement_;
 };
 inline std::ostream& operator<<(std::ostream& os, input_news_t const& news) {
   os << "{currently pressed:";

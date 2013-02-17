@@ -55,14 +55,15 @@ class robot : public mobile_object, public autonomous_object, public object_with
 public:
   robot(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing),carrying_(false){}
   
-  virtual shape get_initial_personal_space_shape()const;
-  virtual shape get_initial_detail_shape()const;
+  virtual shape get_initial_personal_space_shape()const override;
+  virtual shape get_initial_detail_shape()const override;
   
-  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
-  vector3<distance> get_facing()const { return facing_; }
+  virtual void update(world& w, input_representation::input_news_t const& mind_control,
+                      object_identifier my_id) override;
+  vector3<distance> get_facing()const override { return facing_; }
   vector3<tile_coordinate> get_building_tile(world& w, object_identifier my_id)const; // TODO: This use of world& should be able to be world const&
 
-  std::string player_instructions()const;
+  std::string player_instructions()const override;
 private:
   vector3<distance> location_;
   vector3<distance> facing_;
@@ -73,11 +74,12 @@ class laser_emitter : public mobile_object, public autonomous_object, public obj
 public:
   laser_emitter(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing){}
   
-  virtual shape get_initial_personal_space_shape()const;
-  virtual shape get_initial_detail_shape()const;
+  virtual shape get_initial_personal_space_shape()const override;
+  virtual shape get_initial_detail_shape()const override;
   
-  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier id);
-  vector3<distance> get_facing()const { return facing_; }
+  virtual void update(world& w, input_representation::input_news_t const& mind_control,
+                      object_identifier id) override;
+  vector3<distance> get_facing()const override { return facing_; }
 private:
   vector3<distance> location_;
   vector3<distance> facing_;
@@ -87,11 +89,12 @@ class autorobot : public mobile_object, public autonomous_object, public object_
 public:
   autorobot(vector3<distance> location, vector3<distance> facing);
 
-  virtual shape get_initial_personal_space_shape()const;
-  virtual shape get_initial_detail_shape()const;
+  virtual shape get_initial_personal_space_shape()const override;
+  virtual shape get_initial_detail_shape()const override;
 
-  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
-  vector3<distance> get_facing()const { return facing_; }
+  virtual void update(world& w, input_representation::input_news_t const& mind_control,
+                      object_identifier my_id) override;
+  vector3<distance> get_facing()const override { return facing_; }
 private:
   vector3<distance> location_;
   vector3<distance> initial_location_;
@@ -103,10 +106,11 @@ class random_walk_rocket : public mobile_object, public autonomous_object {
 public:
   random_walk_rocket(vector3<distance> location, vector3<distance> facing);
 
-  virtual shape get_initial_personal_space_shape()const;
-  virtual shape get_initial_detail_shape()const;
+  virtual shape get_initial_personal_space_shape()const override;
+  virtual shape get_initial_detail_shape()const override;
 
-  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
+  virtual void update(world& w, input_representation::input_news_t const& mind_control,
+                      object_identifier my_id) override;
 private:
   vector3<distance> initial_location_;
 };
@@ -115,8 +119,8 @@ private:
 class solar_panel : public tile_aligned_object {
 public:
   solar_panel(vector3<tile_coordinate> location):initial_location_(location){}
-  virtual shape get_initial_personal_space_shape()const;
-  virtual shape get_initial_detail_shape()const;
+  virtual shape get_initial_personal_space_shape()const override;
+  virtual shape get_initial_detail_shape()const override;
 private:
   vector3<tile_coordinate> initial_location_;
 };
@@ -128,10 +132,11 @@ private:
 class refinery : public tile_aligned_object, public autonomous_object {
 public:
   refinery(vector3<tile_coordinate> location):initial_location_(location),waste_rock_inside_(0),metal_inside_(0){}
-  virtual shape get_initial_personal_space_shape()const;
-  virtual shape get_initial_detail_shape()const;
+  virtual shape get_initial_personal_space_shape()const override;
+  virtual shape get_initial_detail_shape()const override;
 
-  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
+  virtual void update(world& w, input_representation::input_news_t const& mind_control,
+                      object_identifier my_id) override;
 private:
   vector3<tile_coordinate> initial_location_;
   int waste_rock_inside_;
@@ -142,11 +147,12 @@ private:
 class conveyor_belt : public tile_aligned_object, public autonomous_object {
 public:
   conveyor_belt(vector3<tile_coordinate> location):initial_location_(location),direction_(xplus){}
-  virtual shape get_initial_personal_space_shape()const;
-  virtual shape get_initial_detail_shape()const;
+  virtual shape get_initial_personal_space_shape()const override;
+  virtual shape get_initial_detail_shape()const override;
 
-  virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
-  
+  virtual void update(world& w, input_representation::input_news_t const& mind_control,
+                      object_identifier my_id) override;
+
   cardinal_direction direction()const {return direction_;}
   void rotate() {
     direction_ =

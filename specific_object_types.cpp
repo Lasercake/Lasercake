@@ -260,17 +260,21 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   const bool turn_left = input_news.is_currently_pressed("left") || input_news.is_currently_pressed("a");
   const bool turn_up = input_news.is_currently_pressed("up") || input_news.is_currently_pressed("w");
   const bool turn_down = input_news.is_currently_pressed("down") || input_news.is_currently_pressed("x");
-  if (turn_right != turn_left) {
-    const int which_way = (turn_right ? 1 : -1);
-    const distance new_facing_x = facing_.x + which_way * facing_.y / 20;
-    const distance new_facing_y = facing_.y - which_way * facing_.x / 20;
+  const int64_t key_speed_factor = 22;
+  const int64_t speed_divisor = 20*key_speed_factor;
+  const int64_t turn_right_amount = input_news.mouse_displacement().x
+                                  + key_speed_factor * (turn_right - turn_left);
+  const int64_t turn_up_amount = input_news.mouse_displacement().y
+                                  + key_speed_factor * (turn_up - turn_down);
+  if (turn_right_amount != 0) {
+    const distance new_facing_x = facing_.x + turn_right_amount * facing_.y / speed_divisor;
+    const distance new_facing_y = facing_.y - turn_right_amount * facing_.x / speed_divisor;
     facing_.x = new_facing_x; facing_.y = new_facing_y;
   }
-  if (turn_up != turn_down) {
-    const int which_way = (turn_up ? 1 : -1);
-    const distance new_xymag = xymag - (which_way * facing_.z / 20);
+  if (turn_up_amount != 0) {
+    const distance new_xymag = xymag - (turn_up_amount * facing_.z / speed_divisor);
     if (new_xymag > tile_width / 8) {
-      facing_.z += which_way * xymag / 20;
+      facing_.z += turn_up_amount * xymag / speed_divisor;
       facing_.y = facing_.y * new_xymag / xymag;
       facing_.x = facing_.x * new_xymag / xymag;
     }
