@@ -683,9 +683,11 @@ void conveyor_belt::update(world& w, input_representation::input_news_t const&, 
         if (-tile_vel(which_dimension_is_cardinal_direction(direction_)) > target_vel) tile_vel[which_dimension_is_cardinal_direction(direction_)] = -target_vel;
       }
     }
-    if (tile_vel(Z) < 0) {
+    tile_location next_loc = loc.get_neighbor_by_variable(direction_, CONTENTS_ONLY);
+    sub_tile_velocity target_zvel((next_loc.stuff_at().contents() == AIR) ? 0 : ((tile_height / seconds) * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds)));
+    if (tile_vel(Z) < target_zvel) {
       tile_vel[Z] += one_frame_acceleration;
-      if (tile_vel(Z) > 0) tile_vel[Z] = 0;
+      if (tile_vel(Z) > target_zvel) tile_vel[Z] = target_zvel;
     }
   }
 }
