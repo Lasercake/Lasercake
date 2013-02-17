@@ -692,10 +692,37 @@ void LasercakeGLWidget::toggle_fullscreen(bool fullscreen) {
   else           { setWindowState(windowState() & ~Qt::WindowFullScreen); }
 }
 
+namespace {
+input_representation::key_type mouse_button_to_input_rep(Qt::MouseButton button) {
+  switch (button) {
+    case Qt::NoButton: caller_error("invalidly pressed/released Qt::NoButton");
+    case Qt::LeftButton: return input_representation::left_mouse_button;
+    case Qt::RightButton: return input_representation::right_mouse_button;
+    case Qt::MiddleButton: return input_representation::middle_mouse_button;
+    // Are these the correct numbers?
+    case Qt::XButton1: return input_representation::mouse_button_n(4);
+    case Qt::XButton2: return input_representation::mouse_button_n(5);
+    default:
+      std::cerr << "Unknown mouse button that Qt calls " << button << "\n";
+      // give it some name anyhow, even if it's the same name
+      // for all unknown buttons
+      return input_representation::mouse_button_n(6);
+  }
+}
+}
 void LasercakeGLWidget::mousePressEvent(QMouseEvent* event) {
-  global_cursor_pos_ = event->globalPos();
-  grab_input_();
+  if(!input_is_grabbed_) {
+    global_cursor_pos_ = event->globalPos();
+    grab_input_();
+  }
+  else {
+    key_change_(-event->button(), mouse_button_to_input_rep(event->button()), true);
+  }
   QGLWidget::mousePressEvent(event);
+}
+void LasercakeGLWidget::mouseReleaseEvent(QMouseEvent* event) {
+  key_change_(-event->button(), mouse_button_to_input_rep(event->button()), false);
+  QGLWidget::mouseReleaseEvent(event);
 }
 
 void LasercakeGLWidget::grab_input_() {
@@ -723,6 +750,42 @@ void LasercakeGLWidget::mouseMoveEvent(QMouseEvent* event) {
   input_rep_mouse_displacement_ += input_representation::mouse_displacement_t(
     displacement.x(), -displacement.y());
 }
+void LasercakeGLWidget::key_change_(
+      qt_key_type_ qkey,
+      input_representation::key_type ikey,
+      bool pressed) {
+  const input_representation::key_change_t input_rep_key_change(
+    ikey, (pressed ? input_representation::PRESSED : input_representation::RELEASED));
+  if(pressed) {
+    // Have the input_representation believe there's only one of each key,
+    // for its sanity.
+    if(keys_currently_pressed_.find(qkey) == keys_currently_pressed_.end()) {
+      //TODO use the Qt key enumeration in input_representation too
+      //as it's much more complete than anything we'll ever have.
+      input_rep_key_activity_.push_back(input_rep_key_change);
+      input_rep_keys_currently_pressed_.insert(ikey);
+      Q_EMIT key_changed(input_rep_key_change);
+    }
+    keys_currently_pressed_.insert(qkey);
+  }
+  else {
+    const auto iter = keys_currently_pressed_.find(qkey);
+    if(iter == keys_currently_pressed_.end()) {
+      // This could happen if they focus this window while holding
+      // a key down, and it not be a bug, so it's a bit silly to
+      // log this.
+      //std::cerr << "Key released but never pressed: " << qkey << " (" << q_key_event_to_input_rep_key_type(event) << ")\n";
+    }
+    else {
+      keys_currently_pressed_.erase(iter);
+      if(keys_currently_pressed_.find(qkey) == keys_currently_pressed_.end()) {
+        input_rep_key_activity_.push_back(input_rep_key_change);
+        input_rep_keys_currently_pressed_.erase(ikey);
+        Q_EMIT key_changed(input_rep_key_change);
+      }
+    }
+  }
+}
 
 void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
   if(event->isAutoRepeat()) {
@@ -730,10 +793,6 @@ void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
     // "Note that if the event is a multiple-key compressed event that is partly due to auto-repeat, this function could return either true or false indeterminately."
     return;
   }
-  //std::cerr << "<<<" << q_key_event_to_input_rep_key_type(event) << ">>>\n";
-  const input_representation::key_type input_rep_key = q_key_event_to_input_rep_key_type(event);
-  const input_representation::key_change_t input_rep_key_change(
-    input_rep_key, (pressed ? input_representation::PRESSED : input_representation::RELEASED));
   if(pressed) {
     //TODO why handle window things here but other things in LasercakeController::key_changed?
     switch(event->key()) {
@@ -752,35 +811,9 @@ void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
         }
         break;
     }
-
-    // Have the input_representation believe there's only one of each key,
-    // for its sanity.
-    if(keys_currently_pressed_.find(event->key()) == keys_currently_pressed_.end()) {
-      //TODO use the Qt key enumeration in input_representation too
-      //as it's much more complete than anything we'll ever have.
-      input_rep_key_activity_.push_back(input_rep_key_change);
-      input_rep_keys_currently_pressed_.insert(input_rep_key);
-      Q_EMIT key_changed(input_rep_key_change);
-    }
-    keys_currently_pressed_.insert(event->key());
   }
-  else {
-    const auto iter = keys_currently_pressed_.find(event->key());
-    if(iter == keys_currently_pressed_.end()) {
-      // This could happen if they focus this window while holding
-      // a key down, and it not be a bug, so it's a bit silly to
-      // log this.
-      //std::cerr << "Key released but never pressed: " << event->key() << " (" << q_key_event_to_input_rep_key_type(event) << ")\n";
-    }
-    else {
-      keys_currently_pressed_.erase(iter);
-      if(keys_currently_pressed_.find(event->key()) == keys_currently_pressed_.end()) {
-        input_rep_key_activity_.push_back(input_rep_key_change);
-        input_rep_keys_currently_pressed_.erase(input_rep_key);
-        Q_EMIT key_changed(input_rep_key_change);
-      }
-    }
-  }
+  const input_representation::key_type input_rep_key = q_key_event_to_input_rep_key_type(event);
+  key_change_(event->key(), input_rep_key, pressed);
 }
 
 void LasercakeGLWidget::focusOutEvent(QFocusEvent*) {

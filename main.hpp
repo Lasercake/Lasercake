@@ -154,6 +154,7 @@ protected:
   //void keyReleaseEvent(QKeyEvent*) override;
   void mouseMoveEvent(QMouseEvent* event) override;
   void mousePressEvent(QMouseEvent* event) override;
+  void mouseReleaseEvent(QMouseEvent* event) override;
   void focusOutEvent(QFocusEvent*) override;
   void resizeEvent(QResizeEvent*) override;
   void paintEvent(QPaintEvent*) override;
@@ -163,12 +164,18 @@ private Q_SLOTS:
   void prepare_to_cleanly_close_();
 
 private:
+  // We store QKeyEvent->key() as well as -QMouseEvent->button()
+  // in qt_key_type_; a minor hack.
+  typedef int qt_key_type_;
+  void key_change_(
+      qt_key_type_ qkey,
+      input_representation::key_type ikey,
+      bool pressed);
   void key_change_(QKeyEvent* event, bool pressed);
   void invoke_render_(); //precondition: you incremented gl_thread_data_->revision
   void grab_input_();
   void ungrab_input_();
 
-  typedef int qt_key_type_;
   // e.g. in case there can be multiple shift keys pressed at once
   // (two of them on a regular keyboard... or two USB keyboards plugged in,
   //  for that matter!)

@@ -26,7 +26,10 @@
 #include <set>
 #include <vector>
 #include <ostream>
+#include <sstream>
 //TODO try a binary search for removing headers and see what works
+
+#include "config.hpp"
 
 namespace input_representation {
 
@@ -55,6 +58,16 @@ const key_type down_arrow = "↓";
 }
 #endif
 
+const key_type left_mouse_button = "left button";
+const key_type right_mouse_button = "right button";
+const key_type middle_mouse_button = "middle button";
+// higher buttons just get numbers
+inline key_type mouse_button_n(int n) {
+  caller_error_if(n < 4, "that's one of the regular buttons");
+  std::stringstream ss;
+  ss << "button " << n;
+  return ss.str();
+}
 
 enum pressed_or_released { PRESSED, RELEASED };
 // Use set rather than unordered_set because
