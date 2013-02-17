@@ -176,3 +176,14 @@ void gl_renderer::output_gl_data_to_OpenGL(
 
   render_2d_text_overlay_(abstract_gl_data, viewport_width, viewport_height, gl_widget);
 }
+
+void gl_renderer::fini() {
+  if(state_) {
+    glDeleteBuffersARB(1, &state_->rect_VBO_name);
+    glDeleteBuffersARB(state_->by_distance_VBO_names.size(),
+                       &state_->by_distance_VBO_names[0]);
+    // by_distance_VBO_sizes does not contain OpenGL-owned data
+    state_.reset();
+  }
+}
+

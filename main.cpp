@@ -572,7 +572,10 @@ void LasercakeGLThread::run() {
       if(last_revision_ == gl_thread_data_->revision) {
         gl_thread_data_->wait_for_instruction.wait(&gl_thread_data_->gl_data_lock);
       }
-      if(gl_thread_data_->quit_now) {return;}
+      if(gl_thread_data_->quit_now) {
+        gl_renderer_.fini();
+        return;
+      }
       gl_data_ptr = gl_thread_data_->current_data;
       last_revision_ = gl_thread_data_->revision;
       viewport_size = gl_thread_data_->viewport_size;
@@ -600,13 +603,17 @@ void LasercakeGLWidget::prepare_to_cleanly_close_() {
     //
     // Anyway, waiting for the GL thread to reach a stopping point
     // seems to be useful for system stability.
-    {
-      QMutexLocker lock(&gl_thread_data_->gl_data_lock);
-      gl_thread_data_->quit_now = true;
-    }
     if(use_separate_gl_thread_) {
+      {
+        QMutexLocker lock(&gl_thread_data_->gl_data_lock);
+        gl_thread_data_->quit_now = true;
+      }
       gl_thread_data_->wait_for_instruction.wakeAll();
       thread_.wait();
+    }
+    else {
+      gl_thread_data_->quit_now = true;
+      thread_.gl_renderer_.fini();
     }
     has_quit_ = true;
   }
