@@ -66,6 +66,8 @@ typedef std::set<key_type> keys_currently_pressed_t;
 typedef std::pair<key_type, pressed_or_released> key_change_t;
 typedef std::vector<key_change_t> key_activity_t;
 typedef int64_t mouse_displacement_coord_t;
+
+// X is rightwards, Y is upwards.
 struct mouse_displacement_t {
   mouse_displacement_t() : x(0), y(0) {}
   mouse_displacement_t(mouse_displacement_coord_t x, mouse_displacement_coord_t y) : x(x), y(y) {}

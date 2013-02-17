@@ -720,7 +720,8 @@ void LasercakeGLWidget::mouseMoveEvent(QMouseEvent* event) {
   const QPoint new_global_cursor_pos = event->globalPos();
   const QPoint displacement = new_global_cursor_pos - global_cursor_pos_;
   QApplication::desktop()->cursor().setPos(global_cursor_pos_);
-  input_rep_mouse_displacement_ += input_representation::mouse_displacement_t(displacement.x(), displacement.y());
+  input_rep_mouse_displacement_ += input_representation::mouse_displacement_t(
+    displacement.x(), -displacement.y());
 }
 
 void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
@@ -799,6 +800,7 @@ input_representation::input_news_t LasercakeGLWidget::get_input_news()const {
 }
 void LasercakeGLWidget::clear_input_news() {
   input_rep_key_activity_.clear();
+  input_rep_mouse_displacement_ = input_representation::mouse_displacement_t();
 }
 
 
