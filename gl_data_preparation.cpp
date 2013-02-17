@@ -48,9 +48,9 @@ inline bool overlaps(frustum const& f, Bbox const& bbox) {
   //std::cerr << "frustoverlaps?\n";
   for(glm::vec4 const& half_space : f.half_spaces) {
     const glm::vec4 extremity(
-      get_primitive_int(bbox.min(X)) + (-int(half_space.x >= 0) & get_primitive_int(bbox.size_minus_one(X))),
-      get_primitive_int(bbox.min(Y)) + (-int(half_space.y >= 0) & get_primitive_int(bbox.size_minus_one(Y))),
-      get_primitive_int(bbox.min(Z)) + (-int(half_space.z >= 0) & get_primitive_int(bbox.size_minus_one(Z))),
+      get_primitive_int(bbox.min(X)) + (-int(half_space.x >= 0) & get_primitive_int(bbox.size(X))),
+      get_primitive_int(bbox.min(Y)) + (-int(half_space.y >= 0) & get_primitive_int(bbox.size(Y))),
+      get_primitive_int(bbox.min(Z)) + (-int(half_space.z >= 0) & get_primitive_int(bbox.size(Z))),
       1
     );
     //std::cerr << "frustoverlaps  " << half_space << "  " << extremity << "\n";
@@ -67,9 +67,9 @@ inline bool subsumes(frustum const& f, Bbox const& bbox) {
   //std::cerr << "frustsubsumes?\n";
   for(glm::vec4 const& half_space : f.half_spaces) {
     const glm::vec4 extremity(
-      get_primitive_int(bbox.min(X)) + (-int(half_space.x < 0) & get_primitive_int(bbox.size_minus_one(X))),
-      get_primitive_int(bbox.min(Y)) + (-int(half_space.y < 0) & get_primitive_int(bbox.size_minus_one(Y))),
-      get_primitive_int(bbox.min(Z)) + (-int(half_space.z < 0) & get_primitive_int(bbox.size_minus_one(Z))),
+      get_primitive_int(bbox.min(X)) + (-int(half_space.x < 0) & get_primitive_int(bbox.size(X))),
+      get_primitive_int(bbox.min(Y)) + (-int(half_space.y < 0) & get_primitive_int(bbox.size(Y))),
+      get_primitive_int(bbox.min(Z)) + (-int(half_space.z < 0) & get_primitive_int(bbox.size(Z))),
       1
     );
     //std::cerr << "frustsubsumes  " << half_space << "  " << extremity << "\n";
