@@ -125,15 +125,15 @@ object_or_tile_identifier laser_find(
     hit_thing = hit_object->object;
     best_intercept_point = hit_object->cost;
   }
-  if(add_laser_sfx) {
+  if(add_laser_sfx || result_beam_vector_ptr) {
     if(hit_thing != object_or_tile_identifier()) {
       // TODO do I have to worry about overflow?
       vector3<distance> result_beam_vector = multiply_rational_into(beam_vector, best_intercept_point);
-      w.add_laser_sfx(source, result_beam_vector);
+      if (add_laser_sfx) w.add_laser_sfx(source, result_beam_vector);
       if (result_beam_vector_ptr) *result_beam_vector_ptr = result_beam_vector;
     }
     else {
-      w.add_laser_sfx(source, beam_vector);
+      if (add_laser_sfx) w.add_laser_sfx(source, beam_vector);
       if (result_beam_vector_ptr) *result_beam_vector_ptr = beam_vector;
     }
   }
@@ -363,15 +363,15 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     w.try_create_object(aur);
   }
   if (input_news.num_times_pressed("p")) {
-    const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w)));
+    const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w, my_id)));
     w.try_create_object(sol);
   }
   if (input_news.num_times_pressed("o")) {
-    const shared_ptr<refinery> ref (new refinery(get_building_tile(w)));
+    const shared_ptr<refinery> ref (new refinery(get_building_tile(w, my_id)));
     w.try_create_object(ref);
   }
   if (input_news.num_times_pressed("b")) {
-    const shared_ptr<conveyor_belt> con (new conveyor_belt(get_building_tile(w)));
+    const shared_ptr<conveyor_belt> con (new conveyor_belt(get_building_tile(w, my_id)));
     w.try_create_object(con);
   }
   if (input_news.is_currently_pressed("r")) {
@@ -386,9 +386,13 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   }
 }
 
-vector3<tile_coordinate> robot::get_building_tile(world& w)const { // TODO: This use of world& should be able to be world const&
+vector3<tile_coordinate> robot::get_building_tile(world& w, object_identifier my_id)const { // TODO: This use of world& should be able to be world const&
+  vector3<distance> building_laser_delta = facing_ * 2;
+  vector3<distance> result_delta;
+  laser_find(w, my_id, location_, building_laser_delta, false, &result_delta);
+  
   tile_location first_guess = w.make_tile_location(
-      get_min_containing_tile_coordinates(location_ + facing_ * 2),
+      get_min_containing_tile_coordinates(/*location_ + facing_ * 2*/ location_ + result_delta),
       CONTENTS_ONLY);
   tile_location loc = first_guess;
   tile_location locd = loc.get_neighbor<zminus>(CONTENTS_ONLY);

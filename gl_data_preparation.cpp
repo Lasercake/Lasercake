@@ -911,7 +911,7 @@ void view_on_the_world::prepare_gl_data(
       }
       else {
         if(shared_ptr<robot> rob = dynamic_pointer_cast<robot>(objp)) {
-          prepare_shape(view_loc, coll, tile_shape(rob->get_building_tile(w)), color(0xffff0033));
+          prepare_shape(view_loc, coll, tile_shape(rob->get_building_tile(w, id)), color(0xffff0033));
         }
       }
     }

@@ -60,7 +60,7 @@ public:
   
   virtual void update(world& w, input_representation::input_news_t const& mind_control, object_identifier my_id);
   vector3<distance> get_facing()const { return facing_; }
-  vector3<tile_coordinate> get_building_tile(world& w)const; // TODO: This use of world& should be able to be world const&
+  vector3<tile_coordinate> get_building_tile(world& w, object_identifier my_id)const; // TODO: This use of world& should be able to be world const&
 
   std::string player_instructions()const;
 private:
