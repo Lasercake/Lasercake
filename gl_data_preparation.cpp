@@ -328,15 +328,15 @@ inline color compute_tile_color(world const& w, tile_location const& loc) {
   uint32_t g = 0;
   uint32_t b = 0;
   uint32_t a = 0;
+  const uint32_t pattern = ((get_primitive<uint32_t>(coords.x) + get_primitive<uint32_t>(coords.y) + get_primitive<uint32_t>(coords.z)) % 3);
   switch (loc.stuff_at().contents()) {
     //prepare_tile() doesn't need this case, so omit it:
     //case AIR: return color(0x00000000);
     case ROCK: {
-      const uint32_t pattern = ((get_primitive<uint32_t>(coords.x) + get_primitive<uint32_t>(coords.y) + get_primitive<uint32_t>(coords.z)) % 3);
       r = g = b = 0x33 * pattern + 0x55;
       a = 0xff;
     } break;
-    case RUBBLE: r = 0xff; g = 0xbb; b = 0x55; a = 0x77; break;
+    case RUBBLE: r = 0xff * (2 + pattern) / 4; g = 0xbb * (2 + pattern) / 4; b = 0x55 * (2 + pattern) / 4; a = 0xcc; break;
     case GROUPABLE_WATER: r = 0x00; g = 0x00; b = 0xff; a = 0x77; break;
     case UNGROUPABLE_WATER: r = 0x66; g = 0x66; b = 0xff; a = 0x77; break;
     default: assert(false);
