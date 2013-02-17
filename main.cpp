@@ -387,7 +387,7 @@ int main(int argc, char *argv[])
 #if !LASERCAKE_NO_THREADS
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
-      ("use-opengl-thread", po::bool_switch(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls")
+      ("no-opengl-thread", bool_switch_off(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls")
 #endif
 #if !LASERCAKE_NO_SELF_TESTS
       ("run-self-tests", "alternate run mode: run Lasercake's self-tests")
@@ -751,15 +751,6 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
                    this,                     SLOT(quit()));
 
   if(config_.have_gui) {
-    // TODO find out why GL threading adds a varying, roughly 30-120ms, slowdown
-    // to my graphical framerate if I use it (though improves the simulation-framerate
-    // when the GL was being slower than everything else, obviously). (stepped_pools -l)
-    //
-    // Surely I have enough CPU cores to do those in parallel?  Is it a CPU-cache thing?
-    // A Nouveau quirk?  Somehow about thread-switching latency?
-    //
-    // Running the rendering in a separate thread but waiting till it was finished gave
-    // the same speed behaviour as running it in the main thread (no slower!). -Isaac
     gl_widget_.reset(new LasercakeGLWidget(config_.use_opengl_thread));
     QObject::connect(&*gl_widget_, SIGNAL(key_changed(input_representation::key_change_t)),
                     this,         SLOT(key_changed(input_representation::key_change_t)));
