@@ -191,7 +191,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       is_busy_realizing_ = true;
 
       w_->worldgen_function_(this, this->bounding_box());
-      //std::cerr << "A worldblock has been created!\n";
+      //LOG << "A worldblock has been created!\n";
       
       current_tile_realization_ = CONTENTS_ONLY;
       is_busy_realizing_ = false;

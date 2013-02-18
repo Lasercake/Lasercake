@@ -92,7 +92,7 @@ struct sunlight_visitor {
     if (min_y < 0) min_y = 0;
     if (max_x >= SUN_AREA_SIZE-1) max_x = SUN_AREA_SIZE-1;
     if (max_y >= SUN_AREA_SIZE-1) max_y = SUN_AREA_SIZE-1;
-    //std::cerr << max_x - min_x << "\n" << max_y - min_y << "!\n";
+    //LOG << max_x - min_x << "\n" << max_y - min_y << "!\n";
 
     for (int x = min_x; x <= max_x; ++x) {
       for (int y = min_y; y <= max_y; ++y) {
@@ -135,12 +135,12 @@ struct sunlight_visitor {
           + (((coords(Z) - world_center_tile_coord) * tile_height)  * sun_direction(Y)     )
       ) * SUN_PACKETS_PER_TILE_WIDTH) / tile_width) >> sun_direction_z_shift)
       + (SUN_AREA_SIZE / 2);
-    //std::cerr << base_x << "," << base_y << "," << SUN_AREA_SIZE << "," << sun_direction << "," << sun_direction_z_shift << "," << coords << "," << tile_sunbitwidth_x << "," << tile_sunbitwidth_y << "\n";
+    //LOG << base_x << "," << base_y << "," << SUN_AREA_SIZE << "," << sun_direction << "," << sun_direction_z_shift << "," << coords << "," << tile_sunbitwidth_x << "," << tile_sunbitwidth_y << "\n";
 
     const distance base_y_block = base_y >> 5;
     const distance offset = base_y - (base_y_block << 5);
     const distance last_y_block = ((base_y + tile_sunbitwidth_x - 1) >> 5);
-    //std::cerr<<( last_y_block - base_y_block);
+    //LOG<<( last_y_block - base_y_block);
 
     for (int x = std::max(base_x, distance(0)); x < base_x + tile_sunbitwidth_x && x < SUN_AREA_SIZE; ++x) {
       result += do_tile_row_part<true>(x, base_y_block, offset);

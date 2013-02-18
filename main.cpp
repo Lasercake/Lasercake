@@ -32,7 +32,6 @@
 #include <QtCore/QLocale>
 #include <QtGui/QFontDatabase>
 
-#include <iostream>
 #include <iomanip>
 #include <sstream>
 #include <locale>
@@ -106,7 +105,7 @@ microseconds_t get_monotonic_microseconds() {
 }
 
 // Usage example:
-// std::cerr << std::setw(6) << (ostream_bundle() << "foo" << 564) << std::endl;
+// LOG << std::setw(6) << (ostream_bundle() << "foo" << 564) << std::endl;
 struct ostream_bundle : std::ostream {
   template<typename T> ostream_bundle& operator<<(T const& t) { ss_ << t; return *this; }
   std::string str() { return ss_.str(); }
@@ -180,7 +179,7 @@ object_identifier init_test_world_and_return_our_robot(
   // so we can test how that physics works.
   {
     if(log_microseconds) {
-      std::cerr << "\nInit: ";
+      LOG << "\nInit: ";
     }
     const microseconds_t microseconds_before_init = get_this_process_microseconds();
 
@@ -205,7 +204,7 @@ object_identifier init_test_world_and_return_our_robot(
     const microseconds_t microseconds_after_init = get_this_process_microseconds();
     const microseconds_t microseconds_for_init = microseconds_after_init - microseconds_before_init;
     if(log_microseconds) {
-      std::cerr << show_microseconds(microseconds_for_init) << " ms\n";
+      LOG << show_microseconds(microseconds_for_init) << " ms\n";
     }
   }
 
@@ -342,35 +341,35 @@ boost::program_options::typed_value<bool>* bool_switch_off(bool* v = nullptr) {
 } /* end anonymous namespace */
 
 int debug_test_sim_avoiding_qt_and_trying_to_be_very_deterministic(config_struct config) {
-  std::cerr << "Constructing worldgen\n";
+  LOG << "Constructing worldgen\n";
   const worldgen_function_t worldgen = make_world_building_func(config.scenario);
   assert(worldgen);
-  std::cerr << "Constructing world\n";
+  LOG << "Constructing world\n";
   world w(worldgen);
-  std::cerr << "Initing world\n";
+  LOG << "Initing world\n";
   const object_identifier robot_id = init_test_world_and_return_our_robot(w, config.crazy_lasers, false);
   shared_ptr<view_on_the_world> view_ptr;
   if(config.run_drawing_code) {
-    std::cerr << "Initing graphics-prep code\n";
+    LOG << "Initing graphics-prep code\n";
     view_ptr.reset(new view_on_the_world(world_center_fine_coords));
     view_ptr->drawing_debug_stuff = config.initially_drawing_debug_stuff;
   }
-  std::cerr << "Beginning simulating\n";
+  LOG << "Beginning simulating\n";
   int64_t frame = 0;
   const unordered_map<object_identifier, input_news_t> there_aint_any_input;
   while(config.exit_after_frames != frame) {
     ++frame;
     w.update(there_aint_any_input);
     if(config.run_drawing_code) {
-      std::cerr << "end sim; " << std::flush;
+      LOG << "end sim; " << std::flush;
       {
         gl_data_ptr_t gl_data_ptr(new gl_data_t());
         view_ptr->prepare_gl_data(w, gl_data_preparation_config(config.view_radius, robot_id), *gl_data_ptr);
       }
     }
-    std::cerr << "end frame " << frame << std::endl;
+    LOG << "end frame " << frame << std::endl;
   }
-  std::cerr << "Ending simulating\n";
+  LOG << "Ending simulating\n";
   return 0;
 }
 
@@ -380,9 +379,9 @@ int main(int argc, char *argv[])
     std::locale::global(std::locale(""));
   }
   catch(std::runtime_error&) {
-    std::cerr << "Can't find your default locale; not setting locale" << std::endl;
+    LOG << "Can't find your default locale; not setting locale" << std::endl;
   }
-  std::cerr << std::boolalpha;
+  LOG << std::boolalpha;
 
   config_struct config;
 
@@ -445,7 +444,7 @@ int main(int argc, char *argv[])
     }
 #endif
     if(!vm.count("scenario")) {
-      std::cerr << "You didn't give an argument saying which scenario to use! Using default value...\n";
+      LOG << "You didn't give an argument saying which scenario to use! Using default value...\n";
       config.scenario = "default";
     }
 
@@ -459,7 +458,7 @@ int main(int argc, char *argv[])
   QApplication qapp(argc, argv);
   if(config.have_gui) {
     if (!QGLFormat::hasOpenGL()) {
-      std::cerr << "OpenGL capabilities not found; giving up." << std::endl;
+      LOG << "OpenGL capabilities not found; giving up." << std::endl;
       exit(1);
     }
   }
@@ -703,7 +702,7 @@ input_representation::key_type mouse_button_to_input_rep(Qt::MouseButton button)
     case Qt::XButton1: return input_representation::mouse_button_n(4);
     case Qt::XButton2: return input_representation::mouse_button_n(5);
     default:
-      std::cerr << "Unknown mouse button that Qt calls " << button << "\n";
+      LOG << "Unknown mouse button that Qt calls " << button << "\n";
       // give it some name anyhow, even if it's the same name
       // for all unknown buttons
       return input_representation::mouse_button_n(6);
@@ -774,7 +773,7 @@ void LasercakeGLWidget::key_change_(
       // This could happen if they focus this window while holding
       // a key down, and it not be a bug, so it's a bit silly to
       // log this.
-      //std::cerr << "Key released but never pressed: " << qkey << " (" << q_key_event_to_input_rep_key_type(event) << ")\n";
+      //LOG << "Key released but never pressed: " << qkey << " (" << q_key_event_to_input_rep_key_type(event) << ")\n";
     }
     else {
       keys_currently_pressed_.erase(iter);
@@ -869,7 +868,7 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
 {
   const worldgen_function_t worldgen = make_world_building_func(config_.scenario);
   if(!worldgen) {
-    std::cerr << "Scenario name given that doesn't exist!: \'" << config_.scenario << "\'\n";
+    LOG << "Scenario name given that doesn't exist!: \'" << config_.scenario << "\'\n";
     // This constructor is called outside of QCoreApplication::exec(),
     // so QCoreApplication::exit() would be meaningless here
     // (at least I think that's why QCoreApplication::exit() didn't work).
@@ -954,16 +953,15 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
   const microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - monotonic_microseconds_at_beginning_of_frame_;
 
 //TODO runtime flag to disable all debug prints
-  std::cerr << output.extra_debug_info;
+  LOG << output.extra_debug_info;
 //TODO make this runtime flag
-#if !LASERCAKE_NO_TIMING
-  std::ostream& timing_output_ostream = std::cerr;
+#if LASERCAKE_NO_TIMING
+  const bool show_timing = false;
 #else
-  //ignore its contents, but avoid unused-variable warnings thus:
-  ostream_bundle timing_output_ostream;
+  const bool show_timing = true;
 #endif
 
-  timing_output_ostream
+  if(show_timing) { LOG
   << "Frame " << std::left << std::setw(4) << frame_ << std::right << ":"
   //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
   // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
@@ -977,24 +975,27 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
   << ":" << std::setw(6) << show_microseconds(output.microseconds_for_simulation + output.microseconds_for_drawing) << "s+p"
   << "  (" << show_microseconds(last_gl_render_microseconds) << "ms last gl)"
   << "\n";
+  }
 
   if(frame_ % 10 == 0) {
     const microseconds_t beginning = monotonic_microseconds_at_beginning_of_ten_frame_block_;
     monotonic_microseconds_at_beginning_of_ten_frame_block_ = end_frame_monotonic_microseconds;
     const microseconds_t ending = monotonic_microseconds_at_beginning_of_ten_frame_block_;
 
-    timing_output_ostream
+    if(show_timing) { LOG
     << show_microseconds_per_frame_as_fps((ending - beginning) / 10)
     << " fps over the last ten frames " << (frame_-10) << "-" << frame_ << ".\n";
+    }
   }
   if(frame_ % 100 == 0) {
     const microseconds_t beginning = monotonic_microseconds_at_beginning_of_hundred_frame_block_;
     monotonic_microseconds_at_beginning_of_hundred_frame_block_ = end_frame_monotonic_microseconds;
     const microseconds_t ending = monotonic_microseconds_at_beginning_of_hundred_frame_block_;
 
-    timing_output_ostream
+    if(show_timing) { LOG
     << show_microseconds_per_frame_as_fps((ending - beginning) / 100)
     << " fps over the last hundred frames " << (frame_-100) << "-" << frame_ << ".\n";
+    }
   }
 
   monotonic_microseconds_at_beginning_of_frame_ = end_frame_monotonic_microseconds;

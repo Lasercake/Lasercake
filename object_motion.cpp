@@ -140,11 +140,11 @@ get_first_moment_of_intersection_results get_first_moment_of_intersection(shape 
     }
   }
   if (results.time) {
-    //std::cerr << *results.time << "...\n";
+    //LOG << *results.time << "...\n";
     *results.time += s1_last_time_updated;
     *results.time = round_time_downwards(*results.time, max_meaningful_time_precision(relative_velocity));
     if (*results.time < s1_last_time_updated) *results.time = s1_last_time_updated;
-    //std::cerr << *results.time << ", "<< s1_last_time_updated << "\n";
+    //LOG << *results.time << ", "<< s1_last_time_updated << "\n";
   }
   return results;
 }
@@ -183,7 +183,7 @@ void update_object_to_time(boost::shared_ptr<mobile_object>& obj, shape& persona
     vector3<distance> delta = movement_delta_from_start_to(obj->velocity(), time - inf.last_time_updated);
     personal_space_shape.translate(delta);
     detail_shape.translate(delta);
-    //std::cerr << "(this message may be out-of-date/misleading) Moving object by " << delta << "; ignoring updated already " << movement_delta_from_start_to(obj->velocity(), time) << "; full delta " << movement_delta_from_start_to(obj->velocity(), time_type(1)) << "\n";
+    //LOG << "(this message may be out-of-date/misleading) Moving object by " << delta << "; ignoring updated already " << movement_delta_from_start_to(obj->velocity(), time) << "; full delta " << movement_delta_from_start_to(obj->velocity(), time_type(1)) << "\n";
     ++inf.invalidation_counter;
     inf.last_time_updated = time;
   }
@@ -192,7 +192,7 @@ void update_object_for_whole_frame(boost::shared_ptr<mobile_object>& obj, shape&
   vector3<distance> delta = movement_delta_from_start_to(obj->velocity(), time_type(1 * fixed_frame_lengths));
   personal_space_shape.translate(delta);
   detail_shape.translate(delta);
-    //std::cerr << "!Moving object by " << delta << "\n";
+    //LOG << "!Moving object by " << delta << "\n";
 }
 
 void collect_collisions(time_type min_time, bool erase_old_sweep, object_identifier id, boost::shared_ptr<mobile_object> const& obj, shape const* personal_space_shape, world &w, objects_collision_detector& sweep_box_cd, std::priority_queue<collision_info, std::vector<collision_info>>& anticipated_collisions, std::unordered_map<object_or_tile_identifier, moving_object_info>& objects_info, objects_map<mobile_object>::type const& moving_objects) {
@@ -218,17 +218,17 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
   w.objects_exposed_to_collision().get_objects_overlapping(objects_this_could_collide_with, sweep_bounds);
   
   for (object_identifier other_id : objects_this_could_collide_with) {
-  /*std::cerr << "Warning: Doing paranoid checks, remove this;\n";
+  /*LOG << "Warning: Doing paranoid checks, remove this;\n";
   for (auto const& p1 : moving_objects) {
     object_identifier other_id = p1.first;*/
     if (other_id != id) {
-        //std::cerr << "Considering " << id << ", " << other_id << "\n";
+        //LOG << "Considering " << id << ", " << other_id << "\n";
       shape const* opss = find_as_pointer(w.get_object_personal_space_shapes(), other_id);
       assert(opss);
       vector3<velocity1d> other_velocity(0,0,0);
       if (boost::shared_ptr<mobile_object> const* other_obj = find_as_pointer(moving_objects, other_id)) {
         other_velocity = (*other_obj)->velocity();
-        //std::cerr << "Other velocity is relevant." << obj->velocity() << (*other_obj)->velocity();
+        //LOG << "Other velocity is relevant." << obj->velocity() << (*other_obj)->velocity();
       }
       const auto i1 = objects_info.find(id);
       const time_type ltu1 = (i1 == objects_info.end()) ? time_type(0) : i1->second.last_time_updated;
@@ -243,7 +243,7 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
           // operator[] creates the entry if needed
           object_or_tile_identifier(id), objects_info[id].invalidation_counter,
           object_or_tile_identifier(other_id), objects_info[other_id].invalidation_counter));
-        //std::cerr << "Added " << id << ", " << other_id << "\n";
+        //LOG << "Added " << id << ", " << other_id << "\n";
       }
     }
   }
@@ -252,7 +252,7 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
   w.get_tiles_exposed_to_collision_within(tiles_this_could_collide_with,
       get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(sweep_bounds));
   for (auto const& loc : tiles_this_could_collide_with) {
-      //std::cerr << "Considering " << id << ", " << loc << "\n";
+      //LOG << "Considering " << id << ", " << loc << "\n";
     shape t = tile_shape(loc.coords());
     const auto i1 = objects_info.find(id);
     const time_type ltu1 = (i1 == objects_info.end()) ? time_type(0) : i1->second.last_time_updated;
@@ -265,7 +265,7 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
         // operator[] creates the entry if needed
         object_or_tile_identifier(id), objects_info[id].invalidation_counter,
         object_or_tile_identifier(loc), objects_info[loc].invalidation_counter));
-      //std::cerr << "Added " << id << ", " << loc << "\n";
+      //LOG << "Added " << id << ", " << loc << "\n";
     }
   }
 
@@ -293,10 +293,10 @@ void assert_about_overlaps(objects_map<mobile_object>::type & moving_objects,
         s1.translate(movement_delta_from_start_to(p1.second->velocity(), ltu2 - ltu1));
       }
         
-        //std::cerr << p1.second->velocity() << ":" << ltu1 << ", " << p2.second->velocity() << ":" << ltu2 << "\n";
+        //LOG << p1.second->velocity() << ":" << ltu1 << ", " << p2.second->velocity() << ":" << ltu2 << "\n";
       }
       else {
-      //std::cerr << p1.second->velocity() << ", " << p2.second->velocity() << "\n";
+      //LOG << p1.second->velocity() << ", " << p2.second->velocity() << "\n";
       }
         assert(!s1.intersects(s2));
       }
@@ -349,9 +349,9 @@ void update_moving_objects_impl(
   
   time_type last_time(0);
   int collisions_at_last_time = 0;
-      //std::cerr << "poopPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPpoop!\n";
+      //LOG << "poopPOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPpoop!\n";
   while(!anticipated_collisions.empty()) {
-    //std::cerr << "..." << anticipated_collisions.size() << "?\n";
+    //LOG << "..." << anticipated_collisions.size() << "?\n";
     randomized_vector<collision_info> now_collisions;
     do {
       now_collisions.insert(anticipated_collisions.top(), w.get_rng());
@@ -361,9 +361,9 @@ void update_moving_objects_impl(
     
     //assert_about_overlaps(moving_objects, personal_space_shapes, objects_info);
     
-    //std::cerr << "..." << now_collisions.size() << "!\n";
+    //LOG << "..." << now_collisions.size() << "!\n";
     for (collision_info collision : now_collisions) {
-      //std::cerr << "Wham!\n";
+      //LOG << "Wham!\n";
       const auto inf1_iter = objects_info.find(collision.oid1);
       assert(inf1_iter != objects_info.end());
       moving_object_info& inf1 = inf1_iter->second;
@@ -376,7 +376,7 @@ void update_moving_objects_impl(
           if (collision.time == last_time) {
             ++collisions_at_last_time;
             if (collisions_at_last_time > 100) {
-              std::cerr << "FAILSAFE: There were 100 collisions at the same moment. Zeroing the velocities of everything...\n";
+              LOG << "FAILSAFE: There were 100 collisions at the same moment. Zeroing the velocities of everything...\n";
               failsafe_mode = true;
             }
           }
@@ -385,7 +385,7 @@ void update_moving_objects_impl(
             last_time = collision.time;
             collisions_at_last_time = 1;
           }
-          //std::cerr << "BLAM!\n";
+          //LOG << "BLAM!\n";
           // oid1 is always an object identifier
           object_identifier const* oid1p = collision.oid1.get_object_identifier(); assert(oid1p);
           object_identifier const& oid1 = *oid1p;
@@ -423,7 +423,7 @@ void update_moving_objects_impl(
             shape* o2ds = find_as_pointer(detail_shapes, oid2); assert(o2ds);
             
             // CRASH!!
-            //std::cerr << oid1 << oid2;
+            //LOG << oid1 << oid2;
             // This assertion is wrong:
             //assert (!o1pss->intersects(*o2pss));
             // Because one object can follow another closely, with the one in front known to be
@@ -478,19 +478,19 @@ void update_moving_objects_impl(
           }
 
           if (o2_is_immovable_obstruction) {
-              //std::cerr << inf1.last_time_updated;
-              //std::cerr << collision.time;
+              //LOG << inf1.last_time_updated;
+              //LOG << collision.time;
               update_object_to_time(obj1, *o1pss, *o1ds, inf1, collision.time);
-              //std::cerr << "!!!" << inf1.last_time_updated << "\n";
+              //LOG << "!!!" << inf1.last_time_updated << "\n";
               const auto old_vel = obj1->velocity();
               auto vel_change = (collision.normal * obj1->velocity().dot<lint64_t>(collision.normal));
               if (vel_change != 0) {
                 auto vel_change_denom = collision.normal.dot<lint64_t>(collision.normal);
                 // Hack: To avoid getting locked in a nonzero velocity due to rounding error,
                 // make sure to round down your eventual velocity!
-                //std::cerr << obj1->velocity();
+                //LOG << obj1->velocity();
                 obj1->velocity_ = ((obj1->velocity() * vel_change_denom) - vel_change) / vel_change_denom;
-                //std::cerr << vel_change << vel_change_denom << obj1->velocity() << "\n";
+                //LOG << vel_change << vel_change_denom << obj1->velocity() << "\n";
               }
               // Also push the objects away from each other a little if the surface isn't axis-aligned.
               // This is a bit of a hack and might violate conservation of energy.
@@ -500,7 +500,7 @@ void update_moving_objects_impl(
               if (failsafe_mode) obj1->velocity_ = vector3<velocity1d>(0,0,0);
               if (obj1->velocity() != old_vel) ++inf1.invalidation_counter;
               else {
-                std::cerr << "Warning: No velocity change on collision. This can potentially cause overlaps.\n";
+                LOG << "Warning: No velocity change on collision. This can potentially cause overlaps.\n";
               }
           }
           
@@ -517,7 +517,7 @@ void update_moving_objects_impl(
   }
   
   // assert_about_overlaps(moving_objects, personal_space_shapes, objects_info);
-  //std::cerr << "Excellently.\n";
+  //LOG << "Excellently.\n";
   for (auto const& p : moving_objects) {
     auto const& oid = p.first;
     boost::shared_ptr<mobile_object>* objp = find_as_pointer(moving_objects, oid); assert(objp);
@@ -527,11 +527,11 @@ void update_moving_objects_impl(
     auto inf = objects_info.find(object_or_tile_identifier(oid));
     if (inf == objects_info.end()) {
       update_object_for_whole_frame(obj, *opss, *ods);
-      //std::cerr << "Minimally so.\n";
+      //LOG << "Minimally so.\n";
     }
     else {
       update_object_to_time(obj, *opss, *ods, inf->second, time_type(1 * fixed_frame_lengths));
-      //std::cerr << "Quite so.\n";
+      //LOG << "Quite so.\n";
     }
     
     // Update the collision detector entries

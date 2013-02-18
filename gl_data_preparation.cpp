@@ -64,7 +64,7 @@ std::ostream& operator<<(std::ostream& os, glm::vec4 v) {
 // pass any to this, so it doesn't matter currently and would never matter a lot.)
 template<typename Bbox>
 inline bool overlaps(frustum const& f, Bbox const& bbox) {
-  //std::cerr << "frustoverlaps?\n";
+  //LOG << "frustoverlaps?\n";
   for(glm::vec4 const& half_space : f.half_spaces) {
     const glm::vec4 extremity(
       get_primitive_int(bbox.min(X)) + (-int(half_space.x >= 0) & get_primitive_int(bbox.size(X))),
@@ -72,18 +72,18 @@ inline bool overlaps(frustum const& f, Bbox const& bbox) {
       get_primitive_int(bbox.min(Z)) + (-int(half_space.z >= 0) & get_primitive_int(bbox.size(Z))),
       1
     );
-    //std::cerr << "frustoverlaps  " << half_space << "  " << extremity << "\n";
+    //LOG << "frustoverlaps  " << half_space << "  " << extremity << "\n";
     if(glm::dot(half_space, extremity) < 0) {
-      //std::cerr << "frustoverlaps=no\n";
+      //LOG << "frustoverlaps=no\n";
       return false;
     }
   }
-  //std::cerr << "frustoverlaps!!\n";
+  //LOG << "frustoverlaps!!\n";
   return true;
 }
 template<typename Bbox>
 inline bool subsumes(frustum const& f, Bbox const& bbox) {
-  //std::cerr << "frustsubsumes?\n";
+  //LOG << "frustsubsumes?\n";
   for(glm::vec4 const& half_space : f.half_spaces) {
     const glm::vec4 extremity(
       get_primitive_int(bbox.min(X)) + (-int(half_space.x < 0) & get_primitive_int(bbox.size(X))),
@@ -91,13 +91,13 @@ inline bool subsumes(frustum const& f, Bbox const& bbox) {
       get_primitive_int(bbox.min(Z)) + (-int(half_space.z < 0) & get_primitive_int(bbox.size(Z))),
       1
     );
-    //std::cerr << "frustsubsumes  " << half_space << "  " << extremity << "\n";
+    //LOG << "frustsubsumes  " << half_space << "  " << extremity << "\n";
     if(glm::dot(half_space, extremity) < 0) {
-      //std::cerr << "frustsubsumes=no\n";
+      //LOG << "frustsubsumes=no\n";
       return false;
     }
   }
-  //std::cerr << "frustsubsumes!!\n";
+  //LOG << "frustsubsumes!!\n";
   return true;
 }
 

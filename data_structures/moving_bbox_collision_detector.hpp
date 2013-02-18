@@ -132,11 +132,11 @@ struct tree_node {
   }
 
   void insert(moving_object<NumDimensions> const& o) {
-    //    std::cerr << "Insert attempt:\n";
+    //    LOG << "Insert attempt:\n";
     bounds = bounds.plus_nontrivially_including(o.bounds());
     if (!o.bounds().fitsnicely(bounds)) {
       stuff_here.push_back(o);
-      //  std::cerr << "BZX\n";
+      //  LOG << "BZX\n";
       return;
     }
     int best_child = -1;
@@ -149,10 +149,10 @@ struct tree_node {
       }
     }
     if (best_child != -1) {
-      //std::cerr << least_strain << "\n";
+      //LOG << least_strain << "\n";
       tree_node& bc = children[best_child];
       if (bc.bounds.plus_nontrivially_including(o.bounds()).fitsnicely(bounds)) {
-        //std::cerr << "foo\n";
+        //LOG << "foo\n";
         bc.insert(o);
         return;
       }
@@ -174,13 +174,13 @@ struct tree_node {
           child_attempt.stuff_here.push_back(stuff_here[pulled_stuffs[i]]);
           stuff_here[pulled_stuffs[i]] = stuff_here.back(); stuff_here.pop_back();
         }
-        //std::cerr << "PULL! Woot!\n";
+        //LOG << "PULL! Woot!\n";
         assert(bounds.contains(child_attempt.bounds));
         children.push_back(child_attempt);
         return;
       }
     }
-    //std::cerr << "plunk\n";
+    //LOG << "plunk\n";
     stuff_here.push_back(o);
   }
 
@@ -433,7 +433,7 @@ public:
     root.insert(o);
   }
   bool erase(moving_bbox_collision_detector_internals::object_id const& id) {
-    std::cerr << "Aah! Erasing is unimplemented!\n";
+    LOG << "Aah! Erasing is unimplemented!\n";
   }
   void get_objects_overlapping(std::vector<moving_bbox_collision_detector_internals::object_id>& results, bounding_box const& bbox, vector3<distance> vel)const {
     o.id = id;

@@ -565,7 +565,7 @@ public:
     else {
       if (!real_vector_) {
         real_vector_ = new VectorType();
-        //std::cerr << "arrayvector size exceeded: " << ArraySize << "\n";
+        //LOG << "arrayvector size exceeded: " << ArraySize << "\n";
       }
       real_vector_->push_back(value);
     }
@@ -679,18 +679,18 @@ void convex_polyhedron::init_other_info_from_vertices() {
         (i == first_four_noncoplanar_verts[1]) ||
         (i == first_four_noncoplanar_verts[2]) ||
         (i == first_four_noncoplanar_verts[3])) continue;
-    /*std::cerr << "==================  Step info:\n";
-    std::cerr << "Verts: " << vs.size() << "\n";
-    std::cerr << "Lines: " << lines.size() << "\n";
-    std::cerr << "Faces: " << faces.size() << "\n";
+    /*LOG << "==================  Step info:\n";
+    LOG << "Verts: " << vs.size() << "\n";
+    LOG << "Lines: " << lines.size() << "\n";
+    LOG << "Faces: " << faces.size() << "\n";
     for (auto& f : faces) {
-      std::cerr << "Face of size " << f.verts.size() << "\n";
+      LOG << "Face of size " << f.verts.size() << "\n";
     }*/
     bool exposed = false;
     for (auto& f : faces) {
       assert(!f.verts.empty());
       const coord3 dotprod = (vs[i] - vs[f.verts.front()]).dot<geometry_int_type>(f.normal);
-      //std::cerr << i << "!" << dotprod << "!\n";
+      //LOG << i << "!" << dotprod << "!\n";
       if (dotprod > 0) {
         exposed = true;
         break;
@@ -710,7 +710,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
         assert(!f2.verts.empty());
         const coord3 dotprod1 = (vs[i] - vs[f1.verts.front()]).dot<geometry_int_type>(f1.normal);
         const coord3 dotprod2 = (vs[i] - vs[f2.verts.front()]).dot<geometry_int_type>(f2.normal);
-        //std::cerr << dotprod1 << ", " << dotprod2 << "\n";
+        //LOG << dotprod1 << ", " << dotprod2 << "\n";
         // Both <=0: we're inside both, the line is unaffected
         // Both >0: we're outside both, the line will just be purged
         if ((dotprod1 == 0) && (dotprod2 == 0)) {
@@ -825,7 +825,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
           ++lv;
         }
       }
-      //std::cerr << "EEEEEEEEE " << verts_of_potential_new_lines.size() << ", " << new_and_old_faces.size() << ", " << old_faces.size() << "\n";
+      //LOG << "EEEEEEEEE " << verts_of_potential_new_lines.size() << ", " << new_and_old_faces.size() << ", " << old_faces.size() << "\n";
       for (int lv : verts_of_potential_new_lines) {
         line_building_info l;
         int num_faces_including = 0;
@@ -833,7 +833,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
         for (auto fr : new_and_old_faces) {
           if (fr != l.face_1) {
             const coord3 dotprod = (vs[lv] - vs[*fr->verts.begin()]).dot<geometry_int_type>(fr->normal);
-            //std::cerr<<dotprod<<"...\n";
+            //LOG<<dotprod<<"...\n";
             assert(dotprod <= 0);
             if (dotprod == 0) {
               if (num_faces_including == 0) {
@@ -907,7 +907,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
     }
   }
   for (line_building_info const& l : lines) {
-    //std::cerr << l.vert_1 << l.vert_2 << vertices_.size();
+    //LOG << l.vert_1 << l.vert_2 << vertices_.size();
     //if (vertex_id_map.find(l.vert_1) != vertex_id_map.end() && vertex_id_map.find(l.vert_2) != vertex_id_map.end())
     edges_.push_back(edge(
       vertex_id_map[l.vert_1], vertex_id_map[l.vert_2],
@@ -950,7 +950,7 @@ convex_polyhedron::convex_polyhedron(
     if ((displacement((dim+1) % num_dimensions) == 0) && (displacement((dim+2) % num_dimensions) == 0)) {
       dirs[3][dim] += dirs[dim](dim);
       dirs[dim][dim] = 0;
-      //std::cerr << "eliminating parallel " << dir << "\n";
+      //LOG << "eliminating parallel " << dir << "\n";
     }
   }
   std::array<bool, 4> dir_existences = {{
@@ -1087,7 +1087,7 @@ convex_polyhedron::convex_polyhedron(
     // So we only have to make the following checks:
     /*for (int j = 1; j < 16; ++j) { // (the 0 vector is meaningless for this)
       const uint8_t combo = combinations_by_idx[j];
-      //std::cerr << "grr, " << std::hex << j << ", " << (int)combo << ", " << existences_of_translates[i] << std::dec << "\n";
+      //LOG << "grr, " << std::hex << j << ", " << (int)combo << ", " << existences_of_translates[i] << std::dec << "\n";
       // Wait, no, we can't skip already-eliminated vectors because they may be still relevant if
       // they don't have all the coordinates; e.g. if we test (e1) and it eliminates (e2) but
       // (e2+v) needs to eliminate (v) then we have to test (e2) to do that.
@@ -1106,7 +1106,7 @@ convex_polyhedron::convex_polyhedron(
           for (auto pair : boost::make_iterator_range(range.first, range.second)) {
             auto normal = pair.second;
             const geometry_int_type dotprod = vectors_by_combo[combo].dot<geometry_int_type>(normal);
-            //std::cerr << p << normal << vectors_by_combo[combo] << "\n";
+            //LOG << p << normal << vectors_by_combo[combo] << "\n";
             if (dotprod > 0) {
               p_plus_vector_is_shadowed = false;
               if (!p_minus_vector_is_shadowed) break;
@@ -1116,13 +1116,13 @@ convex_polyhedron::convex_polyhedron(
               if (!p_plus_vector_is_shadowed) break;
             }
           }
-          //std::cerr << "foo\n";
+          //LOG << "foo\n";
           if (p_plus_vector_is_shadowed) {
-          //std::cerr << "BLAH\n";
+          //LOG << "BLAH\n";
             existences_of_translates[i] &= ~combinations_with_only_shared_dirs_by_idx[j];
           }
           if (p_minus_vector_is_shadowed) {
-          //std::cerr << "DANWRWK\n";
+          //LOG << "DANWRWK\n";
             existences_of_translates[i] &= ~combinations_with_no_shared_dirs_by_idx[j];
           }
         }
@@ -1173,7 +1173,7 @@ convex_polyhedron::convex_polyhedron(
           for (auto pair : boost::make_iterator_range(range.first, range.second)) {
             auto normal = pair.second;
             const geometry_int_type dotprod = diff_vector.dot<geometry_int_type>(normal);
-            //std::cerr << p << normal << vectors_by_combo[combo] << "\n";
+            //LOG << p << normal << vectors_by_combo[combo] << "\n";
             if (dotprod > 0) {
               point_2_is_shadowed = false;
               break;
@@ -1198,9 +1198,9 @@ convex_polyhedron::convex_polyhedron(
         const int dim3 = (dim+2) % num_dimensions;
         if ((v(dim2) != 0) && (v(dim3) != 0)) {
           // If you have eight coplanar points, two of them are subsumed by the others
-          //std::cerr << (int)i << std::hex << ", " << existences_of_translates[i] << ", " << ((~(combos_including_dir[dim] | (1 << (1 << 3)))) & 0xffff) << "\n";
+          //LOG << (int)i << std::hex << ", " << existences_of_translates[i] << ", " << ((~(combos_including_dir[dim] | (1 << (1 << 3)))) & 0xffff) << "\n";
           if (existences_of_translates[i] == ((~(combos_including_dir[dim] | (1 << (1 << 3)))) & 0xffff)) {
-          //std::cerr << "erjeajirjeairjiearearaerae";
+          //LOG << "erjeajirjeairjiearearaerae";
             existences_of_translates[i] &= ~(1 << ((1 << dim2) | (1 << dim3)));
             //existences_of_translates[i] &= ~(1 << (1 << 3));
           }
@@ -1226,7 +1226,7 @@ convex_polyhedron::convex_polyhedron(
               const auto range = normals_by_point_idx.equal_range(i);
               for (auto pair : boost::make_iterator_range(range.first, range.second)) {
                 auto normal = pair.second;
-                //  std::cerr << normal << dimA << dimB << "\n";
+                //  LOG << normal << dimA << dimB << "\n";
                 if (normal(dimB) == 0) {
                   if (normal(dimA) == 0) {
                     // it's a wash - that normal represents the same plane we're considering,
@@ -1328,16 +1328,16 @@ convex_polyhedron::convex_polyhedron(
     // All the other directions have to be held constant,
     // except that if this is a line in the direction of one of the vectors, it's okay (and in fact, inevitable)
     // for the two endpoints to differ in that direction.
-    //std::cerr << "hi " << ph.vertices()[l.first] << ph.vertices()[l.second] << "\n";
+    //LOG << "hi " << ph.vertices()[l.first] << ph.vertices()[l.second] << "\n";
     
     // Special case: If we're parallel to one of the directions of movement, we need to ignore the difference between not-including-that-direction and including-that-direction.
     const vector3<geometry_int_type> line_vector = ph.vertices()[l.second] - ph.vertices()[l.first];
     int parallel_dir = -1;
-    //    std::cerr << line_vector << "\n";
+    //    LOG << line_vector << "\n";
     for (int dir = 0; dir < 4; ++dir) {
       if (dirs[dir] != vector3<geometry_int_type>(0,0,0)) {
         if (vectors_are_parallel(line_vector, dirs[dir])) {
-     //   std::cerr << dir << "\n";
+     //   LOG << dir << "\n";
           assert(parallel_dir == -1);
           parallel_dir = dir;
         }
@@ -1376,7 +1376,7 @@ convex_polyhedron::convex_polyhedron(
         }
       }
       
-      //std::cerr << i << "lol\n";
+      //LOG << i << "lol\n";
       for (int combo = 0; combo < 15; ++combo) { // (this is "for each combo with less than four components")
         if (
                 (!(combo & (1 << i))
@@ -1913,7 +1913,7 @@ bool nonshape_intersects(convex_polygon const& p1, convex_polygon const& p2) {
 
 bool nonshape_intersects(convex_polygon const& p1, convex_polyhedron const& p2) {
   // Wait. What if the polygon is a giant slice through the polyhedron?
-  std::cerr << "Warning: Polygon-polyhedron collisions not fully implemented yet!";
+  LOG << "Warning: Polygon-polyhedron collisions not fully implemented yet!";
   std::vector<vect> const& vs = p1.get_vertices();
   for (size_t i = 0; i < vs.size(); ++i) {
     const int next_i = (i + 1) % vs.size();

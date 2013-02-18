@@ -346,7 +346,7 @@ public:
   }
 
   void debug_print(size_t depth = 0)const {
-    std::cerr << std::string(depth*2, ' ') << monoid_ << ' ' << std::hex << box_ << ' ' << size_t(this) << " < " << size_t(parent_) << std::dec << '\n';
+    LOG << std::string(depth*2, ' ') << monoid_ << ' ' << std::hex << box_ << ' ' << size_t(this) << " < " << size_t(parent_) << std::dec << '\n';
     if(sub_nodes_type const* direct_children = sub_nodes()) {
       for (node_type const& direct_child : *direct_children) {
         direct_child.debug_print(depth + 1);
@@ -367,16 +367,16 @@ private:
 
   void initialize_monoid_(monoid_type new_leaf_monoid) {
     node_type* parent = this->parent_;
-    //std::cerr << '@' << '(' << new_leaf_monoid << ')';
+    //LOG << '@' << '(' << new_leaf_monoid << ')';
     while(parent) {
       // += ?
       monoid_type sum = parent->monoid_ + new_leaf_monoid;
-      //std::cerr << '#' << '(' << parent->monoid_ << ',' << sum << ')';
+      //LOG << '#' << '(' << parent->monoid_ << ',' << sum << ')';
       if (sum == parent->monoid_) { break; }
       parent->monoid_ = std::move(sum);
       parent = parent->parent_;
     }
-    //std::cerr << '\n';
+    //LOG << '\n';
     this->monoid_ = std::move(new_leaf_monoid);
   }
 
@@ -436,7 +436,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
     if (node->is_empty()) {
       node_to_initialize = node;
       node_to_initialize->initialize_monoid_(std::move(leaf_monoid));
-      //std::cerr << "Type 1 " << std::hex << size_t(node_to_initialize) << std::dec << "\n";
+      //LOG << "Type 1 " << std::hex << size_t(node_to_initialize) << std::dec << "\n";
     }
     else {
       // That child's location was too specific (wrong) for us.
@@ -476,7 +476,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         // assert is typically nothrow, and it's also okay
         // if it throws here.
         assert(shared_size_exponent > 0);
-        //std::cerr << "~~" << shared_size_exponent << std::endl;
+        //LOG << "~~" << shared_size_exponent << std::endl;
 
         // move node's contents to its new location
         new_location_for_node_original_contents =    // nothrow
@@ -541,7 +541,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
 
       // nothrow
       node_to_initialize = new_leaf_ptr_node;
-      //std::cerr << "Type 2 " << std::hex << size_t(node_to_initialize) << std::dec << "\n";
+      //LOG << "Type 2 " << std::hex << size_t(node_to_initialize) << std::dec << "\n";
     }
 
     assert(node_to_initialize->ptr_ == nullptr);

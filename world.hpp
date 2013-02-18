@@ -37,7 +37,6 @@
 #include <algorithm>
 #include <boost/utility.hpp>
 #include <boost/range/iterator_range.hpp>
-#include <iostream>
 #include <inttypes.h>
 #include <functional>
 #include <boost/iterator/iterator_facade.hpp>

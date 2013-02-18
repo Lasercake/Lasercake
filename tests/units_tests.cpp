@@ -23,7 +23,6 @@
 
 #include "../units.hpp"
 
-#include <iostream>
 #include <boost/random/mersenne_twister.hpp>
 
 typedef meters_t meter;
@@ -114,7 +113,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   pseudoscalar = imbue_sign(pseudoscalar, scalar);
   scalar = imbue_sign(pseudoscalar, pseudoscalar);
 
-  std::cerr << (yay * foofoo * invfoo4 * thirtytwobits * useded) << '\n';
+  LOG << (yay * foofoo * invfoo4 * thirtytwobits * useded) << '\n';
 
   rounding_strategy<round_down, negative_mirrors_positive> strat;
   divide(divide(foo, bfoo, strat), 3, strat) + divide(3, foo, strat);

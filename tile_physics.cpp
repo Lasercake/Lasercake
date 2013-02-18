@@ -309,43 +309,43 @@ persistent_water_group_info const& get_water_group_by_grouped_tile(state_t const
 // Debugging functions:
 void dump_boundary_stuff(groupable_water_volume_calipers_t& g) {
   for (auto const& foo : g.boundary_tiles_in_dimension)
-    std::cerr << "  " << foo.coords() << "\n";
+    LOG << "  " << foo.coords() << "\n";
 }
 void dump_group_info(persistent_water_group_info const& g) {
-  std::cerr << "Suckable tiles by height:\n";
+  LOG << "Suckable tiles by height:\n";
   for (auto const& foo : g.suckable_tiles_by_height.as_map()) {
-    std::cerr << "  At height " << foo.first << ":\n";
+    LOG << "  At height " << foo.first << ":\n";
     for(auto const& bar : foo.second) {
-      std::cerr << "    " << bar.coords() << "\n";
+      LOG << "    " << bar.coords() << "\n";
     }
   }
-  std::cerr << "Pushable tiles by height:\n";
+  LOG << "Pushable tiles by height:\n";
   for (auto const& foo : g.pushable_tiles_by_height.as_map()) {
-    std::cerr << "  At height " << foo.first << ":\n";
+    LOG << "  At height " << foo.first << ":\n";
     for(auto const& bar : foo.second) {
-      std::cerr << "    " << bar.coords() << "\n";
+      LOG << "    " << bar.coords() << "\n";
     }
   }
-  std::cerr << "Surface tiles:\n";
+  LOG << "Surface tiles:\n";
   for (auto const& foo : g.surface_tiles) {
-    std::cerr << "  " << foo.coords() << "\n";
+    LOG << "  " << foo.coords() << "\n";
   }
-  std::cerr << "Width-of-widest-level-so-far caches:\n";
+  LOG << "Width-of-widest-level-so-far caches:\n";
   for (auto const& foo : g.width_of_widest_level_so_far_caches) {
-    std::cerr << "  " << foo.first << ": " << foo.second << "\n";
+    LOG << "  " << foo.first << ": " << foo.second << "\n";
   }
-  std::cerr << "Pressure caches:\n";
+  LOG << "Pressure caches:\n";
   for (auto const& foo : g.pressure_caches) {
-    std::cerr << "  " << foo.first << ": " << foo.second << "\n";
+    LOG << "  " << foo.first << ": " << foo.second << "\n";
   }
-  std::cerr << "Num tiles by height:\n";
+  LOG << "Num tiles by height:\n";
   for (auto const& foo : g.num_tiles_by_height) {
-    std::cerr << "  " << foo.first << ": " << foo.second << "\n";
+    LOG << "  " << foo.first << ": " << foo.second << "\n";
   }
 }
 void dump_all_groups(state_t& state) {
   for (auto const& p : state.persistent_water_groups) {
-    std::cerr << "\n==GROUP "<< p.first<<"==\n";
+    LOG << "\n==GROUP "<< p.first<<"==\n";
     dump_group_info(p.second);
   }
 }
@@ -373,7 +373,7 @@ void check_group_surface_tiles_cache_and_layer_size_caches(state_t& state, persi
   persistent_water_group_info h;
   // Scan from an arbitrary surface tile of g
   if (g.surface_tiles.empty()) {
-    std::cerr << "Checking an empty group, why the hell...?";
+    LOG << "Checking an empty group, why the hell...?";
     return;
   }
   
@@ -418,25 +418,25 @@ void check_group_surface_tiles_cache_and_layer_size_caches(state_t& state, persi
   
   for (auto const& s : h.surface_tiles) {
     if(g.surface_tiles.find(s) == g.surface_tiles.end()) {
-      std::cerr << "Missing surface tile: " << s.coords() << "\n";
+      LOG << "Missing surface tile: " << s.coords() << "\n";
       check_succeeded = false;
     }
   }
   for (auto const& s : g.surface_tiles) {
     if(h.surface_tiles.find(s) == h.surface_tiles.end()) {
-      std::cerr << "Extra surface tile: " << s.coords() << "\n";
+      LOG << "Extra surface tile: " << s.coords() << "\n";
       check_succeeded = false;
     }
   }
   for (auto const& p : h.num_tiles_by_height) {
     auto i = g.num_tiles_by_height.find(p.first);
     if (i == g.num_tiles_by_height.end()) {
-      std::cerr << "Missing height listing: " << p.first << "\n";
+      LOG << "Missing height listing: " << p.first << "\n";
       check_succeeded = false;
     }
     else {
       if (i->second != p.second) {
-        std::cerr << "Number of tiles at height " << p.first << " listed as " << i->second << " when it should be " << p.second << "\n";
+        LOG << "Number of tiles at height " << p.first << " listed as " << i->second << " when it should be " << p.second << "\n";
         check_succeeded = false;
       }
     }
@@ -444,7 +444,7 @@ void check_group_surface_tiles_cache_and_layer_size_caches(state_t& state, persi
   for (auto const& p : g.num_tiles_by_height) {
     auto i = h.num_tiles_by_height.find(p.first);
     if (i == h.num_tiles_by_height.end()) {
-      std::cerr << "Extra height listing: " << p.first << "\n";
+      LOG << "Extra height listing: " << p.first << "\n";
       check_succeeded = false;
     }
   }

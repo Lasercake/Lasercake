@@ -95,9 +95,9 @@ void world::visit_collidable_tiles(Visitor&& visitor) {
   //int first_sub_node;
   //uint32_t trie_iteration_order = ;
   typedef power_of_two_bounding_cube<3, tile_coordinate> bounding_cube;
-  //std::cerr << "BEGIN\n";
+  //LOG << "BEGIN\n";
   while(true) {
-    //std::cerr << std::hex << "NODE " << size_t(trie_node) << std::dec << std::endl;
+    //LOG << std::hex << "NODE " << size_t(trie_node) << std::dec << std::endl;
     const int trie_bit = trie_node->bounding_box().size_exponent_in_each_dimension();
     assert(size_t(trie_bit) < sizeof(tile_coordinate)*8);
     bool trie_node_uninteresting_to_look_within = false;
@@ -179,7 +179,7 @@ void world::visit_collidable_tiles(Visitor&& visitor) {
                                   const tile_location tloc(global_loc, idx ^ idx_xor, wb);
                                   assert_if_ASSERT_EVERYTHING(!tloc.stuff_at().is_interior());
                                   if(!visitor.collidable_tile(tloc)) {
-                                    //std::cerr << "ONE~" << COUNT << ":count.\n";
+                                    //LOG << "ONE~" << COUNT << ":count.\n";
                                     return;
                                   }
                                 }
@@ -225,14 +225,14 @@ void world::visit_collidable_tiles(Visitor&& visitor) {
     //huh, using ++ seems to create a zyx iteration order here, which is
     //a bit undesirable because z is already the shortest dimension currently, TODO
     if(!trie_node->siblings()) {
-      //std::cerr << "TWO~" << COUNT << ":count.\n";
+      //LOG << "TWO~" << COUNT << ":count.\n";
       return;
     }
     ++trie_sub_idx;
     while(trie_sub_idx == 8) {
       trie_node = trie_node->parent();
       if(trie_node == nullptr || !trie_node->siblings()) {
-        //std::cerr << "THREE~" << COUNT << ":count.\n";
+        //LOG << "THREE~" << COUNT << ":count.\n";
         return;
       }
       const int new_trie_bit = trie_node->bounding_box().size_exponent_in_each_dimension();
