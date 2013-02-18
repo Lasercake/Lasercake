@@ -66,6 +66,16 @@ using boost::shared_ptr;
 using boost::dynamic_pointer_cast;
 
 
+struct minerals {
+  minerals(physical_quantity<lint64_t, units<dim::meter<3>>> metal):metal(metal){}
+  physical_quantity<lint64_t, units<dim::meter<3>>> metal;
+  // nonmetal rock is (200-metal)
+};
+
+inline minerals initial_minerals(vector3<tile_coordinate> coords) {
+  return minerals(((coords.x ^ coords.y ^ coords.z) & 31) * meters * meters * meters);
+}
+
 inline shape tile_shape(vector3<tile_coordinate> tile) {
   return shape(fine_bounding_box_of_tile(tile));
 }
@@ -344,8 +354,12 @@ public:
 private:
   boost::scoped_ptr<state_t> state_;
   friend state_t& get_state(tile_physics_state_t& s);
+  friend state_t const& get_state(tile_physics_state_t const& s);
 };
 inline state_t& get_state(tile_physics_state_t& s) {
+  return *s.state_;
+}
+inline state_t const& get_state(tile_physics_state_t const& s) {
   return *s.state_;
 }
 } // end namespace tile_physics_impl
@@ -398,6 +412,8 @@ void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shif
   
   tile_location make_tile_location(vector3<tile_coordinate> const& coords, level_of_tile_realization_needed realineeded);
 
+  minerals get_minerals(vector3<tile_coordinate> const& coords)const;
+
   void ensure_realization_of_space(tile_bounding_box space, level_of_tile_realization_needed realineeded);
   void ensure_realization_of_space(bounding_box space, level_of_tile_realization_needed realineeded) {
     ensure_realization_of_space(get_tile_bbox_containing_all_tiles_intersecting_fine_bbox(space), realineeded);
@@ -443,6 +459,7 @@ void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shif
   object_shapes_t const& get_object_detail_shapes()const { return object_detail_shapes_; }
 
   tile_physics_state_t& tile_physics() { return tile_physics_state_; }
+  tile_physics_state_t const& tile_physics()const { return tile_physics_state_; }
   objects_collision_detector const& objects_exposed_to_collision()const { return objects_exposed_to_collision_; }
 
   // Requires ensure_realization_of_space(bounds, CONTENTS_AND_LOCAL_CACHES_ONLY)

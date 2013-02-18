@@ -562,8 +562,9 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
     if (hit1 != object_or_tile_identifier()) {
       if (tile_location const* locp = hit1.get_tile_location()) {
         if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
-          w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+          carried_minerals.push_back(w.get_minerals(locp->coords()));
           ++carrying_;
+          w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
         }
       }
     }
@@ -574,8 +575,9 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
       if (hit2 != object_or_tile_identifier()) {
         if (tile_location const* locp = hit2.get_tile_location()) {
           if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
-            w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+            carried_minerals.push_back(w.get_minerals(locp->coords()));
             ++carrying_;
+            w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
           }
         }
       }
@@ -591,6 +593,8 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
       for (auto loc : my_neighbors) {
         if (loc.stuff_at().contents() == AIR) {
           w.replace_substance(loc, AIR, RUBBLE);
+          get_state(w.tile_physics()).altered_minerals_info.insert(std::make_pair(loc.coords(), carried_minerals.back()));
+          carried_minerals.pop_back();
           --carrying_;
           if (carrying_ <= 0) break;
         }
@@ -662,18 +666,24 @@ void refinery::update(world& w, input_representation::input_news_t const&, objec
   tile_location      metal_output_loc =
       w.make_tile_location(initial_location_ + vector3<tile_coordinate_signed_type>(0, 2, 3), FULL_REALIZATION);
 
-  if ((input_loc.stuff_at().contents() == RUBBLE) && (waste_rock_inside_ < 100) && (metal_inside_ < 100))  {
+  // hack
+  auto tile_volume = 200*meters*meters*meters;
+  
+  if ((input_loc.stuff_at().contents() == RUBBLE) && (waste_rock_inside_ < tile_volume) && (metal_inside_ < tile_volume)) {
+    minerals m = w.get_minerals(input_loc.coords());
+    metal_inside_ += m.metal;
+    waste_rock_inside_ += tile_volume - m.metal;
     w.replace_substance(input_loc, RUBBLE, AIR);
-    waste_rock_inside_ += 80;
-    metal_inside_ += 20;
   }
-  if ((waste_rock_inside_ >= 100) && (waste_rock_output_loc.stuff_at().contents() == AIR)) {
+  if ((waste_rock_inside_ >= tile_volume) && (waste_rock_output_loc.stuff_at().contents() == AIR)) {
     w.replace_substance(waste_rock_output_loc, AIR, RUBBLE);
-    waste_rock_inside_ -= 100;
+    get_state(w.tile_physics()).altered_minerals_info.insert(std::make_pair(waste_rock_output_loc.coords(), minerals(          0)));
+    waste_rock_inside_ -= tile_volume;
   }
-  if ((     metal_inside_ >= 100) && (     metal_output_loc.stuff_at().contents() == AIR)) {
+  if ((     metal_inside_ >= tile_volume) && (     metal_output_loc.stuff_at().contents() == AIR)) {
     w.replace_substance(     metal_output_loc, AIR, RUBBLE);
-         metal_inside_ -= 100;
+    get_state(w.tile_physics()).altered_minerals_info.insert(std::make_pair(     metal_output_loc.coords(), minerals(tile_volume)));
+         metal_inside_ -= tile_volume;
   }
 }
 
