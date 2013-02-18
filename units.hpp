@@ -409,8 +409,15 @@ namespace units_impl {
       && DimKind1::tag < DimKind2::tag
       && verify_units<units<DimKind2, DimKinds...>>::value;
   };
-  template<typename Units> struct is_units : boost::false_type {};
-  template<typename...U> struct is_units<units<U...>> : boost::true_type {};
+  template<typename Units> struct is_units : boost::false_type {
+    typedef units<> some_units;
+    //arbitrary; only listed to make sure wrong physical_quantity
+    //template arguments are hit by an informative static_assert
+    //rather than a different instantiation error.
+  };
+  template<typename...U> struct is_units<units<U...>> : boost::true_type {
+    typedef units<U...> some_units;
+  };
   // The implicit conversion to Units isn't useful on the type level, but
   // if you're constructing one in an expression it means you can skip the
   // "typename" "::type" parts.
@@ -448,19 +455,31 @@ struct get_units : units_impl::get_units_impl<T> {};
 
 template<typename... Unitses> struct units_prod;
 
-template<typename Units, intmax_t Num, intmax_t Den = 1> struct units_pow;
+template<typename Units, intmax_t Num, intmax_t Den = 1> struct units_pow
+    : units_pow<typename get_units<Units>::type, Num, Den> {
+  static_assert(get_units<Units>::is_unitlike,
+    "The argument to units_pow<> must be unit-like (units<>, physical_quantity<>, etc).");
+};
 template<typename... DimKind, intmax_t Num, intmax_t Den>
 struct units_pow<units<DimKind...>, Num, Den> : units_impl::units_result<
   units<typename DimKind::template pow<Num, Den>::type...>> {};
 template<typename... DimKind, intmax_t Den>
 struct units_pow<units<DimKind...>, 0, Den> : units_impl::units_result<units<>> {};
 
-template<typename Units, intmax_t Root = 2> struct units_root;
+template<typename Units, intmax_t Root = 2> struct units_root
+    : units_root<typename get_units<Units>::type, Root> {
+  static_assert(get_units<Units>::is_unitlike,
+    "The argument to units_root<> must be unit-like (units<>, physical_quantity<>, etc).");
+};
 template<typename... DimKind, intmax_t Root>
 struct units_root<units<DimKind...>, Root> : units_impl::units_result<
   units<typename DimKind::template root<Root>::type...>> {};
 
-template<typename Units> struct units_recip;
+template<typename Units> struct units_recip
+    : units_recip<typename get_units<Units>::type> {
+  static_assert(get_units<Units>::is_unitlike,
+    "The argument to units_recip<> must be unit-like (units<>, physical_quantity<>, etc).");
+};
 template<typename... DimKind>
 struct units_recip<units<DimKind...>> : units_impl::units_result<
   units<typename DimKind::inverse...>> {};
@@ -468,16 +487,23 @@ struct units_recip<units<DimKind...>> : units_impl::units_result<
 template<typename Units>
 struct get_sign_components_of_units : units_impl::units_result<
   typename units_prod<
-    dim::pseudo<get_dimension_kind<dim::pseudo_tag, Units>::type::pseudoness>,
-    dim::ratio<(get_dimension_kind<dim::ratio_tag, Units>::type::num < 0 ? -1 : 1)>
-  >::type> {};
+    dim::pseudo<get_dimension_kind<dim::pseudo_tag, typename get_units<Units>::type>::type::pseudoness>,
+    dim::ratio<(get_dimension_kind<dim::ratio_tag, typename get_units<Units>::type>::type::num < 0 ? -1 : 1)>
+  >::type> {
+  static_assert(get_units<Units>::is_unitlike,
+    "The argument to get_sign_components_of_units<> must be unit-like (units<>, physical_quantity<>, etc).");
+};
 
 template<typename Units>
 struct get_non_sign_components_of_units : units_impl::units_result<
   typename units_prod<
-    Units,
-    typename units_recip<typename get_sign_components_of_units<Units>
-  ::type>::type>::type> {};
+    typename get_units<Units>::type,
+    typename units_recip<typename get_sign_components_of_units<
+                                    typename get_units<Units>::type>
+  ::type>::type>::type> {
+  static_assert(get_units<Units>::is_unitlike,
+    "The argument to get_non_sign_components_of_units<> must be unit-like (units<>, physical_quantity<>, etc).");
+};
 
 // value-level units<> reciprocal function:
 template<typename... DimKind>
@@ -585,22 +611,31 @@ template<
   typename Units //a 'units'
 > 
 class physical_quantity {
+  static_assert(units_impl::is_units<Units>::value,
+    "physical_quantity's template argument 'Units' must be of type units<..>.\n"
+    "    *** The template arguments are physical_quantity<Numeric, units<...>>.\n"
+    "    *** If you passed a dim::something<> as physical_quantity<>'s units,\n"
+    "               pass 'units<dim::something<>>' instead.\n"
+    "    *** If you passed a units_prod<...> or other type-level function, pass\n"
+    "              'typename units_prod<...>::type' instead.\n"
+    "    *** Apologies for the C++-forced inconvenience, and good luck.");
+
 public:
   // helpful typedefs
   typedef Num base_type;
-  typedef Units units;
+  //typedef Units units; //commented to assist better error messages
+  typedef typename units_impl::is_units<Units>::some_units units;
 
   template<typename OtherNum>
   struct rebase {
-    typedef physical_quantity<typename get_physical_quantity_base_type<OtherNum>::type, Units> type;
+    typedef physical_quantity<typename get_physical_quantity_base_type<OtherNum>::type, units> type;
   };
 
-  typedef physical_quantity<Num, typename units_recip<Units>::type> reciprocal_type;
+  typedef physical_quantity<Num, typename units_recip<units>::type> reciprocal_type;
 
 private:
   base_type val_;
   typedef physical_quantity this_t;
-  static_assert(units_impl::is_units<Units>::value, "Units must be of type units<..>");
 public:
 
   // Default-construction is the same as the base type.
@@ -612,10 +647,10 @@ public:
 
   // If you provide the correct units, you're free to construct one
   // out of a number.
-  physical_quantity(base_type i, Units) : val_(i) {}
+  physical_quantity(base_type i, units) : val_(i) {}
   // Or to retrieve one.
-  base_type get(Units)const { return val_; }
-  friend inline base_type get(physical_quantity a, Units u) { return a.get(u); }
+  base_type get(units)const { return val_; }
+  friend inline base_type get(physical_quantity a, units u) { return a.get(u); }
 
   // (Implicit copy and move construction and assignment.)
 
@@ -623,7 +658,7 @@ public:
   // Implicit conversion from physical_quantity with same dimensions but
   // smaller representation type.
   template<typename SmallerNum>
-  physical_quantity(physical_quantity<SmallerNum, Units> a,
+  physical_quantity(physical_quantity<SmallerNum, units> a,
        typename boost::enable_if_c<
            bounds_checked_int_impl::superior_to<Num, SmallerNum>::value
          >::type* = 0) : val_(a.get(Units())) {}
@@ -631,7 +666,7 @@ public:
   // Explicit conversion from physical_quantity with same dimensions but
   // representation type that does not convert losslessly.
   template<typename BiggerNum>
-  explicit physical_quantity(physical_quantity<BiggerNum, Units> a,
+  explicit physical_quantity(physical_quantity<BiggerNum, units> a,
        typename boost::disable_if_c<
            bounds_checked_int_impl::superior_to<Num, BiggerNum>::value
          >::type* = 0) : val_(a.get(Units())) {}
@@ -640,7 +675,7 @@ public:
   explicit operator bool() const { return bool(val_); }
 
   friend inline std::ostream& operator<<(std::ostream& os, physical_quantity a) {
-    os << a.val_ << '*' << Units();
+    os << a.val_ << '*' << units();
     return os;
   }
 
@@ -649,11 +684,11 @@ public:
   // Of the many operators, only * and / have the ability to modify
   // dimensions.
   friend inline this_t operator+(this_t a) { return a; }
-  friend inline this_t operator-(this_t a) { return this_t(-a.val_, Units()); }
+  friend inline this_t operator-(this_t a) { return this_t(-a.val_, units()); }
   friend inline size_t hash_value(this_t a) { return std::hash<base_type>()(a.val_); }
-  friend inline this_t operator+(this_t a, this_t b) { return this_t(a.val_ + b.val_, Units()); }
-  friend inline this_t operator-(this_t a, this_t b) { return this_t(a.val_ - b.val_, Units()); }
-  friend inline this_t operator%(this_t a, this_t b) { return this_t(a.val_ % b.val_, Units()); }
+  friend inline this_t operator+(this_t a, this_t b) { return this_t(a.val_ + b.val_, units()); }
+  friend inline this_t operator-(this_t a, this_t b) { return this_t(a.val_ - b.val_, units()); }
+  friend inline this_t operator%(this_t a, this_t b) { return this_t(a.val_ % b.val_, units()); }
   friend inline bool operator==(this_t a, this_t b) { return a.val_ == b.val_; }
   friend inline bool operator!=(this_t a, this_t b) { return a.val_ != b.val_; }
   friend inline bool operator>(this_t a, this_t b) { return a.val_ > b.val_; }
@@ -661,9 +696,9 @@ public:
   friend inline bool operator<=(this_t a, this_t b) { return a.val_ <= b.val_; }
   friend inline bool operator>=(this_t a, this_t b) { return a.val_ >= b.val_; }
   template<typename AnyInt>
-  friend inline this_t operator<<(this_t a, AnyInt shift) { return this_t(a.val_ << shift, Units()); }
+  friend inline this_t operator<<(this_t a, AnyInt shift) { return this_t(a.val_ << shift, units()); }
   template<typename AnyInt>
-  friend inline this_t operator>>(this_t a, AnyInt shift) { return this_t(a.val_ >> shift, Units()); }
+  friend inline this_t operator>>(this_t a, AnyInt shift) { return this_t(a.val_ >> shift, units()); }
 
   friend inline this_t& operator+=(this_t& a, this_t b) { a.val_ += b.val_; return a; }
   friend inline this_t& operator-=(this_t& a, this_t b) { a.val_ -= b.val_; return a; }
@@ -691,7 +726,7 @@ public:
      std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
   )>::type
   operator*(this_t a, AnyNum factor)
-  { return typename rebase<decltype(a.val_ * factor)>::type(a.val_ * factor, Units()); }
+  { return typename rebase<decltype(a.val_ * factor)>::type(a.val_ * factor, units()); }
 
   template<typename AnyNum>
   friend inline
@@ -700,7 +735,7 @@ public:
      * std::declval<base_type>()
   )>::type
   operator*(AnyNum factor, this_t b)
-  { return typename rebase<decltype(factor * b.val_)>::type(factor * b.val_, Units()); }
+  { return typename rebase<decltype(factor * b.val_)>::type(factor * b.val_, units()); }
 
   template<typename AnyNum>
   friend inline
@@ -709,7 +744,7 @@ public:
      / std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
   )>::type
   operator/(this_t a, AnyNum divisor)
-  { return typename rebase<decltype(a.val_ / divisor)>::type(a.val_ / divisor, Units()); }
+  { return typename rebase<decltype(a.val_ / divisor)>::type(a.val_ / divisor, units()); }
 
   template<typename AnyNum>
   friend inline
@@ -1043,6 +1078,7 @@ struct result_of_get_units : units_impl::units_result<Units> {
   typedef Impl representation_type;
   static const bool is_nonunit_type = Nonunit;
   static const bool is_nonunit_scalar = NonunitScalar;
+  static const bool is_unitlike = !is_nonunit_type || is_nonunit_scalar;
 };
 
 // * numeric non-dimensional types
@@ -1056,18 +1092,22 @@ template<typename T, typename = typename boost::enable_if_c<
 get_units_impl<typename T::type> overload_find_units_type(T); //unimplemented
 
 // * dimension kind:
+// ** identity dim<> values make units<>
 template<typename T, dim::dimension_kind_tag = T::tag, typename = typename boost::enable_if_c<
   dim::is_identity<T>::value>::type>
 result_of_get_units<units<>, void, false, false> overload_find_units_type(T); //unimplemented
 
+// ** non-identity dim<> values make units<dim<>>
 template<typename T, dim::dimension_kind_tag = T::tag, typename = typename boost::disable_if_c<
   dim::is_identity<T>::value>::type>
 result_of_get_units<units<T>, void, false, false> overload_find_units_type(T); //unimplemented
 
-// * invalid result ( ::type omitted to facilitate SFINAE ).
+// * invalid result:
 struct invalid_get_units {
+  typedef units<> type;
   static const bool is_nonunit_type = true;
   static const bool is_nonunit_scalar = false;
+  static const bool is_unitlike = false;
 };
 invalid_get_units overload_find_units_type(...); //unimplemented
 
@@ -1077,12 +1117,14 @@ struct get_units_impl<physical_quantity<Num, Units>> : units_impl::units_result<
   typedef Num representation_type;
   static const bool is_nonunit_type = false;
   static const bool is_nonunit_scalar = false;
+  static const bool is_unitlike = true;
 };
 template<typename...U>
 struct get_units_impl<units<U...>> : units_impl::units_result<units<U...>> {
   typedef void representation_type;
   static const bool is_nonunit_type = false;
   static const bool is_nonunit_scalar = false;
+  static const bool is_unitlike = true;
 };
 template<typename Int, Int Min, Int Max>
 struct get_units_impl<bounds_checked_int<Int,Min,Max>> : get_units_impl<Int> {
@@ -1164,7 +1206,10 @@ template<typename...U, typename... Unitses> struct units_prod<units<U...>, Units
 };
 template<typename UnitLike, typename... Unitses>
 struct units_prod<UnitLike, Unitses...>
-  : units_prod<typename get_units<UnitLike>::type, Unitses...> {};
+  : units_prod<typename get_units<UnitLike>::type, Unitses...> {
+  static_assert(get_units<UnitLike>::is_unitlike,
+    "All arguments to units_prod<> must be unit-like (units<>, physical_quantity<>, etc).");
+};
 
 
 // And now, all those multiplication and division operators!

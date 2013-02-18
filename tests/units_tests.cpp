@@ -41,8 +41,16 @@ typedef typename units_pow<kilometers6_t, -2, 3>::type inverse_kilometers4_t;
 typedef typename units_pow<meters_t, -4>::type inverse_meters4_t;
 
 constexpr auto kilometers = kilometers_t();
-
+struct notty {};
 BOOST_AUTO_TEST_CASE( unitses ) {
+  // Uncomment to test how good the error messages are:
+  //physical_quantity<int32_t, dim::meter<1>> fiiioo;
+  //typename units_prod<notty>::type foodfsdfkjs;
+  //typename units_recip<notty>::type foodfsdfdfsds;
+  //physical_quantity<int32_t, typename units_recip<notty>::type> fiiiodsfdfeso;
+  //This is not currently an error; should it be?
+  physical_quantity<int32_t, units<>> hmmmmmmmmmmmmmmm;
+
   const physical_quantity<int32_t, meter> foo = 1 * meter();
   const physical_quantity<int64_t, meter> foo64 = foo;
   const physical_quantity<int32_t, meter> foo3 = 3 * meter();
