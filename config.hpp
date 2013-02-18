@@ -28,6 +28,8 @@
 #include <stdexcept>
 #include <boost/throw_exception.hpp>
 
+#include <streambuf>
+#include <ostream>
 
 // Some asserts take too much runtime to turn on by default.
 // So write them "assert_if_ASSERT_EVERYTHING(x);"
@@ -162,5 +164,45 @@ inline void caller_correct_if(bool cond, const char* error) {
 #if DEBUG_PRINT_DETERMINISTICALLY
 #include "debug_print_deterministically.hpp"
 #endif
+
+
+namespace logger_impl {
+  class log_buf : public std::streambuf {
+    static const std::streamsize bufsize_ = 200;
+    char buf_[bufsize_];
+    void write_buf_();
+  public:
+    log_buf() { setp(buf_, buf_ + bufsize_); }
+    ~log_buf() { if(pptr() != pbase()) { write_buf_(); }}
+    std::streamsize xsputn(const char* s, std::streamsize n) override;
+    int_type overflow(int_type ch) override;
+    int sync() override { write_buf_(); return 0; }
+  };
+  class log {
+    log_buf streambuf_;
+    std::ostream os_;
+  public:
+    log() : os_(&streambuf_) { os_.imbue(std::locale::classic()); }
+    template<typename SomethingOutputted>
+    inline std::ostream& operator<<(SomethingOutputted&& output) {
+      return os_ << output;
+    }
+    // it's not meant to be copied/moved/anything
+    log(log const&) = delete;
+    log& operator=(log const&) = delete;
+    log(log&&) = delete;
+    log& operator=(log&&) = delete;
+  };
+}
+
+// LOG << this << that << std::hex << the other thing << "\n";
+// Constructs a temporary buffer on the stack, used to log the
+// data to stderr.  Flushes data when destroyed (typically at the
+// next sequence point: the end of the statement) and/or, when
+// you send it std::flush or std::endl, and/or whenever its buffer
+// fills up.
+// On output I/O errors, this simply gives up and pretends to have been
+// successful.
+#define LOG (::logger_impl::log())
 
 #endif
