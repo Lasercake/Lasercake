@@ -225,7 +225,10 @@ inline glm::mat4 make_view_matrix(vector3<float> view_towards, vector3<float> up
 // this, if I want to templatize it.
 struct frustum {
   enum direction {
-    LEFT, RIGHT, BOTTOM, TOP, NEAR, FAR
+    // Windows headers define NEAR and FAR
+    // and I don't want to tempt any dragons by #undef'ing
+    // them, so just add an underscore to those names here.
+    LEFT, RIGHT, BOTTOM, TOP, NEAR_, FAR_
   };
   std::array<glm::vec4, 6> half_spaces;
 };
@@ -235,8 +238,8 @@ inline frustum make_frustum_from_matrix(glm::mat4 m) {
   result.half_spaces[frustum::RIGHT]  = glm::normalize(glm::row(m, 3) - glm::row(m, 0));
   result.half_spaces[frustum::BOTTOM] = glm::normalize(glm::row(m, 3) + glm::row(m, 1));
   result.half_spaces[frustum::TOP]    = glm::normalize(glm::row(m, 3) - glm::row(m, 1));
-  result.half_spaces[frustum::NEAR]   = glm::normalize(glm::row(m, 3) + glm::row(m, 2));
-  result.half_spaces[frustum::FAR]    = glm::normalize(glm::row(m, 3) - glm::row(m, 2));
+  result.half_spaces[frustum::NEAR_]   = glm::normalize(glm::row(m, 3) + glm::row(m, 2));
+  result.half_spaces[frustum::FAR_]    = glm::normalize(glm::row(m, 3) - glm::row(m, 2));
   return result;
 }
 
