@@ -1526,7 +1526,8 @@ void update_fluids_impl(state_t& state) {
       active_fluid_tile_info dst_info_store;
       tile_contents src_old_contents = src_tile.contents();
       tile_contents dst_old_contents = dst_tile.contents();
-      minerals* src_old_minerals = find_as_pointer(state.altered_minerals_info, move.src.coords());
+      minerals src_old_minerals(0);
+      if (minerals* src_old_minerals_p = find_as_pointer(state.altered_minerals_info, move.src.coords())) src_old_minerals = *src_old_minerals_p;
       auto i = active_fluids.find(dst);
       if (i != active_fluids.end()) {
         dst_was_active_fluid = true;
@@ -1543,7 +1544,7 @@ void update_fluids_impl(state_t& state) {
 
       // hack - move around minerals info of rubble
       if (src_old_contents == RUBBLE) {
-        state.altered_minerals_info.insert(std::make_pair(dst.coords(), *src_old_minerals));
+        state.altered_minerals_info.insert(std::make_pair(dst.coords(), src_old_minerals));
       }
       
       if (dst_was_active_fluid) src_fluid = dst_info_store;
