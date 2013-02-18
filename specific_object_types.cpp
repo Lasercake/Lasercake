@@ -206,8 +206,8 @@ const auto tile_volume = 200*meters*meters*meters;
 
 shape robot::get_initial_personal_space_shape()const {
   return shape(geom::convex_polyhedron(bounding_box::min_and_max(
-    location_ - vector3<distance>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
-    location_ + vector3<distance>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
+    location_ - vector3<distance>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10),
+    location_ + vector3<distance>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10)
   )));
   /*std::vector<vector3<distance>> verts;
   verts.push_back(location_ + vector3<distance>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10));
@@ -219,7 +219,7 @@ shape robot::get_initial_personal_space_shape()const {
 }
 
 physical_quantity<lint64_t, units<dim::meter<3>>> robot::storage_volume()const {
-  return tile_width * tile_width * tile_width * 6 * 6 * 6 / (10LL*10*10 * identity(fine_distance_units*fine_distance_units*fine_distance_units / meters/meters/meters));
+  return tile_width * tile_width * tile_width * 15 * 15 * 15 / (20LL*20*20 * identity(fine_distance_units*fine_distance_units*fine_distance_units / meters/meters/meters));
 }
 
 shape robot::get_initial_detail_shape()const {
@@ -242,7 +242,7 @@ std::string robot::player_instructions()const {
     "b: create conveyor belt\n"
     "v: rotate conveyor belt\n"
     "r: fire rockets\n"
-    "Metal carried: " + std::to_string(get_primitive_int(metal_carried_ / meters / meters / meters)) + "\n"
+    "Metal carried: " + std::to_string(get_primitive_int(metal_carried_ / meters / meters / meters)) + " m^3 / " + std::to_string(get_primitive_int(storage_volume() / meters / meters / meters)) + "m^3 \n"
     ;
   return instructions;
 }
@@ -328,8 +328,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
       else if (locp->stuff_at().contents() == RUBBLE) {
         // we can pick up pure metal
         if (w.get_minerals(locp->coords()).metal == tile_volume) {
-          w.replace_substance(*locp, RUBBLE, AIR);
-          metal_carried_ += tile_volume;
+          if (metal_carried_ + tile_volume <= storage_volume()) {
+            w.replace_substance(*locp, RUBBLE, AIR);
+            metal_carried_ += tile_volume;
+          }
         }
         else {
           // hack way to speed the tile?
@@ -405,9 +407,9 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     //fire_standard_laser(w, my_id, location_ - offset, facing_);
   }
   // TODO FIX HACK DUPLICATE CODE
-  if (input_news.num_times_pressed("m") && metal_carried_ > 50*meters*meters*meters) {
+  if (input_news.num_times_pressed("m") && metal_carried_ > 100*meters*meters*meters) {
     const shared_ptr<autorobot> aur (new autorobot(location_ + facing_ * 2, facing_));
-    if (w.try_create_object(aur) != NO_OBJECT) metal_carried_ -= 50*meters*meters*meters;
+    if (w.try_create_object(aur) != NO_OBJECT) metal_carried_ -= 100*meters*meters*meters;
   }
   if (input_news.num_times_pressed("p")) {
     const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w, my_id)));
@@ -492,8 +494,8 @@ void laser_emitter::update(world& w, input_representation::input_news_t const&, 
 
 shape autorobot::get_initial_personal_space_shape()const {
   return shape(geom::convex_polyhedron(bounding_box::min_and_max(
-    location_ - vector3<distance>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
-    location_ + vector3<distance>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10)
+    location_ - vector3<distance>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10),
+    location_ + vector3<distance>(tile_width * 4 / 10, tile_width * 4 / 10, tile_width * 4 / 10)
   )));
 }
 
@@ -561,7 +563,7 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
   auto direction_home = initial_location_ - location_;
   auto mag = to_signed_type(i64sqrt(direction_home.x*direction_home.x + direction_home.y*direction_home.y));
   
-  if (carrying_ < 4) {
+  if (carrying_ < 2) {
     velocity_.x = facing_.x * 15 / 4 / seconds;
     velocity_.y = facing_.y * 15 / 4 / seconds;
     
