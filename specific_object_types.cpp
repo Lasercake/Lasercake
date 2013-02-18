@@ -549,31 +549,18 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
     velocity_.y = facing_.y * 15 / 4 / seconds;
     
     if (facing_.z >= 0 || mag >= 10*tile_width) {
-    const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-    const vector3<distance> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
-    const vector3<distance> top_middle(middle(X), middle(Y), shape_bounds.max(Z) + tile_height / 4);
-    /*const vector3<distance> top_middle(
-      uniform_int_distribution<distance>(shape_bounds.min(X), shape_bounds.max(X))(rng),
-      uniform_int_distribution<distance>(shape_bounds.min(Y), shape_bounds.max(Y))(rng),
-      shape_bounds.max(Z));*/
-    vector3<distance> beam_vector_1 = facing_;
-    beam_vector_1[Z] -= tile_height / 2;
-    const object_or_tile_identifier hit1 = laser_find(w, my_id, top_middle, beam_vector_1, true);
-    if (hit1 != object_or_tile_identifier()) {
-      if (tile_location const* locp = hit1.get_tile_location()) {
-        if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
-          carried_minerals.push_back(w.get_minerals(locp->coords()));
-          ++carrying_;
-          w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
-        }
-      }
-    }
-    else {
-      const vector3<distance> beam_vector_2(facing_.x / -4, facing_.y / -4,
-                                               1*fine_distance_units - shape_bounds.size(Z));
-      const object_or_tile_identifier hit2 = laser_find(w, my_id, top_middle + beam_vector_1, beam_vector_2, true);
-      if (hit2 != object_or_tile_identifier()) {
-        if (tile_location const* locp = hit2.get_tile_location()) {
+      const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
+      const vector3<distance> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
+      const vector3<distance> top_middle(middle(X), middle(Y), shape_bounds.max(Z) + tile_height / 4);
+      /*const vector3<distance> top_middle(
+        uniform_int_distribution<distance>(shape_bounds.min(X), shape_bounds.max(X))(rng),
+        uniform_int_distribution<distance>(shape_bounds.min(Y), shape_bounds.max(Y))(rng),
+        shape_bounds.max(Z));*/
+      vector3<distance> beam_vector_1 = facing_;
+      beam_vector_1[Z] -= tile_height / 2;
+      const object_or_tile_identifier hit1 = laser_find(w, my_id, top_middle, beam_vector_1, true);
+      if (hit1 != object_or_tile_identifier()) {
+        if (tile_location const* locp = hit1.get_tile_location()) {
           if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
             carried_minerals.push_back(w.get_minerals(locp->coords()));
             ++carrying_;
@@ -581,7 +568,20 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
           }
         }
       }
-    }
+      else {
+        const vector3<distance> beam_vector_2(facing_.x / -4, facing_.y / -4,
+                                                1*fine_distance_units - shape_bounds.size(Z));
+        const object_or_tile_identifier hit2 = laser_find(w, my_id, top_middle + beam_vector_1, beam_vector_2, true);
+        if (hit2 != object_or_tile_identifier()) {
+          if (tile_location const* locp = hit2.get_tile_location()) {
+            if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
+              carried_minerals.push_back(w.get_minerals(locp->coords()));
+              ++carrying_;
+              w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+            }
+          }
+        }
+      }
     }
   }
   else {
