@@ -113,6 +113,13 @@ set(THEIR_CXX_FLAGS_spaces ${CMAKE_CXX_FLAGS})
 semicolons_to_spaces(OUR_CXX_FLAGS_spaces ${OUR_CXX_FLAGS})
 set(CMAKE_CXX_FLAGS "${OUR_CXX_FLAGS_spaces} ${THEIR_CXX_FLAGS_spaces}")
 
+# certain bundled libs are C files so we need to set their C flags,
+# not just assume the whole world uses C++ flags
+set(OUR_C_FLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES})
+set(THEIR_C_FLAGS_spaces ${CMAKE_C_FLAGS})
+semicolons_to_spaces(OUR_C_FLAGS_spaces ${OUR_C_FLAGS})
+set(CMAKE_C_FLAGS "${OUR_C_FLAGS_spaces} ${THEIR_C_FLAGS_spaces}")
+
 message(STATUS "compiler flags: ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS}")
 
 set(INCLUDE_DIRS ${BOOST_INCLUDE_DIR} ${GLEW_INCLUDE_DIR} ${GLM_INCLUDE_DIRS} ${GLIB_INCLUDE_DIR} ${GLIB_CONFIG_INCLUDE_DIR})
