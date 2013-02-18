@@ -199,6 +199,11 @@ void float_above_ground(vector3<velocity1d>& velocity_, world& w, object_identif
 
 } /* end anonymous namespace */
 
+
+// hack
+const auto tile_volume = 200*meters*meters*meters;
+
+
 shape robot::get_initial_personal_space_shape()const {
   return shape(geom::convex_polyhedron(bounding_box::min_and_max(
     location_ - vector3<distance>(tile_width * 3 / 10, tile_width * 3 / 10, tile_width * 3 / 10),
@@ -213,13 +218,17 @@ shape robot::get_initial_personal_space_shape()const {
   return shape(geom::convex_polyhedron(verts));*/
 }
 
+physical_quantity<lint64_t, units<dim::meter<3>>> robot::storage_volume()const {
+  return tile_width * tile_width * tile_width * 6 * 6 * 6 / (10LL*10*10 * identity(fine_distance_units*fine_distance_units*fine_distance_units / meters/meters/meters));
+}
+
 shape robot::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
 
 std::string robot::player_instructions()const {
-  static const std::string instructions =
+  const std::string instructions =
     //friction: implicit, we don't mention it, i guess.
     "arrow keys or mouse: rotate view;  "
     "wasd: move;  "
@@ -233,7 +242,7 @@ std::string robot::player_instructions()const {
     "b: create conveyor belt\n"
     "v: rotate conveyor belt\n"
     "r: fire rockets\n"
-    //"(c, v: commented-out ability to pick up things, too bad.)\n"
+    "Metal carried: " + std::to_string(get_primitive_int(metal_carried_ / meters / meters / meters)) + "\n"
     ;
   return instructions;
 }
@@ -317,14 +326,21 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
         w.replace_substance(*locp, ROCK, RUBBLE);
       }
       else if (locp->stuff_at().contents() == RUBBLE) {
-        // hack way to speed the tile?
-        get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_velocity>(
-          facing_ *
+        // we can pick up pure metal
+        if (w.get_minerals(locp->coords()).metal == tile_volume) {
+          w.replace_substance(*locp, RUBBLE, AIR);
+          metal_carried_ += tile_volume;
+        }
+        else {
+          // hack way to speed the tile?
+          get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_velocity>(
+            facing_ *
 
-            // the actual value: the rest of this line is conversions
-            tile_width * 6 / seconds
-            
-          / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
+              // the actual value: the rest of this line is conversions
+              tile_width * 6 / seconds
+
+            / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
+        }
       }
     }
   }
@@ -388,21 +404,22 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     //fire_standard_laser(w, my_id, location_ + offset, facing_);
     //fire_standard_laser(w, my_id, location_ - offset, facing_);
   }
-  if (input_news.num_times_pressed("m")) {
+  // TODO FIX HACK DUPLICATE CODE
+  if (input_news.num_times_pressed("m") && metal_carried_ > 50*meters*meters*meters) {
     const shared_ptr<autorobot> aur (new autorobot(location_ + facing_ * 2, facing_));
-    w.try_create_object(aur);
+    if (w.try_create_object(aur) != NO_OBJECT) metal_carried_ -= 50*meters*meters*meters;
   }
   if (input_news.num_times_pressed("p")) {
     const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w, my_id)));
     w.try_create_object(sol);
   }
-  if (input_news.num_times_pressed("o")) {
+  if (input_news.num_times_pressed("o") && metal_carried_ > 50*meters*meters*meters) {
     const shared_ptr<refinery> ref (new refinery(get_building_tile(w, my_id)));
-    w.try_create_object(ref);
+    if (w.try_create_object(ref) != NO_OBJECT) metal_carried_ -= 50*meters*meters*meters;
   }
-  if (input_news.num_times_pressed("b")) {
+  if (input_news.num_times_pressed("b") && metal_carried_ > 10*meters*meters*meters) {
     const shared_ptr<conveyor_belt> con (new conveyor_belt(get_building_tile(w, my_id)));
-    w.try_create_object(con);
+    if (w.try_create_object(con) != NO_OBJECT) metal_carried_ -= 10*meters*meters*meters;
   }
   if (input_news.is_currently_pressed("r")) {
     const uniform_int_distribution<distance> random_delta(-tile_width, tile_width);
@@ -665,9 +682,6 @@ void refinery::update(world& w, input_representation::input_news_t const&, objec
       w.make_tile_location(initial_location_ + vector3<tile_coordinate_signed_type>(2, 0, 3), FULL_REALIZATION);
   tile_location      metal_output_loc =
       w.make_tile_location(initial_location_ + vector3<tile_coordinate_signed_type>(0, 2, 3), FULL_REALIZATION);
-
-  // hack
-  auto tile_volume = 200*meters*meters*meters;
   
   if ((input_loc.stuff_at().contents() == RUBBLE) && (waste_rock_inside_ < tile_volume) && (metal_inside_ < tile_volume)) {
     minerals m = w.get_minerals(input_loc.coords());
