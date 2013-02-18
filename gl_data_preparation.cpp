@@ -355,11 +355,11 @@ inline color compute_tile_color(world const& w, tile_location const& loc) {
     case ROCK: {
       r = g = b = 0x33 * pattern + 0x55;
       a = 0xff;
-      metal = initial_minerals(loc.coords()).metal / meters / meters / meters;
+      metal = get_primitive_int(initial_minerals(loc.coords()).metal / meters / meters / meters);
     } break;
     case RUBBLE: {
       r = 0xff * (2 + pattern) / 4; g = 0xbb * (2 + pattern) / 4; b = 0x55 * (2 + pattern) / 4; a = 0xcc;
-      metal = w.get_minerals(loc.coords()).metal / meters / meters / meters;
+      metal = get_primitive_int(w.get_minerals(loc.coords()).metal / meters / meters / meters);
     } break;
     case GROUPABLE_WATER: r = 0x00; g = 0x00; b = 0xff; a = 0x77; break;
     case UNGROUPABLE_WATER: r = 0x66; g = 0x66; b = 0xff; a = 0x77; break;
