@@ -52,11 +52,7 @@ std::ostream& operator<<(std::ostream& os, glm::vec4 v) {
 // frustum has no units-checking; you must make sure that your bbox is the
 // same scale as your frustum, by scaling one to match the other if necessary.
 //
-// "x + (-int(condition) & y)" is a way of saying ((condition) ? (x+y) : (x)).
-// TODO see if branches are better here since they'd be super predictable.
-//
-// bounding-box min()+size() is not max() but rather max()+1.  (In bboxes,
-// min()+size_minus_one() = max().)  For tile bboxes, this is necessary to do
+// We use max()+1 rather than max():  For tile bboxes, this is necessary to do
 // since we are using the tile bbox as a proxy for the fine-scalar one.
 // Consider the bbox containing only one tile; its min and max are the same,
 // but its volume is nonzero.
@@ -67,9 +63,9 @@ inline bool overlaps(frustum const& f, Bbox const& bbox) {
   //LOG << "frustoverlaps?\n";
   for(glm::vec4 const& half_space : f.half_spaces) {
     const glm::vec4 extremity(
-      get_primitive_int(bbox.min(X)) + (-int(half_space.x >= 0) & get_primitive_int(bbox.size(X))),
-      get_primitive_int(bbox.min(Y)) + (-int(half_space.y >= 0) & get_primitive_int(bbox.size(Y))),
-      get_primitive_int(bbox.min(Z)) + (-int(half_space.z >= 0) & get_primitive_int(bbox.size(Z))),
+      ((half_space.x >= 0) ? get_primitive_float(bbox.max(X)) + 1.0f : get_primitive_float(bbox.min(X))),
+      ((half_space.y >= 0) ? get_primitive_float(bbox.max(Y)) + 1.0f : get_primitive_float(bbox.min(Y))),
+      ((half_space.z >= 0) ? get_primitive_float(bbox.max(Z)) + 1.0f : get_primitive_float(bbox.min(Z))),
       1
     );
     //LOG << "frustoverlaps  " << half_space << "  " << extremity << "\n";
@@ -86,9 +82,9 @@ inline bool subsumes(frustum const& f, Bbox const& bbox) {
   //LOG << "frustsubsumes?\n";
   for(glm::vec4 const& half_space : f.half_spaces) {
     const glm::vec4 extremity(
-      get_primitive_int(bbox.min(X)) + (-int(half_space.x < 0) & get_primitive_int(bbox.size(X))),
-      get_primitive_int(bbox.min(Y)) + (-int(half_space.y < 0) & get_primitive_int(bbox.size(Y))),
-      get_primitive_int(bbox.min(Z)) + (-int(half_space.z < 0) & get_primitive_int(bbox.size(Z))),
+      ((half_space.x < 0) ? get_primitive_float(bbox.max(X)) + 1.0f : get_primitive_float(bbox.min(X))),
+      ((half_space.y < 0) ? get_primitive_float(bbox.max(Y)) + 1.0f : get_primitive_float(bbox.min(Y))),
+      ((half_space.z < 0) ? get_primitive_float(bbox.max(Z)) + 1.0f : get_primitive_float(bbox.min(Z))),
       1
     );
     //LOG << "frustsubsumes  " << half_space << "  " << extremity << "\n";
