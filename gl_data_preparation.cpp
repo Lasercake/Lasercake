@@ -475,6 +475,9 @@ void prepare_tile(world const& w, gl_collection& coll, tile_location const& loc,
     base[1] = gl_vertices[0][1][0];
     base[2] = gl_vertices[0][1][1];
     base[3] = gl_vertices[0][0][1];
+    base[0].c.r = base[1].c.r = base[2].c.r = base[3].c.r = base[0].c.r / 2;
+    base[0].c.g = base[1].c.g = base[2].c.g = base[3].c.g = base[0].c.g / 2;
+    base[0].c.b = base[1].c.b = base[2].c.b = base[3].c.b = base[0].c.b / 2;
     base += 4;
   }
   if (draw_y_close_side) {
@@ -482,6 +485,9 @@ void prepare_tile(world const& w, gl_collection& coll, tile_location const& loc,
     base[1] = gl_vertices[0][0][1];
     base[2] = gl_vertices[1][0][1];
     base[3] = gl_vertices[1][0][0];
+    base[0].c.r = base[1].c.r = base[2].c.r = base[3].c.r = base[0].c.r * 2 / 3;
+    base[0].c.g = base[1].c.g = base[2].c.g = base[3].c.g = base[0].c.g * 2 / 3;
+    base[0].c.b = base[1].c.b = base[2].c.b = base[3].c.b = base[0].c.b * 2 / 3;
     base += 4;
   }
   if (draw_z_close_side) {
