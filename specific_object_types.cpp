@@ -226,6 +226,13 @@ shape robot::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
+auto conveyor_cost = 10*meters*meters*meters;
+auto refinery_cost = 50*meters*meters*meters;
+auto autorobot_cost = 100*meters*meters*meters;
+
+std::string draw_m3(physical_quantity<lint64_t, units<dim::meter<3>>> m3) {
+  return std::to_string(get_primitive_int(m3 / meters / meters / meters)) + " m^3";
+}
 
 std::string robot::player_instructions()const {
   const std::string instructions =
@@ -236,13 +243,13 @@ std::string robot::player_instructions()const {
     "c: dig;  "
     "l: fire dual lasers\n"
     "m: make digging robot that goes towards the current facing"
-    " and leaves rubble at the current location\n"
-    "p: create solar panel\n"
-    "o: create refinery\n"
-    "b: create conveyor belt\n"
+    " and leaves rubble at the current location ("+draw_m3(autorobot_cost)+")\n"
+    "p: create solar panel ("+"not"+")\n"
+    "o: create refinery ("+draw_m3(refinery_cost)+")\n"
+    "b: create conveyor belt ("+draw_m3(conveyor_cost)+")\n"
     "v: rotate conveyor belt\n"
     "r: fire rockets\n"
-    "Metal carried: " + std::to_string(get_primitive_int(metal_carried_ / meters / meters / meters)) + " m^3 / " + std::to_string(get_primitive_int(storage_volume() / meters / meters / meters)) + "m^3 \n"
+    "Metal carried: " + draw_m3(metal_carried_) + " / " + draw_m3(storage_volume()) + "\n"
     ;
   return instructions;
 }
@@ -407,21 +414,21 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     //fire_standard_laser(w, my_id, location_ - offset, facing_);
   }
   // TODO FIX HACK DUPLICATE CODE
-  if (input_news.num_times_pressed("m") && metal_carried_ > 100*meters*meters*meters) {
+  if (input_news.num_times_pressed("m") && metal_carried_ > autorobot_cost) {
     const shared_ptr<autorobot> aur (new autorobot(location_ + facing_ * 2, facing_));
-    if (w.try_create_object(aur) != NO_OBJECT) metal_carried_ -= 100*meters*meters*meters;
+    if (w.try_create_object(aur) != NO_OBJECT) metal_carried_ -= autorobot_cost;
   }
   if (input_news.num_times_pressed("p")) {
     const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w, my_id)));
     w.try_create_object(sol);
   }
-  if (input_news.num_times_pressed("o") && metal_carried_ > 50*meters*meters*meters) {
+  if (input_news.num_times_pressed("o") && metal_carried_ > refinery_cost) {
     const shared_ptr<refinery> ref (new refinery(get_building_tile(w, my_id)));
-    if (w.try_create_object(ref) != NO_OBJECT) metal_carried_ -= 50*meters*meters*meters;
+    if (w.try_create_object(ref) != NO_OBJECT) metal_carried_ -= refinery_cost;
   }
-  if (input_news.num_times_pressed("b") && metal_carried_ > 10*meters*meters*meters) {
+  if (input_news.num_times_pressed("b") && metal_carried_ > conveyor_cost) {
     const shared_ptr<conveyor_belt> con (new conveyor_belt(get_building_tile(w, my_id)));
-    if (w.try_create_object(con) != NO_OBJECT) metal_carried_ -= 10*meters*meters*meters;
+    if (w.try_create_object(con) != NO_OBJECT) metal_carried_ -= conveyor_cost;
   }
   if (input_news.is_currently_pressed("r")) {
     const uniform_int_distribution<distance> random_delta(-tile_width, tile_width);
