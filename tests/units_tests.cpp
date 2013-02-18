@@ -55,6 +55,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
 
   const physical_quantity<double, meter> foofloating = foo;
   const physical_quantity<double, meter> foofloating2 = 1.0*meters;
+  foofloating + foofloating2;
 
   const physical_quantity<bounds_checked_int<int32_t>, meter> foobound(foo);
   const auto bfoobound = foobound * foobound;
@@ -113,7 +114,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   const auto ratty = make_non_normalized_rational_physical_quantity(bfoo, foo);
   const auto derat = make_units_split_rational(ratty);
   derat.numerator + foo;
-  3 + derat.denominator;
+  (void)(3 + derat.denominator);
   const auto rerat = make_non_normalized_rational_physical_quantity(
     derat.numerator, derat.denominator);
   BOOST_CHECK_EQUAL(ratty, rerat);
