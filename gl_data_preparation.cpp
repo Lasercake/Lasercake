@@ -368,7 +368,7 @@ inline color compute_tile_color(world const& w, tile_location const& loc) {
   if (illumination == 24) {
     r = 0;
   }
-  return color((r << 24) + (g << 16) + (b << 8) + a);
+  return color(GLubyte(r), GLubyte(g), GLubyte(b), GLubyte(a));
 }
 
 
