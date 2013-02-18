@@ -698,10 +698,8 @@ void view_on_the_world::prepare_gl_data(
   );
   // be conservative: don't cull things too near the edge of the frustum;
   // fight rounding error!
-  // The 1000 was empirically more useful than just 10 or 0.00001.
-  // It probably should be a multiple of tile_width, though I'm not sure.
   for(glm::vec4& half_space : view_frustum_in_fine_distance_units.half_spaces) {
-    half_space.w += 1000.00001;
+    half_space.w += 0.1 /*fine_distance_units*/;
   }
   // We use tile units comparisons when the view center has been rounded
   // to a tile; so adjust that.  TODO: are all the signs correct?
