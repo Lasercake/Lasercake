@@ -100,6 +100,7 @@ private:
   vector3<distance> initial_location_;
   vector3<distance> facing_;
   int carrying_;
+  std::vector<minerals> carried_minerals;
 };
 
 class random_walk_rocket : public mobile_object, public autonomous_object {
@@ -139,8 +140,8 @@ public:
                       object_identifier my_id) override;
 private:
   vector3<tile_coordinate> initial_location_;
-  int waste_rock_inside_;
-  int metal_inside_;
+  physical_quantity<lint64_t, units<dim::meter<3>>> waste_rock_inside_;
+  physical_quantity<lint64_t, units<dim::meter<3>>> metal_inside_;
 };
 
 

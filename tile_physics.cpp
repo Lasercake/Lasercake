@@ -250,6 +250,9 @@ namespace tile_physics_impl {
 state_t& get_state(world& w) {
   return get_state(w.tile_physics());
 }
+state_t const& get_state(world const& w) {
+  return get_state(w.tile_physics());
+}
 
 water_group_identifier make_new_water_group(
    water_group_identifier& next_water_group_identifier,
@@ -924,6 +927,14 @@ void replace_substance_impl(
   if (!is_fluid(new_substance_type)) {
     active_fluids.erase(loc);
   }
+
+  // Hack - assign minerals to rubble
+  if (old_substance_type == ROCK && new_substance_type == RUBBLE) {
+    state.altered_minerals_info.insert(std::make_pair(loc.coords(), initial_minerals(loc.coords())));
+  }
+  if (old_substance_type == RUBBLE && new_substance_type != RUBBLE) {
+    state.altered_minerals_info.erase(loc.coords());
+  }
   
   // ==============================================================================
   // 3) Update the relatively-isolated cached info like interiorness
@@ -1515,6 +1526,7 @@ void update_fluids_impl(state_t& state) {
       active_fluid_tile_info dst_info_store;
       tile_contents src_old_contents = src_tile.contents();
       tile_contents dst_old_contents = dst_tile.contents();
+      minerals* src_old_minerals = find_as_pointer(state.altered_minerals_info, move.src.coords());
       auto i = active_fluids.find(dst);
       if (i != active_fluids.end()) {
         dst_was_active_fluid = true;
@@ -1528,6 +1540,11 @@ void update_fluids_impl(state_t& state) {
       // Water always becomes ungroupable when it moves
       replace_substance(state, dst, dst_old_contents, src_old_contents == GROUPABLE_WATER ? UNGROUPABLE_WATER : src_old_contents);
       replace_substance(state, move.src, src_old_contents, dst_old_contents);
+
+      // hack - move around minerals info of rubble
+      if (src_old_contents == RUBBLE) {
+        state.altered_minerals_info.insert(std::make_pair(dst.coords(), *src_old_minerals));
+      }
       
       if (dst_was_active_fluid) src_fluid = dst_info_store;
       disturbed_tiles.insert(dst);
@@ -1786,4 +1803,12 @@ void world::replace_substance(tile_location const& loc,
 void world::update_fluids() {
   state_t& state = get_state(*this);
   update_fluids_impl(state);
+}
+
+
+minerals world::get_minerals(vector3<tile_coordinate> const& coords)const {
+  if (minerals const* m = find_as_pointer(get_state(*this).altered_minerals_info, coords)) {
+    return *m;
+  }
+  else return initial_minerals(coords);
 }

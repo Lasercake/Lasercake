@@ -51,6 +51,7 @@ struct active_fluid_tile_info {
 };
 
 typedef unordered_map<tile_location, active_fluid_tile_info> active_fluids_t;
+typedef unordered_map<vector3<tile_coordinate>, minerals> altered_minerals_info_t;
 
 struct persistent_water_group_info {
   literally_random_access_removable_tiles_by_height suckable_tiles_by_height;
@@ -165,6 +166,7 @@ struct state_t {
   persistent_water_groups_t persistent_water_groups;
   groupable_water_volume_calipers_t groupable_water_volume_calipers;
   active_fluids_t active_fluids;
+  altered_minerals_info_t altered_minerals_info;
 
   //only used in replace_substance(), to get world_collision_detector& things_exposed_to_collision:
   world& access_the_world;
