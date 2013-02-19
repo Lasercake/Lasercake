@@ -19,6 +19,9 @@
 
 */
 
+// This prevents some deprecated members with global constructors.
+#define BOOST_SYSTEM_NO_DEPRECATED
+
 #include "config.hpp"
 
 #include <stdio.h>
