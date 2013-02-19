@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <boost/random/ranlux.hpp>
 #include <boost/preprocessor/cat.hpp>
+#include <boost/preprocessor/repetition/repeat.hpp>
 
 #include "world.hpp"
 #include "worldgen.hpp"
@@ -499,23 +500,27 @@ struct twisty {
 } /* end anonymous namespace */
 
 
-typedef worldgen_function_t (*worldgen_function_creator)();
+static const size_t ctr_begin = __COUNTER__ + 1;
+typedef worldgen_function_t(*worldgen_function_generator_t)();
 
-std::vector<std::pair<std::string, worldgen_function_creator> > world_builder_list;
-std::map<std::string, worldgen_function_creator> world_builder_table;
+struct scenario_t {
+  const char* name;
+  worldgen_function_generator_t worldgen;
+};
 
-#define SCENARIO_NAMED(name) \
+template<size_t N>
+struct scen_n {
+  static constexpr const char* name = nullptr;
+  static constexpr worldgen_function_generator_t worldgen = nullptr;
+};
+
+#define SCENARIO_NAMED(scen_name) \
   worldgen_function_t BOOST_PP_CAT(scen__, __LINE__)(); \
-  struct BOOST_PP_CAT(scen_init__, __LINE__) { \
-    BOOST_PP_CAT(scen_init__, __LINE__)() { \
-      const std::pair<std::string, worldgen_function_creator> elem( \
-                      name, BOOST_PP_CAT(scen__, __LINE__)); \
-      world_builder_list.push_back(elem); \
-      world_builder_table.insert(elem); \
-    } \
-  } BOOST_PP_CAT(scen_init__, __LINE__); \
+  template<> struct scen_n<(__COUNTER__ - ctr_begin)> { \
+    static constexpr const char* name = scen_name; \
+    static constexpr worldgen_function_generator_t worldgen = &BOOST_PP_CAT(scen__, __LINE__); \
+  }; \
   worldgen_function_t BOOST_PP_CAT(scen__, __LINE__)()
-
 
 SCENARIO_NAMED("vacuum") {
     return worldgen_from_tilespec([](coords) {
@@ -627,7 +632,6 @@ SCENARIO_NAMED("stepped_pools") {
     });
 }
 
-
 SCENARIO_NAMED("default") {
     return worldgen_from_tilespec([](coords l) {
       return
@@ -722,9 +726,29 @@ SCENARIO_NAMED("twistyrubble") {
     return worldgen_from_tilespec(twisty<RUBBLE>());
 }
 
+
+static const size_t ctr_end = __COUNTER__;
+
+#define ESTIMATED_NUMBER_OF_SCENARIOS 30
+static const size_t actual_number_of_scenarios = ctr_end - ctr_begin;
+#define SCEN(z, n, d) \
+  { scen_n<(ctr_begin + (n))>::name, scen_n<(ctr_begin + (n))>::worldgen },
+constexpr scenario_t scenarios[] = {
+  BOOST_PP_REPEAT(ESTIMATED_NUMBER_OF_SCENARIOS, SCEN, _)
+};
+template<int N> struct check_number_of_scenarios {
+  static_assert(
+    // allow a little leeway but not wasting too much binary space
+    ESTIMATED_NUMBER_OF_SCENARIOS >= N && ESTIMATED_NUMBER_OF_SCENARIOS <= N + 7,
+  "update ESTIMATED_NUMBER_OF_SCENARIOS above to be the number shown in check_number_of_scenarios<N> in your error message, or a bit above that");
+};
+template struct check_number_of_scenarios<actual_number_of_scenarios>;
+
 worldgen_function_t make_world_building_func(std::string scenario) {
-  if(auto const* worldgen = find_as_pointer(world_builder_table, scenario)) {
-    return (*worldgen)();
+  for(auto scen : scenarios) {
+    if(scen.name && scenario == scen.name) {
+      return (*scen.worldgen)();
+    }
   }
   // If it wasn't named, we have no function.
   // The caller should probably check for this unfortunateness.
@@ -733,10 +757,10 @@ worldgen_function_t make_world_building_func(std::string scenario) {
 
 std::vector<std::string> scenario_names() {
   std::vector<std::string> result;
-  const size_t num_world_builders = world_builder_list.size();
+  const size_t num_world_builders = actual_number_of_scenarios;
   result.reserve(num_world_builders);
   for(size_t i = 0; i != num_world_builders; ++i) {
-    result.push_back(world_builder_list[i].first);
+    result.push_back(scenarios[i].name);
   }
   return result;
 }
