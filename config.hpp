@@ -162,6 +162,12 @@ inline void caller_correct_if(bool cond, const char* error) {
 // This has to be a non-function because ret should only
 // be evaluated if cond is true.
 #define constexpr_require_and_return(cond, str, ret) ((cond) ? (ret) : throw std::logic_error((str)))
+// This has to be a non-function so that the compiler can deduce its
+// return type as anything for use in ?: results. It has to be
+// non-parenthesized because Clang, at least, will cast it to void
+// (rather than its magic whatever-the-other-thing-in-the-?:-is type)
+// if parenthesized.
+#define constexpr_caller_error(str)  throw std::logic_error((str))
 
 #if DEBUG_PRINT_DETERMINISTICALLY
 #include "debug_print_deterministically.hpp"

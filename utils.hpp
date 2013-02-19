@@ -115,39 +115,31 @@ public:
     : x(arr[0]), y(arr[1]), z(arr[2]) {}
   
   BOOST_FORCEINLINE ScalarType& operator[](which_dimension_type index) {
-    switch(index) {
-      case 0: return x;
-      case 1: return y;
-      case 2: return z;
-      default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
-    }
+    if(index == X){return x;} if(index == Y){return y;} if(index == Z){return z;}
+      constexpr_caller_error("Trying to index a vector3 with an out-of-bounds index!");
   }
-  BOOST_FORCEINLINE ScalarType operator[](which_dimension_type index)const {
-    switch(index) {
-      case 0: return x;
-      case 1: return y;
-      case 2: return z;
-      default: caller_error("Trying to index a vector3 with an out-of-bounds index!");
-    }
+  BOOST_FORCEINLINE constexpr ScalarType operator[](which_dimension_type index)const {
+    return (index == X) ? (x) : (index == Y) ? (y) : (index == Z) ? (z) :
+      constexpr_caller_error("Trying to index a vector3 with an out-of-bounds index!");
   }
-  BOOST_FORCEINLINE ScalarType operator()(which_dimension_type index)const { return (*this)[index]; }
+  BOOST_FORCEINLINE constexpr ScalarType operator()(which_dimension_type index)const { return (*this)[index]; }
   BOOST_FORCEINLINE void set(which_dimension_type index, ScalarType value) { (*this)[index] = value; }
 
-  template<typename OtherType> auto operator+(vector3<OtherType> const& other)const
+  template<typename OtherType> constexpr auto operator+(vector3<OtherType> const& other)const
   -> vector3<decltype(x + other.x)> {
     return vector3<decltype(x + other.x)>(x + other.x, y + other.y, z + other.z);
   }
   template<typename OtherType> vector3& operator+=(vector3<OtherType> const& other) {
     x += other.x; y += other.y; z += other.z; return *this;
   }
-  template<typename OtherType> auto operator-(vector3<OtherType> const& other)const
+  template<typename OtherType> constexpr auto operator-(vector3<OtherType> const& other)const
   -> vector3<decltype(x - other.x)> {
     return vector3<decltype(x - other.x)>(x - other.x, y - other.y, z - other.z);
   }
   template<typename OtherType> vector3& operator-=(vector3<OtherType> const& other) {
     x -= other.x; y -= other.y; z -= other.z; return *this;
   }
-  template<typename OtherType> auto operator*(OtherType const& other)const
+  template<typename OtherType> constexpr auto operator*(OtherType const& other)const
   -> vector3<decltype(x * other)> {
     return vector3<decltype(x * other)>(x * other, y * other, z * other);
   }
@@ -155,7 +147,7 @@ public:
     x *= other; y *= other; z *= other; return *this;
   }
   template<typename OtherType, typename RoundingStrategy>
-  friend inline auto divide(vector3 const& v, OtherType const& other, RoundingStrategy strat)
+  friend inline constexpr auto divide(vector3 const& v, OtherType const& other, RoundingStrategy strat)
   -> vector3<decltype(std::declval<ScalarType>() / other)>{
     return vector3<decltype(v.x / other)>(
       divide(v.x, other, strat),
@@ -170,7 +162,7 @@ public:
   // In C++11 integer division rounds towards zero,
   // which is often what we want for vectors; IEEE754 floating point division,
   // by default, rounds to nearest and to even for ties.
-  template<typename OtherType> auto operator/(OtherType const& other)const
+  template<typename OtherType> constexpr auto operator/(OtherType const& other)const
   -> vector3<decltype(x / other)> {
     return vector3<decltype(x / other)>(x/other, y/other, z/other);
   }
@@ -180,12 +172,12 @@ public:
   }
   // Multiplying two vectors is usually a type-error mistake, so
   // you have to say you're doing it in words:
-  template<typename OtherType> auto multiply_piecewise_by(vector3<OtherType> const& other)const
+  template<typename OtherType> constexpr auto multiply_piecewise_by(vector3<OtherType> const& other)const
   -> vector3<decltype(x * other.x)> {
     return vector3<decltype(x * other.x)>(x * other.x, y * other.y, z * other.z);
   }
   template<typename OtherType, typename RoundingStrategy>
-  auto divide_piecewise_by(vector3<OtherType> const& other, RoundingStrategy strat)const
+  constexpr auto divide_piecewise_by(vector3<OtherType> const& other, RoundingStrategy strat)const
   -> vector3<decltype(x / other.x)> {
     return vector3<decltype(x / other.x)>(
       divide(x, other.x, strat),
@@ -194,38 +186,38 @@ public:
   }
   // Careful, shift operators on builtin types (ScalarType?) are only
   // defined for shift >= 0 && shift < bits_in_type
-  vector3 operator<<(int shift)const {
+  constexpr vector3 operator<<(int shift)const {
     return vector3(x << shift, y << shift, z << shift);
   }
   vector3& operator<<=(int shift) {
     x <<= shift; y <<= shift; z <<= shift; return *this;
   }
-  vector3 operator>>(int shift)const {
+  constexpr vector3 operator>>(int shift)const {
     return vector3(x >> shift, y >> shift, z >> shift);
   }
   vector3& operator>>=(int shift) {
     x >>= shift; y >>= shift; z >>= shift; return *this;
   }
-  vector3 operator^(ScalarType other)const {
+  constexpr vector3 operator^(ScalarType other)const {
     return vector3(x ^ other, y ^ other, z ^ other);
   }
-  vector3 operator|(ScalarType other)const {
+  constexpr vector3 operator|(ScalarType other)const {
     return vector3(x | other, y | other, z | other);
   }
-  vector3 operator&(ScalarType other)const {
+  constexpr vector3 operator&(ScalarType other)const {
     return vector3(x & other, y & other, z & other);
   }
-  vector3 operator~()const {
+  constexpr vector3 operator~()const {
     return vector3(~x, ~y, ~z);
   }
 
-  vector3 operator+()const { return *this; } // unary plus
-  vector3 operator-()const { // unary minus
+  constexpr vector3 operator+()const { return *this; } // unary plus
+  constexpr vector3 operator-()const { // unary minus
     return vector3(-x, -y, -z);
   }
 
-  bool operator==(vector3 const& other)const {return x == other.x && y == other.y && z == other.z; }
-  bool operator!=(vector3 const& other)const {return x != other.x || y != other.y || z != other.z; }
+  constexpr bool operator==(vector3 const& other)const {return x == other.x && y == other.y && z == other.z; }
+  constexpr bool operator!=(vector3 const& other)const {return x != other.x || y != other.y || z != other.z; }
   
   // Do not try to use this if either vector has an unsigned ScalarType.
   // It might work in some situations, but why would you ever do that anyway?
@@ -234,7 +226,7 @@ public:
   // risk of overflow. Make sure to choose one that can fit the squares of the
   // numbers you're dealing with.
   template<typename OutputRepr, typename OtherType>
-  auto dot(vector3<OtherType> const& other)const
+  constexpr auto dot(vector3<OtherType> const& other)const
   -> decltype(numeric_representation_cast<OutputRepr>(x) * numeric_representation_cast<OutputRepr>(other.x)) {
     return
       numeric_representation_cast<OutputRepr>(x) * numeric_representation_cast<OutputRepr>(other.x) +
@@ -249,17 +241,17 @@ public:
   
   // Choose these the way you'd choose dot's output type (see the comment above)
   // we had trouble making these templates, so now they just always use int64_t
-  bool magnitude_within_32_bits_is_less_than(ScalarType amount)const {
+  constexpr bool magnitude_within_32_bits_is_less_than(ScalarType amount)const {
     return dot<int64_type_to_use_with_dot>(*this) <
           numeric_representation_cast<int64_type_to_use_with_dot>(amount)
         * numeric_representation_cast<int64_type_to_use_with_dot>(amount);
   }
-  bool magnitude_within_32_bits_is_greater_than(ScalarType amount)const {
+  constexpr bool magnitude_within_32_bits_is_greater_than(ScalarType amount)const {
     return dot<int64_type_to_use_with_dot>(*this) >
           numeric_representation_cast<int64_type_to_use_with_dot>(amount)
         * numeric_representation_cast<int64_type_to_use_with_dot>(amount);
   }
-  bool operator<(vector3 const& other)const {
+  constexpr bool operator<(vector3 const& other)const {
     return (x < other.x) || ((x == other.x) && ((y < other.y) || ((y == other.y) && (z < other.z))));
   }
 

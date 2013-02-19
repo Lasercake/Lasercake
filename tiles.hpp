@@ -456,35 +456,35 @@ const bool older_smaller_nonintersecting_tiles_with_gaps_between_them = true;
 const bool older_smaller_nonintersecting_tiles_with_gaps_between_them = false;
 #endif
 
-inline tile_coordinate get_min_containing_tile_coordinate(distance c, which_dimension_type which_coordinate) {
-  if (which_coordinate == Z) return tile_coordinate(c / tile_height);
-  else                       return tile_coordinate(c / tile_width);
+inline constexpr tile_coordinate get_min_containing_tile_coordinate(distance c, which_dimension_type which_coordinate) {
+  return (which_coordinate == Z) ? tile_coordinate(c / tile_height)
+                                 : tile_coordinate(c / tile_width);
 }
-inline tile_coordinate get_max_containing_tile_coordinate(distance c, which_dimension_type which_coordinate) {
-  if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
-    return get_min_containing_tile_coordinate(c, which_coordinate);
-  }
-  if (which_coordinate == Z) return tile_coordinate((c + 1*fine_distance_units) / tile_height);
-  else                       return tile_coordinate((c + 1*fine_distance_units) / tile_width);
+inline constexpr tile_coordinate get_max_containing_tile_coordinate(distance c, which_dimension_type which_coordinate) {
+  return
+  (older_smaller_nonintersecting_tiles_with_gaps_between_them)
+  ?
+    get_min_containing_tile_coordinate(c, which_coordinate)
+  :
+    ((which_coordinate == Z)
+    ? tile_coordinate((c + 1*fine_distance_units) / tile_height)
+    : tile_coordinate((c + 1*fine_distance_units) / tile_width));
 }
-inline vector3<tile_coordinate> get_min_containing_tile_coordinates(vector3<distance> v) {
+inline constexpr vector3<tile_coordinate> get_min_containing_tile_coordinates(vector3<distance> const v) {
   return vector3<tile_coordinate>(
     get_min_containing_tile_coordinate(v[0], 0),
     get_min_containing_tile_coordinate(v[1], 1),
     get_min_containing_tile_coordinate(v[2], 2)
   );
 }
-inline vector3<tile_coordinate> get_max_containing_tile_coordinates(vector3<distance> v) {
-  if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
-    return get_min_containing_tile_coordinates(v);
-  }
+inline constexpr vector3<tile_coordinate> get_max_containing_tile_coordinates(vector3<distance> const v) {
   return vector3<tile_coordinate>(
     get_max_containing_tile_coordinate(v[0], 0),
     get_max_containing_tile_coordinate(v[1], 1),
     get_max_containing_tile_coordinate(v[2], 2)
   );
 }
-inline vector3<tile_coordinate> get_arbitrary_containing_tile_coordinates(vector3<distance> v) {
+inline constexpr vector3<tile_coordinate> get_arbitrary_containing_tile_coordinates(vector3<distance> v) {
   return get_min_containing_tile_coordinates(v);
 }
 inline lasercake_vector<vector3<tile_coordinate>>::type
@@ -524,28 +524,29 @@ inline vector3<tile_coordinate> get_random_containing_tile_coordinates(vector3<d
     tile_coordinate((v.z + zplus) / tile_height)
   );
 }
-inline distance lower_bound_in_fine_distance_units(tile_coordinate c, which_dimension_type which_coordinate) {
-  if (which_coordinate == Z) return c * tile_height;
-  else                       return c * tile_width;
+inline constexpr distance lower_bound_in_fine_distance_units(tile_coordinate c, which_dimension_type which_coordinate) {
+  return (which_coordinate == Z) ? (c * tile_height) : (c * tile_width);
 }
-inline distance upper_bound_in_fine_distance_units(tile_coordinate c, which_dimension_type which_coordinate) {
-  if (older_smaller_nonintersecting_tiles_with_gaps_between_them) {
-    if (which_coordinate == Z) return c * tile_height + (tile_height - 1*fine_distance_units);
-    else                       return c * tile_width + (tile_width - 1*fine_distance_units);
-  }
-  else {
-    if (which_coordinate == Z) return c * tile_height + tile_height;
-    else                       return c * tile_width + tile_width;
-  }
+inline constexpr distance upper_bound_in_fine_distance_units(tile_coordinate c, which_dimension_type which_coordinate) {
+  return
+  (older_smaller_nonintersecting_tiles_with_gaps_between_them)
+  ?
+    ((which_coordinate == Z)
+    ? (c * tile_height + (tile_height - 1*fine_distance_units))
+    : (c * tile_width + (tile_width - 1*fine_distance_units)))
+  :
+    ((which_coordinate == Z)
+    ? (c * tile_height + tile_height)
+    : (c * tile_width + tile_width));
 }
-inline vector3<distance> lower_bound_in_fine_distance_units(vector3<tile_coordinate> v) {
+inline constexpr vector3<distance> lower_bound_in_fine_distance_units(vector3<tile_coordinate> const v) {
   return vector3<distance>(
     lower_bound_in_fine_distance_units(v[0], 0),
     lower_bound_in_fine_distance_units(v[1], 1),
     lower_bound_in_fine_distance_units(v[2], 2)
   );
 }
-inline vector3<distance> upper_bound_in_fine_distance_units(vector3<tile_coordinate> v) {
+inline constexpr vector3<distance> upper_bound_in_fine_distance_units(vector3<tile_coordinate> const v) {
   return vector3<distance>(
     upper_bound_in_fine_distance_units(v[0], 0),
     upper_bound_in_fine_distance_units(v[1], 1),
