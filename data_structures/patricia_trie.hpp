@@ -63,8 +63,8 @@ class default_deleter {
 public:
   template<typename T>
   void operator()(T const* ptr)const {
-    sizeof(*ptr); // Prevent deleting incomplete types,
-                  // so that we are sure to call the destructor.
+    (void)sizeof(*ptr); // Prevent deleting incomplete types,
+                        // so that we are sure to call the destructor.
     delete ptr;
   }
 };

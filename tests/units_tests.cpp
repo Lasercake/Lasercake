@@ -49,6 +49,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   //physical_quantity<int32_t, typename units_recip<notty>::type> fiiiodsfdfeso;
   //This is not currently an error; should it be?
   physical_quantity<int32_t, units<>> hmmmmmmmmmmmmmmm;
+  static_cast<void>(hmmmmmmmmmmmmmmm); //prevent unused-variable warning
 
   const physical_quantity<int32_t, meter> foo = 1 * meter();
   const physical_quantity<int64_t, meter> foo64 = foo;
