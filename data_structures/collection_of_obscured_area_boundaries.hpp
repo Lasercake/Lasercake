@@ -37,13 +37,13 @@ struct bounds_2d {
   coord_type min_y;
   coord_type max_x;
   coord_type max_y;
-  bounds_2d(coord_type min_x, coord_type min_y, coord_type max_x, coord_type max_y):min_x(min_x),min_y(min_y),max_x(max_x),max_y(max_y){}
+  constexpr bounds_2d(coord_type min_x, coord_type min_y, coord_type max_x, coord_type max_y):min_x(min_x),min_y(min_y),max_x(max_x),max_y(max_y){}
   bool operator==(bounds_2d const& o)const {
     return (min_x == o.min_x) && (min_y == o.min_y) && (max_x == o.max_x) && (max_y == o.max_y);
   }
 };
 
-const bounds_2d top_node_bounds(coord_type(-1,1),coord_type(-1,1),coord_type(1,1),coord_type(1,1));
+constexpr bounds_2d top_node_bounds(coord_type(-1,1),coord_type(-1,1),coord_type(1,1),coord_type(1,1));
 
 
 
