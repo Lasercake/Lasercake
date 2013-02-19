@@ -173,4 +173,83 @@ private:
   contents_type_ members_to_indices_;
 };
 
+
+// The current representation can happily be changed.
+union small_string {
+public:
+  struct info {
+    static constexpr size_t max_length = 23;
+    static constexpr size_t max_len_incl_nul = max_length + 1;
+    static constexpr size_t eightbytelen = (max_len_incl_nul + 7) / 8;
+    static constexpr size_t data_len = eightbytelen * 8;
+    static_assert(data_len >= max_len_incl_nul, "bug");
+    static_assert(data_len > max_length, "bug");
+  };
+
+  template<size_t N>
+  /*implicit*/ constexpr small_string(const char(&lit)[N])
+  : buf_{
+    at_(lit, 0), at_(lit, 1), at_(lit, 2), at_(lit, 3), at_(lit, 4),
+    at_(lit, 5), at_(lit, 6), at_(lit, 7), at_(lit, 8), at_(lit, 9),
+    at_(lit, 10), at_(lit, 11), at_(lit, 12), at_(lit, 13), at_(lit, 14),
+    at_(lit, 15), at_(lit, 16), at_(lit, 17), at_(lit, 18), at_(lit, 19),
+    at_(lit, 20), at_(lit, 21), at_(lit, 22), at_(lit, 23)
+  }
+  {
+    static_assert(N <= info::max_length, "String literal too long for small_string.");
+    static_assert(N > 0, "Non-null-terminated string literal.");
+  }
+  constexpr char operator[](size_t i) {
+    return constexpr_require_and_return(i < info::data_len, "bounds overflow", buf_[i]);
+  }
+
+  small_string(const std::string s) {
+    caller_correct_if(s.size() <= info::max_length, "string too large for small_string");
+    size_t i = 0;
+    for(; i < s.size(); ++i) {
+      buf_[i] = s[i];
+    }
+    for(; i < info::data_len; ++i) {
+      buf_[i] = '\0';
+    }
+  }
+
+  friend inline bool operator==(small_string a, small_string b) {
+    return a.buf64_[0] == b.buf64_[0] && a.buf64_[1] == b.buf64_[1] && a.buf64_[2] == b.buf64_[2];
+  }
+  friend inline bool operator!=(small_string a, small_string b) {
+    return a.buf64_[0] != b.buf64_[0] || a.buf64_[1] != b.buf64_[1] || a.buf64_[2] != b.buf64_[2];
+  }
+  // these comparison operators if using buf64 would have to think about
+  // endianness, which there is not a standardized way to do.
+  friend inline bool operator<(small_string a, small_string b) {
+    for(size_t i = 0; i != small_string::info::data_len; ++i) {
+      if(a[i] < b[i]){return true;}
+      if(a[i] > b[i]){return false;}
+    }
+    return false;
+  }
+  friend inline bool operator>(small_string a, small_string b) {
+    return b < a;
+  }
+  friend inline bool operator<=(small_string a, small_string b) {
+    return !(b < a);
+  }
+  friend inline bool operator>=(small_string a, small_string b) {
+    return !(a < b);
+  }
+  friend inline std::ostream& operator<<(std::ostream& os, small_string a) {
+    return os << a.buf_;
+  }
+private:
+  char buf_[info::data_len];
+  uint64_t buf64_[info::eightbytelen];
+
+  template<size_t N>
+  static constexpr char at_(const char(&literal)[N], size_t i) {
+    return (i < N) ? (literal[i]) : '\0';
+  }
+};
+
+
 #endif
