@@ -159,6 +159,8 @@ inline void caller_correct_if(bool cond, const char* error) {
   }
 }
 
+// This has to be a non-function because ret should only
+// be evaluated if cond is true.
 #define constexpr_require_and_return(cond, str, ret) ((cond) ? (ret) : throw std::logic_error((str)))
 
 #if DEBUG_PRINT_DETERMINISTICALLY

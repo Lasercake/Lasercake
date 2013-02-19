@@ -118,147 +118,205 @@ static_assert(-8%3 == -2, "we use the typical, standard round-towards-zero");
 static_assert(-8%-3 == -2, "we use the typical, standard round-towards-zero");
 static_assert(8%-3 == 2, "we use the typical, standard round-towards-zero");
 
-// TODO boost::enable_if<std::numeric_limits<T1 & T2>::is_specialized
-// or get_primitive_int_type? or.
-
 // Division is a slow instruction, so we want to start it as soon
 // as possible and finish as soon as possible after we have the
 // result.  Most division instructions also give modulus for free.
 // If the divisor is a compile-time constant, however, the compiler
 // converts it to a multiplication-by-constant and a few shifts,
 // and the remainder sometimes costs a bit.
-// We also have to consider, if modifying 'divisor' before dividing,
-// whether the possibility of overflow is acceptable.
+//
+// The optimizer is smart enough to order instructions in the most
+// intelligent way as long as we give it a set of instructions where
+// it can easily do so.  For example, don't depend on the quotient
+// in an 'if' if you could depend on the dividend or divisor.
+//
+// These algorithms are careful never to risk overflow for
+// unsigned or twos-complement numeric types.
+//
+// divide_impl2 with all the helper arguments help these functions
+// be constexpr.  The ones that don't use all their arguments are
+// BOOST_FORCEINLINE so that they'll be inlined into the divide_impl1
+// that calls them, and the unused arguments not computed at all.
+//
+// The 'result_positive' value is a slight misnomer.
+// If dividend is zero, then the result and remainder are zero
+// and all is fine regardless of this bool's value.
+// If dividend is nonzero, this bool indicates (as it must)
+// the sign of the conceptual, unrounded quotient.
 template<typename T>
-inline T divide_impl(T dividend, T divisor,
+BOOST_FORCEINLINE constexpr T divide_impl2(
+      T /*dividend*/,
+      T /*divisor*/,
+      T rounded_to_zero,  // (dividend / divisor)
+      T /*remainder*/, // (dividend % divisor)
+      T /*up*/, // 1, signed equal to logical result sign
+      bool /*result_positive*/, // (dividend < T(0)) == (divisor < T(0))
       rounding_strategy<round_down, negative_mirrors_positive>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  return dividend / divisor;
-}
-template<typename T>
-inline T divide_impl(T dividend, T divisor,
-      rounding_strategy<round_down, negative_continuous_with_positive>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  const T rounded_to_zero = dividend / divisor;
-  const T remainder = dividend % divisor;
-  //'adjust' is probably branch-predictable
-  // even if the sign of the numbers aren't.
-  // (The compiler seems to be smart and transforms
-  //  either to something reasonable, given that either
-  //  has a reasonable way to run it.)
-  //const T adjust =
-  //  ((dividend < 0) != (divisor < 0)) && (remainder != 0);
-  //return rounded_to_zero - adjust;
-  if(((dividend < T(0)) != (divisor < T(0))) && (remainder != T(0))) {
-    return rounded_to_zero - T(1);
-  }
-  else {
-    return rounded_to_zero;
-  }
-}
-template<typename T>
-inline T divide_impl(T dividend, T divisor,
-      rounding_strategy<round_up, negative_mirrors_positive>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  const T rounded_to_zero = dividend / divisor;
-  const T remainder = dividend % divisor;
-  const T adjust = ((dividend < T(0)) == (divisor < T(0)) ? T(1) : T(-1));
-  if(remainder != 0) {
-    return rounded_to_zero + adjust;
-  }
-  else {
-    return rounded_to_zero;
-  }
-}
-template<typename T>
-inline T divide_impl(T dividend, T divisor,
-      rounding_strategy<round_up, negative_continuous_with_positive>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  const T rounded_to_zero = dividend / divisor;
-  const T remainder = dividend % divisor;
-  if(((dividend < T(0)) == (divisor < T(0))) && (remainder != T(0))) {
-    return rounded_to_zero + T(1);
-  }
-  else {
-    return rounded_to_zero;
-  }
+  return rounded_to_zero;
 }
 
-// this is too tricky to allow two different int type arguments for
+template<typename T>
+BOOST_FORCEINLINE constexpr T divide_impl2(
+      T /*dividend*/,
+      T /*divisor*/,
+      T rounded_to_zero,  // (dividend / divisor)
+      T remainder, // (dividend % divisor)
+      T up, // 1, signed equal to logical result sign
+      bool result_positive, // (dividend < T(0)) == (divisor < T(0))
+      rounding_strategy<round_down, negative_continuous_with_positive>) {
+  return result_positive
+          ? rounded_to_zero
+          : ((remainder == T(0)) ? rounded_to_zero : rounded_to_zero+up);
+}
+template<typename T>
+BOOST_FORCEINLINE constexpr T divide_impl2(
+      T /*dividend*/,
+      T /*divisor*/,
+      T rounded_to_zero,  // (dividend / divisor)
+      T remainder, // (dividend % divisor)
+      T up, // 1, signed equal to logical result sign
+      bool /*result_positive*/, // (dividend < T(0)) == (divisor < T(0))
+      rounding_strategy<round_up, negative_mirrors_positive>) {
+  return (remainder != T(0)) ? rounded_to_zero+up : rounded_to_zero;
+}
+template<typename T>
+BOOST_FORCEINLINE constexpr T divide_impl2(
+      T /*dividend*/,
+      T /*divisor*/,
+      T rounded_to_zero,  // (dividend / divisor)
+      T remainder, // (dividend % divisor)
+      T up, // 1, signed equal to logical result sign
+      bool result_positive, // (dividend < T(0)) == (divisor < T(0))
+      rounding_strategy<round_up, negative_continuous_with_positive>) {
+  return (result_positive && remainder != T(0))
+            ? rounded_to_zero+up : rounded_to_zero;
+}
+
+// see below; just a continuation for the next divide_impl2
+// (forced by constexprness).
 template<typename T,
   rounding_strategy_for_positive_numbers PosStrategy,
   rounding_strategy_for_negative_numbers NegStrategy>
-inline T divide_impl(T dividend, T divisor,
+BOOST_FORCEINLINE constexpr T tricky_divide_impl2_cont(
+      T left,
+      T right,
+      T rounded_to_zero,
+      T up,
+      bool result_positive,
       rounding_strategy<PosStrategy, NegStrategy>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  const T rounded_to_zero = dividend / divisor;
-  const T remainder = dividend % divisor;
-  // result_positive is a slight misnomer.
-  // If dividend is zero, then the result and remainder are zero
-  // and all is fine regardless of this bool's value.
-  // If dividend is nonzero, this bool indicates (as it must)
-  // the sign of the conceptual, unrounded quotient.
-  const bool result_positive = (dividend < T(0)) == (divisor < T(0));
-  const T adjust = (result_positive ? T(1) : T(-1));
-
-  // compare(abs(divisor)/2, abs(remainder)) without rounding error
-  // or overflow for any argument.
-  T tweak;
-  T nonnegative_divisor_ish;
-  if(divisor < T(0)) {
-    tweak = T(1);
-    nonnegative_divisor_ish = ~divisor;
-  }
-  else {
-    tweak = T(0);
-    nonnegative_divisor_ish = divisor;
-  }
-  // remainder cannot be -MIN_INT
-  // remainder's sign is dividend's sign (the CPU knows the latter sooner)
-  const T nonnegative_remainder = ((dividend < T(0)) ? -remainder : remainder);
-  const T left = nonnegative_divisor_ish - nonnegative_remainder;
-  const T right = nonnegative_remainder - tweak;
-  if(left < right) {
-    // remainder's magnitude is large; round quotient's magnitude up
-    return rounded_to_zero + adjust;
-  }
-  else if(left > right) {
-    // remainder's magnitude is small; round quotient's magnitude down
-    return rounded_to_zero;
-  }
-  else {
-    // tie!
+  return
+    (left < right)
+      ? rounded_to_zero+up
+      : (left > right)
+        ? rounded_to_zero
+        : // tie!...
     // partially compile-time ifs here.
-    if(PosStrategy == round_to_nearest_with_ties_rounding_to_even) {
-      if(rounded_to_zero & T(1)) { return rounded_to_zero + adjust; }
-      else                       { return rounded_to_zero; }
-    }
-    if(PosStrategy == round_to_nearest_with_ties_rounding_to_odd) {
-      if(rounded_to_zero & T(1)) { return rounded_to_zero; }
-      else                       { return rounded_to_zero + adjust; }
-    }
+    (PosStrategy == round_to_nearest_with_ties_rounding_to_even)
+      ? ((rounded_to_zero & T(1)) ? rounded_to_zero+up : rounded_to_zero)
+    : (PosStrategy == round_to_nearest_with_ties_rounding_to_odd)
+      ? ((rounded_to_zero & T(1)) ? rounded_to_zero : rounded_to_zero+up)
+    :
     // else it is one of the four biased rounding tiebreakers.
-    if((result_positive || NegStrategy == negative_mirrors_positive)
-        == (PosStrategy == round_to_nearest_with_ties_rounding_up)) {
-      return rounded_to_zero + adjust;
-    }
-    else {
-      return rounded_to_zero;
-    }
-  }
+      ((result_positive || NegStrategy == negative_mirrors_positive)
+        == (PosStrategy == round_to_nearest_with_ties_rounding_up))
+      ? rounded_to_zero+up : rounded_to_zero;
+}
+
+// This one also uses all the args, is a bit more complicated,
+// and we leave it up to the compiler whether and when to inline it.
+// (We still mark it 'inline' as we must mark all template functions inline,
+//  and it's not a bad idea to inline.)
+template<typename T,
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy>
+inline constexpr T divide_impl2(
+      T dividend,
+      T divisor,
+      T rounded_to_zero,  // (dividend / divisor)
+      T remainder, // (dividend % divisor)
+      T up, // 1, signed equal to logical result sign
+      bool result_positive, // (dividend < T(0)) == (divisor < T(0))
+      rounding_strategy<PosStrategy, NegStrategy> strat) {
+  // These rounding strategies round to nearest and do something
+  // when there is a tie.  Therefore, we need to see whether
+  // divisor/2 is less, equal, or more than remainder.
+  // Except we need to do it without risking rounding error or overflow
+  // or being wrong about negative divisor/remainder values.
+  // Algebra:
+  //   abs(divisor)/2 <=> abs(remainder)
+  //   abs(divisor) <=> abs(remainder)*2                   [1]
+  //   abs(divisor) - abs(remainder) <=> abs(remainder)    [2]
+  //
+  //   ((divisor < T(0)) ? -divisor : divisor)
+  //       - abs(remainder)
+  //       <=> abs(remainder)
+  //
+  //   ((divisor < T(0)) ? ~divisor : divisor)
+  //     + ((divisor < T(0)) ? T(1) : T(0))
+  //       - abs(remainder)
+  //       <=> abs(remainder)
+  //
+  //   ((divisor < T(0)) ? ~divisor : divisor)
+  //       - abs(remainder)
+  //       <=> abs(remainder)
+  //             - ((divisor < T(0)) ? T(1) : T(0))        [3]
+  //
+  // In this final result, there is no division (rounding),
+  // and no overflow:
+  //   LHS is ([0..MAX_INT] - [0..MAX_INT]) == [-MAX_INT..MAX_INT]
+  //   RHS is ([0..MAX_INT] - [0..1]) == [-1..MAX_INT]
+  //
+  // [1] We can't risk rounding error dividing divisor.
+  // [2] We can't multiply remainder by two, because we
+  //     might have done (MAX_INT-5) / (MAX_INT-3).
+  // [3] We can't do abs(divisor) because divisor might be MIN_INT.
+  //     Thus we use bit math to get around that problem.
+  //     Luckily, the remainder of a twos-complement division
+  //     can never be MIN_INT so we can just do a regular abs
+  //     for the remainder.
+  //
+  // We compute abs(remainder) with a macro because constexpr doesn't
+  // allow const local variables.  We use dividend's sign because remainder's
+  // sign is the same as dividend's and the CPU knows the dividend's sign
+  // sooner.
+  #define nonnegative_remainder ((dividend < T(0)) ? -remainder : remainder)
+  return tricky_divide_impl2_cont(
+     /*left*/  ((divisor < T(0)) ? ~divisor : divisor) - nonnegative_remainder,
+     /*right*/ nonnegative_remainder - ((divisor < T(0)) ? T(1) : T(0)),
+             rounded_to_zero, up, result_positive, strat);
+  #undef nonnegative_remainder
+}
+
+template<typename T,
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy>
+BOOST_FORCEINLINE constexpr T divide_impl1(
+      T dividend, T divisor, rounding_strategy<PosStrategy, NegStrategy> strat) {
+  return constexpr_require_and_return(
+    divisor != T(0), "divisor must be nonzero",
+        divide_impl2(
+            dividend,
+            divisor,
+            dividend / divisor,
+            dividend % divisor,
+            ((dividend < T(0)) == (divisor < T(0)) ? T(1) : T(-1)),
+            (dividend < T(0)) == (divisor < T(0)),
+            strat));
 }
 
 template<typename T, rounding_strategy_for_positive_numbers PosStrategy>
-inline T divide_impl(T dividend, T divisor,
+BOOST_FORCEINLINE constexpr T divide_impl1(T dividend, T divisor,
       rounding_strategy<PosStrategy, negative_is_forbidden>) {
-  caller_error_if(dividend < T(0) || divisor < T(0), "Negative number forbidden in this division!");
   // Use unsigned types so that the divide_impl optimizes better
   // even if it's not inlined.
   typedef typename boost::make_unsigned<T>::type UnsignedT;
-  return T(divide_impl<UnsignedT>(
-    UnsignedT(dividend),
-    UnsignedT(divisor),
-    rounding_strategy<PosStrategy, negative_mirrors_positive>()));
+  return constexpr_require_and_return(
+    dividend >= T(0) && divisor > T(0),
+         "Negative number (or zero divisor) forbidden in this division!",
+      T(divide_impl1(
+        UnsignedT(dividend),
+        UnsignedT(divisor),
+        rounding_strategy<PosStrategy, negative_mirrors_positive>())));
 }
 #pragma GCC diagnostic pop
 } /* end namespace rounding_strategies */
@@ -273,7 +331,7 @@ template<typename T1, typename T2, typename RoundingStrategy,
       // we don't currently implement IEEE754 floating-point rounding modes
       && std::numeric_limits<T1>::is_integer && std::numeric_limits<T2>::is_integer
     )>::type>
-inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
+inline constexpr auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
 -> decltype(dividend/divisor) {
   static_assert(std::numeric_limits<T1>::is_signed == std::numeric_limits<T2>::is_signed,
                 "Dividing two numbers of mixed sign is probably a bad idea.");
@@ -284,8 +342,8 @@ inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
     || PosStrategy == round_to_nearest_with_ties_rounding_to_odd
     || (!std::numeric_limits<T1>::is_signed && !std::numeric_limits<T2>::is_signed),
     "You lied! The negative variant does make a difference.");
-  return rounding_strategies_impl::divide_impl(
-    operation_type(dividend), operation_type(divisor), strat);
+  return rounding_strategies_impl::divide_impl1(
+          operation_type(dividend), operation_type(divisor), strat);
 }
 
 
@@ -833,11 +891,15 @@ inline int128 width_doubling_multiply(int64_t a1, int64_t a2) {
 template<typename IntType> struct non_normalized_rational {
   IntType numerator;
   IntType denominator;
-  non_normalized_rational(IntType n, IntType d):numerator(n),denominator(d){ caller_error_if(denominator == 0, "Constructing a rational with denominator zero..."); }
-  non_normalized_rational(IntType n):numerator(n),denominator(1){}
-  non_normalized_rational():numerator(0),denominator(1){}
-  explicit operator float()const { return float(double(numerator) / double(denominator)); }
-  explicit operator double()const { return double(numerator) / double(denominator); }
+  constexpr non_normalized_rational(IntType n, IntType d)
+    : numerator(n),
+      denominator(constexpr_require_and_return(
+          d != 0, "Constructing a rational with denominator zero",
+          d)) {}
+  constexpr non_normalized_rational(IntType n):numerator(n),denominator(1){}
+  constexpr non_normalized_rational():numerator(0),denominator(1){}
+  constexpr explicit operator float()const { return float(double(numerator) / double(denominator)); }
+  constexpr explicit operator double()const { return double(numerator) / double(denominator); }
   bool operator< (non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
     const auto prod1 = width_doubling_multiply(numerator, o.denominator);
@@ -887,7 +949,7 @@ template<typename IntType> struct non_normalized_rational {
     return prod1 != prod2;
   }
   
-  non_normalized_rational reciprocal()const {
+  constexpr non_normalized_rational reciprocal()const {
     return non_normalized_rational(denominator, numerator);
   }
   non_normalized_rational operator+(non_normalized_rational const& o)const {
@@ -947,7 +1009,7 @@ template<typename IntType> inline std::ostream& operator<<(std::ostream& os, non
 }
 
 template<typename IntType, typename Num>
-inline auto multiply_rational_into(Num n, non_normalized_rational<IntType> rat)
+inline constexpr auto multiply_rational_into(Num n, non_normalized_rational<IntType> rat)
 -> decltype(n * rat.numerator / rat.denominator) {
   return n * rat.numerator / rat.denominator;
 }
@@ -958,7 +1020,7 @@ struct numeric_representation_cast_impl {
 };
 
 template<typename Target, typename Num>
-inline typename numeric_representation_cast_impl<Target, Num>::target_type
+inline constexpr typename numeric_representation_cast_impl<Target, Num>::target_type
 numeric_representation_cast(Num const& num) {
   return typename numeric_representation_cast_impl<Target, Num>::target_type(num);
 }
