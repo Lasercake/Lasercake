@@ -482,7 +482,9 @@ int main(int argc, char *argv[])
   // This makes Qt emit fewer warnings; probably makes quitting a bit faster;
   // and we make sure not to use the destructor for any critical
   // end-of-process stuff (if there even is any currently).
-  exit(qapp.exec());
+  const int exitcode = qapp.exec();
+  LOG << "Qt main loop has ended; calling exit()." << std::endl;
+  exit(exitcode);
 }
 
 microseconds_t LasercakeGLThread::gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, QSize viewport_size) {
