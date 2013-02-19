@@ -611,16 +611,16 @@ void LasercakeGLWidget::prepare_to_cleanly_close_() {
 
     // TODO should we catch signals like Ctrl-C
     // in order to clean up even in their wake?
+    {
+      QMutexLocker lock(&gl_thread_data_->gl_data_lock);
+      gl_thread_data_->quit_now = true;
+      ++gl_thread_data_->revision;
+    }
     if(use_separate_gl_thread_) {
-      {
-        QMutexLocker lock(&gl_thread_data_->gl_data_lock);
-        gl_thread_data_->quit_now = true;
-      }
       gl_thread_data_->wait_for_instruction.wakeAll();
       thread_.wait();
     }
     else {
-      gl_thread_data_->quit_now = true;
       thread_.gl_renderer_.fini();
     }
     has_quit_ = true;
