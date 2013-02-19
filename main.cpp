@@ -495,11 +495,19 @@ microseconds_t LasercakeGLThread::gl_render(gl_data_ptr_t& gl_data_ptr, Lasercak
   // free to fork more threads, and/or wait for the GPU without consuming CPU,
   // etc [mine seems to do both somewhat].)
   const microseconds_t microseconds_before_gl = get_monotonic_microseconds();
-  gl_renderer_.output_gl_data_to_OpenGL(*gl_data_ptr, viewport_size.width(), viewport_size.height(), gl_widget);
-  //TODO measure the microseconds ~here~ in the different configurations. e.g. should the before/after here be split across threads?
-  //gl_data_ptr.reset(); // but if the deletion does happen now, it'll be in this thread, now, delaying swapBuffers etc :(
-  // but it's a good time and CPU(cache) to delete the data on...
-  gl_widget.swapBuffers();
+  gl_renderer_.output_gl_data_to_OpenGL(
+    *gl_data_ptr,
+    viewport_size.width(),
+    viewport_size.height(),
+    gl_widget,
+    gl_thread_data_->interrupt
+  );
+  if(!gl_thread_data_->interrupt.load()) {
+    //TODO measure the microseconds ~here~ in the different configurations. e.g. should the before/after here be split across threads?
+    //gl_data_ptr.reset(); // but if the deletion does happen now, it'll be in this thread, now, delaying swapBuffers etc :(
+    // but it's a good time and CPU(cache) to delete the data on...
+    gl_widget.swapBuffers();
+  }
   const microseconds_t microseconds_after_gl = get_monotonic_microseconds();
   return microseconds_after_gl - microseconds_before_gl;
 }
@@ -537,11 +545,12 @@ LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* paren
   gl_thread_data_->viewport_size = size();
   gl_thread_data_->microseconds_last_gl_render_took = 0;
   gl_thread_data_->quit_now = false;
+  gl_thread_data_->interrupt.store(false);
   gl_thread_data_->revision = 0;
   ++gl_thread_data_->revision; //display right away!
+  thread_.gl_widget_ = this;
+  thread_.gl_thread_data_ = gl_thread_data_;
   if(use_separate_gl_thread_) {
-    thread_.gl_widget_ = this;
-    thread_.gl_thread_data_ = gl_thread_data_;
     thread_.last_revision_ = 0;
     thread_.microseconds_this_gl_render_took_ = 0;
     thread_.start();
@@ -564,6 +573,7 @@ microseconds_t LasercakeGLWidget::get_last_gl_render_microseconds() {
   return gl_thread_data_->microseconds_last_gl_render_took;
 }
 void LasercakeGLThread::run() {
+  assert(gl_thread_data_->interrupt.load() == false);
   while(true) {
     gl_data_ptr_t gl_data_ptr;
     QSize viewport_size;

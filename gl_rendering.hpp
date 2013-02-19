@@ -23,6 +23,7 @@
 #define LASERCAKE_GL_RENDERING_HPP__
 
 #include <boost/scoped_ptr.hpp>
+#include <atomic>
 #include "gl_data_abstract.hpp"
 
 // Avoid including any Qt headers because Qt headers and GLEW
@@ -47,7 +48,13 @@ public:
       abstract_gl_data const& gl_data,
       viewport_dimension viewport_width,
       viewport_dimension viewport_height,
-      LasercakeGLWidget& gl_widget
+      LasercakeGLWidget& gl_widget,
+      // This allows the caller to interrupt the GL rendering,
+      // in case it's taking a long time.
+      // It's polled between GL calls.
+      // When polled and found to be 'true', this function
+      // returns before drawing everything.
+      std::atomic_bool const volatile& interrupt
   );
   void fini();
 

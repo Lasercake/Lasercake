@@ -111,6 +111,7 @@ private:
 struct gl_thread_data_t {
   QMutex gl_data_lock;
   QWaitCondition wait_for_instruction;
+  std::atomic_bool interrupt;
 
   // access protected by the mutex:
   bool quit_now;
