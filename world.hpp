@@ -572,7 +572,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 template<cardinal_direction Dir> inline tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
   using namespace the_decomposition_of_the_world_into_blocks_impl;
   wb_->ensure_realization(realineeded);
-  vector3<tile_coordinate> new_coords = v_; cdir_info<Dir>::add_to(new_coords);
+  const vector3<tile_coordinate> new_coords = cdir_info<Dir>::plus(v_);
   if (next_to_boundary<Dir>(v_)) {
     return tile_location(new_coords, advance_idx_across_worldblock_boundary<Dir>(idx_),
                                       &wb_->ensure_neighbor_realization<Dir>(realineeded));
