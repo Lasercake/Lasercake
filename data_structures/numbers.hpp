@@ -737,22 +737,22 @@ struct uint128 {
   uint64_t low;
   uint64_t high;
 
-  bool operator==(uint128 other)const {
+  constexpr bool operator==(uint128 other)const {
     return high == other.high && low == other.low;
   }
-  bool operator!=(uint128 other)const {
+  constexpr bool operator!=(uint128 other)const {
     return high != other.high || low != other.low;
   }
-  bool operator<(uint128 other)const {
+  constexpr bool operator<(uint128 other)const {
     return high < other.high || (high == other.high && low < other.low);
   }
-  bool operator>(uint128 other)const {
+  constexpr bool operator>(uint128 other)const {
     return other < *this;
   }
-  bool operator<=(uint128 other)const {
+  constexpr bool operator<=(uint128 other)const {
     return high < other.high || (high == other.high && low <= other.low);
   }
-  bool operator>=(uint128 other)const {
+  constexpr bool operator>=(uint128 other)const {
     return other <= *this;
   }
 };
@@ -900,6 +900,9 @@ template<typename IntType> struct non_normalized_rational {
   constexpr non_normalized_rational():numerator(0),denominator(1){}
   constexpr explicit operator float()const { return float(double(numerator) / double(denominator)); }
   constexpr explicit operator double()const { return double(numerator) / double(denominator); }
+  // The comparison operators would only be constexpr for 32-bits-or-less
+  // IntType, because the int128-emulation width_doubling_multiply() is
+  // rather tricky to make constexpr.
   bool operator< (non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
     const auto prod1 = width_doubling_multiply(numerator, o.denominator);
@@ -952,56 +955,46 @@ template<typename IntType> struct non_normalized_rational {
   constexpr non_normalized_rational reciprocal()const {
     return non_normalized_rational(denominator, numerator);
   }
-  non_normalized_rational operator+(non_normalized_rational const& o)const {
-    // Simplify only the stupidest case.
-    if (denominator == o.denominator) return non_normalized_rational(numerator + o.numerator, denominator);
-    return non_normalized_rational(numerator * o.denominator + denominator * o.numerator, denominator * o.denominator);
+  // In the cases where the denominators are equal (for addition;
+  // or opposite num==denom for multiplication), we intelligently
+  // don't multiply; otherwise we do multiply.
+  constexpr non_normalized_rational operator+(non_normalized_rational const& o)const {
+    return (denominator == o.denominator)
+      ? non_normalized_rational(numerator + o.numerator, denominator)
+      : non_normalized_rational(numerator * o.denominator + denominator * o.numerator,
+                                denominator * o.denominator);
   }
-  void operator+=(non_normalized_rational const& o) {
-    // Simplify only the stupidest case.
-    if (denominator == o.denominator) {
-      numerator += o.numerator;
-    }
-    else {
-      numerator = numerator * o.denominator + denominator * o.numerator;
-      denominator *= o.denominator;
-    }
+  non_normalized_rational& operator+=(non_normalized_rational const& o) {
+    *this = *this + o; return *this;
   }
-  non_normalized_rational operator-(non_normalized_rational const& o)const {
-    // Simplify only the stupidest case.
-    if (denominator == o.denominator) return non_normalized_rational(numerator - o.numerator, denominator);
-    return non_normalized_rational(numerator * o.denominator - denominator * o.numerator, denominator * o.denominator);
+  constexpr non_normalized_rational operator-(non_normalized_rational const& o)const {
+    return (denominator == o.denominator)
+      ? non_normalized_rational(numerator - o.numerator, denominator)
+      : non_normalized_rational(numerator * o.denominator - denominator * o.numerator,
+                                denominator * o.denominator);
   }
-  void operator-=(non_normalized_rational const& o) {
-    // Simplify only the stupidest case.
-    if (denominator == o.denominator) {
-      numerator -= o.numerator;
-    }
-    else {
-      numerator = numerator * o.denominator - denominator * o.numerator;
-      denominator *= o.denominator;
-    }
+  non_normalized_rational& operator-=(non_normalized_rational const& o) {
+    *this = *this - o; return *this;
   }
-  non_normalized_rational operator*(non_normalized_rational const& o)const {
-    // Simplify the stupidest cases.
-    if (numerator == o.denominator) return non_normalized_rational(o.numerator, denominator);
-    if (o.numerator == denominator) return non_normalized_rational(numerator, o.denominator);
-    return non_normalized_rational(numerator * o.numerator, denominator * o.denominator);
+  constexpr non_normalized_rational operator*(non_normalized_rational const& o)const {
+    return
+      (numerator == o.denominator)
+      ?   non_normalized_rational(o.numerator, denominator)
+      :
+      (o.numerator == denominator)
+      ?   non_normalized_rational(numerator, o.denominator)
+      :
+      non_normalized_rational(numerator * o.numerator,
+                              denominator * o.denominator);
   }
-  void operator*=(non_normalized_rational const& o) {
-    // Simplify the stupidest cases.
-    if (numerator == o.denominator) numerator = o.numerator;
-    else if (o.numerator == denominator) denominator = o.denominator;
-    else {
-      numerator *= o.numerator;
-      denominator *= o.denominator;
-    }
+  non_normalized_rational& operator*=(non_normalized_rational const& o) {
+    *this = *this * o; return *this;
   }
-  non_normalized_rational operator/(non_normalized_rational const& o)const {
+  constexpr non_normalized_rational operator/(non_normalized_rational const& o)const {
     return *this * o.reciprocal();
   }
-  void operator/=(non_normalized_rational const& o) {
-    *this *= o.reciprocal();
+  non_normalized_rational& operator/=(non_normalized_rational const& o) {
+    *this *= o.reciprocal(); return *this;
   }
 };
 template<typename IntType> inline std::ostream& operator<<(std::ostream& os, non_normalized_rational<IntType>const& r) {
