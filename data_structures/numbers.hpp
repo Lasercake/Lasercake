@@ -766,37 +766,37 @@ struct int128 {
   uint64_t low;
   uint64_t high;
 
-  bool operator==(int128 other)const {
+  constexpr bool operator==(int128 other)const {
     return high == other.high && low == other.low;
   }
-  bool operator!=(int128 other)const {
+  constexpr bool operator!=(int128 other)const {
     return high != other.high || low != other.low;
   }
-  bool operator<(int128 other)const {
+  constexpr bool operator<(int128 other)const {
     const uint64_t sign_bit = uint64_t(1) << 63;
     return (high^sign_bit) < (other.high^sign_bit) || (high == other.high && low < other.low);
   }
-  bool operator>(int128 other)const {
+  constexpr bool operator>(int128 other)const {
     return other < *this;
   }
-  bool operator<=(int128 other)const {
-    const uint64_t sign_bit = uint64_t(1) << 63;
+  constexpr bool operator<=(int128 other)const {
+    static const uint64_t sign_bit = uint64_t(1) << 63;
     return (high^sign_bit) < (other.high^sign_bit) || (high == other.high && low <= other.low);
   }
-  bool operator>=(int128 other)const {
+  constexpr bool operator>=(int128 other)const {
     return other <= *this;
   }
 };
 #endif
 
-inline uint16_t width_doubling_multiply(uint8_t a1, uint8_t a2) { return (uint16_t)a1 * a2; }
-inline int16_t width_doubling_multiply(int8_t a1, int8_t a2) { return (int16_t)a1 * a2; }
+inline constexpr uint16_t width_doubling_multiply(uint8_t a1, uint8_t a2) { return (uint16_t)a1 * a2; }
+inline constexpr int16_t width_doubling_multiply(int8_t a1, int8_t a2) { return (int16_t)a1 * a2; }
 
-inline uint32_t width_doubling_multiply(uint16_t a1, uint16_t a2) { return (uint32_t)a1 * a2; }
-inline int32_t width_doubling_multiply(int16_t a1, int16_t a2) { return (int32_t)a1 * a2; }
+inline constexpr uint32_t width_doubling_multiply(uint16_t a1, uint16_t a2) { return (uint32_t)a1 * a2; }
+inline constexpr int32_t width_doubling_multiply(int16_t a1, int16_t a2) { return (int32_t)a1 * a2; }
 
-inline uint64_t width_doubling_multiply(uint32_t a1, uint32_t a2) { return (uint64_t)a1 * a2; }
-inline int64_t width_doubling_multiply(int32_t a1, int32_t a2) { return (int64_t)a1 * a2; }
+inline constexpr uint64_t width_doubling_multiply(uint32_t a1, uint32_t a2) { return (uint64_t)a1 * a2; }
+inline constexpr int64_t width_doubling_multiply(int32_t a1, int32_t a2) { return (int64_t)a1 * a2; }
 
 inline uint128 width_doubling_multiply(uint64_t a1, uint64_t a2) {
 #ifdef DETECTED_uint128_t
