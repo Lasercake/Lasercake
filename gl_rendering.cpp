@@ -83,7 +83,6 @@ void gl_renderer::output_gl_data_to_OpenGL(
     glBindBufferARB(GL_ARRAY_BUFFER, state_->rect_VBO_name);
     glBufferDataARB(GL_ARRAY_BUFFER, sizeof(rect_type), nullptr, GL_STREAM_DRAW);
   }
-  // TODO Apparently atexit we should glDeleteBuffers, glDisable, and stuff?
 
   glViewport(0, 0, viewport_width, viewport_height);
 
