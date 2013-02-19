@@ -182,7 +182,10 @@ namespace logger_impl {
     log_buf streambuf_;
     std::ostream os_;
   public:
-    log() : os_(&streambuf_) { os_.imbue(std::locale::classic()); }
+    // The constructor and destructor generate too much code
+    // (including multiple function calls) to be worth inlining.
+    log();
+    ~log();
     template<typename SomethingOutputted>
     inline std::ostream& operator<<(SomethingOutputted&& output) { return os_ << output; }
 
