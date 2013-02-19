@@ -53,7 +53,7 @@ private:
 
 class robot : public mobile_object, public autonomous_object, public object_with_eye_direction, public object_with_player_instructions {
 public:
-  robot(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing),metal_carried_(storage_volume()){}
+  robot(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing),metal_carried_(storage_volume()),mode_("digging"){}
   
   virtual shape get_initial_personal_space_shape()const override;
   virtual shape get_initial_detail_shape()const override;
@@ -69,6 +69,7 @@ private:
   vector3<distance> location_;
   vector3<distance> facing_;
   physical_quantity<lint64_t, units<dim::meter<3>>> metal_carried_;
+  std::string mode_;
 };
 
 class laser_emitter : public mobile_object, public autonomous_object, public object_with_eye_direction {

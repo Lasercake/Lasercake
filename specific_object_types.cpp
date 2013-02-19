@@ -240,16 +240,20 @@ std::string robot::player_instructions()const {
     "arrow keys or mouse: rotate view;  "
     "wasd: move;  "
     "space: jump\n" //hmm should we have a jump and have it do this
-    "c: dig;  "
-    "l: fire dual lasers\n"
+    "clr: switch mode\n"
     "m: make digging robot that goes towards the current facing"
     " and leaves rubble at the current location ("+draw_m3(autorobot_cost)+")\n"
     "p: create solar panel ("+"not"+")\n"
     "o: create refinery ("+draw_m3(refinery_cost)+")\n"
     "b: create conveyor belt ("+draw_m3(conveyor_cost)+")\n"
     "v: rotate conveyor belt\n"
-    "r: fire rockets\n"
-    "Metal carried: " + draw_m3(metal_carried_) + " / " + draw_m3(storage_volume()) + "\n"
+    "\n"
+    "Metal carried: " + draw_m3(metal_carried_) + " / " + draw_m3(storage_volume()) + "\n" + (
+      (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, or collect pure metal" :
+      (mode_ == "laser")   ? "Laser mode: Hold mouse button to fire dual lasers" :
+      (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing" :
+      "Unknown mode, this is an error!"
+    ) + "\n"
     ;
   return instructions;
 }
@@ -320,7 +324,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   vector3<distance> digging_laser_delta = facing_ * 3 / 2;
   vector3<distance> result_delta;
   const object_or_tile_identifier digging_laser_target = laser_find(w, my_id, location_, digging_laser_delta, false, &result_delta);
-  if (input_news.num_times_pressed("c")) {
+  if (mode_ == "digging" && input_news.num_times_pressed(input_representation::left_mouse_button)) {
     if (tile_location const* locp = digging_laser_target.get_tile_location()) {
 #if 0
       if ((carrying_ < robot_max_carrying_capacity) &&
@@ -385,7 +389,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
                              vector3<distance>(-200*fine_distance_units,  200*fine_distance_units,  200*fine_distance_units));
   }
     
-  if (input_news.is_currently_pressed("l")) {
+  if (mode_ == "laser" && input_news.is_currently_pressed(input_representation::left_mouse_button)) {
     const vector3<distance> offset(-facing_.y / 4, facing_.x / 4, 0);
     const vector3<distance> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
     for (int i = 0; i < 2; ++i)
@@ -413,7 +417,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     //fire_standard_laser(w, my_id, location_ + offset, facing_);
     //fire_standard_laser(w, my_id, location_ - offset, facing_);
   }
-  // TODO FIX HACK DUPLICATE CODE
+  
   if (input_news.num_times_pressed("m") && metal_carried_ > autorobot_cost) {
     const shared_ptr<autorobot> aur (new autorobot(location_ + facing_ * 2, facing_));
     if (w.try_create_object(aur) != NO_OBJECT) metal_carried_ -= autorobot_cost;
@@ -430,7 +434,7 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     const shared_ptr<conveyor_belt> con (new conveyor_belt(get_building_tile(w, my_id)));
     if (w.try_create_object(con) != NO_OBJECT) metal_carried_ -= conveyor_cost;
   }
-  if (input_news.is_currently_pressed("r")) {
+  if (mode_ == "rockets" && input_news.is_currently_pressed(input_representation::left_mouse_button)) {
     const uniform_int_distribution<distance> random_delta(-tile_width, tile_width);
     for (int i = 0; i < 20; ++i) {
       const shared_ptr<random_walk_rocket> roc (new random_walk_rocket(
@@ -440,6 +444,9 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
       w.try_create_object(roc);
     }
   }
+  if (input_news.num_times_pressed("c")) mode_ = "digging";
+  if (input_news.num_times_pressed("l")) mode_ = "laser";
+  if (input_news.num_times_pressed("r")) mode_ = "rockets";
 }
 
 vector3<tile_coordinate> robot::get_building_tile(world& w, object_identifier my_id)const { // TODO: This use of world& should be able to be world const&
