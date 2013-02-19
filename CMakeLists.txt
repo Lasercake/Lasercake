@@ -80,14 +80,35 @@ endif()
 macro(semicolons_to_spaces output_var_name)
 	string(REPLACE ";" " " "${output_var_name}" "${ARGN}")
 endmacro()
+
+#Usage: make_into_valid_varname(prefix_${some_text})
+#Then use: ${prefix_${some_text}} where you need the validized value.
+# Currently it just turns non-ASCII-alnum chars into underscore.
+# We need this because in compile tests CMake passes -Dvarname
+# to the compiler which, with gcc -Werror, errors for invalidly named
+# varnames.
+macro(make_into_valid_varname text)
+	# Don't use [a-z] in case the locale is different than "C";
+	# don't use [[:alnum:]] because non-ASCII letters aren't
+	# valid in all identifiers; don't rely on the CMake regex
+	# engine flouting any of the above.
+	string(REGEX REPLACE "[^_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789]" "_" "${text}" "${text}")
+endmacro()
 macro(show_paths output_var_name)
 	semicolons_to_spaces(SHOW_PATHS_white_paths "${ARGN}")
 	string(REPLACE "${CMAKE_SOURCE_DIR}/" "" "${output_var_name}" "${SHOW_PATHS_white_paths}")
 endmacro()
 
 set(OPT_FLAGS -O3)
-# clang: -ferror-limit=15 not -fmax-errors=15
-set(WARNING_FLAGS -g -Wall -Wextra -Wno-unknown-pragmas -fmax-errors=15 -fdiagnostics-show-option)
+set(WARNING_FLAGS )
+include(CheckCXXCompilerFlag)
+foreach(flag -g -Wall -Wextra -Wno-unknown-pragmas -fmax-errors=5 -ferror-limit=5 -fdiagnostics-show-option)
+	make_into_valid_varname("has_flag_${flag}")
+	check_cxx_compiler_flag("-Werror ${flag}" ${has_flag_${flag}})
+	if(${has_flag_${flag}})
+		set(WARNING_FLAGS ${WARNING_FLAGS} ${flag})
+	endif()
+endforeach(flag)
 if(WIN32)
 	# MinGW has various problems with -std=c++0x.  For example,
 	# the compiler with -std=c++0x defines __STRICT_ANSI__
