@@ -998,6 +998,18 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
     }
   }
 
+  // HACK - limit to about 60 FPS
+  // TODO - use Qt timer events instead.
+  // TODO - make this configurable and/or changeable
+  // at runtime.
+  const microseconds_t frame_duration_at_60fps = 1000000 / 60;
+  const microseconds_t estimated_extra_delay_after_sleep = frame_duration_at_60fps / 6;
+  const microseconds_t want_to_sleep =
+    frame_duration_at_60fps - last_gl_render_microseconds - estimated_extra_delay_after_sleep;
+  if(want_to_sleep > 0) {
+    sleeper::usleep(want_to_sleep);
+  }
+
   monotonic_microseconds_at_beginning_of_frame_ = end_frame_monotonic_microseconds;
 }
 

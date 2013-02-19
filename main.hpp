@@ -77,6 +77,14 @@ inline std::ostream& operator<<(std::ostream& os, config_struct const& config) {
     << '}';
 }
 
+// TODO use Qt timer events where possible instead of this.
+struct sleeper : private QThread {
+public:
+  using QThread::sleep;
+  using QThread::msleep;
+  using QThread::usleep;
+};
+
 // for use in its own QThread
 class LasercakeSimulator : public QObject {
   Q_OBJECT
