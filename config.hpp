@@ -184,9 +184,14 @@ namespace logger_impl {
   public:
     log() : os_(&streambuf_) { os_.imbue(std::locale::classic()); }
     template<typename SomethingOutputted>
-    inline std::ostream& operator<<(SomethingOutputted&& output) {
-      return os_ << output;
-    }
+    inline std::ostream& operator<<(SomethingOutputted&& output) { return os_ << output; }
+
+    // Apparently the compiler can't deduce SomethingOutputted when it's
+    // a function (such as std::endl), so we have to list these overloads too.
+    inline std::ostream& operator<<(std::ios_base& (*output)(std::ios_base&)) { return os_ << output; }
+    inline std::ostream& operator<<(std::ios& (*output)(std::ios&)) { return os_ << output; }
+    inline std::ostream& operator<<(std::ostream& (*output)(std::ostream&)) { return os_ << output; }
+
     // it's not meant to be copied/moved/anything
     log(log const&) = delete;
     log& operator=(log const&) = delete;

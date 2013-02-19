@@ -574,7 +574,9 @@ void LasercakeGLThread::run() {
         gl_thread_data_->wait_for_instruction.wait(&gl_thread_data_->gl_data_lock);
       }
       if(gl_thread_data_->quit_now) {
+        LOG << "Releasing OpenGL state... " << std::flush;
         gl_renderer_.fini();
+        LOG << "Done releasing OpenGL state. " << std::flush;
         return;
       }
       gl_data_ptr = gl_thread_data_->current_data;
@@ -598,9 +600,17 @@ void LasercakeGLWidget::paintEvent(QPaintEvent*) {
 }
 void LasercakeGLWidget::prepare_to_cleanly_close_() {
   if(!has_quit_) {
+    // Send debug messages in case waiting for any of these
+    // operations freezes, so that people can tell exactly what
+    // happened.
+
     // Just in case closing doesn't cause the OS to
     // release a mouse grab, we do so explicitly.
-    ungrab_input_();
+    if(input_is_grabbed_) {
+      LOG << "Ungrabbing input... " << std::flush;
+      ungrab_input_();
+      LOG << "Done ungrabbing input. " << std::endl;
+    }
 
     // Some OpenGL implementations don't like being
     // silently terminated, because they are poorly tested
@@ -611,18 +621,25 @@ void LasercakeGLWidget::prepare_to_cleanly_close_() {
 
     // TODO should we catch signals like Ctrl-C
     // in order to clean up even in their wake?
+    LOG << (use_separate_gl_thread_ ? "Quitting OpenGL thread... "
+                                    : "Releasing OpenGL state... ") << std::flush;
     {
       QMutexLocker lock(&gl_thread_data_->gl_data_lock);
       gl_thread_data_->quit_now = true;
       ++gl_thread_data_->revision;
     }
     if(use_separate_gl_thread_) {
+      gl_thread_data_->interrupt.store(true);
       gl_thread_data_->wait_for_instruction.wakeAll();
       thread_.wait();
     }
     else {
       thread_.gl_renderer_.fini();
     }
+    LOG << (use_separate_gl_thread_ ? "Done quitting OpenGL thread. "
+                                    : "Done releasing OpenGL state. ") << std::flush;
+
+    LOG << std::endl;
     has_quit_ = true;
   }
 }
