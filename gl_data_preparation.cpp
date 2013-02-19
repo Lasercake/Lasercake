@@ -116,30 +116,30 @@ namespace /* anonymous */ {
 // get tedious.  Hmm.
 
 template<typename Int>
-inline vector3<GLfloat> cast_vector3_to_float(vector3<Int> v) {
+constexpr inline vector3<GLfloat> cast_vector3_to_float(vector3<Int> v) {
   return vector3<GLfloat>(get_primitive_float(v.x), get_primitive_float(v.y), get_primitive_float(v.z));
 }
 template<typename Int>
-inline vector3<double> cast_vector3_to_double(vector3<Int> v) {
+constexpr inline vector3<double> cast_vector3_to_double(vector3<Int> v) {
   return vector3<double>(get_primitive_double(v.x), get_primitive_double(v.y), get_primitive_double(v.z));
 }
 
-inline GLfloat convert_distance_to_GL(distance distance) {
+constexpr inline GLfloat convert_distance_to_GL(distance distance) {
   return get_primitive_float(distance / fine_distance_units);
 }
-inline vector3<GLfloat> convert_displacement_to_GL(vector3<distance> distance) {
+constexpr inline vector3<GLfloat> convert_displacement_to_GL(vector3<distance> distance) {
   return cast_vector3_to_float(distance / fine_distance_units);
 }
 
-inline double convert_distance_to_double(distance distance) {
+constexpr inline double convert_distance_to_double(distance distance) {
   return get_primitive_double(distance / fine_distance_units);
 }
-inline vector3<double> convert_displacement_to_double(vector3<distance> distance) {
+constexpr inline vector3<double> convert_displacement_to_double(vector3<distance> distance) {
   return cast_vector3_to_double(distance / fine_distance_units);
 }
 
-static const vector3<GLfloat> tile_size_float = convert_displacement_to_GL(tile_size);
-static const vector3<double> tile_size_double = convert_displacement_to_double(tile_size);
+static constexpr vector3<GLfloat> tile_size_float = convert_displacement_to_GL(tile_size);
+static constexpr vector3<double> tile_size_double = convert_displacement_to_double(tile_size);
 
 inline vector3<GLfloat> convert_coordinates_to_GL(vector3<distance> view_center, vector3<distance> input) {
   return cast_vector3_to_float((input - view_center) / fine_distance_units);
