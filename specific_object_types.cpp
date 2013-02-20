@@ -249,7 +249,7 @@ std::string robot::player_instructions()const {
       (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing." :
       (mode_ == "building_conveyor") ? "Conveyor mode: Click to build a conveyor belt ("+draw_m3(conveyor_cost)+") or click a conveyor to rotate it." :
       (mode_ == "building_refinery") ? "Refinery mode: Click to build a refinery ("+draw_m3(refinery_cost)+")." :
-      (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot ("+draw_m3(autorobot_cost)+"). (TODO: clean up and document these robots)" :
+      (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot ("+draw_m3(autorobot_cost)+").\nIt will dig up/down/straight depending on the up/down angle you're facing when you build it.\nIt will move in a cardinal direction closest to the left/right angle you're facing when you build it.\nIt will dump its rubble at the x/y position where it was created." :
       "Unknown mode, this is an error!"
     ) + "\n"
     ;
