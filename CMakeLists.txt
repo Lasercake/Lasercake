@@ -12,7 +12,7 @@ option (USE_BUNDLED_GLM "On: Use glm from ./bundled_libs/; off: use system glm."
 option (USE_BUNDLED_GLEW "On: Use GLEW from ./bundled_libs/; off: use system GLEW." ON)
 option (THREADS "On: Use Qt multithreading for parallelism; off: don't link/use threads." ON)
 option (TIMING "On: Use Boost.Chrono to count performance (e.g. FPS); off: don't count perf." ON)
-option (GLIB "Use GLib slices for some memory allocation (faster; requires glib)." ON)
+option (GLIB "Use GLib slices for some memory allocation (requires glib)." OFF)
 option (USE_BOUNDS_CHECKED_INTS "Check for overflow of most int computations at runtime (slow)." OFF)
 option (PARANOID "Turn on various code paranoia checks (slow)." OFF)
 option (BUILD_SELF_TESTS "Build Lasercake's self-testing code component (recommended)." ON)
