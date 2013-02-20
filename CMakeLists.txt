@@ -11,11 +11,15 @@ option (USE_BUNDLED_GLEW "On: Use GLEW from ./bundled_libs/; off: use system GLE
 option (GLIB "Use GLib slices for some memory allocation (requires glib)." OFF)
 option (USE_BOUNDS_CHECKED_INTS "Check for overflow of most int computations at runtime (slow)." OFF)
 option (PARANOID "Turn on various code paranoia checks (slow)." OFF)
+option (_GLIBCXX_DEBUG "Defines _GLIBCXX_DEBUG iterator-validity debugging (slow)." OFF)
 option (BUILD_SELF_TESTS "Build Lasercake's self-testing code component (recommended)." ON)
 
 include (FindPkgConfig)
 set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_SOURCE_DIR}/cmake")
 
+if (_GLIBCXX_DEBUG)
+	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -D_GLIBCXX_DEBUG)
+endif()
 if (GLIB)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DLASERCAKE_USE_GLIB=1)
 	find_package(Glib)
