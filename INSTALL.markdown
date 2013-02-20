@@ -32,7 +32,7 @@ with -DUSE_BUNDLED_*=NO for * = BOOST or GLEW or GLM.
 ### tools ###
 
 CMake
-A recent C++ compiler (e.g. GCC >= 4.6, CLang >= 3.1)
+A recent C++ compiler (e.g. GCC >= 4.6, CLang >= 3.2)
     that supports the C++0x features Lasercake uses.
 
 optionally, Python (>= 2.6, including >= 3) for misc
