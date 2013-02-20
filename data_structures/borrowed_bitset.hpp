@@ -28,9 +28,6 @@
 #include <cstring> // for memset
 
 #include "../utils.hpp"
-#if 0 && !LASERCAKE_NO_THREADS
-#include <boost/thread/thread.hpp>
-#endif
 
 typedef uint64_t bit_index_type;
 
@@ -201,7 +198,7 @@ inline
 zeroable_bitset_array get_this_thread_array_of_bitset_lists() {
   if(array_of_bitset_lists == nullptr) {
     array_of_bitset_lists = new zeroable_bitset_list[array_of_bitset_lists_len];
-    #if 0 && !LASERCAKE_NO_THREADS
+    #if 0
     // No Boost.Thread for now; fewer deps.
     // Currently, the borrowed_bitset won't leak memory in Lasercake
     // because we only create a small, finite number of threads.

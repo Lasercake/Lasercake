@@ -407,11 +407,9 @@ int main(int argc, char *argv[])
       ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
       ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
       ("avoid-qt,Q", "debug: don't call Qt at all (implies --no-gui and --no-threads; attempts to be even more deterministic than normal)")
-#if !LASERCAKE_NO_THREADS
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
       ("no-opengl-thread", bool_switch_off(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls")
-#endif
 #if !LASERCAKE_NO_SELF_TESTS
       ("run-self-tests", "alternate run mode: run Lasercake's self-tests")
 #endif
@@ -430,7 +428,7 @@ int main(int argc, char *argv[])
       config.have_gui = false;
     }
 
-    if(LASERCAKE_NO_THREADS || vm.count("no-threads")) {
+    if(vm.count("no-threads")) {
       config.use_simulation_thread = false;
       config.use_opengl_thread = false;
     }

@@ -113,6 +113,11 @@
     #define override
   #endif
 
+  #if defined(__GNUC__)
+    // current compilers (e.g. GCC 4.7, Clang 3.1) don't seem to support the 'thread_local' C++11 name
+    #define thread_local __thread
+  #endif
+
   // Don't use LASERCAKE_IT_SEEMS_TO_BE_WINDOWS outside this fake feature
   // detection section if you can help it! Ask about specific features
   // instead.
@@ -123,16 +128,6 @@
     // TODO use GetProcessMemoryInfo or the like on Windows, if we care enough
     #define LASERCAKE_HAVE_SYS_RESOURCE_H 1
   #endif
-#endif
-
-#if !LASERCAKE_NO_THREADS
-  #if defined(__GNUC__)
-    // current compilers (e.g. GCC 4.7, Clang 3.1) don't seem to support the 'thread_local' C++11 name
-    #define thread_local __thread
-  #endif
-  const bool LASERCAKE_NO_THREADS = false;
-#else
-  #define thread_local
 #endif
 
 // (not enabled unless you enable it) #define USE_BOUNDS_CHECKED_INTS 1
@@ -211,6 +206,7 @@ namespace logger_impl {
   };
 }
 
+// Usage:
 // LOG << this << that << std::hex << the other thing << "\n";
 // Constructs a temporary buffer on the stack, used to log the
 // data to stderr.  Flushes data when destroyed (typically at the
