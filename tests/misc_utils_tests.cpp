@@ -27,7 +27,7 @@
 #include <array>
 #include <algorithm>
 #include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_int.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
 
 namespace /* anonymous */ {
 
@@ -259,7 +259,7 @@ private:
 };
 BOOST_AUTO_TEST_CASE( boost_before_1_50_bug ) {
   MGen gen;
-  const int64_t val = boost::uniform_int<int64_t>(-50, 50)(gen);
+  const int64_t val = boost::random::uniform_int_distribution<int64_t>(-50, 50)(gen);
   BOOST_CHECK_GE(val, -50);
   BOOST_CHECK_LE(val, 50);
 }
