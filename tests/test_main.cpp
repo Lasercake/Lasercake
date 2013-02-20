@@ -19,25 +19,23 @@
 
 */
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
-
-#define main(argc, argv) lasercake_test_main(argc, argv)
-
-
-#ifdef LASERCAKE_USE_BOOSTBCP
-
-#define BOOST_TEST_MAIN
-#include <boost/test/included/unit_test.hpp>
-
-#else
-
+#ifndef LASERCAKE_USE_BOOSTBCP
 #define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
-
 #endif
+#include "test_header.hpp"
+#include "test_main.hpp"
 
+// boost::unit_test::unit_test_main's first argument is one of two different
+// possible function pointer types, depending on compile options.  Luckily
+// C++ allows overloading of &overloaded_function when the result is passed
+// to something that requires a specific function pointer type.
+bool init_unit_test_suite() {
+  return true;
+}
+boost::unit_test::test_suite* init_unit_test_suite(int, char**) {
+  return nullptr;
+}
 
-#undef main
+int lasercake_test_main(int argc, char *argv[]) {
+  return boost::unit_test::unit_test_main(&init_unit_test_suite, argc, argv);
+}
