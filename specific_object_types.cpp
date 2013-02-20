@@ -248,7 +248,7 @@ std::string robot::player_instructions()const {
       (mode_ == "laser")   ? "Laser mode: Hold mouse button to fire dual lasers." :
       (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing." :
       (mode_ == "building_conveyor") ? "Conveyor mode: Click to build a conveyor belt ("+draw_m3(conveyor_cost)+") or click a conveyor to rotate it." :
-      (mode_ == "building_refinery") ? "Conveyor mode: Click to build a refinery ("+draw_m3(refinery_cost)+")." :
+      (mode_ == "building_refinery") ? "Refinery mode: Click to build a refinery ("+draw_m3(refinery_cost)+")." :
       (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot ("+draw_m3(autorobot_cost)+"). (TODO: clean up and document these robots)" :
       "Unknown mode, this is an error!"
     ) + "\n"
