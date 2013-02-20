@@ -59,6 +59,8 @@ struct vertex {
 
   vertex(header_GLfloat x, header_GLfloat y, header_GLfloat z) : x(x), y(y), z(z) {}
   /* implicit conversion */ vertex(vector3<header_GLfloat> const& v) : x(v.x), y(v.y), z(v.z) {}
+  /* implicit conversion */ vertex(glm::vec3 const& v) : x(v.x), y(v.y), z(v.z) {}
+  /* implicit conversion */ vertex(glm::dvec3 const& v) : x(v.x), y(v.y), z(v.z) {}
 
   header_GLfloat x, y, z;
 };
