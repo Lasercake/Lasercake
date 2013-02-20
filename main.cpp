@@ -41,18 +41,15 @@
 #include <sstream>
 #include <locale>
 
-#if !LASERCAKE_NO_TIMING
 #ifdef LASERCAKE_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
-
 #ifndef BOOST_CHRONO_HEADER_ONLY
 #define BOOST_CHRONO_HEADER_ONLY
 #endif
 #include <boost/chrono.hpp>
 #include <boost/chrono/process_cpu_clocks.hpp>
 #include <boost/chrono/thread_clock.hpp>
-#endif
 
 #include <boost/scope_exit.hpp>
 #pragma GCC diagnostic push
@@ -70,12 +67,10 @@
 
 namespace /* anonymous */ {
 
-#if !LASERCAKE_NO_TIMING
 namespace chrono = boost::chrono;
-#endif
 
 int64_t get_this_process_mem_usage_megabytes() {
-#if defined(LASERCAKE_HAVE_SYS_RESOURCE_H) && !LASERCAKE_NO_TIMING
+#if defined(LASERCAKE_HAVE_SYS_RESOURCE_H)
   struct rusage ru;
   getrusage(RUSAGE_SELF, &ru);
   #if defined(__APPLE__) || defined(__MACOSX__)
@@ -88,25 +83,21 @@ int64_t get_this_process_mem_usage_megabytes() {
 #endif
 }
 microseconds_t get_this_thread_microseconds() {
-#if !LASERCAKE_NO_TIMING && defined(BOOST_CHRONO_HAS_THREAD_CLOCK)
+#if defined(BOOST_CHRONO_HAS_THREAD_CLOCK)
   return chrono::duration_cast<chrono::microseconds>(chrono::thread_clock::now().time_since_epoch()).count();
 #else
   return 0;
 #endif
 }
 microseconds_t get_this_process_microseconds() {
-#if !LASERCAKE_NO_TIMING && defined(BOOST_CHRONO_HAS_PROCESS_CLOCKS)
+#if defined(BOOST_CHRONO_HAS_PROCESS_CLOCKS)
   return chrono::duration_cast<chrono::microseconds>(chrono::process_real_cpu_clock::now().time_since_epoch()).count();
 #else
   return 0;
 #endif
 }
 microseconds_t get_monotonic_microseconds() {
-#if !LASERCAKE_NO_TIMING
   return chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now().time_since_epoch()).count();
-#else
-  return 0;
-#endif
 }
 
 // Usage example:
@@ -260,7 +251,7 @@ LasercakeSimulator::LasercakeSimulator(QObject* parent) : QObject(parent) {}
 void LasercakeSimulator::init(worldgen_function_t worldgen, config_struct config) {
   const microseconds_t microseconds_before_initing = get_this_thread_microseconds();
   world_ptr_.reset(new world(worldgen));
-  const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers);
+  const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers, config.show_frame_timing);
   currently_focused_object_ = robot_id;
   view_ptr_.reset(new view_on_the_world(world_center_fine_coords));
   view_ptr_->drawing_debug_stuff = config.initially_drawing_debug_stuff;
@@ -407,6 +398,7 @@ int main(int argc, char *argv[])
       ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
       ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
       ("avoid-qt,Q", "debug: don't call Qt at all (implies --no-gui and --no-threads; attempts to be even more deterministic than normal)")
+      ("no-frame-timing", bool_switch_off(&config.show_frame_timing), "don't log timing info each frame")
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
       ("no-opengl-thread", bool_switch_off(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls")
@@ -990,16 +982,11 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
   const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
   const microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - monotonic_microseconds_at_beginning_of_frame_;
 
-//TODO runtime flag to disable all debug prints
-  LOG << output.extra_debug_info;
-//TODO make this runtime flag
-#if LASERCAKE_NO_TIMING
-  const bool show_timing = false;
-#else
-  const bool show_timing = true;
-#endif
+  if(config_.show_frame_timing) {
+    LOG << output.extra_debug_info;
+  }
 
-  if(show_timing) { LOG
+  if(config_.show_frame_timing) { LOG
   << "Frame " << std::left << std::setw(4) << frame_ << std::right << ":"
   //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
   // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
@@ -1020,7 +1007,7 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
     monotonic_microseconds_at_beginning_of_ten_frame_block_ = end_frame_monotonic_microseconds;
     const microseconds_t ending = monotonic_microseconds_at_beginning_of_ten_frame_block_;
 
-    if(show_timing) { LOG
+    if(config_.show_frame_timing) { LOG
     << show_microseconds_per_frame_as_fps((ending - beginning) / 10)
     << " fps over the last ten frames " << (frame_-10) << "-" << frame_ << ".\n";
     }
@@ -1030,7 +1017,7 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
     monotonic_microseconds_at_beginning_of_hundred_frame_block_ = end_frame_monotonic_microseconds;
     const microseconds_t ending = monotonic_microseconds_at_beginning_of_hundred_frame_block_;
 
-    if(show_timing) { LOG
+    if(config_.show_frame_timing) { LOG
     << show_microseconds_per_frame_as_fps((ending - beginning) / 100)
     << " fps over the last hundred frames " << (frame_-100) << "-" << frame_ << ".\n";
     }

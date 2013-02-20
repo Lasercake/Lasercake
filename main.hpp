@@ -59,6 +59,7 @@ struct config_struct {
   bool have_gui;
   bool run_drawing_code;
   bool initially_drawing_debug_stuff;
+  bool show_frame_timing;
   int64_t exit_after_frames;
   bool use_opengl_thread;
   bool use_simulation_thread;

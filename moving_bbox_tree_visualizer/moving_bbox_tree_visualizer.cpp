@@ -36,30 +36,25 @@
 #include <vector>
 
 
-#if !LASERCAKE_NO_TIMING
 #ifdef LASERCAKE_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
-
 #define BOOST_CHRONO_HEADER_ONLY
 #include <boost/chrono.hpp>
 #include <boost/chrono/process_cpu_clocks.hpp>
 #include <boost/chrono/thread_clock.hpp>
-#endif
 
 
 #include "../utils.hpp"
 //#include "../data_structures/geometry.hpp"
 
 
-#if !LASERCAKE_NO_TIMING
 namespace chrono = boost::chrono;
-#endif
 
 typedef int64_t microseconds_t;
 
 microseconds_t get_this_thread_microseconds() {
-#if !LASERCAKE_NO_TIMING && defined(BOOST_CHRONO_HAS_THREAD_CLOCK)
+#if defined(BOOST_CHRONO_HAS_THREAD_CLOCK)
   return chrono::duration_cast<chrono::microseconds>(chrono::thread_clock::now().time_since_epoch()).count();
 #else
   return 0;
