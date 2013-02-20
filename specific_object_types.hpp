@@ -113,7 +113,7 @@ private:
 
 class autorobot : public mobile_object, public autonomous_object, public object_with_eye_direction {
 public:
-  autorobot(vector3<distance> location, vector3<distance> facing);
+  autorobot(vector3<tile_coordinate> location, vector3<distance> facing);
 
   virtual shape get_initial_personal_space_shape()const override;
   virtual shape get_initial_detail_shape()const override;
@@ -123,7 +123,7 @@ public:
   vector3<distance> get_facing()const override { return facing_; }
 private:
   vector3<distance> location_;
-  vector3<distance> initial_location_;
+  vector3<tile_coordinate> initial_location_;
   vector3<distance> facing_;
   int carrying_;
   std::vector<minerals> carried_minerals;

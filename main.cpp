@@ -150,7 +150,7 @@ object_identifier init_test_world_and_return_our_robot(
     vector3<distance>((5<<9)*fine_distance_units, (3<<9)*fine_distance_units, 0 /*TODO UNITS make class vector3_direction*/)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
   const shared_ptr<autorobot> aur (new autorobot(
-    laser_loc - vector3<distance>(tile_width*4,tile_width*4,tile_width*2),
+    get_min_containing_tile_coordinates(laser_loc - vector3<distance>(tile_width*4,tile_width*4,tile_width*2)),
     vector3<distance>((5<<9)*fine_distance_units, (3<<9)*fine_distance_units, 0 /*TODO UNITS make class vector3_direction*/)));
   w.try_create_object(aur); // we just assume that this works
 
