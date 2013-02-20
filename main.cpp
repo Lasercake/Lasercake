@@ -761,8 +761,6 @@ void LasercakeGLWidget::grab_input_() {
     input_is_grabbed_ = true;
     setMouseTracking(true);
     grabMouse();
-    //QApplication::desktop()->cursor().setShape(Qt::BlankCursor);
-    //cursor().setShape(Qt::BlankCursor);
     setCursor(QCursor(Qt::BlankCursor));
   }
 }
@@ -771,6 +769,7 @@ void LasercakeGLWidget::ungrab_input_() {
     setMouseTracking(false);
     releaseMouse();
     input_is_grabbed_ = false;
+    setCursor(QCursor(Qt::ArrowCursor));
   }
 }
 
@@ -828,17 +827,24 @@ void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
     //TODO why handle window things here but other things in LasercakeController::key_changed?
     switch(event->key()) {
       case Qt::Key_Escape:
-        close();
+        ungrab_input_();
+        return;
+      case Qt::Key_Q:
+        if((event->modifiers() & Qt::ControlModifier)) {
+          close();
+          return;
+        }
         break;
       case Qt::Key_F11:
         toggle_fullscreen();
-        break;
+        return;
       case Qt::Key_F:
         // F11 does Exposé stuff in OS X, and Command-Shift-F seems to be
         // the "fullscreen" convention there.
         // (Qt maps OSX command-key to Qt::Key_Control.)
         if((event->modifiers() & Qt::ShiftModifier) && (event->modifiers() & Qt::ControlModifier)) {
           toggle_fullscreen();
+          return;
         }
         break;
     }
