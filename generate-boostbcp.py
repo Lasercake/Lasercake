@@ -33,6 +33,11 @@ shutil.copy(boost_dir+'/'+boost_license_file_name,
 bcp_cmdline = ['bcp', '--scan', '--boost='+boost_dir] + sources + [boostbcp_dir]
 subprocess.check_call(bcp_cmdline)
 
+# We define BOOST_SYSTEM_NO_DEPRECATED and BOOST_CHRONO_HEADER_ONLY which
+# together make Boost Chrono header-only and not depend on the system .cpp:s.
+try: shutil.rmtree(boostbcp_dir+'/libs/system')
+except FileNotFoundError: pass
+
 # (We are not using the Boost.Test implementation at all anymore.)
 # # In boostbcp mode, we include a (documented) header-only version of test
 # # in tests/test_main.cpp.  This avoids complications with the test lib
@@ -49,7 +54,8 @@ except FileNotFoundError: pass
 # (C++11 std::thread would be fine too, but seemed to be not widely
 #  enough implemented yet compared to the other C++11 features we use
 #  -June 2012.)
-shutil.rmtree(boostbcp_dir+'/libs/thread')
+try: shutil.rmtree(boostbcp_dir+'/libs/thread')
+except FileNotFoundError: pass
 
 # Work around https://svn.boost.org/trac/boost/ticket/7081
 # (which is fixed in Boost 1.51) :
