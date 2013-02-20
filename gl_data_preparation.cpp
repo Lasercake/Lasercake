@@ -302,10 +302,8 @@ void push_wireframe_convex_polygon(
     vcenters[i] += width * average_direction(vs[i-1] - vs[i], vs[i+1] - vs[i]);
   }
   vcenters[last] += width * average_direction(vs[last-1] - vs[last], vs[0] - vs[last]);
-  glm::vec3 towards_center;
-  int i = 1;
 //  push_vertex(coll.triangle_strip, vs[i], c);
-  for( ; i < num_vertices + 1/*2*/; ++i) {
+  for(int i = 0; i < last; ++i) {
     push_triangle(coll, vs[i], c,
                         vcenters[i], ceethrough,
                         vs[i+1], c
@@ -319,6 +317,14 @@ void push_wireframe_convex_polygon(
     //push_vertex(coll.triangle_strip, vs[i], c);
     //push_vertex(coll.triangle_strip, vs[i] + towards_center, c);
   }
+    push_triangle(coll, vs[last], c,
+                        vcenters[last], ceethrough,
+                        vs[0], c
+                 );
+    push_triangle(coll, vcenters[last], ceethrough,
+                        vs[0], c,
+                        vcenters[0], ceethrough
+                 );
 //  push_vertex(coll.triangle_strip, vs[i] + towards_center, c);
 }
 void push_wireframe(vector3<distance> const& view_loc,
@@ -1031,8 +1037,13 @@ void view_on_the_world::prepare_gl_data(
       }
       else {
         if(shared_ptr<robot> rob = dynamic_pointer_cast<robot>(objp)) {
-          push_wireframe(view_loc, coll,
-            fine_bounding_box_of_tile(rob->get_building_tile(w, id)),
+          const vector3<tile_coordinate> building_tile = rob->get_building_tile(w, id);
+          gl_collection& tile_coll = gl_collections_by_distance.at(
+            get_primitive_int(tile_manhattan_distance_to_tile_bounding_box(
+                                building_tile, view_tile_loc_rounded_down))
+          );
+          push_wireframe(view_loc, tile_coll,
+            fine_bounding_box_of_tile(building_tile),
             tile_width / 10,
             color(0xffff0033));
         }
