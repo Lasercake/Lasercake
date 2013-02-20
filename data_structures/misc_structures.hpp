@@ -203,7 +203,18 @@ public:
     return constexpr_require_and_return(i < info::data_len, "bounds overflow", buf_[i]);
   }
 
-  small_string(const std::string s) {
+  explicit small_string(const char* s) {
+    size_t i = 0;
+    for(; s[i] != '\0'; ++i) {
+      caller_error_if(i >= info::max_length, "string too large for small_string");
+      buf_[i] = s[i];
+    }
+    for(; i < info::data_len; ++i) {
+      buf_[i] = '\0';
+    }
+  }
+
+  explicit small_string(const std::string s) {
     caller_correct_if(s.size() <= info::max_length, "string too large for small_string");
     size_t i = 0;
     for(; i < s.size(); ++i) {

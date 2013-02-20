@@ -710,7 +710,7 @@ input_representation::key_type q_key_event_to_input_rep_key_type(QKeyEvent* even
     as_text = keyString;
   //}
   QString lowercase_text = QApplication::keyboardInputLocale().toLower(as_text);
-  std::string result(lowercase_text.toUtf8().constData());
+  input_representation::key_type result(lowercase_text.toUtf8().constData());
   return result;
 }
 }

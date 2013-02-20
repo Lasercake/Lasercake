@@ -67,7 +67,7 @@ inline key_type mouse_button_n(int n) {
   caller_error_if(n < 4, "that's one of the regular buttons");
   std::stringstream ss;
   ss << "button " << n;
-  return ss.str();
+  return key_type(ss.str());
 }
 
 enum pressed_or_released { PRESSED, RELEASED };
