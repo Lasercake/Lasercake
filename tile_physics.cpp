@@ -254,6 +254,19 @@ state_t const& get_state(world const& w) {
   return get_state(w.tile_physics());
 }
 
+template<typename AssociativeContainer, typename Inserted>
+inline void unique_insert(AssociativeContainer& container, Inserted&& new_pair) {
+  const bool was_new = container.insert(new_pair).second;
+  assert(was_new);  // asserts must never contain side-effects
+                    // because they can be defined away
+}
+template<typename AssociativeContainer, typename Deleted>
+inline void unique_erase(AssociativeContainer& container, Deleted&& old_pair) {
+  const bool existed = container.erase(old_pair);
+  assert(existed);  // asserts must never contain side-effects
+                    // because they can be defined away
+}
+
 water_group_identifier make_new_water_group(
    water_group_identifier& next_water_group_identifier,
    persistent_water_groups_t& persistent_water_groups) {
@@ -526,8 +539,8 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
     void try_collect_loc(tile_location const& loc) {
       if (is_ungrouped_surface_tile(loc, water_groups_by_surface_tile)) {
         frontier.push_back(loc);
-        assert(new_group.surface_tiles.insert(loc).second);
-        assert(water_groups_by_surface_tile.insert(make_pair(loc, new_group_id)).second);
+        unique_insert(new_group.surface_tiles, loc);
+        unique_insert(water_groups_by_surface_tile, make_pair(loc, new_group_id));
         if (loc.get_neighbor<zplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER) new_group.suckable_tiles_by_height.insert(loc);
     
         // This DOES handle first-initialization properly; it makes some unnecessary checks, but
@@ -772,7 +785,7 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
     larger_group.num_tiles_by_height[p.first] += p.second;
   }
   for (auto const& l : smaller_group.surface_tiles) {
-    assert(larger_group.surface_tiles.insert(l).second);
+    unique_insert(larger_group.surface_tiles, l);
     auto foo = water_groups_by_surface_tile.find(l);
     assert_if_ASSERT_EVERYTHING(foo != water_groups_by_surface_tile.end());
     assert_if_ASSERT_EVERYTHING(foo->second == destroyed_group_id);
@@ -835,7 +848,8 @@ void replace_substance_impl(
       water_group_identifier group_id = get_water_group_id_by_grouped_tile(state, tile_pulled_from);
       persistent_water_group_info& group = persistent_water_groups.find(group_id)->second;
       
-      assert(group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state, loc, active_fluids));
+      const bool pushed = group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state, loc, active_fluids);
+      assert(pushed);
       // That function will have run the body of replace_substance on this tile; we don't need to.
       return;
     }
@@ -844,7 +858,8 @@ void replace_substance_impl(
         if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
           water_group_identifier group_id = get_water_group_id_by_grouped_tile(state, adj_loc);
           persistent_water_group_info& group = persistent_water_groups.find(group_id)->second;
-          assert(!group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state, loc, active_fluids));
+          const bool pushed = group.mark_tile_as_pushable_and_return_true_if_it_is_immediately_pushed_into(state, loc, active_fluids);
+          assert(!pushed);
         }
       }
     }
@@ -1036,8 +1051,9 @@ void replace_substance_impl(
           }
         }
         if (!adjacent_tile_has_any_adjacent_tiles_that_are_not_groupable_water) {
-          if (water_group->surface_tiles.erase(adj_loc))
-            assert(water_groups_by_surface_tile.erase(adj_loc));
+          if (water_group->surface_tiles.erase(adj_loc)) {
+            unique_erase(water_groups_by_surface_tile, adj_loc);
+          }
         }
       }
       else {
@@ -1045,8 +1061,9 @@ void replace_substance_impl(
       }
     }
     if (there_are_any_adjacent_tiles_that_are_not_groupable_water) {
-      if (water_group->surface_tiles.insert(loc).second)
-        assert(water_groups_by_surface_tile.insert(make_pair(loc, water_group_id)).second);
+      if (water_group->surface_tiles.insert(loc).second) {
+        unique_insert(water_groups_by_surface_tile, make_pair(loc, water_group_id));
+      }
     }
     
     ++water_group->num_tiles_by_height[loc.coords().z];
@@ -1075,7 +1092,7 @@ void replace_substance_impl(
   if (old_substance_type == GROUPABLE_WATER && new_substance_type != GROUPABLE_WATER) {
     // If we were a surface tile of the group, we are no longer.
     if (water_group->surface_tiles.erase(loc))
-      assert(water_groups_by_surface_tile.erase(loc));
+      unique_erase(water_groups_by_surface_tile, loc);
     
     // We may have exposed other group tiles, which now need to be marked as the group surface.
     for (tile_location const& adj_loc : neighbors) {
@@ -1085,8 +1102,9 @@ void replace_substance_impl(
           assert_if_ASSERT_EVERYTHING(existing_marker_iter->second == water_group_id);
         }
         else {
-          if (water_group->surface_tiles.insert(adj_loc).second)
-            assert(water_groups_by_surface_tile.insert(make_pair(adj_loc, water_group_id)).second);
+          if (water_group->surface_tiles.insert(adj_loc).second) {
+            unique_insert(water_groups_by_surface_tile, make_pair(adj_loc, water_group_id));
+          }
         }
       }
     }
@@ -1213,8 +1231,8 @@ void replace_substance_impl(
             assert_if_ASSERT_EVERYTHING(foo != water_groups_by_surface_tile.end());
             assert_if_ASSERT_EVERYTHING(foo->second == water_group_id);
             foo->second = new_group_id;
-            assert(new_group.surface_tiles.insert(new_grouped_loc).second);
-            assert(water_group->surface_tiles.erase(new_grouped_loc));
+            unique_insert(new_group.surface_tiles, new_grouped_loc);
+            unique_erase(water_group->surface_tiles, new_grouped_loc);
             if (water_group->suckable_tiles_by_height.erase(new_grouped_loc)) {
               new_group.suckable_tiles_by_height.insert(new_grouped_loc);
             }

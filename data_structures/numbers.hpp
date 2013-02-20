@@ -28,6 +28,19 @@
 #include <boost/type_traits/make_signed.hpp>
 #include <boost/type_traits/make_unsigned.hpp>
 
+
+namespace comparators {
+struct first_is_true  { template<typename A, typename B> constexpr bool operator()(A&& a, B&&) { return bool(a); } };
+struct is_true        { template<typename A> constexpr bool operator()(A&& a) { return bool(a); } };
+struct is_false       { template<typename A> constexpr bool operator()(A&& a) { return !bool(a); } };
+struct not_equal_to   { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a != b; } };
+struct equal_to       { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a == b; } };
+struct less           { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a <  b; } };
+struct less_equal     { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a <= b; } };
+struct greater        { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a >  b; } };
+struct greater_equal  { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a >= b; } };
+}
+
 // returns the signum (-1, 0, or 1)
 template <typename Number>
 inline Number sign(Number n) {
@@ -118,147 +131,261 @@ static_assert(-8%3 == -2, "we use the typical, standard round-towards-zero");
 static_assert(-8%-3 == -2, "we use the typical, standard round-towards-zero");
 static_assert(8%-3 == 2, "we use the typical, standard round-towards-zero");
 
-// TODO boost::enable_if<std::numeric_limits<T1 & T2>::is_specialized
-// or get_primitive_int_type? or.
-
 // Division is a slow instruction, so we want to start it as soon
 // as possible and finish as soon as possible after we have the
 // result.  Most division instructions also give modulus for free.
 // If the divisor is a compile-time constant, however, the compiler
 // converts it to a multiplication-by-constant and a few shifts,
 // and the remainder sometimes costs a bit.
-// We also have to consider, if modifying 'divisor' before dividing,
-// whether the possibility of overflow is acceptable.
+//
+// The optimizer is smart enough to order instructions in the most
+// intelligent way as long as we give it a set of instructions where
+// it can easily do so.  For example, don't depend on the quotient
+// in an 'if' if you could depend on the dividend or divisor.
+//
+// These algorithms are careful never to risk overflow for
+// unsigned or twos-complement numeric types.
+//
+// divide_impl2 with all the helper arguments help these functions
+// be constexpr.  The ones that don't use all their arguments are
+// BOOST_FORCEINLINE so that they'll be inlined into the divide_impl1
+// that calls them, and the unused arguments not computed at all.
+//
+// The 'result_positive' value is a slight misnomer.
+// If dividend is zero, then the result and remainder are zero
+// and all is fine regardless of this bool's value.
+// If dividend is nonzero, this bool indicates (as it must)
+// the sign of the conceptual, unrounded quotient.
+
+
 template<typename T>
-inline T divide_impl(T dividend, T divisor,
+BOOST_FORCEINLINE constexpr T divide_impl2(
+      T /*dividend*/,
+      T /*divisor*/,
+      T rounded_to_zero,  // (dividend / divisor)
+      T /*remainder*/, // (dividend % divisor)
+      T /*up*/, // 1, signed equal to logical result sign
+      bool /*result_positive*/, // (dividend < T(0)) == (divisor < T(0))
       rounding_strategy<round_down, negative_mirrors_positive>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  return dividend / divisor;
-}
-template<typename T>
-inline T divide_impl(T dividend, T divisor,
-      rounding_strategy<round_down, negative_continuous_with_positive>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  const T rounded_to_zero = dividend / divisor;
-  const T remainder = dividend % divisor;
-  //'adjust' is probably branch-predictable
-  // even if the sign of the numbers aren't.
-  // (The compiler seems to be smart and transforms
-  //  either to something reasonable, given that either
-  //  has a reasonable way to run it.)
-  //const T adjust =
-  //  ((dividend < 0) != (divisor < 0)) && (remainder != 0);
-  //return rounded_to_zero - adjust;
-  if(((dividend < T(0)) != (divisor < T(0))) && (remainder != T(0))) {
-    return rounded_to_zero - T(1);
-  }
-  else {
-    return rounded_to_zero;
-  }
-}
-template<typename T>
-inline T divide_impl(T dividend, T divisor,
-      rounding_strategy<round_up, negative_mirrors_positive>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  const T rounded_to_zero = dividend / divisor;
-  const T remainder = dividend % divisor;
-  const T adjust = ((dividend < T(0)) == (divisor < T(0)) ? T(1) : T(-1));
-  if(remainder != 0) {
-    return rounded_to_zero + adjust;
-  }
-  else {
-    return rounded_to_zero;
-  }
-}
-template<typename T>
-inline T divide_impl(T dividend, T divisor,
-      rounding_strategy<round_up, negative_continuous_with_positive>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  const T rounded_to_zero = dividend / divisor;
-  const T remainder = dividend % divisor;
-  if(((dividend < T(0)) == (divisor < T(0))) && (remainder != T(0))) {
-    return rounded_to_zero + T(1);
-  }
-  else {
-    return rounded_to_zero;
-  }
+  return rounded_to_zero;
 }
 
-// this is too tricky to allow two different int type arguments for
+template<typename T>
+BOOST_FORCEINLINE constexpr T divide_impl2(
+      T /*dividend*/,
+      T /*divisor*/,
+      T rounded_to_zero,  // (dividend / divisor)
+      T remainder, // (dividend % divisor)
+      T up, // 1, signed equal to logical result sign
+      bool result_positive, // (dividend < T(0)) == (divisor < T(0))
+      rounding_strategy<round_down, negative_continuous_with_positive>) {
+  return result_positive
+          ? rounded_to_zero
+          : ((remainder == T(0)) ? rounded_to_zero : rounded_to_zero+up);
+}
+template<typename T>
+BOOST_FORCEINLINE constexpr T divide_impl2(
+      T /*dividend*/,
+      T /*divisor*/,
+      T rounded_to_zero,  // (dividend / divisor)
+      T remainder, // (dividend % divisor)
+      T up, // 1, signed equal to logical result sign
+      bool /*result_positive*/, // (dividend < T(0)) == (divisor < T(0))
+      rounding_strategy<round_up, negative_mirrors_positive>) {
+  return (remainder != T(0)) ? rounded_to_zero+up : rounded_to_zero;
+}
+template<typename T>
+BOOST_FORCEINLINE constexpr T divide_impl2(
+      T /*dividend*/,
+      T /*divisor*/,
+      T rounded_to_zero,  // (dividend / divisor)
+      T remainder, // (dividend % divisor)
+      T up, // 1, signed equal to logical result sign
+      bool result_positive, // (dividend < T(0)) == (divisor < T(0))
+      rounding_strategy<round_up, negative_continuous_with_positive>) {
+  return (result_positive && remainder != T(0))
+            ? rounded_to_zero+up : rounded_to_zero;
+}
+
+// see below; just a continuation for the next divide_impl2
+// (forced by constexprness).
+template<bool NegativePreliminaryResultsAreRoundedTowardsZero,
+  typename T,
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy>
+BOOST_FORCEINLINE constexpr T round_to_nearest_impl(
+      T left_representing_divisor_over_two,
+      T right_representing_remainder,
+      T rounded,
+      T up,
+      bool result_positive,
+      rounding_strategy<PosStrategy, NegStrategy>) {
+  return
+    (left_representing_divisor_over_two < right_representing_remainder)
+      ? rounded+up
+      : (left_representing_divisor_over_two > right_representing_remainder)
+        ? rounded
+        : // tie!...
+    // partially compile-time ifs here.
+    (PosStrategy == round_to_nearest_with_ties_rounding_to_even)
+      ? ((rounded & T(1)) ? rounded+up : rounded)
+    : (PosStrategy == round_to_nearest_with_ties_rounding_to_odd)
+      ? ((rounded & T(1)) ? rounded : rounded+up)
+    :
+    // else it is one of the four biased rounding tiebreakers.
+      ((result_positive || ((NegStrategy == negative_mirrors_positive)
+                            == (NegativePreliminaryResultsAreRoundedTowardsZero)))
+        == (PosStrategy == round_to_nearest_with_ties_rounding_up))
+      ? rounded+up : rounded;
+}
+
+// This one also uses all the args, is a bit more complicated,
+// and we leave it up to the compiler whether and when to inline it.
+// (We still mark it 'inline' as we must mark all template functions inline,
+//  and it's not a bad idea to inline.)
 template<typename T,
   rounding_strategy_for_positive_numbers PosStrategy,
   rounding_strategy_for_negative_numbers NegStrategy>
-inline T divide_impl(T dividend, T divisor,
-      rounding_strategy<PosStrategy, NegStrategy>) {
-  caller_correct_if(divisor != T(0), "divisor must be nonzero");
-  const T rounded_to_zero = dividend / divisor;
-  const T remainder = dividend % divisor;
-  // result_positive is a slight misnomer.
-  // If dividend is zero, then the result and remainder are zero
-  // and all is fine regardless of this bool's value.
-  // If dividend is nonzero, this bool indicates (as it must)
-  // the sign of the conceptual, unrounded quotient.
-  const bool result_positive = (dividend < T(0)) == (divisor < T(0));
-  const T adjust = (result_positive ? T(1) : T(-1));
+inline constexpr T divide_impl2(
+      T dividend,
+      T divisor,
+      T rounded_to_zero,  // (dividend / divisor)
+      T remainder, // (dividend % divisor)
+      T up, // 1, signed equal to logical result sign
+      bool result_positive, // (dividend < T(0)) == (divisor < T(0))
+      rounding_strategy<PosStrategy, NegStrategy> strat) {
+  // These rounding strategies round to nearest and do something
+  // when there is a tie.  Therefore, we need to see whether
+  // divisor/2 is less, equal, or more than remainder.
+  // Except we need to do it without risking rounding error or overflow
+  // or being wrong about negative divisor/remainder values.
+  // Algebra:
+  //   abs(divisor)/2 <=> abs(remainder)
+  //   abs(divisor) <=> abs(remainder)*2                   [1]
+  //   abs(divisor) - abs(remainder) <=> abs(remainder)    [2]
+  //
+  //   ((divisor < T(0)) ? -divisor : divisor)
+  //       - abs(remainder)
+  //       <=> abs(remainder)
+  //
+  //   ((divisor < T(0)) ? ~divisor : divisor)
+  //     + ((divisor < T(0)) ? T(1) : T(0))
+  //       - abs(remainder)
+  //       <=> abs(remainder)
+  //
+  //   ((divisor < T(0)) ? ~divisor : divisor)
+  //       - abs(remainder)
+  //       <=> abs(remainder)
+  //             - ((divisor < T(0)) ? T(1) : T(0))        [3]
+  //
+  // In this final result, there is no division (rounding),
+  // and no overflow:
+  //   LHS is ([0..MAX_INT] - [0..MAX_INT]) == [-MAX_INT..MAX_INT]
+  //   RHS is ([0..MAX_INT] - [0..1]) == [-1..MAX_INT]
+  //
+  // [1] We can't risk rounding error dividing divisor.
+  // [2] We can't multiply remainder by two, because we
+  //     might have done (MAX_INT-5) / (MAX_INT-3).
+  // [3] We can't do abs(divisor) because divisor might be MIN_INT.
+  //     Thus we use bit math to get around that problem.
+  //     Luckily, the remainder of a twos-complement division
+  //     can never be MIN_INT so we can just do a regular abs
+  //     for the remainder.
+  //
+  // We compute abs(remainder) with a macro because constexpr doesn't
+  // allow const local variables.  We use dividend's sign because remainder's
+  // sign is the same as dividend's and the CPU knows the dividend's sign
+  // sooner.
+  #define nonnegative_remainder ((dividend < T(0)) ? -remainder : remainder)
+  return round_to_nearest_impl<true>(
+     /*left*/  ((divisor < T(0)) ? ~divisor : divisor) - nonnegative_remainder,
+     /*right*/ nonnegative_remainder - ((divisor < T(0)) ? T(1) : T(0)),
+             rounded_to_zero, up, result_positive, strat);
+  #undef nonnegative_remainder
+}
 
-  // compare(abs(divisor)/2, abs(remainder)) without rounding error
-  // or overflow for any argument.
-  T tweak;
-  T nonnegative_divisor_ish;
-  if(divisor < T(0)) {
-    tweak = T(1);
-    nonnegative_divisor_ish = ~divisor;
-  }
-  else {
-    tweak = T(0);
-    nonnegative_divisor_ish = divisor;
-  }
-  // remainder cannot be -MIN_INT
-  // remainder's sign is dividend's sign (the CPU knows the latter sooner)
-  const T nonnegative_remainder = ((dividend < T(0)) ? -remainder : remainder);
-  const T left = nonnegative_divisor_ish - nonnegative_remainder;
-  const T right = nonnegative_remainder - tweak;
-  if(left < right) {
-    // remainder's magnitude is large; round quotient's magnitude up
-    return rounded_to_zero + adjust;
-  }
-  else if(left > right) {
-    // remainder's magnitude is small; round quotient's magnitude down
-    return rounded_to_zero;
-  }
-  else {
-    // tie!
-    // partially compile-time ifs here.
-    if(PosStrategy == round_to_nearest_with_ties_rounding_to_even) {
-      if(rounded_to_zero & T(1)) { return rounded_to_zero + adjust; }
-      else                       { return rounded_to_zero; }
-    }
-    if(PosStrategy == round_to_nearest_with_ties_rounding_to_odd) {
-      if(rounded_to_zero & T(1)) { return rounded_to_zero; }
-      else                       { return rounded_to_zero + adjust; }
-    }
-    // else it is one of the four biased rounding tiebreakers.
-    if((result_positive || NegStrategy == negative_mirrors_positive)
-        == (PosStrategy == round_to_nearest_with_ties_rounding_up)) {
-      return rounded_to_zero + adjust;
-    }
-    else {
-      return rounded_to_zero;
-    }
-  }
+
+// ignoring invalid shift vals at the moment..
+// TODO using fewer ifs might be speed-smarter for shifts
+// is signed 1<<31 defined behavior? anyway its overflow so
+// boundscheckedint would catch it
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<round_down, negative_continuous_with_positive>) {
+  return num >> shift;
+}
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<round_down, negative_mirrors_positive>) {
+  return (num >> shift) +
+         ((num < 0) && (num != (num >> shift << shift)) ? T(1) : T(0));
+}
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<round_up, negative_continuous_with_positive>) {
+  return ((num >> shift) + ((num != (num >> shift << shift)) ? T(1) : T(0)));
+}
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<round_up, negative_mirrors_positive>) {
+  return (num >> shift) +
+         ((num >= 0) && (num != (num >> shift << shift)) ? T(1) : T(0));
+}
+template<typename T, typename ShiftT,
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy>
+inline constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<PosStrategy, NegStrategy> strat) {
+  // reasoning for round_to_nearest_impl:
+  // divisor: 1 << shift
+  // divisor/2: 1 << (shift - 1)
+  // remainder: num & ~(~0 << shift)
+  // Though instead of setting the high bits to 0 we set them to 1
+  // in order to save an operation in calculating the remainder.
+  //
+  // We check whether shift is 0 to avoid shifting by -1 or giving
+  // the wrong result.
+  return (shift == ShiftT(0)) ? num : round_to_nearest_impl<false>(
+     /*left, divisor/2 equivalent*/ (~T(0) << (shift - ShiftT(1))),
+     /*right, remainder equivalent*/ num | (~T(0) << shift),
+             (num >> shift), T(1), (num >= T(0)), strat);
+}
+
+template<typename T,
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy>
+BOOST_FORCEINLINE constexpr T divide_impl1(
+      T dividend, T divisor, rounding_strategy<PosStrategy, NegStrategy> strat) {
+  return constexpr_require_and_return(
+    divisor != T(0), "divisor must be nonzero",
+        divide_impl2(
+            dividend,
+            divisor,
+            dividend / divisor,
+            dividend % divisor,
+            ((dividend < T(0)) == (divisor < T(0)) ? T(1) : T(-1)),
+            (dividend < T(0)) == (divisor < T(0)),
+            strat));
 }
 
 template<typename T, rounding_strategy_for_positive_numbers PosStrategy>
-inline T divide_impl(T dividend, T divisor,
+BOOST_FORCEINLINE constexpr T divide_impl1(T dividend, T divisor,
       rounding_strategy<PosStrategy, negative_is_forbidden>) {
-  caller_error_if(dividend < T(0) || divisor < T(0), "Negative number forbidden in this division!");
   // Use unsigned types so that the divide_impl optimizes better
   // even if it's not inlined.
   typedef typename boost::make_unsigned<T>::type UnsignedT;
-  return T(divide_impl<UnsignedT>(
-    UnsignedT(dividend),
-    UnsignedT(divisor),
-    rounding_strategy<PosStrategy, negative_mirrors_positive>()));
+  return constexpr_require_and_return(
+    dividend >= T(0) && divisor > T(0),
+         "Negative number (or zero divisor) forbidden in this division!",
+      T(divide_impl1(
+        UnsignedT(dividend),
+        UnsignedT(divisor),
+        rounding_strategy<PosStrategy, negative_mirrors_positive>())));
 }
 #pragma GCC diagnostic pop
 } /* end namespace rounding_strategies */
@@ -273,7 +400,7 @@ template<typename T1, typename T2, typename RoundingStrategy,
       // we don't currently implement IEEE754 floating-point rounding modes
       && std::numeric_limits<T1>::is_integer && std::numeric_limits<T2>::is_integer
     )>::type>
-inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
+inline constexpr auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
 -> decltype(dividend/divisor) {
   static_assert(std::numeric_limits<T1>::is_signed == std::numeric_limits<T2>::is_signed,
                 "Dividing two numbers of mixed sign is probably a bad idea.");
@@ -284,10 +411,30 @@ inline auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
     || PosStrategy == round_to_nearest_with_ties_rounding_to_odd
     || (!std::numeric_limits<T1>::is_signed && !std::numeric_limits<T2>::is_signed),
     "You lied! The negative variant does make a difference.");
-  return rounding_strategies_impl::divide_impl(
-    operation_type(dividend), operation_type(divisor), strat);
+  return rounding_strategies_impl::divide_impl1(
+          operation_type(dividend), operation_type(divisor), strat);
 }
 
+// Avoid specifying rounding_strategy<> in last argument's structure so that
+// overloads of shift_right() will be picked before this one.
+template<typename T, typename ShiftT, typename RoundingStrategy,
+  rounding_strategy_for_positive_numbers PosStrategy = RoundingStrategy::positive_strategy,
+  rounding_strategy_for_negative_numbers NegStrategy = RoundingStrategy::negative_strategy,
+  typename = typename boost::enable_if_c<
+    (std::numeric_limits<T>::is_specialized && std::numeric_limits<ShiftT>::is_specialized
+      // ">>" isn't an operation on floating-point numbers, not even fp on left-hand-side.
+      && std::numeric_limits<T>::is_integer && std::numeric_limits<ShiftT>::is_integer
+    )>::type>
+inline constexpr auto shift_right(T num, ShiftT shift, RoundingStrategy strat)
+-> decltype(num >> shift) {
+  static_assert(
+       NegStrategy != negative_variant_doesnt_make_a_difference
+    || PosStrategy == round_to_nearest_with_ties_rounding_to_even
+    || PosStrategy == round_to_nearest_with_ties_rounding_to_odd
+    || !std::numeric_limits<T>::is_signed,
+    "You lied! The negative variant does make a difference.");
+  return rounding_strategies_impl::shift_right_impl2(num, shift, strat);
+}
 
 inline int32_t ilog2(uint64_t argument) {
   caller_error_if(argument == 0, "the logarithm of zero is undefined");
@@ -679,22 +826,22 @@ struct uint128 {
   uint64_t low;
   uint64_t high;
 
-  bool operator==(uint128 other)const {
+  constexpr bool operator==(uint128 other)const {
     return high == other.high && low == other.low;
   }
-  bool operator!=(uint128 other)const {
+  constexpr bool operator!=(uint128 other)const {
     return high != other.high || low != other.low;
   }
-  bool operator<(uint128 other)const {
+  constexpr bool operator<(uint128 other)const {
     return high < other.high || (high == other.high && low < other.low);
   }
-  bool operator>(uint128 other)const {
+  constexpr bool operator>(uint128 other)const {
     return other < *this;
   }
-  bool operator<=(uint128 other)const {
+  constexpr bool operator<=(uint128 other)const {
     return high < other.high || (high == other.high && low <= other.low);
   }
-  bool operator>=(uint128 other)const {
+  constexpr bool operator>=(uint128 other)const {
     return other <= *this;
   }
 };
@@ -708,37 +855,37 @@ struct int128 {
   uint64_t low;
   uint64_t high;
 
-  bool operator==(int128 other)const {
+  constexpr bool operator==(int128 other)const {
     return high == other.high && low == other.low;
   }
-  bool operator!=(int128 other)const {
+  constexpr bool operator!=(int128 other)const {
     return high != other.high || low != other.low;
   }
-  bool operator<(int128 other)const {
+  constexpr bool operator<(int128 other)const {
     const uint64_t sign_bit = uint64_t(1) << 63;
     return (high^sign_bit) < (other.high^sign_bit) || (high == other.high && low < other.low);
   }
-  bool operator>(int128 other)const {
+  constexpr bool operator>(int128 other)const {
     return other < *this;
   }
-  bool operator<=(int128 other)const {
-    const uint64_t sign_bit = uint64_t(1) << 63;
+  constexpr bool operator<=(int128 other)const {
+    static const uint64_t sign_bit = uint64_t(1) << 63;
     return (high^sign_bit) < (other.high^sign_bit) || (high == other.high && low <= other.low);
   }
-  bool operator>=(int128 other)const {
+  constexpr bool operator>=(int128 other)const {
     return other <= *this;
   }
 };
 #endif
 
-inline uint16_t width_doubling_multiply(uint8_t a1, uint8_t a2) { return (uint16_t)a1 * a2; }
-inline int16_t width_doubling_multiply(int8_t a1, int8_t a2) { return (int16_t)a1 * a2; }
+inline constexpr uint16_t width_doubling_multiply(uint8_t a1, uint8_t a2) { return (uint16_t)a1 * a2; }
+inline constexpr int16_t width_doubling_multiply(int8_t a1, int8_t a2) { return (int16_t)a1 * a2; }
 
-inline uint32_t width_doubling_multiply(uint16_t a1, uint16_t a2) { return (uint32_t)a1 * a2; }
-inline int32_t width_doubling_multiply(int16_t a1, int16_t a2) { return (int32_t)a1 * a2; }
+inline constexpr uint32_t width_doubling_multiply(uint16_t a1, uint16_t a2) { return (uint32_t)a1 * a2; }
+inline constexpr int32_t width_doubling_multiply(int16_t a1, int16_t a2) { return (int32_t)a1 * a2; }
 
-inline uint64_t width_doubling_multiply(uint32_t a1, uint32_t a2) { return (uint64_t)a1 * a2; }
-inline int64_t width_doubling_multiply(int32_t a1, int32_t a2) { return (int64_t)a1 * a2; }
+inline constexpr uint64_t width_doubling_multiply(uint32_t a1, uint32_t a2) { return (uint64_t)a1 * a2; }
+inline constexpr int64_t width_doubling_multiply(int32_t a1, int32_t a2) { return (int64_t)a1 * a2; }
 
 inline uint128 width_doubling_multiply(uint64_t a1, uint64_t a2) {
 #ifdef DETECTED_uint128_t
@@ -833,11 +980,18 @@ inline int128 width_doubling_multiply(int64_t a1, int64_t a2) {
 template<typename IntType> struct non_normalized_rational {
   IntType numerator;
   IntType denominator;
-  non_normalized_rational(IntType n, IntType d):numerator(n),denominator(d){ caller_error_if(denominator == 0, "Constructing a rational with denominator zero..."); }
-  non_normalized_rational(IntType n):numerator(n),denominator(1){}
-  non_normalized_rational():numerator(0),denominator(1){}
-  explicit operator float()const { return float(double(numerator) / double(denominator)); }
-  explicit operator double()const { return double(numerator) / double(denominator); }
+  constexpr non_normalized_rational(IntType n, IntType d)
+    : numerator(n),
+      denominator(constexpr_require_and_return(
+          d != 0, "Constructing a rational with denominator zero",
+          d)) {}
+  constexpr non_normalized_rational(IntType n):numerator(n),denominator(1){}
+  constexpr non_normalized_rational():numerator(0),denominator(1){}
+  constexpr explicit operator float()const { return float(double(numerator) / double(denominator)); }
+  constexpr explicit operator double()const { return double(numerator) / double(denominator); }
+  // The comparison operators would only be constexpr for 32-bits-or-less
+  // IntType, because the int128-emulation width_doubling_multiply() is
+  // rather tricky to make constexpr.
   bool operator< (non_normalized_rational const& o)const {
     assert(denominator != 0 && o.denominator != 0);
     const auto prod1 = width_doubling_multiply(numerator, o.denominator);
@@ -887,59 +1041,49 @@ template<typename IntType> struct non_normalized_rational {
     return prod1 != prod2;
   }
   
-  non_normalized_rational reciprocal()const {
+  constexpr non_normalized_rational reciprocal()const {
     return non_normalized_rational(denominator, numerator);
   }
-  non_normalized_rational operator+(non_normalized_rational const& o)const {
-    // Simplify only the stupidest case.
-    if (denominator == o.denominator) return non_normalized_rational(numerator + o.numerator, denominator);
-    return non_normalized_rational(numerator * o.denominator + denominator * o.numerator, denominator * o.denominator);
+  // In the cases where the denominators are equal (for addition;
+  // or opposite num==denom for multiplication), we intelligently
+  // don't multiply; otherwise we do multiply.
+  constexpr non_normalized_rational operator+(non_normalized_rational const& o)const {
+    return (denominator == o.denominator)
+      ? non_normalized_rational(numerator + o.numerator, denominator)
+      : non_normalized_rational(numerator * o.denominator + denominator * o.numerator,
+                                denominator * o.denominator);
   }
-  void operator+=(non_normalized_rational const& o) {
-    // Simplify only the stupidest case.
-    if (denominator == o.denominator) {
-      numerator += o.numerator;
-    }
-    else {
-      numerator = numerator * o.denominator + denominator * o.numerator;
-      denominator *= o.denominator;
-    }
+  non_normalized_rational& operator+=(non_normalized_rational const& o) {
+    *this = *this + o; return *this;
   }
-  non_normalized_rational operator-(non_normalized_rational const& o)const {
-    // Simplify only the stupidest case.
-    if (denominator == o.denominator) return non_normalized_rational(numerator - o.numerator, denominator);
-    return non_normalized_rational(numerator * o.denominator - denominator * o.numerator, denominator * o.denominator);
+  constexpr non_normalized_rational operator-(non_normalized_rational const& o)const {
+    return (denominator == o.denominator)
+      ? non_normalized_rational(numerator - o.numerator, denominator)
+      : non_normalized_rational(numerator * o.denominator - denominator * o.numerator,
+                                denominator * o.denominator);
   }
-  void operator-=(non_normalized_rational const& o) {
-    // Simplify only the stupidest case.
-    if (denominator == o.denominator) {
-      numerator -= o.numerator;
-    }
-    else {
-      numerator = numerator * o.denominator - denominator * o.numerator;
-      denominator *= o.denominator;
-    }
+  non_normalized_rational& operator-=(non_normalized_rational const& o) {
+    *this = *this - o; return *this;
   }
-  non_normalized_rational operator*(non_normalized_rational const& o)const {
-    // Simplify the stupidest cases.
-    if (numerator == o.denominator) return non_normalized_rational(o.numerator, denominator);
-    if (o.numerator == denominator) return non_normalized_rational(numerator, o.denominator);
-    return non_normalized_rational(numerator * o.numerator, denominator * o.denominator);
+  constexpr non_normalized_rational operator*(non_normalized_rational const& o)const {
+    return
+      (numerator == o.denominator)
+      ?   non_normalized_rational(o.numerator, denominator)
+      :
+      (o.numerator == denominator)
+      ?   non_normalized_rational(numerator, o.denominator)
+      :
+      non_normalized_rational(numerator * o.numerator,
+                              denominator * o.denominator);
   }
-  void operator*=(non_normalized_rational const& o) {
-    // Simplify the stupidest cases.
-    if (numerator == o.denominator) numerator = o.numerator;
-    else if (o.numerator == denominator) denominator = o.denominator;
-    else {
-      numerator *= o.numerator;
-      denominator *= o.denominator;
-    }
+  non_normalized_rational& operator*=(non_normalized_rational const& o) {
+    *this = *this * o; return *this;
   }
-  non_normalized_rational operator/(non_normalized_rational const& o)const {
+  constexpr non_normalized_rational operator/(non_normalized_rational const& o)const {
     return *this * o.reciprocal();
   }
-  void operator/=(non_normalized_rational const& o) {
-    *this *= o.reciprocal();
+  non_normalized_rational& operator/=(non_normalized_rational const& o) {
+    *this *= o.reciprocal(); return *this;
   }
 };
 template<typename IntType> inline std::ostream& operator<<(std::ostream& os, non_normalized_rational<IntType>const& r) {
@@ -947,7 +1091,7 @@ template<typename IntType> inline std::ostream& operator<<(std::ostream& os, non
 }
 
 template<typename IntType, typename Num>
-inline auto multiply_rational_into(Num n, non_normalized_rational<IntType> rat)
+inline constexpr auto multiply_rational_into(Num n, non_normalized_rational<IntType> rat)
 -> decltype(n * rat.numerator / rat.denominator) {
   return n * rat.numerator / rat.denominator;
 }
@@ -958,7 +1102,7 @@ struct numeric_representation_cast_impl {
 };
 
 template<typename Target, typename Num>
-inline typename numeric_representation_cast_impl<Target, Num>::target_type
+inline constexpr typename numeric_representation_cast_impl<Target, Num>::target_type
 numeric_representation_cast(Num const& num) {
   return typename numeric_representation_cast_impl<Target, Num>::target_type(num);
 }

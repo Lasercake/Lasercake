@@ -113,6 +113,11 @@
     #define override
   #endif
 
+  #if defined(__GNUC__)
+    // current compilers (e.g. GCC 4.7, Clang 3.1) don't seem to support the 'thread_local' C++11 name
+    #define thread_local __thread
+  #endif
+
   // Don't use LASERCAKE_IT_SEEMS_TO_BE_WINDOWS outside this fake feature
   // detection section if you can help it! Ask about specific features
   // instead.
@@ -123,16 +128,6 @@
     // TODO use GetProcessMemoryInfo or the like on Windows, if we care enough
     #define LASERCAKE_HAVE_SYS_RESOURCE_H 1
   #endif
-#endif
-
-#if !LASERCAKE_NO_THREADS
-  #if defined(__GNUC__)
-    // current compilers (e.g. GCC 4.7, Clang 3.1) don't seem to support the 'thread_local' C++11 name
-    #define thread_local __thread
-  #endif
-  const bool LASERCAKE_NO_THREADS = false;
-#else
-  #define thread_local
 #endif
 
 // (not enabled unless you enable it) #define USE_BOUNDS_CHECKED_INTS 1
@@ -159,7 +154,15 @@ inline void caller_correct_if(bool cond, const char* error) {
   }
 }
 
+// This has to be a non-function because ret should only
+// be evaluated if cond is true.
 #define constexpr_require_and_return(cond, str, ret) ((cond) ? (ret) : throw std::logic_error((str)))
+// This has to be a non-function so that the compiler can deduce its
+// return type as anything for use in ?: results. It has to be
+// non-parenthesized because Clang, at least, will cast it to void
+// (rather than its magic whatever-the-other-thing-in-the-?:-is type)
+// if parenthesized.
+#define constexpr_caller_error(str)  throw std::logic_error((str))
 
 #if DEBUG_PRINT_DETERMINISTICALLY
 #include "debug_print_deterministically.hpp"
@@ -182,11 +185,19 @@ namespace logger_impl {
     log_buf streambuf_;
     std::ostream os_;
   public:
-    log() : os_(&streambuf_) { os_.imbue(std::locale::classic()); }
+    // The constructor and destructor generate too much code
+    // (including multiple function calls) to be worth inlining.
+    log();
+    ~log();
     template<typename SomethingOutputted>
-    inline std::ostream& operator<<(SomethingOutputted&& output) {
-      return os_ << output;
-    }
+    inline std::ostream& operator<<(SomethingOutputted&& output) { return os_ << output; }
+
+    // Apparently the compiler can't deduce SomethingOutputted when it's
+    // a function (such as std::endl), so we have to list these overloads too.
+    inline std::ostream& operator<<(std::ios_base& (*output)(std::ios_base&)) { return os_ << output; }
+    inline std::ostream& operator<<(std::ios& (*output)(std::ios&)) { return os_ << output; }
+    inline std::ostream& operator<<(std::ostream& (*output)(std::ostream&)) { return os_ << output; }
+
     // it's not meant to be copied/moved/anything
     log(log const&) = delete;
     log& operator=(log const&) = delete;
@@ -195,6 +206,7 @@ namespace logger_impl {
   };
 }
 
+// Usage:
 // LOG << this << that << std::hex << the other thing << "\n";
 // Constructs a temporary buffer on the stack, used to log the
 // data to stderr.  Flushes data when destroyed (typically at the

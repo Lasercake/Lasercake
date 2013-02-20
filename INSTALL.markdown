@@ -13,23 +13,21 @@ Lasercake currently depends on the following libraries:
 - Qt (at least 4.8) -- http://qt-project.org/
 - OpenGL
 
-- optionally, Glib (for a small speed improvement. To
-                   disable, pass -DGLIB=OFF to cmake)
-- optionally, Boost ( http://www.boost.org/ . Lasercake
-              comes with all the Boost code it needs,
-              but if you're developing you might need
-              it; ./generate-boostbcp.py has relevant
-              comments too.)
-- optionally, GLEW (we bundle a copy of GLEW - just a
-              few C files - so you don't need it installed.
-              We haven't yet implemented a CMake option to use
-              system GLEW; if you don't want to use the
-              bundled GLEW just ask us to implement such
-              an option.)
-- optionally, GLM -- a small header-only C++ library that
-              we bundle a copy of for your convenience, but you
-              can use system GLM by passing -DUSE_BUNDLED_GLM=OFF
-              http://glm.g-truc.net/
+And optionally, small libraries that we bundle in the repo.
+By default CMake will build using the bundled versions so you
+don't have to install anything, but you can use system versions
+with -DUSE_BUNDLED_*=NO for * = BOOST or GLEW or GLM.
+
+- optionally, Boost -- http://www.boost.org/ . Lasercake comes with all the
+                Boost code it needs, but if you're developing you might need
+                it; ./generate-boostbcp.py has relevant comments.
+- optionally, GLEW, an OpenGL portability wrapper library.  We bundle this.
+- optionally, GLM -- a small header-only C++ library for graphics-related
+                maths -- http://glm.g-truc.net/.  We bundle this.
+
+- optionally, Glib (for its allocator, which might be slightly faster or
+                    slower than system malloc.  We default to not using it
+                    because I measure no benefit -- it was just an experiment.)
 
 ### tools ###
 

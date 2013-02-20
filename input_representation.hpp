@@ -30,6 +30,7 @@
 //TODO try a binary search for removing headers and see what works
 
 #include "config.hpp"
+#include "data_structures/misc_structures.hpp"
 
 namespace input_representation {
 
@@ -43,7 +44,7 @@ namespace input_representation {
 // the full force of a GUI toolkit).
 
 // often just a single Unicode character
-typedef std::string key_type;
+typedef small_string key_type;
 
 #if 0
 // these don't happen at present
@@ -66,7 +67,7 @@ inline key_type mouse_button_n(int n) {
   caller_error_if(n < 4, "that's one of the regular buttons");
   std::stringstream ss;
   ss << "button " << n;
-  return ss.str();
+  return key_type(ss.str());
 }
 
 enum pressed_or_released { PRESSED, RELEASED };

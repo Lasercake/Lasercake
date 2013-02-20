@@ -19,6 +19,11 @@
 
 */
 
+// BOOST_SYSTEM_NO_DEPRECATED prevents some deprecated members with global constructors.
+#ifndef BOOST_SYSTEM_NO_DEPRECATED
+#define BOOST_SYSTEM_NO_DEPRECATED
+#endif
+
 #include "config.hpp"
 
 #include <stdio.h>
@@ -36,18 +41,15 @@
 #include <sstream>
 #include <locale>
 
-#if !LASERCAKE_NO_TIMING
 #ifdef LASERCAKE_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
-
-#ifdef LASERCAKE_USE_BOOSTBCP
+#ifndef BOOST_CHRONO_HEADER_ONLY
 #define BOOST_CHRONO_HEADER_ONLY
 #endif
 #include <boost/chrono.hpp>
 #include <boost/chrono/process_cpu_clocks.hpp>
 #include <boost/chrono/thread_clock.hpp>
-#endif
 
 #include <boost/scope_exit.hpp>
 #pragma GCC diagnostic push
@@ -65,12 +67,10 @@
 
 namespace /* anonymous */ {
 
-#if !LASERCAKE_NO_TIMING
 namespace chrono = boost::chrono;
-#endif
 
 int64_t get_this_process_mem_usage_megabytes() {
-#if defined(LASERCAKE_HAVE_SYS_RESOURCE_H) && !LASERCAKE_NO_TIMING
+#if defined(LASERCAKE_HAVE_SYS_RESOURCE_H)
   struct rusage ru;
   getrusage(RUSAGE_SELF, &ru);
   #if defined(__APPLE__) || defined(__MACOSX__)
@@ -83,25 +83,21 @@ int64_t get_this_process_mem_usage_megabytes() {
 #endif
 }
 microseconds_t get_this_thread_microseconds() {
-#if !LASERCAKE_NO_TIMING && defined(BOOST_CHRONO_HAS_THREAD_CLOCK)
+#if defined(BOOST_CHRONO_HAS_THREAD_CLOCK)
   return chrono::duration_cast<chrono::microseconds>(chrono::thread_clock::now().time_since_epoch()).count();
 #else
   return 0;
 #endif
 }
 microseconds_t get_this_process_microseconds() {
-#if !LASERCAKE_NO_TIMING && defined(BOOST_CHRONO_HAS_PROCESS_CLOCKS)
+#if defined(BOOST_CHRONO_HAS_PROCESS_CLOCKS)
   return chrono::duration_cast<chrono::microseconds>(chrono::process_real_cpu_clock::now().time_since_epoch()).count();
 #else
   return 0;
 #endif
 }
 microseconds_t get_monotonic_microseconds() {
-#if !LASERCAKE_NO_TIMING
   return chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now().time_since_epoch()).count();
-#else
-  return 0;
-#endif
 }
 
 // Usage example:
@@ -255,7 +251,7 @@ LasercakeSimulator::LasercakeSimulator(QObject* parent) : QObject(parent) {}
 void LasercakeSimulator::init(worldgen_function_t worldgen, config_struct config) {
   const microseconds_t microseconds_before_initing = get_this_thread_microseconds();
   world_ptr_.reset(new world(worldgen));
-  const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers);
+  const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers, config.show_frame_timing);
   currently_focused_object_ = robot_id;
   view_ptr_.reset(new view_on_the_world(world_center_fine_coords));
   view_ptr_->drawing_debug_stuff = config.initially_drawing_debug_stuff;
@@ -402,11 +398,10 @@ int main(int argc, char *argv[])
       ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
       ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
       ("avoid-qt,Q", "debug: don't call Qt at all (implies --no-gui and --no-threads; attempts to be even more deterministic than normal)")
-#if !LASERCAKE_NO_THREADS
+      ("no-frame-timing", bool_switch_off(&config.show_frame_timing), "don't log timing info each frame")
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
       ("no-opengl-thread", bool_switch_off(&config.use_opengl_thread), "debug: use a thread for the OpenGL calls")
-#endif
 #if !LASERCAKE_NO_SELF_TESTS
       ("run-self-tests", "alternate run mode: run Lasercake's self-tests")
 #endif
@@ -425,7 +420,7 @@ int main(int argc, char *argv[])
       config.have_gui = false;
     }
 
-    if(LASERCAKE_NO_THREADS || vm.count("no-threads")) {
+    if(vm.count("no-threads")) {
       config.use_simulation_thread = false;
       config.use_opengl_thread = false;
     }
@@ -482,7 +477,9 @@ int main(int argc, char *argv[])
   // This makes Qt emit fewer warnings; probably makes quitting a bit faster;
   // and we make sure not to use the destructor for any critical
   // end-of-process stuff (if there even is any currently).
-  exit(qapp.exec());
+  const int exitcode = qapp.exec();
+  LOG << "Qt main loop has ended; calling exit()." << std::endl;
+  exit(exitcode);
 }
 
 microseconds_t LasercakeGLThread::gl_render(gl_data_ptr_t& gl_data_ptr, LasercakeGLWidget& gl_widget, QSize viewport_size) {
@@ -495,11 +492,19 @@ microseconds_t LasercakeGLThread::gl_render(gl_data_ptr_t& gl_data_ptr, Lasercak
   // free to fork more threads, and/or wait for the GPU without consuming CPU,
   // etc [mine seems to do both somewhat].)
   const microseconds_t microseconds_before_gl = get_monotonic_microseconds();
-  gl_renderer_.output_gl_data_to_OpenGL(*gl_data_ptr, viewport_size.width(), viewport_size.height(), gl_widget);
-  //TODO measure the microseconds ~here~ in the different configurations. e.g. should the before/after here be split across threads?
-  //gl_data_ptr.reset(); // but if the deletion does happen now, it'll be in this thread, now, delaying swapBuffers etc :(
-  // but it's a good time and CPU(cache) to delete the data on...
-  gl_widget.swapBuffers();
+  gl_renderer_.output_gl_data_to_OpenGL(
+    *gl_data_ptr,
+    viewport_size.width(),
+    viewport_size.height(),
+    gl_widget,
+    gl_thread_data_->interrupt
+  );
+  if(!gl_thread_data_->interrupt.load()) {
+    //TODO measure the microseconds ~here~ in the different configurations. e.g. should the before/after here be split across threads?
+    //gl_data_ptr.reset(); // but if the deletion does happen now, it'll be in this thread, now, delaying swapBuffers etc :(
+    // but it's a good time and CPU(cache) to delete the data on...
+    gl_widget.swapBuffers();
+  }
   const microseconds_t microseconds_after_gl = get_monotonic_microseconds();
   return microseconds_after_gl - microseconds_before_gl;
 }
@@ -537,11 +542,12 @@ LasercakeGLWidget::LasercakeGLWidget(bool use_separate_gl_thread, QWidget* paren
   gl_thread_data_->viewport_size = size();
   gl_thread_data_->microseconds_last_gl_render_took = 0;
   gl_thread_data_->quit_now = false;
+  gl_thread_data_->interrupt.store(false);
   gl_thread_data_->revision = 0;
   ++gl_thread_data_->revision; //display right away!
+  thread_.gl_widget_ = this;
+  thread_.gl_thread_data_ = gl_thread_data_;
   if(use_separate_gl_thread_) {
-    thread_.gl_widget_ = this;
-    thread_.gl_thread_data_ = gl_thread_data_;
     thread_.last_revision_ = 0;
     thread_.microseconds_this_gl_render_took_ = 0;
     thread_.start();
@@ -564,6 +570,7 @@ microseconds_t LasercakeGLWidget::get_last_gl_render_microseconds() {
   return gl_thread_data_->microseconds_last_gl_render_took;
 }
 void LasercakeGLThread::run() {
+  assert(gl_thread_data_->interrupt.load() == false);
   while(true) {
     gl_data_ptr_t gl_data_ptr;
     QSize viewport_size;
@@ -574,7 +581,9 @@ void LasercakeGLThread::run() {
         gl_thread_data_->wait_for_instruction.wait(&gl_thread_data_->gl_data_lock);
       }
       if(gl_thread_data_->quit_now) {
+        LOG << "Releasing OpenGL state... " << std::flush;
         gl_renderer_.fini();
+        LOG << "Done releasing OpenGL state. " << std::flush;
         return;
       }
       gl_data_ptr = gl_thread_data_->current_data;
@@ -598,9 +607,17 @@ void LasercakeGLWidget::paintEvent(QPaintEvent*) {
 }
 void LasercakeGLWidget::prepare_to_cleanly_close_() {
   if(!has_quit_) {
+    // Send debug messages in case waiting for any of these
+    // operations freezes, so that people can tell exactly what
+    // happened.
+
     // Just in case closing doesn't cause the OS to
     // release a mouse grab, we do so explicitly.
-    ungrab_input_();
+    if(input_is_grabbed_) {
+      LOG << "Ungrabbing input... " << std::flush;
+      ungrab_input_();
+      LOG << "Done ungrabbing input. " << std::endl;
+    }
 
     // Some OpenGL implementations don't like being
     // silently terminated, because they are poorly tested
@@ -611,18 +628,25 @@ void LasercakeGLWidget::prepare_to_cleanly_close_() {
 
     // TODO should we catch signals like Ctrl-C
     // in order to clean up even in their wake?
+    LOG << (use_separate_gl_thread_ ? "Quitting OpenGL thread... "
+                                    : "Releasing OpenGL state... ") << std::flush;
+    {
+      QMutexLocker lock(&gl_thread_data_->gl_data_lock);
+      gl_thread_data_->quit_now = true;
+      ++gl_thread_data_->revision;
+    }
     if(use_separate_gl_thread_) {
-      {
-        QMutexLocker lock(&gl_thread_data_->gl_data_lock);
-        gl_thread_data_->quit_now = true;
-      }
+      gl_thread_data_->interrupt.store(true);
       gl_thread_data_->wait_for_instruction.wakeAll();
       thread_.wait();
     }
     else {
-      gl_thread_data_->quit_now = true;
       thread_.gl_renderer_.fini();
     }
+    LOG << (use_separate_gl_thread_ ? "Done quitting OpenGL thread. "
+                                    : "Done releasing OpenGL state. ") << std::flush;
+
+    LOG << std::endl;
     has_quit_ = true;
   }
 }
@@ -678,7 +702,7 @@ input_representation::key_type q_key_event_to_input_rep_key_type(QKeyEvent* even
     as_text = keyString;
   //}
   QString lowercase_text = QApplication::keyboardInputLocale().toLower(as_text);
-  std::string result(lowercase_text.toUtf8().constData());
+  input_representation::key_type result(lowercase_text.toUtf8().constData());
   return result;
 }
 }
@@ -729,8 +753,6 @@ void LasercakeGLWidget::grab_input_() {
     input_is_grabbed_ = true;
     setMouseTracking(true);
     grabMouse();
-    //QApplication::desktop()->cursor().setShape(Qt::BlankCursor);
-    //cursor().setShape(Qt::BlankCursor);
     setCursor(QCursor(Qt::BlankCursor));
   }
 }
@@ -739,6 +761,7 @@ void LasercakeGLWidget::ungrab_input_() {
     setMouseTracking(false);
     releaseMouse();
     input_is_grabbed_ = false;
+    setCursor(QCursor(Qt::ArrowCursor));
   }
 }
 
@@ -796,17 +819,24 @@ void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
     //TODO why handle window things here but other things in LasercakeController::key_changed?
     switch(event->key()) {
       case Qt::Key_Escape:
-        close();
+        ungrab_input_();
+        return;
+      case Qt::Key_Q:
+        if((event->modifiers() & Qt::ControlModifier)) {
+          close();
+          return;
+        }
         break;
       case Qt::Key_F11:
         toggle_fullscreen();
-        break;
+        return;
       case Qt::Key_F:
         // F11 does Exposé stuff in OS X, and Command-Shift-F seems to be
         // the "fullscreen" convention there.
         // (Qt maps OSX command-key to Qt::Key_Control.)
         if((event->modifiers() & Qt::ShiftModifier) && (event->modifiers() & Qt::ControlModifier)) {
           toggle_fullscreen();
+          return;
         }
         break;
     }
@@ -952,16 +982,11 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
   const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
   const microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - monotonic_microseconds_at_beginning_of_frame_;
 
-//TODO runtime flag to disable all debug prints
-  LOG << output.extra_debug_info;
-//TODO make this runtime flag
-#if LASERCAKE_NO_TIMING
-  const bool show_timing = false;
-#else
-  const bool show_timing = true;
-#endif
+  if(config_.show_frame_timing) {
+    LOG << output.extra_debug_info;
+  }
 
-  if(show_timing) { LOG
+  if(config_.show_frame_timing) { LOG
   << "Frame " << std::left << std::setw(4) << frame_ << std::right << ":"
   //TODO bugreport: with fps as double, this produced incorrect results for me-- like multiplying output by 10
   // -- may be a libstdc++ bug (or maybe possibly me misunderstanding the library)
@@ -982,7 +1007,7 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
     monotonic_microseconds_at_beginning_of_ten_frame_block_ = end_frame_monotonic_microseconds;
     const microseconds_t ending = monotonic_microseconds_at_beginning_of_ten_frame_block_;
 
-    if(show_timing) { LOG
+    if(config_.show_frame_timing) { LOG
     << show_microseconds_per_frame_as_fps((ending - beginning) / 10)
     << " fps over the last ten frames " << (frame_-10) << "-" << frame_ << ".\n";
     }
@@ -992,10 +1017,22 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
     monotonic_microseconds_at_beginning_of_hundred_frame_block_ = end_frame_monotonic_microseconds;
     const microseconds_t ending = monotonic_microseconds_at_beginning_of_hundred_frame_block_;
 
-    if(show_timing) { LOG
+    if(config_.show_frame_timing) { LOG
     << show_microseconds_per_frame_as_fps((ending - beginning) / 100)
     << " fps over the last hundred frames " << (frame_-100) << "-" << frame_ << ".\n";
     }
+  }
+
+  // HACK - limit to about 60 FPS
+  // TODO - use Qt timer events instead.
+  // TODO - make this configurable and/or changeable
+  // at runtime.
+  const microseconds_t frame_duration_at_60fps = 1000000 / 60;
+  const microseconds_t estimated_extra_delay_after_sleep = frame_duration_at_60fps / 6;
+  const microseconds_t want_to_sleep =
+    frame_duration_at_60fps - last_gl_render_microseconds - estimated_extra_delay_after_sleep;
+  if(want_to_sleep > 0) {
+    sleeper::usleep(want_to_sleep);
   }
 
   monotonic_microseconds_at_beginning_of_frame_ = end_frame_monotonic_microseconds;

@@ -19,6 +19,7 @@
 
 */
 
+#include <initializer_list>
 #include <GL/glew.h>
 
 #include "gl_data_preparation.hpp"
@@ -116,30 +117,30 @@ namespace /* anonymous */ {
 // get tedious.  Hmm.
 
 template<typename Int>
-inline vector3<GLfloat> cast_vector3_to_float(vector3<Int> v) {
+constexpr inline vector3<GLfloat> cast_vector3_to_float(vector3<Int> v) {
   return vector3<GLfloat>(get_primitive_float(v.x), get_primitive_float(v.y), get_primitive_float(v.z));
 }
 template<typename Int>
-inline vector3<double> cast_vector3_to_double(vector3<Int> v) {
+constexpr inline vector3<double> cast_vector3_to_double(vector3<Int> v) {
   return vector3<double>(get_primitive_double(v.x), get_primitive_double(v.y), get_primitive_double(v.z));
 }
 
-inline GLfloat convert_distance_to_GL(distance distance) {
+constexpr inline GLfloat convert_distance_to_GL(distance distance) {
   return get_primitive_float(distance / fine_distance_units);
 }
-inline vector3<GLfloat> convert_displacement_to_GL(vector3<distance> distance) {
+constexpr inline vector3<GLfloat> convert_displacement_to_GL(vector3<distance> distance) {
   return cast_vector3_to_float(distance / fine_distance_units);
 }
 
-inline double convert_distance_to_double(distance distance) {
+constexpr inline double convert_distance_to_double(distance distance) {
   return get_primitive_double(distance / fine_distance_units);
 }
-inline vector3<double> convert_displacement_to_double(vector3<distance> distance) {
+constexpr inline vector3<double> convert_displacement_to_double(vector3<distance> distance) {
   return cast_vector3_to_double(distance / fine_distance_units);
 }
 
-static const vector3<GLfloat> tile_size_float = convert_displacement_to_GL(tile_size);
-static const vector3<double> tile_size_double = convert_displacement_to_double(tile_size);
+static constexpr vector3<GLfloat> tile_size_float = convert_displacement_to_GL(tile_size);
+static constexpr vector3<double> tile_size_double = convert_displacement_to_double(tile_size);
 
 inline vector3<GLfloat> convert_coordinates_to_GL(vector3<distance> view_center, vector3<distance> input) {
   return cast_vector3_to_float((input - view_center) / fine_distance_units);
@@ -237,6 +238,140 @@ void push_convex_polygon(vector3<distance> const& view_loc,
       prev_vertex = this_vertex;
     }
   }
+}
+
+void push_bbox(gl_collection& coll,
+               vertex const& bmin,
+               vertex const& bmax,
+               color const& c) {
+  push_quad(coll,
+            vertex(bmin.x, bmin.y, bmin.z),
+            vertex(bmax.x, bmin.y, bmin.z),
+            vertex(bmax.x, bmax.y, bmin.z),
+            vertex(bmin.x, bmax.y, bmin.z),
+            c);
+  push_quad(coll,
+            vertex(bmin.x, bmin.y, bmin.z),
+            vertex(bmax.x, bmin.y, bmin.z),
+            vertex(bmax.x, bmin.y, bmax.z),
+            vertex(bmin.x, bmin.y, bmax.z),
+            c);
+  push_quad(coll,
+            vertex(bmin.x, bmin.y, bmin.z),
+            vertex(bmin.x, bmin.y, bmax.z),
+            vertex(bmin.x, bmax.y, bmax.z),
+            vertex(bmin.x, bmax.y, bmin.z),
+            c);
+  push_quad(coll,
+            vertex(bmin.x, bmin.y, bmax.z),
+            vertex(bmax.x, bmin.y, bmax.z),
+            vertex(bmax.x, bmax.y, bmax.z),
+            vertex(bmin.x, bmax.y, bmax.z),
+            c);
+  push_quad(coll,
+            vertex(bmin.x, bmax.y, bmin.z),
+            vertex(bmax.x, bmax.y, bmin.z),
+            vertex(bmax.x, bmax.y, bmax.z),
+            vertex(bmin.x, bmax.y, bmax.z),
+            c);
+  push_quad(coll,
+            vertex(bmax.x, bmin.y, bmin.z),
+            vertex(bmax.x, bmin.y, bmax.z),
+            vertex(bmax.x, bmax.y, bmax.z),
+            vertex(bmax.x, bmax.y, bmin.z),
+            c);
+}
+
+glm::vec3 average_direction(glm::vec3 d1, glm::vec3 d2) {
+  return glm::normalize(
+      glm::normalize(d1) + glm::normalize(d2)
+    );
+}
+// makes it gradually translucent towards the centre.
+void push_wireframe_convex_polygon(
+      gl_collection& coll, color c, GLfloat width,
+      std::vector<glm::vec3> vs) {
+  color ceethrough = c; ceethrough.a = 0;
+  const int num_vertices = vs.size();
+  const int last = num_vertices - 1;
+  caller_correct_if(num_vertices >= 3, "that's not a polygon");
+
+  std::vector<glm::vec3> vcenters(vs);
+  vcenters[0] += width * average_direction(vs[last] - vs[0], vs[1] - vs[0]);
+  for(int i = 1; i < last; ++i) {
+    vcenters[i] += width * average_direction(vs[i-1] - vs[i], vs[i+1] - vs[i]);
+  }
+  vcenters[last] += width * average_direction(vs[last-1] - vs[last], vs[0] - vs[last]);
+//  push_vertex(coll.triangle_strip, vs[i], c);
+  for(int i = 0; i < last; ++i) {
+    push_triangle(coll, vs[i], c,
+                        vcenters[i], ceethrough,
+                        vs[i+1], c
+                 );
+    push_triangle(coll, vcenters[i], ceethrough,
+                        vs[i+1], c,
+                        vcenters[i+1], ceethrough
+                 );
+    // TODO use indexed vertices
+    //https://home.comcast.net/~tom_forsyth/blog.wiki.html#Strippers2
+    //push_vertex(coll.triangle_strip, vs[i], c);
+    //push_vertex(coll.triangle_strip, vs[i] + towards_center, c);
+  }
+    push_triangle(coll, vs[last], c,
+                        vcenters[last], ceethrough,
+                        vs[0], c
+                 );
+    push_triangle(coll, vcenters[last], ceethrough,
+                        vs[0], c,
+                        vcenters[0], ceethrough
+                 );
+//  push_vertex(coll.triangle_strip, vs[i] + towards_center, c);
+}
+void push_wireframe(vector3<distance> const& view_loc,
+                    gl_collection& coll,
+                    bounding_box box,
+                    distance frame_width, // or should this be a fraction of the box size?
+                    color c
+                   ) {
+  const GLfloat width = convert_distance_to_GL(frame_width);
+  const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, box.min());
+  const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, box.max());
+  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmin.y, bmin.z),
+            glm::vec3(bmax.x, bmin.y, bmin.z),
+            glm::vec3(bmax.x, bmax.y, bmin.z),
+            glm::vec3(bmin.x, bmax.y, bmin.z),
+  });
+  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmin.y, bmin.z),
+            glm::vec3(bmax.x, bmin.y, bmin.z),
+            glm::vec3(bmax.x, bmin.y, bmax.z),
+            glm::vec3(bmin.x, bmin.y, bmax.z),
+  });
+  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmin.y, bmin.z),
+            glm::vec3(bmin.x, bmin.y, bmax.z),
+            glm::vec3(bmin.x, bmax.y, bmax.z),
+            glm::vec3(bmin.x, bmax.y, bmin.z),
+  });
+  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmin.y, bmax.z),
+            glm::vec3(bmax.x, bmin.y, bmax.z),
+            glm::vec3(bmax.x, bmax.y, bmax.z),
+            glm::vec3(bmin.x, bmax.y, bmax.z),
+  });
+  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmax.y, bmin.z),
+            glm::vec3(bmax.x, bmax.y, bmin.z),
+            glm::vec3(bmax.x, bmax.y, bmax.z),
+            glm::vec3(bmin.x, bmax.y, bmax.z),
+  });
+  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmax.x, bmin.y, bmin.z),
+            glm::vec3(bmax.x, bmin.y, bmax.z),
+            glm::vec3(bmax.x, bmax.y, bmax.z),
+            glm::vec3(bmax.x, bmax.y, bmin.z),
+  });
 }
 
 
@@ -594,47 +729,13 @@ void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3
 }
 
 void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
-                   shape const& object_shape, color shape_color) {
+                   shape const& object_shape, color shape_color, bool wireframe = false) {
   lasercake_vector<bounding_box>::type const& obj_bboxes = object_shape.get_boxes();
   for (bounding_box const& bbox : obj_bboxes) {
     const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
     const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
-    push_quad(coll,
-              vertex(bmin.x, bmin.y, bmin.z),
-              vertex(bmax.x, bmin.y, bmin.z),
-              vertex(bmax.x, bmax.y, bmin.z),
-              vertex(bmin.x, bmax.y, bmin.z),
-              shape_color);
-    push_quad(coll,
-              vertex(bmin.x, bmin.y, bmin.z),
-              vertex(bmax.x, bmin.y, bmin.z),
-              vertex(bmax.x, bmin.y, bmax.z),
-              vertex(bmin.x, bmin.y, bmax.z),
-              shape_color);
-    push_quad(coll,
-              vertex(bmin.x, bmin.y, bmin.z),
-              vertex(bmin.x, bmin.y, bmax.z),
-              vertex(bmin.x, bmax.y, bmax.z),
-              vertex(bmin.x, bmax.y, bmin.z),
-              shape_color);
-    push_quad(coll,
-              vertex(bmin.x, bmin.y, bmax.z),
-              vertex(bmax.x, bmin.y, bmax.z),
-              vertex(bmax.x, bmax.y, bmax.z),
-              vertex(bmin.x, bmax.y, bmax.z),
-              shape_color);
-    push_quad(coll,
-              vertex(bmin.x, bmax.y, bmin.z),
-              vertex(bmax.x, bmax.y, bmin.z),
-              vertex(bmax.x, bmax.y, bmax.z),
-              vertex(bmin.x, bmax.y, bmax.z),
-              shape_color);
-    push_quad(coll,
-              vertex(bmax.x, bmin.y, bmin.z),
-              vertex(bmax.x, bmin.y, bmax.z),
-              vertex(bmax.x, bmax.y, bmax.z),
-              vertex(bmax.x, bmax.y, bmin.z),
-              shape_color);
+    if (wireframe) push_wireframe(view_loc, coll, bbox, tile_width / 10, shape_color);
+    else           push_bbox     (coll, bmin, bmax, shape_color);
   }
 
   lasercake_vector<geom::convex_polygon>::type const& obj_polygons = object_shape.get_polygons();
@@ -655,11 +756,21 @@ void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
   lasercake_vector<geom::convex_polyhedron>::type const& obj_polyhedra = object_shape.get_polyhedra();
   for (geom::convex_polyhedron const& ph : obj_polyhedra) {
     for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
-      std::vector<geom::vect> poly;
-      for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
-        poly.push_back(ph.vertices()[ph.face_info()[i + j + 1]]);
+      if (wireframe) {
+        std::vector<glm::vec3> poly;
+        for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
+          vector3<GLfloat> v = convert_coordinates_to_GL(view_loc, ph.vertices()[ph.face_info()[i + j + 1]]);
+          poly.push_back(glm::vec3(v.x, v.y, v.z));
+        }
+        push_wireframe_convex_polygon(coll, shape_color, convert_distance_to_GL(tile_width / 10), poly);
       }
-      push_convex_polygon(view_loc, coll, poly, shape_color);
+      else {
+        std::vector<geom::vect> poly;
+        for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
+          poly.push_back(ph.vertices()[ph.face_info()[i + j + 1]]);
+        }
+        push_convex_polygon(view_loc, coll, poly, shape_color);
+      }
     }
   }
 }
@@ -963,7 +1074,7 @@ void view_on_the_world::prepare_gl_data(
             case DECONSTRUCT_OBJECT: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xffff0077)); break;
             case SHOOT_LASERS: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077)); break;
             case ROTATE_CONVEYOR: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x0000ff77)); break;
-            case BUILD_OBJECT: prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0033)); break;
+            case BUILD_OBJECT: prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0077), true); break;
             default: break;
           }
         }

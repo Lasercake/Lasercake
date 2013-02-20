@@ -59,6 +59,7 @@ struct config_struct {
   bool have_gui;
   bool run_drawing_code;
   bool initially_drawing_debug_stuff;
+  bool show_frame_timing;
   int64_t exit_after_frames;
   bool use_opengl_thread;
   bool use_simulation_thread;
@@ -76,6 +77,14 @@ inline std::ostream& operator<<(std::ostream& os, config_struct const& config) {
     << "; use_simulation_thread=" << config.use_simulation_thread
     << '}';
 }
+
+// TODO use Qt timer events where possible instead of this.
+struct sleeper : private QThread {
+public:
+  using QThread::sleep;
+  using QThread::msleep;
+  using QThread::usleep;
+};
 
 // for use in its own QThread
 class LasercakeSimulator : public QObject {
@@ -103,6 +112,7 @@ private:
 struct gl_thread_data_t {
   QMutex gl_data_lock;
   QWaitCondition wait_for_instruction;
+  std::atomic_bool interrupt;
 
   // access protected by the mutex:
   bool quit_now;

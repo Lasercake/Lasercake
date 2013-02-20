@@ -57,7 +57,8 @@ time_type round_time_downwards(time_type time_with_units, time_int_type max_mean
   while (time.denominator > max_meaningful_precision) {
     int shift_amount = 2;
     time.numerator >>= shift_amount;
-    time.denominator = (time.denominator + (1 << shift_amount) - 1) >> shift_amount;
+    time.denominator = shift_right(time.denominator, shift_amount,
+        rounding_strategy<round_up, negative_continuous_with_positive>());
   }
   return time;
 }

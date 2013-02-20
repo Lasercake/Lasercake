@@ -19,11 +19,18 @@
 
 */
 
+// When you add a new tests file, define a new name here and with
+// DECLARE_TESTS_FILE near the top of test_header.hpp, and put at
+// the bottom of your tests file:
+// REGISTER_TESTS // This must come last in the file.
+#define TESTS_FILE units_tests
 #include "test_header.hpp"
 
 #include "../units.hpp"
 
 #include <boost/random/mersenne_twister.hpp>
+
+//namespace /*anonymous*/ {
 
 typedef meters_t meter;
 //constexpr auto kilograms = kilo*grams;
@@ -49,6 +56,7 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   //physical_quantity<int32_t, typename units_recip<notty>::type> fiiiodsfdfeso;
   //This is not currently an error; should it be?
   physical_quantity<int32_t, units<>> hmmmmmmmmmmmmmmm;
+  static_cast<void>(hmmmmmmmmmmmmmmm); //prevent unused-variable warning
 
   const physical_quantity<int32_t, meter> foo = 1 * meter();
   const physical_quantity<int64_t, meter> foo64 = foo;
@@ -219,3 +227,9 @@ BOOST_AUTO_TEST_CASE( unitses ) {
   BOOST_CHECK_EQUAL(identity(grams / kilograms), (1000*units_factor<1, 1000>()));
   BOOST_CHECK_EQUAL(identity(grams / kilograms)*units_factor<1000>(), short(1000));
 }
+
+
+//} /* end anonymous namespace */
+
+
+REGISTER_TESTS // This must come last in the file.

@@ -80,7 +80,7 @@ inline shape tile_shape(vector3<tile_coordinate> tile) {
 }
 
 
-const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 2)) - 5;
+constexpr tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 2)) - 5;
 // A possibility:
 // 0x5 is binary 0101.  We alternate 0 and 1 bits so that
 // we don't start particularly near high-bit changes that
@@ -90,8 +90,8 @@ const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof
 // at decimal 1000000000 instead (binary 111011100110101100101000000000).
 //const tile_coordinate world_center_tile_coord = (tile_coordinate(1) << (8*sizeof(tile_coordinate) - 2)) - 5;//0x55555555;
 
-const vector3<tile_coordinate> world_center_tile_coords(world_center_tile_coord, world_center_tile_coord, world_center_tile_coord);
-const vector3<distance> world_center_fine_coords = lower_bound_in_fine_distance_units(world_center_tile_coords);
+constexpr vector3<tile_coordinate> world_center_tile_coords(world_center_tile_coord, world_center_tile_coord, world_center_tile_coord);
+constexpr vector3<distance> world_center_fine_coords = lower_bound_in_fine_distance_units(world_center_tile_coords);
 
 
 
@@ -572,7 +572,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 template<cardinal_direction Dir> inline tile_location tile_location::get_neighbor(level_of_tile_realization_needed realineeded)const {
   using namespace the_decomposition_of_the_world_into_blocks_impl;
   wb_->ensure_realization(realineeded);
-  vector3<tile_coordinate> new_coords = v_; cdir_info<Dir>::add_to(new_coords);
+  const vector3<tile_coordinate> new_coords = cdir_info<Dir>::plus(v_);
   if (next_to_boundary<Dir>(v_)) {
     return tile_location(new_coords, advance_idx_across_worldblock_boundary<Dir>(idx_),
                                       &wb_->ensure_neighbor_realization<Dir>(realineeded));

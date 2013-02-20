@@ -89,19 +89,19 @@ typedef physical_quantity<lint64_t, time_units_t> time_unit;
 
 
 //ok...
-const distance tile_width = 1 * tile_widths * identity(fine_distance_units / tile_widths);
-const distance tile_height = 1 * tile_heights * identity(fine_distance_units / tile_heights);
-const vector3<distance> tile_size(tile_width, tile_width, tile_height);
+constexpr distance tile_width = 1 * tile_widths * identity(fine_distance_units / tile_widths);
+constexpr distance tile_height = 1 * tile_heights * identity(fine_distance_units / tile_heights);
+constexpr vector3<distance> tile_size(tile_width, tile_width, tile_height);
 
 // Standard (Earth-equivalent) gravity: precisely 9.80665 m/s2
-const acceleration1d gravity_acceleration_magnitude =
+constexpr acceleration1d gravity_acceleration_magnitude =
   divide(9806650 * (micro*meters) / (seconds*seconds),
          identity((micro*meters) / fine_distance_units),
          rounding_strategy<round_to_nearest_with_ties_rounding_to_even>());
-const vector3<acceleration1d> gravity_acceleration(0, 0, -gravity_acceleration_magnitude);
+constexpr vector3<acceleration1d> gravity_acceleration(0, 0, -gravity_acceleration_magnitude);
 
-const auto water_density_kgm3 = 1000*kilograms/(meters*meters*meters);
-const density water_density = water_density_kgm3 * identity(density_units / (kilograms/(meters*meters*meters)));
+constexpr auto water_density_kgm3 = 1000*kilograms/(meters*meters*meters);
+constexpr density water_density = water_density_kgm3 * identity(density_units / (kilograms/(meters*meters*meters)));
 
 // The tile physics constants are improper constants because they refer to
 // frame length.
@@ -109,7 +109,7 @@ const density water_density = water_density_kgm3 * identity(density_units / (kil
 // unitification because making them be per-second would add a lot of
 // divisions, and I didn't want to mess up the delicate balance of the
 // fluid physics. - Eli
-const auto fluid_friction_constant =
+constexpr auto fluid_friction_constant =
     sub_tile_velocity(
       tile_width
       * identity(tile_physics_sub_tile_distance_units / fine_distance_units)
@@ -118,33 +118,33 @@ const auto fluid_friction_constant =
 
 // was originally conceptualized as "the terminal velocity should be
 // half a tile height per frame", hence the strange value.
-const sub_tile_distance air_resistance_constant =
+constexpr sub_tile_distance air_resistance_constant =
     sub_tile_distance(
       (tile_height / fixed_frame_lengths) * (tile_height / fixed_frame_lengths)
       * identity(fixed_frame_lengths * fixed_frame_lengths / seconds / seconds)
       * identity(tile_physics_sub_tile_distance_units / fine_distance_units)
       / (4 * gravity_acceleration_magnitude));
 
-const pressure pressure_per_depth_in_tile_heights =
+constexpr pressure pressure_per_depth_in_tile_heights =
     water_density_kgm3 * gravity_acceleration_magnitude * tile_height
     / (identity(fine_distance_units / meters) * identity(fine_distance_units / meters));
 
-const sub_tile_velocity idle_progress_reduction_rate =
+constexpr sub_tile_velocity idle_progress_reduction_rate =
     sub_tile_velocity(
       (tile_width * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / 100)
       / fixed_frame_lengths);
-const sub_tile_velocity min_convincing_speed         =
+constexpr sub_tile_velocity min_convincing_speed         =
     sub_tile_velocity(
       (tile_width * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / 50 )
       / fixed_frame_lengths);
-const vector3<sub_tile_velocity> inactive_fluid_velocity(0, 0, -min_convincing_speed);
+constexpr vector3<sub_tile_velocity> inactive_fluid_velocity(0, 0, -min_convincing_speed);
 
 // I just kept this at the value it was at duing the unitization.
 // I suppose in the long run we'll use a more nuanced water-drag system.
 // In the short run, TODO: Change it to 15 m/s (somewhat slower than the
 // current value) because that's about the top speed of typical modern
 // submarines.
-const velocity1d max_object_speed_through_water = (tile_width * 30 / 16) / seconds;
+constexpr velocity1d max_object_speed_through_water = (tile_width * 30 / 16) / seconds;
 
 #if 0
 const time_unit time_units_per_second = 2*2*2*2 * 3*3*3 * 5*5 * 7 * 11;
