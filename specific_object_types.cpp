@@ -240,18 +240,16 @@ std::string robot::player_instructions()const {
     "arrow keys or mouse: rotate view;  "
     "wasd: move;  "
     "space: jump\n" //hmm should we have a jump and have it do this
-    "clr: switch mode\n"
-    "m: make digging robot that goes towards the current facing"
-    " and leaves rubble at the current location ("+draw_m3(autorobot_cost)+")\n"
-    "p: create solar panel ("+"not"+")\n"
-    "o: create refinery ("+draw_m3(refinery_cost)+")\n"
-    "b: create conveyor belt ("+draw_m3(conveyor_cost)+")\n"
-    "v: rotate conveyor belt\n"
+    "clrbom: switch mode\n"
+    "p: create solar panel (not)\n"
     "\n"
     "Metal carried: " + draw_m3(metal_carried_) + " / " + draw_m3(storage_volume()) + "\n" + (
-      (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, or collect pure metal" :
-      (mode_ == "laser")   ? "Laser mode: Hold mouse button to fire dual lasers" :
-      (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing" :
+      (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, collect pure metal, or deconstruct objects (not yet implemented)." :
+      (mode_ == "laser")   ? "Laser mode: Hold mouse button to fire dual lasers." :
+      (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing." :
+      (mode_ == "building_conveyor") ? "Conveyor mode: Click to build a conveyor belt ("+draw_m3(conveyor_cost)+") or click a conveyor to rotate it." :
+      (mode_ == "building_refinery") ? "Conveyor mode: Click to build a refinery ("+draw_m3(refinery_cost)+")." :
+      (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot ("+draw_m3(autorobot_cost)+"). (TODO: clean up and document these robots)" :
       "Unknown mode, this is an error!"
     ) + "\n"
     ;
@@ -320,31 +318,142 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     }
   }
   facing_ = facing_ * tile_width / facing_.magnitude_within_32_bits();
+
+  if (
+       (((mode_ == "laser") || (mode_ == "rockets")) && input_news.is_currently_pressed(input_representation::left_mouse_button))
+    || input_news.num_times_pressed(input_representation::left_mouse_button)
+     ) {
+    perform_click_action(w, my_id, get_current_click_action(w, my_id));
+  }
   
-  vector3<distance> digging_laser_delta = facing_ * 3 / 2;
+  if (input_news.num_times_pressed("c")) mode_ = "digging";
+  if (input_news.num_times_pressed("l")) mode_ = "laser";
+  if (input_news.num_times_pressed("r")) mode_ = "rockets";
+  if (input_news.num_times_pressed("o")) mode_ = "building_refinery";
+  if (input_news.num_times_pressed("m")) mode_ = "building_autorobot";
+  if (input_news.num_times_pressed("b")) mode_ = "building_conveyor";
+}
+
+click_action robot::get_current_click_action(world& w, object_identifier my_id)const { // TODO: This use of world& should be able to be world const&
+  click_action result;
+  if (mode_ == "rockets") {
+    result.type = FIRE_ROCKETS;
+    return result;
+  }
+  
+  vector3<distance> action_laser_delta = facing_ * 2;
+  if (mode_ == "laser") {
+    action_laser_delta = facing_ * 50;
+    result.type = SHOOT_LASERS;
+  }
+  if (mode_ == "building_refinery") action_laser_delta = facing_ * 3;
   vector3<distance> result_delta;
-  const object_or_tile_identifier digging_laser_target = laser_find(w, my_id, location_, digging_laser_delta, false, &result_delta);
-  if (mode_ == "digging" && input_news.num_times_pressed(input_representation::left_mouse_button)) {
-    if (tile_location const* locp = digging_laser_target.get_tile_location()) {
-#if 0
-      if ((carrying_ < robot_max_carrying_capacity) &&
-          (locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
-        ++carrying_;
-        w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+  const object_or_tile_identifier thing_hit = laser_find(w, my_id, location_, action_laser_delta, false, &result_delta);
+  result.fine_target_location = location_ + result_delta;
+
+  // TODO fix duplicate list of mode names
+  if (mode_ == "building_refinery" || mode_ == "building_conveyor") {
+    tile_location first_guess = w.make_tile_location(
+        get_min_containing_tile_coordinates(result.fine_target_location), // TODO: min gives direction bias, what to do?
+        CONTENTS_ONLY);
+    tile_location loc = first_guess;
+    tile_location locd = loc.get_neighbor<zminus>(CONTENTS_ONLY);
+    result.which_affected = loc;
+    if ((loc.stuff_at().contents() == AIR) && (locd.stuff_at().contents() != AIR)) {
+      // the first guess was good
+    }
+    else {
+      tile_location uploc = loc.get_neighbor<zplus>(CONTENTS_ONLY);
+      tile_location uplocd = loc;
+      for (int offs = 0; offs < 15; ++offs) {
+        loc = locd;
+        locd = locd.get_neighbor<zminus>(CONTENTS_ONLY);
+        if ((loc.stuff_at().contents() == AIR) && (locd.stuff_at().contents() != AIR)) {
+          result.which_affected = loc;
+          break;
+        }
+        uplocd = uploc;
+        uploc = uploc.get_neighbor<zplus>(CONTENTS_ONLY);
+        if ((uploc.stuff_at().contents() == AIR) && (uplocd.stuff_at().contents() != AIR)) {
+          result.which_affected = uploc;
+          break;
+        }
       }
-#endif
+      // if the loop finishes with no result, leave it at the first guess
+    }
+
+    if (mode_ == "building_refinery" && metal_carried_ >= refinery_cost) {
+      result.type = BUILD_OBJECT;
+      assert(result.which_affected.get_tile_location());
+      result.object_built = shared_ptr<object>(new refinery(result.which_affected.get_tile_location()->coords()));
+      result.metal_spent = refinery_cost;
+    }
+    if (mode_ == "building_conveyor") {
+      if (object_identifier const* oidp = thing_hit.get_object_identifier()) {
+        if (shared_ptr<object>* obj = w.get_object(*oidp)) {
+          if (shared_ptr<conveyor_belt> belt = boost::dynamic_pointer_cast<conveyor_belt>(*obj)) {
+            result.type = ROTATE_CONVEYOR;
+            result.which_affected = *oidp;
+          }
+        }
+      }
+      if (result.type != ROTATE_CONVEYOR && metal_carried_ >= conveyor_cost) {
+        result.type = BUILD_OBJECT;
+        assert(result.which_affected.get_tile_location());
+        result.object_built = shared_ptr<object>(new conveyor_belt(result.which_affected.get_tile_location()->coords()));
+        result.metal_spent = conveyor_cost;
+      }
+    }
+  }
+  if (mode_ == "building_autorobot" && metal_carried_ >= autorobot_cost) {
+    result.type = BUILD_OBJECT;
+    // TODO make autorobots appear nicely like other things (and fix them up in general)
+    result.object_built = shared_ptr<object>(new autorobot(result.fine_target_location, facing_));
+    result.metal_spent = autorobot_cost;
+  }
+
+  if (mode_ == "digging") {
+    if (tile_location const* locp = thing_hit.get_tile_location()) {
+      result.which_affected = *locp;
       if (locp->stuff_at().contents() == ROCK) {
-        w.replace_substance(*locp, ROCK, RUBBLE);
+        result.type = DIG_ROCK_TO_RUBBLE;
       }
       else if (locp->stuff_at().contents() == RUBBLE) {
         // we can pick up pure metal
         if (w.get_minerals(locp->coords()).metal == tile_volume) {
           if (metal_carried_ + tile_volume <= storage_volume()) {
-            w.replace_substance(*locp, RUBBLE, AIR);
-            metal_carried_ += tile_volume;
+            result.type = COLLECT_METAL;
           }
         }
         else {
+          result.type = THROW_RUBBLE;
+        }
+      }
+    }
+    if (object_identifier const* oidp = thing_hit.get_object_identifier()) {
+      if (w.get_object(*oidp)) {
+        result.type = DECONSTRUCT_OBJECT;
+        result.which_affected = *oidp;
+      }
+    }
+  }
+
+  return result;
+}
+
+void robot::perform_click_action(world& w, object_identifier my_id, click_action a) {
+  switch (a.type) {
+    case DIG_ROCK_TO_RUBBLE: {
+      tile_location const* locp = a.which_affected.get_tile_location();
+      assert(locp);
+      
+      w.replace_substance(*locp, ROCK, RUBBLE);
+    } break;
+    
+    case THROW_RUBBLE: {
+      tile_location const* locp = a.which_affected.get_tile_location();
+      assert(locp);
+      
           // hack way to speed the tile?
           get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_velocity>(
             facing_ *
@@ -353,126 +462,81 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
               tile_width * 6 / seconds
 
             / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
-        }
+    } break;
+
+    case COLLECT_METAL: {
+      tile_location const* locp = a.which_affected.get_tile_location();
+      assert(locp);
+      
+      w.replace_substance(*locp, RUBBLE, AIR);
+      metal_carried_ += tile_volume;
+    } break;
+
+    case ROTATE_CONVEYOR: {
+      object_identifier const* oidp = a.which_affected.get_object_identifier();
+      assert(oidp);
+      shared_ptr<object>* obj = w.get_object(*oidp);
+      assert(obj);
+      shared_ptr<conveyor_belt> belt = boost::dynamic_pointer_cast<conveyor_belt>(*obj);
+      assert(belt);
+      belt->rotate();
+    } break;
+
+    case DECONSTRUCT_OBJECT: {
+      object_identifier const* oidp = a.which_affected.get_object_identifier();
+      assert(oidp);
+      // TODO actually do something here.
+    } break;
+
+    case FIRE_ROCKETS: {
+      const uniform_int_distribution<distance> random_delta(-tile_width, tile_width);
+      for (int i = 0; i < 20; ++i) {
+        const shared_ptr<random_walk_rocket> roc (new random_walk_rocket(
+          location_ + facing_ * 2 +
+            vector3<distance>(random_delta(w.get_rng()), random_delta(w.get_rng()), random_delta(w.get_rng())),
+          facing_));
+        w.try_create_object(roc);
       }
-    }
-  }
-  else if (input_news.num_times_pressed("v")) {
-    if (object_identifier const* oidp = digging_laser_target.get_object_identifier()) {
-      if (shared_ptr<object>* obj = w.get_object(*oidp)) {
-        if (shared_ptr<conveyor_belt> belt = boost::dynamic_pointer_cast<conveyor_belt>(*obj)) {
-          belt->rotate();
+    } break;
+
+    case SHOOT_LASERS: {
+      const vector3<distance> offset(-facing_.y / 4, facing_.x / 4, 0);
+      const vector3<distance> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
+      for (int i = 0; i < 2; ++i)
+      {
+        const object_or_tile_identifier hit_thing = laser_find(
+            w, my_id,
+            (i ? (location_ + offset) : (location_ - offset)),
+            beam_vector, true);
+        if(tile_location const* locp = hit_thing.get_tile_location()) {
+          if (locp->stuff_at().contents() == ROCK) {
+            w.replace_substance(*locp, ROCK, RUBBLE);
+          }
         }
-      }
-    }
-  }
-#if 0
-  else if (input_news.num_times_pressed("v") && (carrying_ > 0) && digging_laser_target == NO_OBJECT) {
-    --carrying_;
-    const tile_location target_loc = w.make_tile_location(
-        get_random_containing_tile_coordinates(location_ + digging_laser_delta, w.get_rng()),
-        FULL_REALIZATION);
-    assert(target_loc.stuff_at().contents() == AIR);
-    w.replace_substance(target_loc, AIR, RUBBLE);
-  }
-#endif
-  else if (digging_laser_target != NO_OBJECT) {
-    // hack - draw a thing indicating where we'd hit
-    vector3<distance> hitloc = location_ + result_delta;
-    w.add_laser_sfx(hitloc + vector3<distance>(-100*fine_distance_units, -100*fine_distance_units, -100*fine_distance_units),
-                             vector3<distance>( 200*fine_distance_units,  200*fine_distance_units,  200*fine_distance_units));
-    w.add_laser_sfx(hitloc + vector3<distance>( 100*fine_distance_units,  100*fine_distance_units, -100*fine_distance_units),
-                             vector3<distance>(-200*fine_distance_units, -200*fine_distance_units,  200*fine_distance_units));
-    w.add_laser_sfx(hitloc + vector3<distance>(-100*fine_distance_units,  100*fine_distance_units, -100*fine_distance_units),
-                             vector3<distance>( 200*fine_distance_units, -200*fine_distance_units,  200*fine_distance_units));
-    w.add_laser_sfx(hitloc + vector3<distance>( 100*fine_distance_units, -100*fine_distance_units, -100*fine_distance_units),
-                             vector3<distance>(-200*fine_distance_units,  200*fine_distance_units,  200*fine_distance_units));
-  }
-    
-  if (mode_ == "laser" && input_news.is_currently_pressed(input_representation::left_mouse_button)) {
-    const vector3<distance> offset(-facing_.y / 4, facing_.x / 4, 0);
-    const vector3<distance> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
-    for (int i = 0; i < 2; ++i)
-    {
-      const object_or_tile_identifier hit_thing = laser_find(
-          w, my_id,
-          (i ? (location_ + offset) : (location_ - offset)),
-          beam_vector, true);
-      if(tile_location const* locp = hit_thing.get_tile_location()) {
-        if (locp->stuff_at().contents() == ROCK) {
-          w.replace_substance(*locp, ROCK, RUBBLE);
-        }
-      }
-      if(object_identifier const* oidp = hit_thing.get_object_identifier()) {
-        if (shared_ptr<object>* obj = w.get_object(*oidp)) {
-          if (shared_ptr<mobile_object> mobj = boost::dynamic_pointer_cast<mobile_object>(*obj)) {
-            const vector3<acceleration1d> tractor_beam_acceleration =
-              -(facing_ * 45) / seconds / seconds;
-            mobj->velocity_ += tractor_beam_acceleration
-              / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths;
+        if(object_identifier const* oidp = hit_thing.get_object_identifier()) {
+          if (shared_ptr<object>* obj = w.get_object(*oidp)) {
+            if (shared_ptr<mobile_object> mobj = boost::dynamic_pointer_cast<mobile_object>(*obj)) {
+              const vector3<acceleration1d> tractor_beam_acceleration =
+                -(facing_ * 45) / seconds / seconds;
+              mobj->velocity_ += tractor_beam_acceleration
+                / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths;
+            }
           }
         }
       }
-    }
-    //fire_standard_laser(w, my_id, location_ + offset, facing_);
-    //fire_standard_laser(w, my_id, location_ - offset, facing_);
-  }
-  
-  if (input_news.num_times_pressed("m") && metal_carried_ > autorobot_cost) {
-    const shared_ptr<autorobot> aur (new autorobot(location_ + facing_ * 2, facing_));
-    if (w.try_create_object(aur) != NO_OBJECT) metal_carried_ -= autorobot_cost;
-  }
-  if (input_news.num_times_pressed("p")) {
-    const shared_ptr<solar_panel> sol (new solar_panel(get_building_tile(w, my_id)));
-    w.try_create_object(sol);
-  }
-  if (input_news.num_times_pressed("o") && metal_carried_ > refinery_cost) {
-    const shared_ptr<refinery> ref (new refinery(get_building_tile(w, my_id)));
-    if (w.try_create_object(ref) != NO_OBJECT) metal_carried_ -= refinery_cost;
-  }
-  if (input_news.num_times_pressed("b") && metal_carried_ > conveyor_cost) {
-    const shared_ptr<conveyor_belt> con (new conveyor_belt(get_building_tile(w, my_id)));
-    if (w.try_create_object(con) != NO_OBJECT) metal_carried_ -= conveyor_cost;
-  }
-  if (mode_ == "rockets" && input_news.is_currently_pressed(input_representation::left_mouse_button)) {
-    const uniform_int_distribution<distance> random_delta(-tile_width, tile_width);
-    for (int i = 0; i < 20; ++i) {
-      const shared_ptr<random_walk_rocket> roc (new random_walk_rocket(
-        location_ + facing_ * 2 +
-          vector3<distance>(random_delta(w.get_rng()), random_delta(w.get_rng()), random_delta(w.get_rng())),
-        facing_));
-      w.try_create_object(roc);
-    }
-  }
-  if (input_news.num_times_pressed("c")) mode_ = "digging";
-  if (input_news.num_times_pressed("l")) mode_ = "laser";
-  if (input_news.num_times_pressed("r")) mode_ = "rockets";
-}
+      //fire_standard_laser(w, my_id, location_ + offset, facing_);
+      //fire_standard_laser(w, my_id, location_ - offset, facing_);
+    } break;
 
-vector3<tile_coordinate> robot::get_building_tile(world& w, object_identifier my_id)const { // TODO: This use of world& should be able to be world const&
-  vector3<distance> building_laser_delta = facing_ * 2;
-  vector3<distance> result_delta;
-  laser_find(w, my_id, location_, building_laser_delta, false, &result_delta);
-  
-  tile_location first_guess = w.make_tile_location(
-      get_min_containing_tile_coordinates(/*location_ + facing_ * 2*/ location_ + result_delta),
-      CONTENTS_ONLY);
-  tile_location loc = first_guess;
-  tile_location locd = loc.get_neighbor<zminus>(CONTENTS_ONLY);
-  if ((loc.stuff_at().contents() == AIR) && (locd.stuff_at().contents() != AIR)) return loc.coords();
+    case BUILD_OBJECT: {
+      if (w.try_create_object(a.object_built) != NO_OBJECT) metal_carried_ -= a.metal_spent;
+    } break;
 
-  tile_location uploc = loc.get_neighbor<zplus>(CONTENTS_ONLY);
-  tile_location uplocd = loc;
-  for (int offs = 0; offs < 15; ++offs) {
-    loc = locd;
-    locd = locd.get_neighbor<zminus>(CONTENTS_ONLY);
-    if ((loc.stuff_at().contents() == AIR) && (locd.stuff_at().contents() != AIR)) return loc.coords();
-    
-    uplocd = uploc;
-    uploc = uploc.get_neighbor<zplus>(CONTENTS_ONLY);
-    if ((uploc.stuff_at().contents() == AIR) && (uplocd.stuff_at().contents() != AIR)) return uploc.coords();
+    case NO_CLICK_ACTION: {
+    } break;
+
+    default: assert(false);
   }
-  return first_guess.coords();
 }
 
 shape laser_emitter::get_initial_personal_space_shape()const {

@@ -574,6 +574,25 @@ struct bbox_tile_prep_visitor {
   world& w;
 };
 
+void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3<distance> marker_loc, color marker_color) {
+  for (int xoffs = -1; xoffs <= 1; xoffs += 2) {
+  for (int yoffs = -1; yoffs <= 1; yoffs += 2) {
+  for (int zoffs = -1; zoffs <= 1; zoffs += 2) {
+    std::vector<vector3<distance>> poly;
+    poly.push_back(marker_loc);
+    // TODO express these in a better unit
+    poly.push_back(marker_loc + vector3<distance>(
+      xoffs*140*fine_distance_units,
+      yoffs*140*fine_distance_units,
+      zoffs*400*fine_distance_units));
+    poly.push_back(marker_loc + vector3<distance>(
+      xoffs*280*fine_distance_units,
+      yoffs*280*fine_distance_units,
+      zoffs*200*fine_distance_units));
+    push_convex_polygon(view_loc, coll, poly, marker_color);
+  }}}
+}
+
 void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
                    shape const& object_shape, color shape_color) {
   lasercake_vector<bounding_box>::type const& obj_bboxes = object_shape.get_boxes();
@@ -936,7 +955,17 @@ void view_on_the_world::prepare_gl_data(
       }
       else {
         if(shared_ptr<robot> rob = dynamic_pointer_cast<robot>(objp)) {
-          prepare_shape(view_loc, coll, tile_shape(rob->get_building_tile(w, id)), color(0xffff0033));
+          click_action a = rob->get_current_click_action(w, id);
+          switch (a.type) {
+            case DIG_ROCK_TO_RUBBLE: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077)); break;
+            case THROW_RUBBLE: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xdd770077)); break;
+            case COLLECT_METAL: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x00ff0077)); break;
+            case DECONSTRUCT_OBJECT: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xffff0077)); break;
+            case SHOOT_LASERS: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077)); break;
+            case ROTATE_CONVEYOR: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x0000ff77)); break;
+            case BUILD_OBJECT: prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0033)); break;
+            default: break;
+          }
         }
       }
     }
