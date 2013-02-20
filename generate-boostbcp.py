@@ -13,7 +13,7 @@ for source_dir in ['.', 'tests', 'data_structures']:
 	sources += glob.glob(source_dir+'/*.[ch]pp')
 
 boost_dir = sys.argv[1]
-boostbcp_dir = 'boostbcp'
+boostbcp_dir = 'bundled_libs/boostbcp'
 
 try: os.mkdir(boostbcp_dir)
 except OSError: pass
@@ -26,7 +26,7 @@ shutil.copy(boost_dir+'/'+boost_license_file_name,
             boostbcp_dir+'/'+boost_license_file_name)
 
 # Run `bcp` to copy the Boost sources we depend upon into the local
-#   ./boostbcp/
+#   ./bundled_libs/boostbcp/
 # This requires an installed Boost for the `bcp` binary; any version
 #                                                        of Boost will do;
 #   and requires a download of the correct version of Boost's source code.
