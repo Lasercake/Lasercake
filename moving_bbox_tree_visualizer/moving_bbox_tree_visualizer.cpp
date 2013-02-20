@@ -41,9 +41,7 @@
 #include <sys/resource.h>
 #endif
 
-//#ifdef LASERCAKE_USE_BOOSTBCP
 #define BOOST_CHRONO_HEADER_ONLY
-//#endif
 #include <boost/chrono.hpp>
 #include <boost/chrono/process_cpu_clocks.hpp>
 #include <boost/chrono/thread_clock.hpp>

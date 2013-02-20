@@ -19,8 +19,10 @@
 
 */
 
-// This prevents some deprecated members with global constructors.
+// BOOST_SYSTEM_NO_DEPRECATED prevents some deprecated members with global constructors.
+#ifndef BOOST_SYSTEM_NO_DEPRECATED
 #define BOOST_SYSTEM_NO_DEPRECATED
+#endif
 
 #include "config.hpp"
 
@@ -44,7 +46,7 @@
 #include <sys/resource.h>
 #endif
 
-#ifdef LASERCAKE_USE_BOOSTBCP
+#ifndef BOOST_CHRONO_HEADER_ONLY
 #define BOOST_CHRONO_HEADER_ONLY
 #endif
 #include <boost/chrono.hpp>
