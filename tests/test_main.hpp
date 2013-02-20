@@ -22,7 +22,7 @@
 #ifndef LASERCAKE_TEST_MAIN_HPP__
 #define LASERCAKE_TEST_MAIN_HPP__
 
-int lasercake_test_main(int argc, char *argv[]);
+int lasercake_test_main(int argc, char **argv);
 
 #endif
 

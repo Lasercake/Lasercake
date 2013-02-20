@@ -19,9 +19,16 @@
 
 */
 
+// When you add a new tests file, define a new name here and with
+// DECLARE_TESTS_FILE near the top of test_header.hpp, and put at
+// the bottom of your tests file:
+// REGISTER_TESTS // This must come last in the file.
+#define TESTS_FILE borrowed_bitset_tests
 #include "test_header.hpp"
 
 #include "../data_structures/borrowed_bitset.hpp"
+
+//namespace /*anonymous*/ {
 
 BOOST_AUTO_TEST_CASE( test_borrowed_bitset ) {
   {
@@ -70,3 +77,7 @@ BOOST_AUTO_TEST_CASE( test_borrowed_bitset ) {
   // the best they could do is check for race conditions anyway
   // (well, which one of the valgrind tools could check for)
 }
+
+//} /* end anonymous namespace */
+
+REGISTER_TESTS // This must come last in the file.

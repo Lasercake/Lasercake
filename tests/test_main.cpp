@@ -19,23 +19,52 @@
 
 */
 
-#ifndef LASERCAKE_USE_BOOSTBCP
-#define BOOST_TEST_DYN_LINK
-#endif
+#define LASERCAKE_TEST_MAIN 1
+
 #include "test_header.hpp"
 #include "test_main.hpp"
 
-// boost::unit_test::unit_test_main's first argument is one of two different
-// possible function pointer types, depending on compile options.  Luckily
-// C++ allows overloading of &overloaded_function when the result is passed
-// to something that requires a specific function pointer type.
-bool init_unit_test_suite() {
-  return true;
-}
-boost::unit_test::test_suite* init_unit_test_suite(int, char**) {
-  return nullptr;
-}
+#include <boost/scope_exit.hpp>
 
-int lasercake_test_main(int argc, char *argv[]) {
-  return boost::unit_test::unit_test_main(&init_unit_test_suite, argc, argv);
+// Not threadsafe to run tests in more than one thread at once,
+// because the Boost.Test design doesn't make that easy.
+test_cases_state_t test_cases_state;
+
+int lasercake_test_main(int, char**) {
+  test_cases_state = test_cases_state_t();
+  BOOST_SCOPE_EXIT(void) {
+    if(test_cases_state.finished_without_crashing && test_cases_state.num_checks_failed == 0) {
+      LOG << "*** No errors detected in " << test_cases_state.num_checks_run << " checks\n";;
+    }
+    if(test_cases_state.num_checks_failed != 0) {
+      LOG << test_cases_state.num_checks_failed << " test(s) failed ("
+        << (test_cases_state.num_checks_run - test_cases_state.num_checks_failed)
+        << " succeeded)\n";
+    }
+    if(!test_cases_state.finished_without_crashing) {
+      LOG << "Tests exited unexpectedly with an exception\n";
+    }
+    test_cases_state = test_cases_state_t();
+  } BOOST_SCOPE_EXIT_END
+  logger_impl::log log; // HACK
+  std::ostream& os = log << "Running tests..." << std::endl;
+  test_cases_state.error_log = &os;
+#if 0
+  try {    // Don't try to catch exceptions, because the run-time system
+           // does a better job of reporting them than we can.
+#endif
+    register_test_file<first_test_file>::go();
+    test_cases_state.finished_without_crashing = true;
+    return (test_cases_state.num_checks_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+#if 0
+  } catch(std::exception e) {
+    try {
+      LOG << "Exception " << std::flush << e.what();
+    } catch(...) {
+    }
+  } catch(...) {
+    LOG << "Unknown exception " << std::flush;
+  }
+  // use the checkpoint information
+#endif
 }

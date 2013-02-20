@@ -28,6 +28,19 @@
 #include <boost/type_traits/make_signed.hpp>
 #include <boost/type_traits/make_unsigned.hpp>
 
+
+namespace comparators {
+struct first_is_true  { template<typename A, typename B> constexpr bool operator()(A&& a, B&&) { return bool(a); } };
+struct is_true        { template<typename A> constexpr bool operator()(A&& a) { return bool(a); } };
+struct is_false       { template<typename A> constexpr bool operator()(A&& a) { return !bool(a); } };
+struct not_equal_to   { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a != b; } };
+struct equal_to       { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a == b; } };
+struct less           { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a <  b; } };
+struct less_equal     { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a <= b; } };
+struct greater        { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a >  b; } };
+struct greater_equal  { template<typename A, typename B> constexpr bool operator()(A&& a, B&& b) { return a >= b; } };
+}
+
 // returns the signum (-1, 0, or 1)
 template <typename Number>
 inline Number sign(Number n) {

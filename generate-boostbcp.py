@@ -33,11 +33,13 @@ shutil.copy(boost_dir+'/'+boost_license_file_name,
 bcp_cmdline = ['bcp', '--scan', '--boost='+boost_dir] + sources + [boostbcp_dir]
 subprocess.check_call(bcp_cmdline)
 
-# In boostbcp mode, we include a (documented) header-only version of test
-# in tests/test_main.cpp.  This avoids complications with the test lib
-# defining main() and related functions the right number of times
-# (0 for lasercake, exactly 1 for tests).
-shutil.rmtree(boostbcp_dir+'/libs/test')
+# (We are not using the Boost.Test implementation at all anymore.)
+# # In boostbcp mode, we include a (documented) header-only version of test
+# # in tests/test_main.cpp.  This avoids complications with the test lib
+# # defining main() and related functions the right number of times
+# # (0 for lasercake, exactly 1 for tests).
+try: shutil.rmtree(boostbcp_dir+'/libs/test')
+except FileNotFoundError: pass
 
 # We don't use Boost.Thread currently:
 # * Qt also has portable threading.
@@ -49,7 +51,8 @@ shutil.rmtree(boostbcp_dir+'/libs/test')
 #  -June 2012.)
 shutil.rmtree(boostbcp_dir+'/libs/thread')
 
-# Work around https://svn.boost.org/trac/boost/ticket/7081 :
+# Work around https://svn.boost.org/trac/boost/ticket/7081
+# (which is fixed in Boost 1.51) :
 with open(boostbcp_dir+'/boost/detail/win/basic_types.hpp', 'r') as f:
 	f_contents = f.read()
 fixed_f_contents = f_contents.replace('<WinError.h>', '<winerror.h>')

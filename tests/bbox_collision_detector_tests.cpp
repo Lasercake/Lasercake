@@ -19,10 +19,17 @@
 
 */
 
+// When you add a new tests file, define a new name here and with
+// DECLARE_TESTS_FILE near the top of test_header.hpp, and put at
+// the bottom of your tests file:
+// REGISTER_TESTS // This must come last in the file.
+#define TESTS_FILE bbox_collision_detector_tests
 #include "test_header.hpp"
 
 #include "../data_structures/bbox_collision_detector.hpp"
 #include "../data_structures/bbox_collision_detector_iteration.hpp"
+
+//namespace /*anonymous*/ {
 
 typedef int32_t obj_t;
 typedef bbox_collision_detector<obj_t, 32, 1> detector_1d;
@@ -376,3 +383,7 @@ BOOST_AUTO_TEST_CASE( bbox_test_zbox ) {
   BOOST_CHECK_EQUAL(joint_parent_2, quartant);
   BOOST_CHECK(!rect_in_quartant.subsumes(quartant));
 }
+
+//} /* end namespace tests */
+
+REGISTER_TESTS // This must come last in the file.

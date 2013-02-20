@@ -19,8 +19,12 @@
 
 */
 
+// When you add a new tests file, define a new name here and with
+// DECLARE_TESTS_FILE near the top of test_header.hpp, and put at
+// the bottom of your tests file:
+// REGISTER_TESTS // This must come last in the file.
+#define TESTS_FILE misc_utils_tests
 #include "test_header.hpp"
-#include <boost/test/parameterized_test.hpp>
 
 #include "../utils.hpp"
 #include <limits>
@@ -29,7 +33,7 @@
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
 
-namespace /* anonymous */ {
+//namespace /* anonymous */ {
 
 // see rationale in numbers.hpp division code
 BOOST_AUTO_TEST_CASE( standard_rounding_behavior ) {
@@ -426,4 +430,7 @@ static_assert(extract_factor<12345, 12345ll*12345*12345*97>::factor_exponent == 
 static_assert(extract_factor<2, (1ll<<41)>::factor_exponent == 41, "bug");
 static_assert(extract_factor<(1ll<<41), (1ll<<41)>::factor_exponent == 1, "bug");
 
-}  /* end anonymous namespace */
+//}  /* end anonymous namespace */
+
+
+REGISTER_TESTS // This must come last in the file.

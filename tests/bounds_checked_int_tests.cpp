@@ -19,9 +19,17 @@
 
 */
 
+// When you add a new tests file, define a new name here and with
+// DECLARE_TESTS_FILE near the top of test_header.hpp, and put at
+// the bottom of your tests file:
+// REGISTER_TESTS // This must come last in the file.
+#define TESTS_FILE bounds_checked_int_tests
 #include "test_header.hpp"
 
 #include "../data_structures/bounds_checked_int.hpp"
+#include <sstream>
+
+//namespace /*anonymous*/ {
 
 typedef bounds_checked_int<uint32_t> u32;
 typedef bounds_checked_int<int32_t> i32;
@@ -135,3 +143,10 @@ BOOST_AUTO_TEST_CASE( boundses ) {
   
   //test not convertable signed/unsigned or wrong way somehow? boost is_convertible?
 }
+
+
+//} /* end anonymous namespace */
+
+
+REGISTER_TESTS // This must come last in the file.
+
