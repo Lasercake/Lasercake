@@ -143,6 +143,8 @@ static_assert(8%-3 == 2, "we use the typical, standard round-towards-zero");
 // and all is fine regardless of this bool's value.
 // If dividend is nonzero, this bool indicates (as it must)
 // the sign of the conceptual, unrounded quotient.
+
+
 template<typename T>
 BOOST_FORCEINLINE constexpr T divide_impl2(
       T /*dividend*/,
@@ -194,32 +196,34 @@ BOOST_FORCEINLINE constexpr T divide_impl2(
 
 // see below; just a continuation for the next divide_impl2
 // (forced by constexprness).
-template<typename T,
+template<bool NegativePreliminaryResultsAreRoundedTowardsZero,
+  typename T,
   rounding_strategy_for_positive_numbers PosStrategy,
   rounding_strategy_for_negative_numbers NegStrategy>
-BOOST_FORCEINLINE constexpr T tricky_divide_impl2_cont(
-      T left,
-      T right,
-      T rounded_to_zero,
+BOOST_FORCEINLINE constexpr T round_to_nearest_impl(
+      T left_representing_divisor_over_two,
+      T right_representing_remainder,
+      T rounded,
       T up,
       bool result_positive,
       rounding_strategy<PosStrategy, NegStrategy>) {
   return
-    (left < right)
-      ? rounded_to_zero+up
-      : (left > right)
-        ? rounded_to_zero
+    (left_representing_divisor_over_two < right_representing_remainder)
+      ? rounded+up
+      : (left_representing_divisor_over_two > right_representing_remainder)
+        ? rounded
         : // tie!...
     // partially compile-time ifs here.
     (PosStrategy == round_to_nearest_with_ties_rounding_to_even)
-      ? ((rounded_to_zero & T(1)) ? rounded_to_zero+up : rounded_to_zero)
+      ? ((rounded & T(1)) ? rounded+up : rounded)
     : (PosStrategy == round_to_nearest_with_ties_rounding_to_odd)
-      ? ((rounded_to_zero & T(1)) ? rounded_to_zero : rounded_to_zero+up)
+      ? ((rounded & T(1)) ? rounded : rounded+up)
     :
     // else it is one of the four biased rounding tiebreakers.
-      ((result_positive || NegStrategy == negative_mirrors_positive)
+      ((result_positive || ((NegStrategy == negative_mirrors_positive)
+                            == (NegativePreliminaryResultsAreRoundedTowardsZero)))
         == (PosStrategy == round_to_nearest_with_ties_rounding_up))
-      ? rounded_to_zero+up : rounded_to_zero;
+      ? rounded+up : rounded;
 }
 
 // This one also uses all the args, is a bit more complicated,
@@ -280,11 +284,63 @@ inline constexpr T divide_impl2(
   // sign is the same as dividend's and the CPU knows the dividend's sign
   // sooner.
   #define nonnegative_remainder ((dividend < T(0)) ? -remainder : remainder)
-  return tricky_divide_impl2_cont(
+  return round_to_nearest_impl<true>(
      /*left*/  ((divisor < T(0)) ? ~divisor : divisor) - nonnegative_remainder,
      /*right*/ nonnegative_remainder - ((divisor < T(0)) ? T(1) : T(0)),
              rounded_to_zero, up, result_positive, strat);
   #undef nonnegative_remainder
+}
+
+
+// ignoring invalid shift vals at the moment..
+// TODO using fewer ifs might be speed-smarter for shifts
+// is signed 1<<31 defined behavior? anyway its overflow so
+// boundscheckedint would catch it
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<round_down, negative_continuous_with_positive>) {
+  return num >> shift;
+}
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<round_down, negative_mirrors_positive>) {
+  return (num >> shift) +
+         ((num < 0) && (num != (num >> shift << shift)) ? T(1) : T(0));
+}
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<round_up, negative_continuous_with_positive>) {
+  return ((num >> shift) + ((num != (num >> shift << shift)) ? T(1) : T(0)));
+}
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<round_up, negative_mirrors_positive>) {
+  return (num >> shift) +
+         ((num >= 0) && (num != (num >> shift << shift)) ? T(1) : T(0));
+}
+template<typename T, typename ShiftT,
+  rounding_strategy_for_positive_numbers PosStrategy,
+  rounding_strategy_for_negative_numbers NegStrategy>
+inline constexpr T shift_right_impl2(
+      T num, ShiftT shift,
+      rounding_strategy<PosStrategy, NegStrategy> strat) {
+  // reasoning for round_to_nearest_impl:
+  // divisor: 1 << shift
+  // divisor/2: 1 << (shift - 1)
+  // remainder: num & ~(~0 << shift)
+  // Though instead of setting the high bits to 0 we set them to 1
+  // in order to save an operation in calculating the remainder.
+  //
+  // We check whether shift is 0 to avoid shifting by -1 or giving
+  // the wrong result.
+  return (shift == ShiftT(0)) ? num : round_to_nearest_impl<false>(
+     /*left, divisor/2 equivalent*/ (~T(0) << (shift - ShiftT(1))),
+     /*right, remainder equivalent*/ num | (~T(0) << shift),
+             (num >> shift), T(1), (num >= T(0)), strat);
 }
 
 template<typename T,
@@ -346,6 +402,26 @@ inline constexpr auto divide(T1 dividend, T2 divisor, RoundingStrategy strat)
           operation_type(dividend), operation_type(divisor), strat);
 }
 
+// Avoid specifying rounding_strategy<> in last argument's structure so that
+// overloads of shift_right() will be picked before this one.
+template<typename T, typename ShiftT, typename RoundingStrategy,
+  rounding_strategy_for_positive_numbers PosStrategy = RoundingStrategy::positive_strategy,
+  rounding_strategy_for_negative_numbers NegStrategy = RoundingStrategy::negative_strategy,
+  typename = typename boost::enable_if_c<
+    (std::numeric_limits<T>::is_specialized && std::numeric_limits<ShiftT>::is_specialized
+      // ">>" isn't an operation on floating-point numbers, not even fp on left-hand-side.
+      && std::numeric_limits<T>::is_integer && std::numeric_limits<ShiftT>::is_integer
+    )>::type>
+inline constexpr auto shift_right(T num, ShiftT shift, RoundingStrategy strat)
+-> decltype(num >> shift) {
+  static_assert(
+       NegStrategy != negative_variant_doesnt_make_a_difference
+    || PosStrategy == round_to_nearest_with_ties_rounding_to_even
+    || PosStrategy == round_to_nearest_with_ties_rounding_to_odd
+    || !std::numeric_limits<T>::is_signed,
+    "You lied! The negative variant does make a difference.");
+  return rounding_strategies_impl::shift_right_impl2(num, shift, strat);
+}
 
 inline int32_t ilog2(uint64_t argument) {
   caller_error_if(argument == 0, "the logarithm of zero is undefined");
