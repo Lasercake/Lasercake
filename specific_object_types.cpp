@@ -249,7 +249,7 @@ std::string robot::player_instructions()const {
       (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing." :
       (mode_ == "building_conveyor") ? "Conveyor mode: Click to build a conveyor belt ("+draw_m3(conveyor_cost)+") or click a conveyor to rotate it." :
       (mode_ == "building_refinery") ? "Refinery mode: Click to build a refinery ("+draw_m3(refinery_cost)+")." :
-      (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot ("+draw_m3(autorobot_cost)+"). (TODO: clean up and document these robots)" :
+      (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot ("+draw_m3(autorobot_cost)+").\nIt will dig up/down/straight depending on the up/down angle you're facing when you build it.\nIt will move in a cardinal direction closest to the left/right angle you're facing when you build it.\nIt will dump its rubble at the x/y position where it was created." :
       "Unknown mode, this is an error!"
     ) + "\n"
     ;
@@ -352,7 +352,7 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
   result.fine_target_location = location_ + result_delta;
 
   // TODO fix duplicate list of mode names
-  if (mode_ == "building_refinery" || mode_ == "building_conveyor") {
+  if (mode_ == "building_refinery" || mode_ == "building_conveyor" || mode_ == "building_autorobot") {
     tile_location first_guess = w.make_tile_location(
         get_min_containing_tile_coordinates(result.fine_target_location), // TODO: min gives direction bias, what to do?
         CONTENTS_ONLY);
@@ -404,12 +404,11 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
         result.metal_spent = conveyor_cost;
       }
     }
-  }
-  if (mode_ == "building_autorobot" && metal_carried_ >= autorobot_cost) {
-    result.type = BUILD_OBJECT;
-    // TODO make autorobots appear nicely like other things (and fix them up in general)
-    result.object_built = shared_ptr<object>(new autorobot(result.fine_target_location, facing_));
-    result.metal_spent = autorobot_cost;
+    if (mode_ == "building_autorobot" && metal_carried_ >= autorobot_cost) {
+      result.type = BUILD_OBJECT;
+      result.object_built = shared_ptr<object>(new autorobot(result.which_affected.get_tile_location()->coords(), facing_));
+      result.metal_spent = autorobot_cost;
+    }
   }
 
   if (mode_ == "digging") {
@@ -588,9 +587,9 @@ bool once_a_second(world& w, int num = 1, int denom = 1) {
     == 0;
 }
 
-autorobot::autorobot(vector3<distance> location, vector3<distance> facing)
-  : location_(location),
-    initial_location_(((location / tile_width) * tile_width) + vector3<distance>(tile_width / 2, tile_width / 2, 0)),
+autorobot::autorobot(vector3<tile_coordinate> location, vector3<distance> facing)
+  : location_(lower_bound_in_fine_distance_units(location) + vector3<distance>(tile_width, tile_width, tile_width) / 2),
+    initial_location_(location),
     facing_(facing),
     carrying_(0) {
   distance bigger_dir;
@@ -614,48 +613,61 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
   auto& rng = w.get_rng();
   update_location(location_, w, my_id);
   float_above_ground(velocity_, w, my_id);
-  tile_location i_am_in = w.make_tile_location(get_random_containing_tile_coordinates(location_, rng), FULL_REALIZATION);
-  std::array<tile_location, num_cardinal_directions> my_neighbors = get_all_neighbors(i_am_in, FULL_REALIZATION);
 
-  /*int levitate = 0;
-  int horiz[] = { xplus, xminus, yplus, yminus };
-  for(auto dir : horiz) {
-    levitate += (my_neighbors[dir].stuff_at().contents() != AIR);
+  const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
+  const vector3<distance> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
+  const vector3<distance> top_middle(middle(X), middle(Y), shape_bounds.max(Z));
+  const vector3<distance> bottom_middle(middle(X), middle(Y), shape_bounds.min(Z));
+  
+  vector3<distance> direction_home = lower_bound_in_fine_distance_units(initial_location_) + vector3<distance>(tile_width, tile_width, tile_width) / 2 - location_;
+  direction_home.z = 0;
+  distance direction_home_xymag = direction_home.magnitude_within_32_bits();
+  vector3<distance> facing_xy = facing_; facing_xy.z = 0;
+  vector3<distance> dir_in_proper_direction = facing_xy * direction_home.dot<lint64_t>(facing_xy) / facing_xy.dot<lint64_t>(facing_xy);
+  vector3<distance> dir_in_wrong_directions = (direction_home - dir_in_proper_direction);
+  if (dir_in_wrong_directions.magnitude_within_32_bits_is_greater_than(tile_width / 20)) {
+    // We're off course: Get back on.
+    // Note that we rely on slow movement for precision, because of framerate issues.
+    // TODO (long-term): have something clean to do about that.
+    distance dir_in_wrong_directions_xymag = dir_in_wrong_directions.magnitude_within_32_bits();
+    velocity_.x = -dir_in_wrong_directions.x * tile_width / dir_in_wrong_directions_xymag / seconds;
+    velocity_.y = -dir_in_wrong_directions.y * tile_width / dir_in_wrong_directions_xymag / seconds;
   }
-  velocity_.z += levitate * 1000;
-  //if(my_neighbors[xplus].stuff_at().contents() != AIR) velocity_.x += velocity_scale_factor * 20;
-
-  //velocity_ = velocity_ - (velocity_ * (velocity_.magnitude_within_32_bits() / 1000) / 1000000) 
-
-  if(levitate == 0 && my_neighbors[zminus].stuff_at().contents() != AIR) {
-    if(once_a_second(w, 1, 2)) {
-      const boost::random::uniform_int_distribution<get_primitive_int_type<distance>::type> random_vel(-4000, 4000);
-      velocity_.x /= 2;
-      velocity_.y /= 2;
-      velocity_.x += random_vel(rng);
-      velocity_.y += random_vel(rng);
+  else if (carrying_ >= 2) {
+    // We're full: go home.
+    if (direction_home_xymag != 0) {
+      velocity_.x = direction_home.x * tile_width * 15 / (4 * direction_home_xymag) / seconds;
+      velocity_.y = direction_home.y * tile_width * 15 / (4 * direction_home_xymag) / seconds;
     }
-  }*/
-  //facing_ = facing_ * tile_width / facing_.magnitude_within_32_bits();
-  
-  auto direction_home = initial_location_ - location_;
-  auto mag = to_signed_type(i64sqrt(direction_home.x*direction_home.x + direction_home.y*direction_home.y));
-  
-  if (carrying_ < 2) {
+    // If we got home we need to drop our stuff.
+    if (direction_home_xymag <= tile_width / 3) {
+      tile_location loc = w.make_tile_location(get_random_containing_tile_coordinates(bottom_middle, rng), FULL_REALIZATION);
+      while (carrying_ > 0) {
+        if (loc.stuff_at().contents() == AIR) {
+          w.replace_substance(loc, AIR, RUBBLE);
+          get_state(w.tile_physics()).altered_minerals_info.insert(std::make_pair(loc.coords(), carried_minerals.back()));
+          carried_minerals.pop_back();
+          --carrying_;
+        }
+        loc = loc.get_neighbor<zplus>(FULL_REALIZATION);
+        if (loc.coords().z > get_max_containing_tile_coordinate(top_middle.z, Z)) break;
+      }
+    }
+  }
+  else {
+    // Go forward and dig!
     velocity_.x = facing_.x * 15 / 4 / seconds;
     velocity_.y = facing_.y * 15 / 4 / seconds;
     
-    if (facing_.z >= 0 || mag >= 10*tile_width) {
-      const bounding_box shape_bounds = w.get_object_personal_space_shapes().find(my_id)->second.bounds();
-      const vector3<distance> middle = (shape_bounds.min() + shape_bounds.max()) / 2; //hmm, rounding.
-      const vector3<distance> top_middle(middle(X), middle(Y), shape_bounds.max(Z) + tile_height / 4);
+    if (facing_.z >= 0 || direction_home_xymag >= 10*tile_width) {
+      const vector3<distance> laser_start_point = top_middle + (facing_xy * 4 / 10) + vector3<distance>(0,0,(facing_.z > 0) ? tile_height : 1*fine_distance_units);
       /*const vector3<distance> top_middle(
         uniform_int_distribution<distance>(shape_bounds.min(X), shape_bounds.max(X))(rng),
         uniform_int_distribution<distance>(shape_bounds.min(Y), shape_bounds.max(Y))(rng),
         shape_bounds.max(Z));*/
-      vector3<distance> beam_vector_1 = facing_;
+      vector3<distance> beam_vector_1 = (facing_.z > 0) ? facing_xy : facing_;
       beam_vector_1[Z] -= tile_height / 2;
-      const object_or_tile_identifier hit1 = laser_find(w, my_id, top_middle, beam_vector_1, true);
+      const object_or_tile_identifier hit1 = laser_find(w, my_id, laser_start_point, beam_vector_1, true);
       if (hit1 != object_or_tile_identifier()) {
         if (tile_location const* locp = hit1.get_tile_location()) {
           if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
@@ -667,33 +679,24 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
       }
       else {
         const vector3<distance> beam_vector_2(facing_.x / -4, facing_.y / -4,
-                                                1*fine_distance_units - shape_bounds.size(Z));
-        const object_or_tile_identifier hit2 = laser_find(w, my_id, top_middle + beam_vector_1, beam_vector_2, true);
+                                                1*fine_distance_units - shape_bounds.size(Z) - tile_height*2);
+        const object_or_tile_identifier hit2 = laser_find(w, my_id, laser_start_point + beam_vector_1, beam_vector_2, true);
         if (hit2 != object_or_tile_identifier()) {
           if (tile_location const* locp = hit2.get_tile_location()) {
-            if ((locp->stuff_at().contents() == ROCK || locp->stuff_at().contents() == RUBBLE)) {
-              carried_minerals.push_back(w.get_minerals(locp->coords()));
-              ++carrying_;
-              w.replace_substance(*locp, locp->stuff_at().contents(), AIR);
+            tile_location const& loc = *locp;
+            if ((loc.stuff_at().contents() == ROCK || loc.stuff_at().contents() == RUBBLE)) {
+              // TODO probably have autorobots use cardinal directions in the first place
+              tile_location backloc = loc.get_neighbor_by_variable((facing_.x > 0) ? xminus : (facing_.y > 0) ? yminus : (facing_.x < 0) ? xplus : yplus, CONTENTS_ONLY);
+              if ( ((facing_.z  > 0) && (backloc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() == AIR))
+                || ((facing_.z == 0) && (backloc                                    .stuff_at().contents() == AIR))
+                || ((facing_.z  < 0) && (backloc.get_neighbor<zplus >(CONTENTS_ONLY).stuff_at().contents() == AIR))
+                ) {
+                carried_minerals.push_back(w.get_minerals(loc.coords()));
+                ++carrying_;
+                w.replace_substance(*locp, loc.stuff_at().contents(), AIR);
+              }
             }
           }
-        }
-      }
-    }
-  }
-  else {
-    if (mag != 0) {
-      velocity_.x = direction_home.x * tile_width * 15 / (4 * mag) / seconds;
-      velocity_.y = direction_home.y * tile_width * 15 / (4 * mag) / seconds;
-    }
-    if (mag <= tile_width) {
-      for (auto loc : my_neighbors) {
-        if (loc.stuff_at().contents() == AIR) {
-          w.replace_substance(loc, AIR, RUBBLE);
-          get_state(w.tile_physics()).altered_minerals_info.insert(std::make_pair(loc.coords(), carried_minerals.back()));
-          carried_minerals.pop_back();
-          --carrying_;
-          if (carrying_ <= 0) break;
         }
       }
     }
