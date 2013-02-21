@@ -60,6 +60,6 @@ namespace logger_impl {
     return traits_type::not_eof(ch); // which means "success"
   }
 
-  log::log() : os_(&streambuf_) { os_.imbue(std::locale::classic()); }
+  log::log() : os_(&streambuf_) { os_.imbue(std::locale::classic()); os_ << std::boolalpha; }
   log::~log() {}
 }
