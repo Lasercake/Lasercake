@@ -134,6 +134,12 @@ struct test_cases_state_t {
 // because the Boost.Test design doesn't make that easy.
 extern test_cases_state_t test_cases_state;
 
+struct uninteresting{};
+inline uninteresting make_uninteresting() { return uninteresting(); }
+inline std::ostream& operator<<(std::ostream& os, uninteresting){return os;}
+inline bool is_interesting(uninteresting) {return false;}
+template<typename T> inline bool is_interesting(T const&) {return true;}
+
 template<typename AF, typename BF, typename Predicate>
 inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
   test_cases_state_t& state = test_cases_state;
@@ -151,9 +157,11 @@ inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
       *state.error_log << "Failed: " << desc << ":\n    A = " << std::flush;
       step = "evaluating ostream << A";
       *state.error_log << a;
-      *state.error_log << "; B = " << std::flush;
-      step = "evaluating ostream << B";
-      *state.error_log << b;
+      if(is_interesting(b)) {
+        *state.error_log << "; B = " << std::flush;
+        step = "evaluating ostream << B";
+        *state.error_log << b;
+      }
     }
   }
   catch(std::exception& e) {
@@ -191,18 +199,18 @@ inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
 #define BOOST_CHECK_LE(a, b)    BINARY_CHECK_IMPL(a, b, comparators::less_equal, "<=")
 #define BOOST_CHECK_NE(a, b)    BINARY_CHECK_IMPL(a, b, comparators::not_equal_to, "!=")
 #define BOOST_CHECK(a) \
-  do_test([&]{return (a);}, []{return 0;}, comparators::first_is_true(), \
+  do_test([&]{return (a);}, &make_uninteresting, comparators::first_is_true(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "`" \
   )
 #define BOOST_CHECK_NO_THROW(a) \
-  do_test([&]{(a); return true;}, []{return 0;}, comparators::first_is_true(), \
+  do_test([&]{(a); return true;}, &make_uninteresting, comparators::first_is_true(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "`" \
   )
 #define BOOST_CHECK_THROW(a, e) \
   do_test([&]() -> const char* { \
       try{ (a); } catch(e const& test_suite_expected_exception){return test_suite_expected_exception.what();} \
       return nullptr; \
-    }, []{return 0;}, comparators::first_is_true(), \
+    }, &make_uninteresting, comparators::first_is_true(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "` throws `" BOOST_PP_STRINGIZE(e) "`" \
   )
 
