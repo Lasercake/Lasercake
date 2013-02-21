@@ -27,6 +27,7 @@
 #include <boost/integer/static_log2.hpp>
 #include <boost/type_traits/make_signed.hpp>
 #include <boost/type_traits/make_unsigned.hpp>
+#include <boost/utility/enable_if.hpp>
 
 
 namespace comparators {

@@ -23,9 +23,11 @@
 #define LASERCAKE_PATRICIA_TRIE_HPP__
 
 #include <ostream>
+#include <array>
 
 #include "numbers.hpp"
 #include "bounds_checked_int.hpp"
+#include "../utils.hpp" //for lasercake_nice_allocator
 
 
 typedef int32_t num_bits_type;
