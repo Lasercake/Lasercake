@@ -277,7 +277,7 @@ public:
   }
   T const* find_leaf(loc_type leaf_loc)const {
     node_type const*const node = find_node(leaf_loc);
-    if (T* leaf = node->leaf()) { return leaf; }
+    if (T const* leaf = node->leaf()) { return leaf; }
     else { return nullptr; }
   }
   T* find_leaf(loc_type leaf_loc) {
