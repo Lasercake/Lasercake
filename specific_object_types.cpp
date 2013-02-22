@@ -302,7 +302,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   if (turn_right_amount != 0) {
     const distance new_facing_x = facing_.x + turn_right_amount * facing_.y / speed_divisor;
     const distance new_facing_y = facing_.y - turn_right_amount * facing_.x / speed_divisor;
-    facing_.x = new_facing_x; facing_.y = new_facing_y;
+    const distance new_xymag = i64sqrt(new_facing_x*new_facing_x + new_facing_y*new_facing_y);
+    const distance target_xymag = i64sqrt(tile_width*tile_width - facing_.z*facing_.z);
+    facing_.x = new_facing_x * target_xymag / new_xymag;
+    facing_.y = new_facing_y * target_xymag / new_xymag;
   }
   if (turn_up_amount != 0) {
     const distance new_xymag = xymag - (turn_up_amount * facing_.z / speed_divisor);
@@ -311,8 +314,8 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
       facing_.y = facing_.y * new_xymag / xymag;
       facing_.x = facing_.x * new_xymag / xymag;
     }
-  }
   facing_ = facing_ * tile_width / facing_.magnitude_within_32_bits();
+  }
 
   if (
        (((mode_ == "laser") || (mode_ == "rockets")) && input_news.is_currently_pressed(input_representation::left_mouse_button))
