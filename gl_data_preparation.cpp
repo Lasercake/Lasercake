@@ -877,7 +877,12 @@ void view_on_the_world::prepare_gl_data(
     convert_frustum_from_fine_distance_units_to_tile_count_units(view_frustum_in_fine_distance_units_for_view_tile_loc);
   {
     const heads_up_display_text everywhere_hud_text = {
-      "Esc: quit; Tab: switch robot; "
+      #if defined(__APPLE__) || defined(__MACOSX__)
+      "cmd-Q"
+      #else
+      "ctrl-Q"
+      #endif
+      ": quit | Esc: release mouse | "
       // F11 and [cmd|ctrl]-shift-F both work on all platforms, but
       //save space by showing the typical one for the platform
       #if defined(__APPLE__) || defined(__MACOSX__)
@@ -885,14 +890,14 @@ void view_on_the_world::prepare_gl_data(
       #else
       "F11"
       #endif
-      ": fullscreen; "
-      "p: pause; g: single-step; "
-      "1, 2, 3: overview, local, robot view; "
-      "8: regular drawing; 9: debug drawing\n",
+      ": fullscreen | "
+      "p: pause | g: single-step | Tab: switch robot | "
+      "123: robot view, local view, overview | "
+      "8: toggle drawing | 9: toggle debug drawing\n",
       color(0xffaa55cc),
       "Granger_ch8plus",
-      24,
-      36, 18
+      22,
+      32, 16
     };
     auto const robot_has_instructions =
       boost::dynamic_pointer_cast<object_with_player_instructions>(w.get_objects().find(config.view_from)->second);
