@@ -141,6 +141,12 @@ inline std::ostream& operator<<(std::ostream& os, uninteresting){return os;}
 inline bool is_interesting(uninteresting) {return false;}
 template<typename T> inline bool is_interesting(T const&) {return true;}
 
+struct msg { bool good; const char* contents; explicit operator bool()const{return good;}};
+inline std::ostream& operator<<(std::ostream& os, msg m){
+  if(m.contents){os<<m.contents;}
+  return os;
+}
+
 template<typename AF, typename BF, typename Predicate>
 inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
   test_cases_state_t& state = test_cases_state;
@@ -168,7 +174,7 @@ inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
   catch(std::exception& e) {
     success = false;
     if(state.error_log) {
-      *state.error_log << "caught unexpected exception at step " << step << ":\n    " << std::flush;
+      *state.error_log << desc << ":\n  caught unexpected exception when " << step << ":\n    " << std::flush;
       step = "caught unexpected exception; evaluating e.what()";
       *state.error_log << e.what();
     }
@@ -208,9 +214,9 @@ inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "`" \
   )
 #define BOOST_CHECK_THROW(a, e) \
-  do_test([&]() -> const char* { \
-      try{ (a); } catch(e const& test_suite_expected_exception){return test_suite_expected_exception.what();} \
-      return nullptr; \
+  do_test([&]() -> msg { \
+      try{ (a); } catch(e const& test_suite_expected_exception){return msg{true, test_suite_expected_exception.what()};} \
+      return msg{false, "(something)"}; \
     }, &make_uninteresting, comparators::first_is_true(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "` throws `" BOOST_PP_STRINGIZE(e) "`" \
   )
