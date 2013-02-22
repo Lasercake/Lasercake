@@ -889,7 +889,7 @@ void view_on_the_world::prepare_gl_data(
       "p: pause; g: single-step; "
       "1, 2, 3: overview, local, robot view; "
       "8: regular drawing; 9: debug drawing\n",
-      color(0xffcc33cc),
+      color(0xffaa55cc),
       "Granger_ch8plus",
       24,
       36, 18
