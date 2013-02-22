@@ -728,6 +728,30 @@ void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3
   }}}
 }
 
+void draw_arrow(vector3<distance> view_loc, gl_collection& coll, vector3<distance> center, cardinal_direction dir, color c) {
+  vector3<distance> foo = vector3<lint64_t>(cardinal_direction_vectors[dir]) * tile_width / 3;
+  vector3<distance> bar(foo.y, foo.x, 0);
+  vector3<distance> up(0, 0, tile_height / 5);
+  push_quad(coll,
+            convert_coordinates_to_GL(view_loc, center - foo),
+            convert_coordinates_to_GL(view_loc, center - foo + up),
+            convert_coordinates_to_GL(view_loc, center + foo + up),
+            convert_coordinates_to_GL(view_loc, center + foo),
+            c);
+  push_quad(coll,
+            convert_coordinates_to_GL(view_loc, center + foo),
+            convert_coordinates_to_GL(view_loc, center + foo + up),
+            convert_coordinates_to_GL(view_loc, center + bar + up),
+            convert_coordinates_to_GL(view_loc, center + bar),
+            c);
+  push_quad(coll,
+            convert_coordinates_to_GL(view_loc, center + foo),
+            convert_coordinates_to_GL(view_loc, center + foo + up),
+            convert_coordinates_to_GL(view_loc, center - bar + up),
+            convert_coordinates_to_GL(view_loc, center - bar),
+            c);
+}
+
 void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
                    shape const& object_shape, color shape_color, bool wireframe = false) {
   lasercake_vector<bounding_box>::type const& obj_bboxes = object_shape.get_boxes();
@@ -1036,28 +1060,19 @@ void view_on_the_world::prepare_gl_data(
         }
         else if(shared_ptr<conveyor_belt> belt = dynamic_pointer_cast<conveyor_belt>(objp)) {
           prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
-          vector3<distance> foo = vector3<lint64_t>(cardinal_direction_vectors[belt->direction()]) * tile_width / 3;
-          vector3<distance> bar(foo.y, foo.x, 0);
-          vector3<distance> center = (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2;
-          vector3<distance> up(0, 0, tile_height / 5);
-          push_quad(coll,
-                    convert_coordinates_to_GL(view_loc, center - foo),
-                    convert_coordinates_to_GL(view_loc, center - foo + up),
-                    convert_coordinates_to_GL(view_loc, center + foo + up),
-                    convert_coordinates_to_GL(view_loc, center + foo),
-                    color(0xff0000aa));
-          push_quad(coll,
-                    convert_coordinates_to_GL(view_loc, center + foo),
-                    convert_coordinates_to_GL(view_loc, center + foo + up),
-                    convert_coordinates_to_GL(view_loc, center + bar + up),
-                    convert_coordinates_to_GL(view_loc, center + bar),
-                    color(0xff0000aa));
-          push_quad(coll,
-                    convert_coordinates_to_GL(view_loc, center + foo),
-                    convert_coordinates_to_GL(view_loc, center + foo + up),
-                    convert_coordinates_to_GL(view_loc, center - bar + up),
-                    convert_coordinates_to_GL(view_loc, center - bar),
-                    color(0xff0000aa));
+          draw_arrow(view_loc, coll, (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2, belt->direction(), color(0xff0000aa));
+        }
+        else if(shared_ptr<refinery> ref = dynamic_pointer_cast<refinery>(objp)) {
+          prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
+          draw_arrow(view_loc, coll,
+                     (lower_bound_in_fine_distance_units(ref->input_loc_coords()) +
+                      upper_bound_in_fine_distance_units(ref->input_loc_coords())) / 2, xplus, color(0xff0000aa));
+          draw_arrow(view_loc, coll,
+                     (lower_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords()) +
+                      upper_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords())) / 2, xplus, color(0xff0000aa));
+          draw_arrow(view_loc, coll,
+                     (lower_bound_in_fine_distance_units(ref->metal_output_loc_coords()) +
+                      upper_bound_in_fine_distance_units(ref->metal_output_loc_coords())) / 2, yplus, color(0x00ff00aa));
         }
         else {
           // just in case.

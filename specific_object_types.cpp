@@ -501,12 +501,14 @@ void robot::perform_click_action(world& w, object_identifier my_id, click_action
     case SHOOT_LASERS: {
       const vector3<distance> offset(-facing_.y / 4, facing_.x / 4, 0);
       const vector3<distance> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
-      for (int i = 0; i < 2; ++i)
+
+      const uniform_int_distribution<distance> random_delta(-tile_width*10, tile_width*10);
+      for (int i = 0; i < 20; ++i)
       {
         const object_or_tile_identifier hit_thing = laser_find(
             w, my_id,
-            (i ? (location_ + offset) : (location_ - offset)),
-            beam_vector, true);
+            ((i & 1) ? (location_ + offset) : (location_ - offset)),
+            beam_vector + vector3<distance>(random_delta(w.get_rng()), random_delta(w.get_rng()), random_delta(w.get_rng())), true);
         if(tile_location const* locp = hit_thing.get_tile_location()) {
           if (locp->stuff_at().contents() == ROCK) {
             w.replace_substance(*locp, ROCK, RUBBLE);
@@ -757,14 +759,17 @@ shape refinery::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
+vector3<tile_coordinate> refinery::input_loc_coords()const { return initial_location_ - vector3<tile_coordinate_signed_type>(2, 0, 0); }
+vector3<tile_coordinate> refinery::waste_rock_output_loc_coords()const { return initial_location_ + vector3<tile_coordinate_signed_type>(2, 0, 3); }
+vector3<tile_coordinate> refinery::metal_output_loc_coords()const { return initial_location_ + vector3<tile_coordinate_signed_type>(0, 2, 3); }
 
 void refinery::update(world& w, input_representation::input_news_t const&, object_identifier) {
   tile_location             input_loc =
-      w.make_tile_location(initial_location_ - vector3<tile_coordinate_signed_type>(2, 0, 0), FULL_REALIZATION);
+      w.make_tile_location(input_loc_coords(), FULL_REALIZATION);
   tile_location waste_rock_output_loc =
-      w.make_tile_location(initial_location_ + vector3<tile_coordinate_signed_type>(2, 0, 3), FULL_REALIZATION);
+      w.make_tile_location(waste_rock_output_loc_coords(), FULL_REALIZATION);
   tile_location      metal_output_loc =
-      w.make_tile_location(initial_location_ + vector3<tile_coordinate_signed_type>(0, 2, 3), FULL_REALIZATION);
+      w.make_tile_location(metal_output_loc_coords(), FULL_REALIZATION);
   
   if ((input_loc.stuff_at().contents() == RUBBLE) && (waste_rock_inside_ < tile_volume) && (metal_inside_ < tile_volume)) {
     minerals m = w.get_minerals(input_loc.coords());
