@@ -363,8 +363,8 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
       // the first guess was good
     }
     else {
-      tile_location uploc = loc.get_neighbor<zplus>(CONTENTS_ONLY);
-      tile_location uplocd = loc;
+      tile_location uploc = loc;
+      tile_location uplocd = locd;
       for (int offs = 0; offs < 15; ++offs) {
         loc = locd;
         locd = locd.get_neighbor<zminus>(CONTENTS_ONLY);
