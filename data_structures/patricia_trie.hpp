@@ -120,6 +120,13 @@ public:
     return os << " @ " << bb.size_exponent_in_each_dimension() << ']';
   }
 
+  friend inline bool operator==(power_of_two_bounding_cube const& a, power_of_two_bounding_cube const& b) {
+    return a.size_exponent_in_each_dimension_ == b.size_exponent_in_each_dimension_
+      && a.min_ == b.min_;
+  }
+  friend inline bool operator!=(power_of_two_bounding_cube const& a, power_of_two_bounding_cube const& b) {
+    return !(a == b);
+  }
 private:
   // Friend patricia_trie so that it can be more paranoid about
   // exception-safety, specifically the order in which the data members

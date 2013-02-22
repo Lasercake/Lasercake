@@ -92,6 +92,13 @@ struct patricia_trie_tester {
     BOOST_CHECK(root.find_leaf_node(v3));
     BOOST_CHECK_EQUAL(root.find_leaf(v3)->contents, 89);
     BOOST_CHECK_EQUAL(&root.find_leaf_node(v3)->find_root(), &root);
+    BOOST_CHECK_EQUAL(root.find_leaf_node(v3)->bounding_box(),
+      trie_node::power_of_two_bounding_cube_type(v3,0)
+    );
+    BOOST_CHECK(root.find_leaf_node(v3)->parent());
+    BOOST_CHECK_EQUAL(root.find_leaf_node(v3)->parent()->bounding_box(),
+      trie_node::power_of_two_bounding_cube_type(trie_node::loc_type{{0,32*3,32*31}},5)
+    );
 
     BOOST_CHECK(root.erase(v3));
     BOOST_CHECK_EQUAL(root.monoid(), 10u);
