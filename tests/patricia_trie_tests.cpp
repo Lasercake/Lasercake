@@ -41,26 +41,31 @@ struct block {
 // tile_coordinates here are right-shifted by worldblock_dimension_exp
 typedef pow2_radix_patricia_trie_node<3, coord, block, trie_traits> trie_node;
 
+struct patricia_trie_tester {
+  // This is a friend of patricia_trie
+  static void test() {
+    trie_node root;
+    BOOST_CHECK(root.is_root_node());
+    BOOST_CHECK(!root.points_to_leaf());
+    BOOST_CHECK(!root.points_to_sub_nodes());
+    BOOST_CHECK(root.is_empty());
+    BOOST_CHECK(!root.sub_nodes());
+    BOOST_CHECK(!root.leaf());
+    BOOST_CHECK(!root.parent());
+    BOOST_CHECK(!root.siblings());
+    const std::array<coord, 3> somewhere = {{ 7, 27, -3 }};
+    //BOOST_CHECK(root.contains(somewhere));
+    //BOOST_CHECK(!root.find_node(somewhere));
+    BOOST_CHECK(!root.find_leaf_node(somewhere));
+    BOOST_CHECK(!root.find_leaf(somewhere));
+    BOOST_CHECK_EQUAL(&root, &root.find_root());
+    BOOST_CHECK_EQUAL(0u, root.monoid());
+    //BOOST_CHECK_EQUAL(root.bounding_box().size_exponent_in_each_dimension(), 33);
+  }
+};
 
 BOOST_AUTO_TEST_CASE( patricia_trie_tests_ ) {
-  trie_node root;
-  BOOST_CHECK(root.is_root_node());
-  BOOST_CHECK(!root.points_to_leaf());
-  BOOST_CHECK(!root.points_to_sub_nodes());
-  BOOST_CHECK(root.is_empty());
-  BOOST_CHECK(!root.sub_nodes());
-  BOOST_CHECK(!root.leaf());
-  BOOST_CHECK(!root.parent());
-  BOOST_CHECK(!root.siblings());
-  const std::array<coord, 3> somewhere = {{ 7, 27, -3 }};
-  //BOOST_CHECK(root.contains(somewhere));
-  //BOOST_CHECK(!root.find_node(somewhere));
-  BOOST_CHECK(!root.find_leaf_node(somewhere));
-  BOOST_CHECK(!root.find_leaf(somewhere));
-  BOOST_CHECK_EQUAL(&root, root.find_root());
-  BOOST_CHECK_EQUAL(0u, root.monoid());
-  //BOOST_CHECK_EQUAL(root.bounding_box().size_exponent_in_each_dimension(), 33);
-  
+  patricia_trie_tester::test();
 }
 
 //} /* end namespace tests */

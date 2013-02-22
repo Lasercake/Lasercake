@@ -71,6 +71,7 @@ public:
   }
 };
 
+struct patricia_trie_tester;
 
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
 class pow2_radix_patricia_trie_node;
@@ -255,41 +256,56 @@ public:
   // == identity? is-a-boring-type(like nan)? adding-it-didn't-change-the-value-so-aboves-dont-need-changing, ah.
   void insert(loc_type leaf_loc, T* leaf_ptr, monoid_type leaf_monoid = monoid_type());
 
-  node_type const* find_node(loc_type leaf_loc)const {
-    node_type const* node = this->ascend_(leaf_loc);
+  // find_node() returns the leaf node at leaf_loc, if it exists
+  // (i.e. find_leaf_node()); otherwise it returns the deepest existent
+  // node& along the path from the root that *would* be on the path to the
+  // leaf node if the leaf node were to exist.
+  //
+  // Note: deepest node&, not deepest node.  This is a patricia trie that
+  // adds a new branch by replacing the result R of find_node() with a new
+  // intermediate node and placing R's former contents in a sub-node S_a
+  // (which will be a different sub-node than the new one S_b that we make
+  //  to put the new branch into).  If the found node's parent P exists,
+  // then P is guaranteed to contain leaf_loc.
+  //
+  // This scheme of node replacement is necessary because of how we store
+  // sub-nodes in a single array rather than a pointer for each potential
+  // sub-node.
+  node_type const& find_node(loc_type leaf_loc)const {
+    node_type const* node = &this->ascend_(leaf_loc);
     while (true) {
-      if (!node->contains(leaf_loc)) { return node; }
-      if (!node->points_to_sub_nodes()) { return node; }
+      if (!node->contains(leaf_loc)) { return *node; }
+      if (!node->points_to_sub_nodes()) { return *node; }
       node = &node->child_matching(leaf_loc);
     }
   }
-  node_type* find_node(loc_type leaf_loc) {
-    return const_cast<node_type*>(const_cast<const node_type*>(this)->find_node(leaf_loc));
+  node_type& find_node(loc_type leaf_loc) {
+    return const_cast<node_type&>(const_cast<const node_type*>(this)->find_node(leaf_loc));
   }
   // returns nullptr for no leaf in the tree at that loc
   node_type const* find_leaf_node(loc_type leaf_loc)const {
-    node_type const*const node = find_node(leaf_loc);
-    if (node->points_to_leaf()) { return node; }
+    node_type const& node = find_node(leaf_loc);
+    if (node.points_to_leaf()) { return &node; }
     else { return nullptr; }
   }
   node_type* find_leaf_node(loc_type leaf_loc) {
     return const_cast<node_type*>(const_cast<const node_type*>(this)->find_leaf_node(leaf_loc));
   }
   T const* find_leaf(loc_type leaf_loc)const {
-    node_type const*const node = find_node(leaf_loc);
-    if (T const* leaf = node->leaf()) { return leaf; }
+    node_type const& node = find_node(leaf_loc);
+    if (T const* leaf = node.leaf()) { return leaf; }
     else { return nullptr; }
   }
   T* find_leaf(loc_type leaf_loc) {
     return const_cast<T*>(const_cast<const node_type*>(this)->find_leaf(leaf_loc));
   }
-  node_type const* find_root()const {
+  node_type const& find_root()const {
     node_type const* node = this;
     while(node->parent_) { node = node->parent_; }
-    return node;
+    return *node;
   }
-  node_type* find_root() {
-    return const_cast<node_type*>(const_cast<const node_type*>(this)->find_root());
+  node_type& find_root() {
+    return const_cast<node_type&>(const_cast<const node_type*>(this)->find_root());
   }
 
 
@@ -356,15 +372,16 @@ public:
     }
   }
 private:
-  node_type const* ascend_(loc_type const& leaf_loc)const {
+  friend struct patricia_trie_tester;
+  node_type const& ascend_(loc_type const& leaf_loc)const {
     node_type const* node = this;
     while(!node->contains(leaf_loc) && node->parent_) {
       node = node->parent_;
     }
-    return node;
+    return *node;
   }
-  node_type* ascend_(loc_type const& leaf_loc) {
-    return const_cast<node_type*>(const_cast<const node_type*>(this)->ascend_(leaf_loc));
+  node_type& ascend_(loc_type const& leaf_loc) {
+    return const_cast<node_type&>(const_cast<const node_type*>(this)->ascend_(leaf_loc));
   }
 
   void initialize_monoid_(monoid_type new_leaf_monoid) {
@@ -433,7 +450,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
   // invariant: this 'node' variable changes but is never nullptr.
   node_type* node_to_initialize;
   try {
-    node_type*const node = this->find_node(leaf_loc);
+    node_type*const node = &this->find_node(leaf_loc);
     caller_error_if(node->points_to_leaf() && node->box_.min_ == leaf_loc, "Inserting a leaf in a location that's already in the tree");
     if (node->is_empty()) {
       node_to_initialize = node;
@@ -562,11 +579,11 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
 
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
 inline bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_type leaf_loc) {
-  node_type*const node = find_node(leaf_loc);
-  if (T* leaf = node->leaf()) {
-    node->update_monoid(monoid_type());
+  node_type& node = find_node(leaf_loc);
+  if (T* leaf = node.leaf()) {
+    node.update_monoid(monoid_type());
     leaf_deleter()(leaf);
-    node->ptr_ = nullptr;
+    node.ptr_ = nullptr;
     // TODO shorten tree where appropriate
     // (Could keep immediate-children-counts explicitly in nodes
     // to make that a little faster; probably fine either way.)
