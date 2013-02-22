@@ -1,20 +1,20 @@
 /*
 
     Copyright Eli Dupree and Isaac Dupree, 2011, 2012
-    
+
     This file is part of Lasercake.
 
     Lasercake is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
 
     Lasercake is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    GNU Affero General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
+    You should have received a copy of the GNU Affero General Public License
     along with Lasercake.  If not, see <http://www.gnu.org/licenses/>.
 
 */
@@ -150,6 +150,8 @@ bool tile_compare_zxy::operator()(tile_location const& i, tile_location const& j
 // Hopefully this means that integer variations won't cause two people's compiles
 // of this program to behave differently.
 static_assert(CHAR_BIT == 8, "8 bits in a byte (claims limits.h)");
+static_assert(uint8_t(254) < uint8_t(255) && uint8_t(255) > uint8_t(256),
+              "8 bits in a byte (observed at compile-time)");
 static_assert(sizeof(uint64_t)*8 == 64, "uint64_t is 64 bit");
 static_assert(sizeof(int64_t)*8 == 64, "int64_t is 64 bit");
 static_assert(sizeof(uint32_t)*8 == 32, "uint32_t is 32 bit");
