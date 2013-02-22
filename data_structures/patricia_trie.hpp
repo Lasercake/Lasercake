@@ -199,6 +199,7 @@ public:
     box_.min_ = std::move(other.box_.min_);
     delete_ptr_();
     move_initialize_from_except_userdata_(other);
+    return *this;
   }
 
   // It is possible for the root node to also be a ptr-to-leaf node.
@@ -417,15 +418,15 @@ private:
     parent_ = other.parent_;
     siblings_ = other.siblings_;
     if (siblings_) {
-      siblings_ = static_cast<sub_nodes_type*>(this - (&other - &other.siblings_[0]));
+      siblings_ = reinterpret_cast<sub_nodes_type*>(this - (&other - &(*other.siblings_)[0]));
       if(parent_) {
-        assert(parent_->ptr == other.siblings_);
-        parent_->ptr = siblings_;
+        assert(parent_->ptr_ == other.siblings_);
+        parent_->ptr_ = siblings_;
       }
     }
     if (sub_nodes_type* children = this->sub_nodes()) {
       for (node_type& child : *children) {
-        child.parent = this;
+        child.parent_ = this;
       }
     }
   }
