@@ -32,6 +32,7 @@
 #include "utils.hpp"
 #include "world_constants.hpp"
 #include "data_structures/misc_structures.hpp"
+#include "data_structures/geometry.hpp" //conversions with its bounding_box
 
 using std::pair;
 using std::make_pair;
