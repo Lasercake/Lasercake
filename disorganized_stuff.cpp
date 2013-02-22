@@ -150,6 +150,8 @@ bool tile_compare_zxy::operator()(tile_location const& i, tile_location const& j
 // Hopefully this means that integer variations won't cause two people's compiles
 // of this program to behave differently.
 static_assert(CHAR_BIT == 8, "8 bits in a byte (claims limits.h)");
+static_assert(uint8_t(254) < uint8_t(255) && uint8_t(255) > uint8_t(256),
+              "8 bits in a byte (observed at compile-time)");
 static_assert(sizeof(uint64_t)*8 == 64, "uint64_t is 64 bit");
 static_assert(sizeof(int64_t)*8 == 64, "int64_t is 64 bit");
 static_assert(sizeof(uint32_t)*8 == 32, "uint32_t is 32 bit");
