@@ -251,6 +251,15 @@ public:
   // it makes no difference which, except for efficiency
   // (passing a nearby node rather than the root node can
   // be faster; passing a far-away node can be slower).
+  //
+  // The leaf_ptr will be taken ownership of, in the sense
+  // that when it is erased or the tree is destroyed (or an
+  // exception is thrown during insert()), the deleter will
+  // be called on the pointer.
+  //
+  // An exception will be thrown if the leaf_loc already exists
+  // in the tree.
+  //
   // TODO but monoid operations! - they need to propagate to the top.
   // also, it could have subtraction and then it would be a bit faster...hmm.
   // and how can we check whether it doesn't need any propagation...

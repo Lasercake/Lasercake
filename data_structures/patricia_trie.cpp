@@ -171,6 +171,13 @@ inline bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_typ
 
 
 #include "../world.hpp"
-using namespace the_decomposition_of_the_world_into_blocks_impl;
-template class pow2_radix_patricia_trie_node<3, tile_coordinate, worldblock, worldblock_trie_traits>;
+template class pow2_radix_patricia_trie_node<3,
+  tile_coordinate,
+  the_decomposition_of_the_world_into_blocks_impl::worldblock,
+  the_decomposition_of_the_world_into_blocks_impl::worldblock_trie_traits>;
 
+#include "../tests/patricia_trie_tests.hpp"
+template class pow2_radix_patricia_trie_node<3,
+  patricia_trie_testing::coord,
+  patricia_trie_testing::block,
+  patricia_trie_testing::trie_traits>;

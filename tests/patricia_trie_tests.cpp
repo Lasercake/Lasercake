@@ -26,20 +26,11 @@
 #define TESTS_FILE patricia_trie_tests
 #include "test_header.hpp"
 
-#include "../data_structures/patricia_trie.hpp"
+#include "patricia_trie_tests.hpp"
 
 //namespace /*anonymous*/ {
 
-struct trie_traits : default_pow2_radix_patricia_trie_traits {
-  typedef noop_deleter leaf_deleter;
-  typedef size_t monoid;
-};
-typedef lint32_t coord;
-struct block {
-  int contents;
-};
-// tile_coordinates here are right-shifted by worldblock_dimension_exp
-typedef pow2_radix_patricia_trie_node<3, coord, block, trie_traits> trie_node;
+using namespace patricia_trie_testing;
 
 struct patricia_trie_tester {
   // This is a friend of patricia_trie
@@ -53,14 +44,62 @@ struct patricia_trie_tester {
     BOOST_CHECK(!root.leaf());
     BOOST_CHECK(!root.parent());
     BOOST_CHECK(!root.siblings());
+    BOOST_CHECK_EQUAL(root.monoid(), 0u);
+    BOOST_CHECK_THROW(root.update_monoid(5), std::logic_error);
     const std::array<coord, 3> somewhere = {{ 7, 27, -3 }};
-    //BOOST_CHECK(root.contains(somewhere));
-    //BOOST_CHECK(!root.find_node(somewhere));
+    const std::array<coord, 3> zerozerozero = {{ 0, 0, 0 }};
+
+    // This is undesirable but harmless:
+    BOOST_CHECK(root.contains(zerozerozero));
+    // or it could be desirable if the root contained everywhere
+    BOOST_CHECK(!root.contains(somewhere));
+    // related current fact:
+    BOOST_CHECK_EQUAL(root.bounding_box().size_exponent_in_each_dimension(), 0);
+
     BOOST_CHECK(!root.find_leaf_node(somewhere));
     BOOST_CHECK(!root.find_leaf(somewhere));
     BOOST_CHECK_EQUAL(&root, &root.find_root());
     BOOST_CHECK_EQUAL(0u, root.monoid());
-    //BOOST_CHECK_EQUAL(root.bounding_box().size_exponent_in_each_dimension(), 33);
+
+    BOOST_CHECK(!root.erase(somewhere));
+    BOOST_CHECK(!root.erase(zerozerozero));
+    BOOST_CHECK_NO_THROW(root.insert(somewhere, new block{86}, 2));
+    BOOST_CHECK_THROW(root.insert(somewhere, new block{86}, 5), std::logic_error);
+    BOOST_CHECK_EQUAL(root.monoid(), 2u);
+    BOOST_CHECK_NO_THROW(root.update_monoid(5));
+    BOOST_CHECK_EQUAL(root.monoid(), 5u);
+    BOOST_CHECK(!root.sub_nodes());
+    BOOST_CHECK(!root.is_empty());
+    BOOST_CHECK(root.erase(somewhere));
+    BOOST_CHECK_EQUAL(root.monoid(), 0u);
+    BOOST_CHECK(!root.erase(somewhere));
+    BOOST_CHECK(root.is_empty());
+
+    const std::array<coord, 3> v1 = {{ 10, 100, 1000 }};
+    const std::array<coord, 3> v2 = {{ 10, 100, 1001 }};
+    const std::array<coord, 3> v3 = {{ 10, 100, 1010 }};
+    const std::array<coord, 3> v4 = {{ 10, 200, 1005 }};
+    BOOST_CHECK_NO_THROW(root.insert(v1, new block{87}, 2));
+    BOOST_CHECK_NO_THROW(root.insert(v2, new block{88}, 3));
+    BOOST_CHECK_NO_THROW(root.insert(v3, new block{89}, 4));
+    BOOST_CHECK_NO_THROW(root.insert(v4, new block{90}, 5));
+    BOOST_CHECK_EQUAL(root.monoid(), 14u);
+    BOOST_CHECK_THROW(root.update_monoid(5), std::logic_error);
+    BOOST_CHECK_EQUAL(root.monoid(), 14u);
+
+    BOOST_CHECK_EQUAL(&root.find_node(v3).find_root(), &root);
+    BOOST_CHECK(root.find_leaf(v3));
+    BOOST_CHECK(root.find_leaf_node(v3));
+    BOOST_CHECK_EQUAL(root.find_leaf(v3)->contents, 89);
+    BOOST_CHECK_EQUAL(&root.find_leaf_node(v3)->find_root(), &root);
+
+    BOOST_CHECK(root.erase(v3));
+    BOOST_CHECK_EQUAL(root.monoid(), 10u);
+    BOOST_CHECK(!root.find_leaf(v3));
+    BOOST_CHECK(!root.find_leaf_node(v3));
+
+    root.debug_check_recursive();
+    //root.debug_print();
   }
 };
 
