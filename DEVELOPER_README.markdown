@@ -49,3 +49,36 @@ Then run
 `wine lasercake.exe`
 and see if it runs!
 
+
+Releasing
+---------
+
+### build flags ###
+
+Using link-time optimization (LTO) (tested with GCC 4.7, Feb 2013) cuts
+the Lasercake binary size in half, though it doesn't make the program run
+significantly faster (probably because we already put the performance
+critical code in templates in the headers).  Linking with -flto takes
+about a minute on my modern CPU so you probably don't want to do this
+while developing.
+-DCMAKE_CXX_FLAGS=-flto -DCMAKE_C_FLAGS=-flto -DCMAKE_EXE_LINKER_FLAGS=-fwhole-program
+
+Profile-guided optimization did not currently appear to profitable enough
+to bother with, but it has been before, so perhaps it will in the future. How to:
+% cmake path/to/lasercake -DCMAKE_CXX_FLAGS=-fprofile-generate -DCMAKE_C_FLAGS=-fprofile-generate -DCMAKE_EXE_LINKER_FLAGS=-fprofile-generate
+% make -j3
+run the generated lasercake in various ways until you've exercised its various
+performance-critical code paths.  This generates .gcda profiles next to the .o
+binaries in CMakeFiles/lasercake.dir; each run adds to the existing .gcda files.
+You probably want to keep this binary in case you didn't like the profile and want
+to run it some more, so rename it.
+% cmake path/to/lasercake -DCMAKE_CXX_FLAGS='-fprofile-use -fprofile-correction' -DCMAKE_C_FLAGS='-fprofile-use -fprofile-correction' -DCMAKE_EXE_LINKER_FLAGS='-fprofile-use -fprofile-correction'
+% make -j3
+enjoy your new binary.
+(-fprofile-correction is necessary because Lasercake is multi-threaded.
+Alternatively, you can run the profile-generating Lasercake with --no-threads.)
+
+### packaging ###
+
+TODO: look into CPack
+
