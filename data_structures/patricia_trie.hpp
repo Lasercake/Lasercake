@@ -329,14 +329,14 @@ public:
         "parent and empty node monoids are automatically computed.");
     // If monoid_type had a -=, this could be faster.
     if (!(monoid_ == new_leaf_monoid)) {
-      sub_nodes_type* siblings = siblings_;
       node_type* parent = parent_;
 
       //monoid_type old_monoid = std::move(monoid_);
       monoid_ = std::move(new_leaf_monoid);
       while(parent) {
+        sub_nodes_type const& siblings = *parent->sub_nodes();
         monoid_type sum = monoid_type();
-        for (node_type& sibling : *siblings) {
+        for (node_type const& sibling : siblings) {
           sum = sum + sibling.monoid_;
         }
         if (sum == parent->monoid_) { break; }
@@ -344,7 +344,6 @@ public:
         //parent->monoid_ -= old_monoid;
         //parent->monoid_ += monoid_;
 
-        siblings = parent->siblings_;
         parent = parent->parent_;
       }
     }
