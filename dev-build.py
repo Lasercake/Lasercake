@@ -140,6 +140,15 @@ def main():
 			say('; copying '+build_dir+'/lasercake to ./lasercake')
 		say(ansi_end+'\n')
 		if making_lasercake:
+			# shutil.copy*() throws
+			#     'IOError: [Errno 26] Text file busy'
+			# when replacing running executables on Linux, rather
+			# than replacing them.  So we unlink the destination
+			# first.  Of course, this won't work with Windows
+			# filesystem semantics anyway but it will on
+			# Mac/Linux/BSD.
+			try: os.unlink('../../'+exe_name)
+			except FileNotFoundError: pass
 			shutil.copy2(exe_name, '../../'+exe_name)
 	exit()
 
