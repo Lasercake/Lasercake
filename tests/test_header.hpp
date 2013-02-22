@@ -61,6 +61,7 @@ DECLARE_TESTS_FILE(bbox_collision_detector_tests)
 DECLARE_TESTS_FILE(borrowed_bitset_tests)
 DECLARE_TESTS_FILE(bounds_checked_int_tests)
 DECLARE_TESTS_FILE(misc_utils_tests)
+DECLARE_TESTS_FILE(patricia_trie_tests)
 DECLARE_TESTS_FILE(units_tests)
 
 DECLARE_TESTS_FILES_END
