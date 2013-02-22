@@ -176,7 +176,7 @@ public:
   typedef typename Traits::leaf_deleter leaf_deleter;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
 
-  pow2_radix_patricia_trie_node() : ptr_(), parent_(), siblings_(), box_(), monoid_() {}
+  pow2_radix_patricia_trie_node() : ptr_(), parent_(), box_(), monoid_() {}
   ~pow2_radix_patricia_trie_node() { delete_ptr_(); }
 
   // TODO maybe implement copy-constructor that copies whole tree? or subtree?
@@ -213,8 +213,8 @@ public:
   T const* leaf()const { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
   node_type* parent() { return parent_; }
   node_type const* parent()const { return parent_; }
-  sub_nodes_type* siblings() { return siblings_; }
-  sub_nodes_type const* siblings()const { return siblings_; }
+  sub_nodes_type* siblings() { return parent_ ? parent_->sub_nodes() : nullptr; }
+  sub_nodes_type const* siblings()const { return parent_ ? parent_->sub_nodes() : nullptr; }
 
   bool contains(loc_type const& loc)const {
     if (!shift_value_is_safe_for_type<Coord>(box_.size_exponent_in_each_dimension_)) {
@@ -418,18 +418,19 @@ private:
     }
     ptr_ = nullptr;
   }
-  void move_initialize_from_except_userdata_(pow2_radix_patricia_trie_node& other) BOOST_NOEXCEPT {
+  void move_initialize_from_except_userdata_(pow2_radix_patricia_trie_node& old) BOOST_NOEXCEPT {
     assert(ptr_ == nullptr);
-    ptr_ = other.ptr_;
-    box_.size_exponent_in_each_dimension_ = other.box_.size_exponent_in_each_dimension_;
-    other.ptr_ = nullptr;
-    parent_ = other.parent_;
-    siblings_ = other.siblings_;
-    if (siblings_) {
-      siblings_ = reinterpret_cast<sub_nodes_type*>(this - (&other - &(*other.siblings_)[0]));
-      if(parent_) {
-        assert(parent_->ptr_ == other.siblings_);
-        parent_->ptr_ = siblings_;
+    ptr_ = old.ptr_;
+    box_.size_exponent_in_each_dimension_ = old.box_.size_exponent_in_each_dimension_;
+    old.ptr_ = nullptr;
+    parent_ = old.parent_;
+    if (parent_) {
+      // If we're moving a sub_nodes_type then each member will
+      // be moved but only one of them should update the parent's
+      // sub-nodes ptr.
+      if(&old == &(*parent_->sub_nodes())[0]) {
+        assert(parent_->ptr_ == reinterpret_cast<sub_nodes_type*>(&old));
+        parent_->ptr_ = reinterpret_cast<sub_nodes_type*>(this);
       }
     }
     if (sub_nodes_type* children = this->sub_nodes()) {
@@ -441,7 +442,6 @@ private:
 
   void* ptr_;
   node_type* parent_; // nullptr for root node
-  sub_nodes_type* siblings_; // nullptr for root node
 
   // box_ is after monoid for the sake of patricia_trie_node's
   // move-constructor.

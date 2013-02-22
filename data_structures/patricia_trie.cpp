@@ -45,7 +45,6 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
         new (intermediate_nodes) sub_nodes_type();
         for (node_type& intermediate_node : *intermediate_nodes) {
           intermediate_node.parent_ = node;
-          intermediate_node.siblings_ = intermediate_nodes;
           assert(intermediate_node.box_.size_exponent_in_each_dimension_ == 0);
         }
       }
@@ -132,7 +131,6 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
       node->ptr_ = intermediate_nodes;
       node->box_.size_exponent_in_each_dimension_ = shared_size_exponent;
       //node->parent remains the same
-      //node->siblings remains the same
       //node->monoid remains the same (it will be updated later as one of the parents)
 
       // nothrow
