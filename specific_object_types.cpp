@@ -231,19 +231,11 @@ auto refinery_cost = 50*meters*meters*meters;
 auto autorobot_cost = 100*meters*meters*meters;
 
 std::string draw_m3(physical_quantity<lint64_t, units<dim::meter<3>>> m3) {
-  return std::to_string(get_primitive_int(m3 / meters / meters / meters)) + " m^3";
+  return std::to_string(get_primitive_int(m3 / meters / meters / meters))/* + " m^3"*/; // omitting "m^3" at least until we can get a proper superscript (TODO?)
 }
 
 std::string robot::player_instructions()const {
-  const std::string instructions =
-    //friction: implicit, we don't mention it, i guess.
-    "arrow keys or mouse: rotate view;  "
-    "wasd: move;  "
-    "space: jump\n" //hmm should we have a jump and have it do this
-    "clrbom: switch mode\n"
-    //"p: create solar panel (not)\n"
-    "\n"
-    "Metal carried: " + draw_m3(metal_carried_) + " / " + draw_m3(storage_volume()) + "\n" + (
+  const std::string instructions = (
       (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, collect pure metal, or deconstruct objects (not yet implemented)." :
       (mode_ == "laser")   ? "Laser mode: Hold mouse button to fire dual lasers." :
       (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing. (This usually slows down the simulation.)" :
@@ -251,7 +243,10 @@ std::string robot::player_instructions()const {
       (mode_ == "building_refinery") ? "Refinery mode: Click to build a refinery (costs "+draw_m3(refinery_cost)+"). Once built, refineries take rubble at the in-arrow and convert it to pure metal and waste rock." :
       (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot (costs "+draw_m3(autorobot_cost)+").\nIt will dig up/down/straight depending on the up/down angle you're facing when you build it, move in the cardinal direction closest to the left/right angle you're facing, and dump its rubble at the x/y position where it was created." :
       "Unknown mode, this is an error!"
-    ) + "\n"
+    ) + "\n\n"
+    "Metal carried: " + draw_m3(metal_carried_) + "/" + draw_m3(storage_volume()) + "\n\n"
+    "WASD: move  |  arrows/mouse: rotate view  |  space: jump  |  CLRBOM: switch mode"
+    "\n"
     ;
   return instructions;
 }
