@@ -732,7 +732,7 @@ static const size_t ctr_end = __COUNTER__;
 #define ESTIMATED_NUMBER_OF_SCENARIOS 30
 static const size_t actual_number_of_scenarios = ctr_end - ctr_begin;
 #define SCEN(z, n, d) \
-  { scen_n<(ctr_begin + (n))>::name, scen_n<(ctr_begin + (n))>::worldgen },
+  { scen_n<(n)>::name, scen_n<(n)>::worldgen },
 constexpr scenario_t scenarios[] = {
   BOOST_PP_REPEAT(ESTIMATED_NUMBER_OF_SCENARIOS, SCEN, _)
 };
