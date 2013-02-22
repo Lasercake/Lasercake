@@ -822,6 +822,7 @@ void LasercakeGLWidget::key_change_(QKeyEvent* event, bool pressed) {
         ungrab_input_();
         return;
       case Qt::Key_Q:
+      case Qt::Key_W:
         if((event->modifiers() & Qt::ControlModifier)) {
           close();
           return;
