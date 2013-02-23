@@ -114,7 +114,7 @@ void world::visit_collidable_tiles(Visitor&& visitor) {
       if(is_here_interesting) { entirely_valid_as_of_worldblock_bit |= (tile_coordinate(1)<<trie_bit); }
     }
     if(!trie_node_uninteresting_to_look_within) {
-      if(worldblock* wb = trie_node->leaf()) {
+      if(worldblock* wb = trie_node->leaf().worldblock_) {
         if(wb->non_interior_bitmap_large_scale_) {
           ++COUNT;
           worldblock_dimension_type entirely_valid_as_of_tile_coordinate_bit = (!!entirely_valid_as_of_worldblock_bit) << worldblock_dimension_exp;

@@ -28,6 +28,19 @@ using namespace the_decomposition_of_the_world_into_blocks_impl;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
 
+  void worldblock::construct(world* w, vector3<tile_coordinate> global_position) {
+    assert(!w_);
+    w_ = w;
+    global_position_ = global_position;
+    // TODO pass in a nearby node
+    // TODO maybe wait until it's been culled
+    parent_ = &w_->worldblock_trie_.insert(global_position_ >> worldblock_dimension_exp, this, 1);
+    //This was too slow to do for every worldblock:
+    //if(assert_everything) {
+    //  w_->worldblock_trie_.debug_check_recursive();
+    //}
+  }
+
   struct worldblock::helpers {
 
   // For initialization purposes.  May only be called on a tile marked interior.
@@ -48,14 +61,30 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     wb->non_interior_bitmap_small_scale_[interleaved_high] |= uint64_t(1) << interleaved_low;
     wb->non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
 
-    if(wb->count_of_non_interior_tiles_here_ == 1) {
+    /*if(wb->count_of_non_interior_tiles_here_ == 1) {
       wb->w_->worldblock_trie_.insert(wb->global_position_ >> worldblock_dimension_exp, wb, 1);
       if(assert_everything) {
         wb->w_->worldblock_trie_.debug_check_recursive();
       }
-    }
+    }*/
   }
   };
+
+  bool worldblock::is_deletable()const {
+    // TODO: maybe only death row for things whose neighbors are
+    // all interior too, because tile physics steps a tile or two away
+    // from things often.  And so does the display although that neighbor-sides
+    // info could be cached per tile.
+    // Hmm I wonder about the neighbor realization level; not-very-realized neighbors
+    // won't have any known-noninterior tiles...
+    if(count_of_non_interior_tiles_here_) { return false; }
+    for(worldblock* neighbor : neighbors_) {
+      if(neighbor && neighbor->count_of_non_interior_tiles_here_) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   void worldblock::set_tile_non_interior(vector3<tile_coordinate> global_coords, worldblock_dimension_type idx) {
     const worldblock_dimension_type x = get_primitive_int(global_coords.x) & (worldblock_dimension-1);
@@ -68,10 +97,8 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
     tile& t = tiles_[idx];
     if(count_of_non_interior_tiles_here_ == 0) {
-      w_->worldblock_trie_.insert(global_position_ >> worldblock_dimension_exp, this, 1);
-      if(assert_everything) {
-        w_->worldblock_trie_.debug_check_recursive();
-      }
+      assert(parent_);
+      parent_->leaf().everything_here_is_interior_this_ = UNSPECIFIED_TILE_CONTENTS;
     }
     count_of_non_interior_tiles_here_ += t.is_interior();
     t.set_interiorness(false);
@@ -86,14 +113,20 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     non_interior_bitmap_small_scale_[interleaved_high] &= ~(uint64_t(1) << interleaved_low);
     non_interior_bitmap_large_scale_ &= ~(uint64_t(!non_interior_bitmap_small_scale_[interleaved_high]) << interleaved_high);
     tile& t = tiles_[idx];
-    if(!t.is_interior() && count_of_non_interior_tiles_here_ == 1) {
-      w_->worldblock_trie_.erase(global_position_ >> worldblock_dimension_exp);
-      if(assert_everything) {
-        w_->worldblock_trie_.debug_check_recursive();
+    const bool was_interior = !t.is_interior();
+    count_of_non_interior_tiles_here_ -= was_interior;
+    t.set_interiorness(true);
+    if(was_interior && count_of_non_interior_tiles_here_ == 0) {
+      // Hmm who's responsible for propagating this info upwards, and
+      // de-propagating it?
+      parent_->leaf().everything_here_is_interior_this_ = t.contents();
+      // Wait until between frames to deallocate dull worldblocks
+      // (this'll sure make tile_physics code simpler)
+      // and perhaps wait a few frames to see if it stays all-interior.
+      if(this->is_deletable()) {
+        w_->suggest_deleting_worldblock(this);
       }
     }
-    count_of_non_interior_tiles_here_ -= !t.is_interior();
-    t.set_interiorness(true);
   }
 
   template<cardinal_direction Dir> struct neighbor_idx_offset;
@@ -154,6 +187,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   //but could be twice as slow average as we'd like: for example a bunch of worldblocks
   //with all rock except one rubble (or a few) would pick rubble one in N times and each
   //of those times would be almost N times slower (where N = worldblock_dimension cubed).
+  //
+  //TODO DETERMINISM: worldblock creation is supposed to have no side effects,
+  //but using the world's RNG causes side effects.
   tile_contents worldblock::estimate_most_frequent_tile_contents_type()const {
     // It doesn't really matter what RNG we use here - having good
     // randomness only affects speed.  The *correctness* of worldblock
@@ -303,6 +339,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       // or especially if contents are all the same tile type and
       // are interior, perhaps we should arrange to have them not
       // exist in memory at all?
+      if(this->is_deletable()) {
+        w_->suggest_deleting_worldblock(this);
+      }
       
       current_tile_realization_ = CONTENTS_AND_LOCAL_CACHES_ONLY;
       is_busy_realizing_ = false;

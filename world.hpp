@@ -377,6 +377,9 @@ void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shif
   // For displaying in debug-display mode:
   the_decomposition_of_the_world_into_blocks_impl::worldblock_trie const&
   debug_get_worldblock_trie()const { return worldblock_trie_; }
+
+  // For when a worldblock notices it is all super interior
+  void suggest_deleting_worldblock(the_decomposition_of_the_world_into_blocks_impl::worldblock*) {}
 private:
   // No harm in doing this, because worldblock is by definition already hacky:
   friend class the_decomposition_of_the_world_into_blocks_impl::worldblock;

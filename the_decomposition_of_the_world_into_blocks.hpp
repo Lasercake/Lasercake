@@ -22,6 +22,8 @@
 #ifndef LASERCAKE_THE_DECOMPOSITION_OF_THE_WORLD_INTO_BLOCKS_HPP__
 #define LASERCAKE_THE_DECOMPOSITION_OF_THE_WORLD_INTO_BLOCKS_HPP__
 
+//#include <boost/variant/variant.hpp>
+
 #include "utils.hpp"
 #include "data_structures/patricia_trie.hpp"
 #include "tiles.hpp"
@@ -47,13 +49,37 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     return (table[x] << 2) + (table[y] << 1) + (table[z]);
   }
 
+  class worldblock;
+
+  struct worldblock_trie_traits : default_pow2_radix_patricia_trie_traits {
+    typedef size_t monoid;
+  };
+  // tile_coordinates here are right-shifted by worldblock_dimension_exp
+//  typedef boost::variant<boost::blank, worldblock*, tile_contents> region_specification;
+  struct region_specification {
+    tile_contents everything_here_is_interior_this_; // or UNSPECIFIED_TILE_CONTENTS
+    worldblock* worldblock_; // or nullptr
+    explicit region_specification(worldblock* wb)
+      : everything_here_is_interior_this_(UNSPECIFIED_TILE_CONTENTS), worldblock_(wb) {}
+    explicit region_specification(tile_contents t)
+      : everything_here_is_interior_this_(t), worldblock_(nullptr) {}
+    region_specification() : everything_here_is_interior_this_(UNSPECIFIED_TILE_CONTENTS), worldblock_(nullptr) {}
+    explicit operator bool()const {
+      return everything_here_is_interior_this_ != UNSPECIFIED_TILE_CONTENTS || worldblock_ != nullptr;
+    }
+  };
+  typedef pow2_radix_patricia_trie_node<3, tile_coordinate, region_specification, worldblock_trie_traits>
+    worldblock_trie_node;
+  typedef worldblock_trie_node worldblock_trie; //makes sense if pointing to the root node
+
+
   class worldblock {
   public:
-    worldblock() : neighbors_(nullptr), current_tile_realization_(COMPLETELY_IMAGINARY),
+    worldblock() : neighbors_(nullptr), parent_(nullptr),
+      current_tile_realization_(COMPLETELY_IMAGINARY),
       is_busy_realizing_(false), count_of_non_interior_tiles_here_(0), w_(nullptr),
       non_interior_bitmap_large_scale_(0), non_interior_bitmap_small_scale_{} {}
-    void construct(world* w, vector3<tile_coordinate> global_position) {
-      w_ = w; global_position_ = global_position; }
+    void construct(world* w, vector3<tile_coordinate> global_position);
     bool is_constructed() const { return w_ != nullptr; }
     tile_bounding_box bounding_box()const {
       return tile_bounding_box(global_position_,
@@ -87,6 +113,11 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     void set_tile_non_interior(vector3<tile_coordinate> global_coords, worldblock_dimension_type idx);
     void set_tile_interior(vector3<tile_coordinate> global_coords, worldblock_dimension_type idx);
 
+    // Returns whether this worldblock (and its neighbor faces) are
+    // so uniform and interior that it's a waste of space to keep this
+    // in memory.
+    bool is_deletable()const;
+
     template<cardinal_direction Dir> worldblock& ensure_neighbor_realization(level_of_tile_realization_needed realineeded);
     void realize_nonexistent_neighbor(cardinal_direction dir, level_of_tile_realization_needed realineeded);
 
@@ -101,6 +132,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     struct helpers;
 
     value_for_each_cardinal_direction<worldblock*> neighbors_;
+    worldblock_trie_node* parent_;
     vector3<tile_coordinate> global_position_; // the lowest x, y, and z among elements in this worldblock
     level_of_tile_realization_needed current_tile_realization_;
     bool is_busy_realizing_;
@@ -125,13 +157,6 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       uint64_t tile_data_uint64_array[worldblock_volume/8];
     };
   };
-
-  struct worldblock_trie_traits : default_pow2_radix_patricia_trie_traits {
-    typedef size_t monoid;
-  };
-  // tile_coordinates here are right-shifted by worldblock_dimension_exp
-  typedef pow2_radix_patricia_trie_node<3, tile_coordinate, worldblock*, worldblock_trie_traits> worldblock_trie;
-
 }
 
 
