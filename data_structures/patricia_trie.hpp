@@ -140,8 +140,6 @@ private:
   friend class pow2_radix_patricia_trie_node;
 
   loc_type min_;
-  // 0 for ptr-to-leaf node, nonzero for ptr-to-sub-nodes nodes,
-  // doesn't matter for nullptr nodes:
   num_bits_type size_exponent_in_each_dimension_;
 };
 
@@ -171,7 +169,6 @@ private:
 // Non-mutating operations cannot throw exceptions.
 struct default_pow2_radix_patricia_trie_traits {
   typedef trivial_monoid monoid;
-  typedef default_deleter leaf_deleter;
   typedef lasercake_nice_allocator<int>::type node_allocator;
 };
 
@@ -192,15 +189,10 @@ public:
   typedef std::array<Coord, dimensions> loc_type;
   typedef power_of_two_bounding_cube<dimensions, Coord> power_of_two_bounding_cube_type;
   typedef typename Traits::monoid monoid_type;
-  typedef typename Traits::leaf_deleter leaf_deleter;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
 
   patricia_trie_representation() : leaf_(), sub_nodes_(), parent_(), box_(), monoid_() {}
-  ~patricia_trie_representation() {
-    if(T* leaf_ptr = leaf()) {
-      leaf_deleter()(leaf_ptr);
-    }
-  }
+  ~patricia_trie_representation() {}
   // Until I need it to be copyable or movable, better not to risk
   // an untested implementation.
   patricia_trie_representation(patricia_trie_representation const&) = delete;
@@ -208,15 +200,21 @@ public:
   patricia_trie_representation& operator=(patricia_trie_representation const&) = delete;
   patricia_trie_representation& operator=(patricia_trie_representation&&) = delete;
 
+  // Hmm...
+  static T null_leaf() { return T(); }
+  static bool is_null_leaf(T const& t) { return t == null_leaf(); }
+
   // It is possible for the root node to also be a ptr-to-leaf node.
   bool is_root_node()const { return !parent_; }
-  bool points_to_leaf()const { return leaf_; }
+  bool points_to_leaf()const { return !is_null_leaf(leaf_); }
   bool points_to_sub_nodes()const { return sub_nodes_; }
-  bool is_empty()const { return !leaf_ && !sub_nodes_; }
+  bool is_empty()const { return !points_to_leaf() && !points_to_sub_nodes(); }
   sub_nodes_type* sub_nodes() { return sub_nodes_; }
   sub_nodes_type const* sub_nodes()const { return sub_nodes_; }
-  T* leaf() { return leaf_; }
-  T const* leaf()const { return leaf_; }
+  // Beware leaf() may reference a default-constructed that indicates
+  // that nothing's here.
+  T& leaf() { return leaf_; }
+  T const& leaf()const { return leaf_; }
   node_type* parent() { return parent_; }
   node_type const* parent()const { return parent_; }
 
@@ -234,20 +232,13 @@ protected:
   void set_sub_nodes(sub_nodes_type* new_sub_nodes) {
     sub_nodes_ = new_sub_nodes;
   }
-  T* move_leaf() {
-    if(T* current_leaf = leaf_) {
-      leaf_ = nullptr;
-      return current_leaf;
-    }
-    else {
-      return nullptr;
-    }
+  T move_leaf() {
+    T result = std::move(leaf_);
+    leaf_ = null_leaf();
+    return std::move(result);
   }
-  void set_leaf(T* new_leaf) {
-    if(T* old_leaf = leaf()) {
-      leaf_deleter()(old_leaf);
-    }
-    leaf_ = new_leaf;
+  void set_leaf(T&& new_leaf = null_leaf()) {
+    leaf_ = std::move(new_leaf);
   }
   void set_parent(node_type* parent) {
     parent_ = parent;
@@ -266,7 +257,7 @@ protected:
   }
 
 private:
-  T* leaf_;
+  T leaf_;
   sub_nodes_type* sub_nodes_;
   node_type* parent_; // nullptr for root node
   power_of_two_bounding_cube_type box_;
@@ -274,6 +265,10 @@ private:
   // TODO make box_ and monoid_ a compressed_pair?
 };
 
+// requires nothrow move for Coord, Monoid, and T.
+// T must be default-constructable, and checkable whether it has been
+// default-constructed, and its default-constructed state will be sitting around
+// in the tree in places it doesn't belong.
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits = default_pow2_radix_patricia_trie_traits>
 class pow2_radix_patricia_trie_node
   : public patricia_trie_representation<Dims, Coord, T, Traits> {
@@ -286,7 +281,6 @@ public:
   typedef std::array<Coord, dimensions> loc_type;
   typedef power_of_two_bounding_cube<dimensions, Coord> power_of_two_bounding_cube_type;
   typedef typename Traits::monoid monoid_type;
-  typedef typename Traits::leaf_deleter leaf_deleter;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
 
   pow2_radix_patricia_trie_node() : rep() {}
@@ -351,7 +345,10 @@ public:
   // also, it could have subtraction and then it would be a bit faster...hmm.
   // and how can we check whether it doesn't need any propagation...
   // == identity? is-a-boring-type(like nan)? adding-it-didn't-change-the-value-so-aboves-dont-need-changing, ah.
-  void insert(loc_type leaf_loc, T* leaf_ptr, monoid_type leaf_monoid = monoid_type());
+  void insert(loc_type leaf_loc, T&& new_leaf, monoid_type leaf_monoid = monoid_type());
+  template<typename TT> void insert(loc_type leaf_loc, TT const& new_leaf, monoid_type leaf_monoid = monoid_type()) {
+    this->insert(leaf_loc, T(new_leaf), leaf_monoid);
+  }
 
   // find_node() returns the leaf node at leaf_loc, if it exists
   // (i.e. find_leaf_node()); otherwise it returns the deepest existent
@@ -388,13 +385,13 @@ public:
   node_type* find_leaf_node(loc_type leaf_loc) {
     return const_cast<node_type*>(const_cast<const node_type*>(this)->find_leaf_node(leaf_loc));
   }
-  T const* find_leaf(loc_type leaf_loc)const {
+  T const& find_leaf(loc_type leaf_loc)const {
     node_type const& node = find_node(leaf_loc);
-    if (T const* leaf = node.leaf()) { return leaf; }
-    else { return nullptr; }
+    return node.leaf();
   }
-  T* find_leaf(loc_type leaf_loc) {
-    return const_cast<T*>(const_cast<const node_type*>(this)->find_leaf(leaf_loc));
+  T& find_leaf(loc_type leaf_loc) {
+    node_type& node = find_node(leaf_loc);
+    return node.leaf();
   }
   node_type const& find_root()const {
     node_type const* node = this;

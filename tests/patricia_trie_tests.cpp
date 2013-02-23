@@ -63,8 +63,8 @@ struct patricia_trie_tester {
 
     BOOST_CHECK(!root.erase(somewhere));
     BOOST_CHECK(!root.erase(zerozerozero));
-    BOOST_CHECK_NO_THROW(root.insert(somewhere, new block{86}, 2));
-    BOOST_CHECK_THROW(root.insert(somewhere, new block{86}, 5), std::logic_error);
+    BOOST_CHECK_NO_THROW(root.insert(somewhere, std::unique_ptr<block>(new block{86}), 2));
+    BOOST_CHECK_THROW(root.insert(somewhere, std::unique_ptr<block>(new block{86}), 5), std::logic_error);
     BOOST_CHECK_EQUAL(root.monoid(), 2u);
     BOOST_CHECK_NO_THROW(root.update_monoid(5));
     BOOST_CHECK_EQUAL(root.monoid(), 5u);
@@ -79,16 +79,16 @@ struct patricia_trie_tester {
     const std::array<coord, 3> v2 = {{ 10, 100, 1001 }};
     const std::array<coord, 3> v3 = {{ 10, 100, 1010 }};
     const std::array<coord, 3> v4 = {{ 10, 200, 1005 }};
-    BOOST_CHECK_NO_THROW(root.insert(v1, new block{87}, 2));
-    BOOST_CHECK_NO_THROW(root.insert(v2, new block{88}, 3));
-    BOOST_CHECK_NO_THROW(root.insert(v3, new block{89}, 4));
-    BOOST_CHECK_NO_THROW(root.insert(v4, new block{90}, 5));
+    BOOST_CHECK_NO_THROW(root.insert(v1, std::unique_ptr<block>(new block{87}), 2));
+    BOOST_CHECK_NO_THROW(root.insert(v2, std::unique_ptr<block>(new block{88}), 3));
+    BOOST_CHECK_NO_THROW(root.insert(v3, std::unique_ptr<block>(new block{89}), 4));
+    BOOST_CHECK_NO_THROW(root.insert(v4, std::unique_ptr<block>(new block{90}), 5));
     BOOST_CHECK_EQUAL(root.monoid(), 14u);
     BOOST_CHECK_THROW(root.update_monoid(5), std::logic_error);
     BOOST_CHECK_EQUAL(root.monoid(), 14u);
 
     BOOST_CHECK_EQUAL(&root.find_node(v3).find_root(), &root);
-    BOOST_CHECK(root.find_leaf(v3));
+    BOOST_CHECK(!!root.find_leaf(v3));
     BOOST_CHECK(root.find_leaf_node(v3));
     BOOST_CHECK_EQUAL(root.find_leaf(v3)->contents, 89);
     BOOST_CHECK_EQUAL(&root.find_leaf_node(v3)->find_root(), &root);

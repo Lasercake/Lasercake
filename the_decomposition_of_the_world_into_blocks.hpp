@@ -127,11 +127,10 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
   };
 
   struct worldblock_trie_traits : default_pow2_radix_patricia_trie_traits {
-    typedef noop_deleter leaf_deleter;
     typedef size_t monoid;
   };
   // tile_coordinates here are right-shifted by worldblock_dimension_exp
-  typedef pow2_radix_patricia_trie_node<3, tile_coordinate, worldblock, worldblock_trie_traits> worldblock_trie;
+  typedef pow2_radix_patricia_trie_node<3, tile_coordinate, worldblock*, worldblock_trie_traits> worldblock_trie;
 
 }
 

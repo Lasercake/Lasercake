@@ -196,7 +196,7 @@ inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
 #undef BOOST_CHECK_NO_THROW
 #undef BOOST_CHECK_THROW
 #define BINARY_CHECK_IMPL(a, b, comparator_type, comparator_str) \
-  do_test([&](){return (a);}, [&](){return (b);}, comparator_type(), \
+  do_test([&]()->decltype((a)){return (a);}, [&]()->decltype((b)){return (b);}, comparator_type(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "` " comparator_str " `" BOOST_PP_STRINGIZE(b) "`" \
   )
 #define BOOST_CHECK_EQUAL(a, b) BINARY_CHECK_IMPL(a, b, comparators::equal_to, "==")
@@ -206,7 +206,7 @@ inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
 #define BOOST_CHECK_LE(a, b)    BINARY_CHECK_IMPL(a, b, comparators::less_equal, "<=")
 #define BOOST_CHECK_NE(a, b)    BINARY_CHECK_IMPL(a, b, comparators::not_equal_to, "!=")
 #define BOOST_CHECK(a) \
-  do_test([&]{return (a);}, &make_uninteresting, comparators::first_is_true(), \
+  do_test([&]()->decltype((a)){return (a);}, &make_uninteresting, comparators::first_is_true(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "`" \
   )
 #define BOOST_CHECK_NO_THROW(a) \
