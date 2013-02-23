@@ -1057,6 +1057,8 @@ void view_on_the_world::prepare_gl_data(
         const bounding_box bbox(node.here.get_bbox());
         const lint32_t box_exp_times_three = node.here.num_low_bits();
         // TODO: this is not the same formula as for the tile boxes
+        // But maybe it's better that way, considering the different
+        // typicalities of each structure.
         const distance frame_width = 1*tile_height
                   * (box_exp_times_three+1) / 15;
         // This is not really right - it will show bounding boxes that we are
