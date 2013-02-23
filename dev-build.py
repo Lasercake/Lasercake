@@ -132,6 +132,7 @@ def main():
 			say_we_are_calling('./'+build_dir+'/lasercake --run-self-tests')
 			test_status = subprocess.call(['./lasercake', '--run-self-tests'])
 			if test_status != 0:
+				say(ansi_red+'Tests failed.\n')
 				exit(test_status)
 			say(ansi_green+'success')
 		else:
