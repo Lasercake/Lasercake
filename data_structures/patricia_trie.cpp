@@ -31,7 +31,6 @@ pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc,
   caller_error_if(node->points_to_leaf() && node->min() == leaf_loc, "Inserting a leaf in a location that's already in the tree");
   if (node->is_empty()) {
     node_to_initialize = node;
-    node_to_initialize->initialize_monoid_(std::move(leaf_monoid));
     //LOG << "Type 1 " << std::hex << size_t(node_to_initialize) << std::dec << "\n";
   }
   else {
@@ -89,17 +88,6 @@ pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc,
       new_location_for_node_original_contents->set_size_exponent_in_each_dimension(node->size_exponent_in_each_dimension());
       new_location_for_node_original_contents->set_stable_node_reference_keeper(node->stable_node_reference_keeper());
 
-      // Update monoids.  If they throw, insert() will still
-      // be a no-op except for monoid inconsistency
-      //
-      // is this impl a time waste? if starting at the root,
-      // and if not worrying about exceptions,
-      // we could have updated them on the way down,
-      // though the short-circuit wouldn't take effect then.
-      assert(new_leaf_ptr_node->parent());
-      assert(new_leaf_ptr_node->parent() == node);
-      new_leaf_ptr_node->initialize_monoid_(std::move(leaf_monoid));
-
       // Compute shared coords here in case some Coord ops can throw.
       loc_type shared_loc_min;
       const Coord mask = safe_left_shift(~Coord(0), shared_size_exponent);
@@ -147,6 +135,8 @@ pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc,
 
   // hopefully nothrow
   node_to_initialize->set_leaf(std::move(new_leaf));
+  // hopefully nothrow
+  node_to_initialize->initialize_monoid_(std::move(leaf_monoid));
 
   return *node_to_initialize;
 }
