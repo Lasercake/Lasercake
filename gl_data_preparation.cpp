@@ -478,25 +478,24 @@ inline color compute_tile_color(world const& w, tile_location const& loc) {
   uint32_t g = 0;
   uint32_t b = 0;
   uint32_t a = 0;
-  uint32_t metal = 0;
   switch (loc.stuff_at().contents()) {
     //prepare_tile() doesn't need this case, so omit it:
     //case AIR: return color(0x00000000);
     case ROCK: {
       r = g = b = 0xaa;
+      g += get_primitive_int(initial_minerals(loc.coords()).metal / meters / meters / meters) * 2;
+      if (g > 0xff) g = 0xff;
       a = 0xff;
-      metal = get_primitive_int(initial_minerals(loc.coords()).metal / meters / meters / meters);
     } break;
     case RUBBLE: {
-      r = 0xff; g = 0xbb; b = 0x55; a = 0xcc;
-      metal = get_primitive_int(w.get_minerals(loc.coords()).metal / meters / meters / meters);
+      r = 0xff; g = 0xaa; b = 0x55; a = 0xcc;
+      g += get_primitive_int(w.get_minerals(loc.coords()).metal / meters / meters / meters);
+      if (g > 0xff) g = 0xff;
     } break;
     case GROUPABLE_WATER: r = 0x00; g = 0x00; b = 0xff; a = 0x77; break;
     case UNGROUPABLE_WATER: r = 0x66; g = 0x66; b = 0xff; a = 0x77; break;
     default: assert(false);
   }
-  g = g + metal;
-  if (g > 0xff) g = 0xff;
   r = r * illumination / 128;
   g = g * illumination / 128;
   b = b * illumination / 128;
