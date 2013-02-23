@@ -236,7 +236,19 @@ protected:
       assert(!new_sub_nodes);
     }
     else {
+      if(new_sub_nodes) {
+        assert(size_exponent_in_each_dimension() != 0);
+      }
       ptr_ = new_sub_nodes;
+    }
+  }
+  T* move_leaf() {
+    if(T* current_leaf = leaf()) {
+      ptr_ = nullptr;
+      return current_leaf;
+    }
+    else {
+      return nullptr;
     }
   }
   void set_leaf(T* new_leaf) {

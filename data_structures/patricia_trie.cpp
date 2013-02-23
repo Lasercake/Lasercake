@@ -123,15 +123,15 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
       // continue moving node's contents to its new location
       // nothrow
       new_location_for_node_original_contents->set_sub_nodes(node->sub_nodes());
-      new_location_for_node_original_contents->set_leaf(node->leaf());
+      new_location_for_node_original_contents->set_leaf(node->move_leaf());
       if(sub_nodes_type* original_sub_nodes = new_location_for_node_original_contents->sub_nodes()) {
         for (node_type& sub_node : *original_sub_nodes) {
           sub_node.set_parent(new_location_for_node_original_contents);
         }
       }
+      node->set_size_exponent_in_each_dimension(shared_size_exponent);
       node->set_leaf(nullptr);
       node->set_sub_nodes(intermediate_nodes);
-      node->set_size_exponent_in_each_dimension(shared_size_exponent);
       //node->parent remains the same
       //node->monoid remains the same (it will be updated later as one of the parents)
 
