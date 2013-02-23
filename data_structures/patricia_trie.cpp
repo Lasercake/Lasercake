@@ -24,11 +24,14 @@
 
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
 pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>&
-pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc, T&& new_leaf, monoid_type leaf_monoid) {
+pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc) {
   // invariant: this 'node' variable changes but is never nullptr.
   node_type* node_to_initialize;
   node_type*const node = &this->find_node(leaf_loc);
-  caller_error_if(node->points_to_leaf() && node->min() == leaf_loc, "Inserting a leaf in a location that's already in the tree");
+  if(node->size_exponent_in_each_dimension() == 0
+      && node->min() == leaf_loc) {
+    return *node;
+  }
   if (node->is_empty()) {
     node_to_initialize = node;
     //LOG << "Type 1 " << std::hex << size_t(node_to_initialize) << std::dec << "\n";
@@ -132,15 +135,17 @@ pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc,
 
   assert(!node_to_initialize->sub_nodes());
   node_to_initialize->set_min(std::move(leaf_loc));
-
-  // hopefully nothrow
-  node_to_initialize->set_leaf(std::move(new_leaf));
-  // hopefully nothrow
-  node_to_initialize->initialize_monoid_(std::move(leaf_monoid));
-
   return *node_to_initialize;
 }
-
+template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
+pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>&
+pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc, T&& new_leaf, monoid_type leaf_monoid) {
+  node_type& inserted = this->insert(leaf_loc);
+  caller_error_if(inserted.points_to_leaf() && inserted.min() == leaf_loc, "Inserting a leaf in a location that's already in the tree");
+  inserted.set_leaf(std::move(new_leaf));
+  inserted.initialize_monoid_(std::move(leaf_monoid));
+  return inserted;
+}
 
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
 bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_type leaf_loc) {

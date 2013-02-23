@@ -414,6 +414,7 @@ public:
   template<typename TT> node_type& insert(loc_type leaf_loc, TT const& new_leaf, monoid_type leaf_monoid = monoid_type()) {
     return this->insert(leaf_loc, T(new_leaf), leaf_monoid);
   }
+  node_type& insert(loc_type leaf_loc);
 
   // find_node() returns the leaf node at leaf_loc, if it exists
   // (i.e. find_leaf_node()); otherwise it returns the deepest existent
