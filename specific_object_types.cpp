@@ -231,27 +231,22 @@ auto refinery_cost = 50*meters*meters*meters;
 auto autorobot_cost = 100*meters*meters*meters;
 
 std::string draw_m3(physical_quantity<lint64_t, units<dim::meter<3>>> m3) {
-  return std::to_string(get_primitive_int(m3 / meters / meters / meters)) + " m^3";
+  return std::to_string(get_primitive_int(m3 / meters / meters / meters))/* + " m^3"*/; // omitting "m^3" at least until we can get a proper superscript (TODO?)
 }
 
 std::string robot::player_instructions()const {
-  const std::string instructions =
-    //friction: implicit, we don't mention it, i guess.
-    "arrow keys or mouse: rotate view;  "
-    "wasd: move;  "
-    "space: jump\n" //hmm should we have a jump and have it do this
-    "clrbom: switch mode\n"
-    "p: create solar panel (not)\n"
-    "\n"
-    "Metal carried: " + draw_m3(metal_carried_) + " / " + draw_m3(storage_volume()) + "\n" + (
+  const std::string instructions = (
       (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, collect pure metal, or deconstruct objects (not yet implemented)." :
       (mode_ == "laser")   ? "Laser mode: Hold mouse button to fire dual lasers." :
-      (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing." :
-      (mode_ == "building_conveyor") ? "Conveyor mode: Click to build a conveyor belt ("+draw_m3(conveyor_cost)+") or click a conveyor to rotate it." :
-      (mode_ == "building_refinery") ? "Refinery mode: Click to build a refinery ("+draw_m3(refinery_cost)+")." :
-      (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot ("+draw_m3(autorobot_cost)+").\nIt will dig up/down/straight depending on the up/down angle you're facing when you build it.\nIt will move in a cardinal direction closest to the left/right angle you're facing when you build it.\nIt will dump its rubble at the x/y position where it was created." :
+      (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing. (This usually slows down the simulation.)" :
+      (mode_ == "building_conveyor") ? "Conveyor mode: Click to build a conveyor belt (costs "+draw_m3(conveyor_cost)+") or click a conveyor to rotate it. Conveyors move rubble only." :
+      (mode_ == "building_refinery") ? "Refinery mode: Click to build a refinery (costs "+draw_m3(refinery_cost)+"). Once built, refineries take rubble at the in-arrow and convert it to pure metal and waste rock." :
+      (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot (costs "+draw_m3(autorobot_cost)+").\nIt will dig up/down/straight depending on the up/down angle you're facing when you build it, move in the cardinal direction closest to the left/right angle you're facing, and dump its rubble at the x/y position where it was created." :
       "Unknown mode, this is an error!"
-    ) + "\n"
+    ) + "\n\n"
+    "Metal carried: " + draw_m3(metal_carried_) + "/" + draw_m3(storage_volume()) + "\n\n"
+    "WASD: move  |  arrows/mouse: rotate view  |  space: jump  |  CLRBOM: switch mode"
+    "\n"
     ;
   return instructions;
 }
@@ -307,7 +302,10 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
   if (turn_right_amount != 0) {
     const distance new_facing_x = facing_.x + turn_right_amount * facing_.y / speed_divisor;
     const distance new_facing_y = facing_.y - turn_right_amount * facing_.x / speed_divisor;
-    facing_.x = new_facing_x; facing_.y = new_facing_y;
+    const distance new_xymag = i64sqrt(new_facing_x*new_facing_x + new_facing_y*new_facing_y);
+    const distance target_xymag = i64sqrt(tile_width*tile_width - facing_.z*facing_.z);
+    facing_.x = new_facing_x * target_xymag / new_xymag;
+    facing_.y = new_facing_y * target_xymag / new_xymag;
   }
   if (turn_up_amount != 0) {
     const distance new_xymag = xymag - (turn_up_amount * facing_.z / speed_divisor);
@@ -316,8 +314,8 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
       facing_.y = facing_.y * new_xymag / xymag;
       facing_.x = facing_.x * new_xymag / xymag;
     }
-  }
   facing_ = facing_ * tile_width / facing_.magnitude_within_32_bits();
+  }
 
   if (
        (((mode_ == "laser") || (mode_ == "rockets")) && input_news.is_currently_pressed(input_representation::left_mouse_button))
@@ -363,8 +361,8 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
       // the first guess was good
     }
     else {
-      tile_location uploc = loc.get_neighbor<zplus>(CONTENTS_ONLY);
-      tile_location uplocd = loc;
+      tile_location uploc = loc;
+      tile_location uplocd = locd;
       for (int offs = 0; offs < 15; ++offs) {
         loc = locd;
         locd = locd.get_neighbor<zminus>(CONTENTS_ONLY);
@@ -501,12 +499,14 @@ void robot::perform_click_action(world& w, object_identifier my_id, click_action
     case SHOOT_LASERS: {
       const vector3<distance> offset(-facing_.y / 4, facing_.x / 4, 0);
       const vector3<distance> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
-      for (int i = 0; i < 2; ++i)
+
+      const uniform_int_distribution<distance> random_delta(-tile_width*10, tile_width*10);
+      for (int i = 0; i < 20; ++i)
       {
         const object_or_tile_identifier hit_thing = laser_find(
             w, my_id,
-            (i ? (location_ + offset) : (location_ - offset)),
-            beam_vector, true);
+            ((i & 1) ? (location_ + offset) : (location_ - offset)),
+            beam_vector + vector3<distance>(random_delta(w.get_rng()), random_delta(w.get_rng()), random_delta(w.get_rng())), true);
         if(tile_location const* locp = hit_thing.get_tile_location()) {
           if (locp->stuff_at().contents() == ROCK) {
             w.replace_substance(*locp, ROCK, RUBBLE);
@@ -757,14 +757,17 @@ shape refinery::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
+vector3<tile_coordinate> refinery::input_loc_coords()const { return initial_location_ - vector3<tile_coordinate_signed_type>(2, 0, 0); }
+vector3<tile_coordinate> refinery::waste_rock_output_loc_coords()const { return initial_location_ + vector3<tile_coordinate_signed_type>(2, 0, 3); }
+vector3<tile_coordinate> refinery::metal_output_loc_coords()const { return initial_location_ + vector3<tile_coordinate_signed_type>(0, 2, 3); }
 
 void refinery::update(world& w, input_representation::input_news_t const&, object_identifier) {
   tile_location             input_loc =
-      w.make_tile_location(initial_location_ - vector3<tile_coordinate_signed_type>(2, 0, 0), FULL_REALIZATION);
+      w.make_tile_location(input_loc_coords(), FULL_REALIZATION);
   tile_location waste_rock_output_loc =
-      w.make_tile_location(initial_location_ + vector3<tile_coordinate_signed_type>(2, 0, 3), FULL_REALIZATION);
+      w.make_tile_location(waste_rock_output_loc_coords(), FULL_REALIZATION);
   tile_location      metal_output_loc =
-      w.make_tile_location(initial_location_ + vector3<tile_coordinate_signed_type>(0, 2, 3), FULL_REALIZATION);
+      w.make_tile_location(metal_output_loc_coords(), FULL_REALIZATION);
   
   if ((input_loc.stuff_at().contents() == RUBBLE) && (waste_rock_inside_ < tile_volume) && (metal_inside_ < tile_volume)) {
     minerals m = w.get_minerals(input_loc.coords());

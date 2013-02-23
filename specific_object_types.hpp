@@ -161,6 +161,10 @@ public:
   refinery(vector3<tile_coordinate> location):initial_location_(location),waste_rock_inside_(0),metal_inside_(0){}
   virtual shape get_initial_personal_space_shape()const override;
   virtual shape get_initial_detail_shape()const override;
+  
+  vector3<tile_coordinate> input_loc_coords()const;
+  vector3<tile_coordinate> waste_rock_output_loc_coords()const;
+  vector3<tile_coordinate> metal_output_loc_coords()const;
 
   virtual void update(world& w, input_representation::input_news_t const& mind_control,
                       object_identifier my_id) override;

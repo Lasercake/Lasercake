@@ -478,25 +478,24 @@ inline color compute_tile_color(world const& w, tile_location const& loc) {
   uint32_t g = 0;
   uint32_t b = 0;
   uint32_t a = 0;
-  uint32_t metal = 0;
   switch (loc.stuff_at().contents()) {
     //prepare_tile() doesn't need this case, so omit it:
     //case AIR: return color(0x00000000);
     case ROCK: {
       r = g = b = 0xaa;
+      g += get_primitive_int(initial_minerals(loc.coords()).metal / meters / meters / meters) * 2;
+      if (g > 0xff) g = 0xff;
       a = 0xff;
-      metal = get_primitive_int(initial_minerals(loc.coords()).metal / meters / meters / meters);
     } break;
     case RUBBLE: {
-      r = 0xff; g = 0xbb; b = 0x55; a = 0xcc;
-      metal = get_primitive_int(w.get_minerals(loc.coords()).metal / meters / meters / meters);
+      r = 0xff; g = 0xaa; b = 0x55; a = 0xcc;
+      g += get_primitive_int(w.get_minerals(loc.coords()).metal / meters / meters / meters);
+      if (g > 0xff) g = 0xff;
     } break;
     case GROUPABLE_WATER: r = 0x00; g = 0x00; b = 0xff; a = 0x77; break;
     case UNGROUPABLE_WATER: r = 0x66; g = 0x66; b = 0xff; a = 0x77; break;
     default: assert(false);
   }
-  g = g + metal;
-  if (g > 0xff) g = 0xff;
   r = r * illumination / 128;
   g = g * illumination / 128;
   b = b * illumination / 128;
@@ -728,6 +727,30 @@ void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3
   }}}
 }
 
+void draw_arrow(vector3<distance> view_loc, gl_collection& coll, vector3<distance> center, cardinal_direction dir, color c) {
+  vector3<distance> foo = vector3<lint64_t>(cardinal_direction_vectors[dir]) * tile_width / 3;
+  vector3<distance> bar(foo.y, foo.x, 0);
+  vector3<distance> up(0, 0, tile_height / 5);
+  push_quad(coll,
+            convert_coordinates_to_GL(view_loc, center - foo),
+            convert_coordinates_to_GL(view_loc, center - foo + up),
+            convert_coordinates_to_GL(view_loc, center + foo + up),
+            convert_coordinates_to_GL(view_loc, center + foo),
+            c);
+  push_quad(coll,
+            convert_coordinates_to_GL(view_loc, center + foo),
+            convert_coordinates_to_GL(view_loc, center + foo + up),
+            convert_coordinates_to_GL(view_loc, center + bar + up),
+            convert_coordinates_to_GL(view_loc, center + bar),
+            c);
+  push_quad(coll,
+            convert_coordinates_to_GL(view_loc, center + foo),
+            convert_coordinates_to_GL(view_loc, center + foo + up),
+            convert_coordinates_to_GL(view_loc, center - bar + up),
+            convert_coordinates_to_GL(view_loc, center - bar),
+            c);
+}
+
 void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
                    shape const& object_shape, color shape_color, bool wireframe = false) {
   lasercake_vector<bounding_box>::type const& obj_bboxes = object_shape.get_boxes();
@@ -853,7 +876,12 @@ void view_on_the_world::prepare_gl_data(
     convert_frustum_from_fine_distance_units_to_tile_count_units(view_frustum_in_fine_distance_units_for_view_tile_loc);
   {
     const heads_up_display_text everywhere_hud_text = {
-      "Esc: quit; Tab: switch robot; "
+      #if defined(__APPLE__) || defined(__MACOSX__)
+      "cmd-Q"
+      #else
+      "ctrl-Q"
+      #endif
+      ": quit | Esc: release mouse | "
       // F11 and [cmd|ctrl]-shift-F both work on all platforms, but
       //save space by showing the typical one for the platform
       #if defined(__APPLE__) || defined(__MACOSX__)
@@ -861,14 +889,14 @@ void view_on_the_world::prepare_gl_data(
       #else
       "F11"
       #endif
-      ": fullscreen; "
-      "p: pause; g: single-step; "
-      "1, 2, 3: overview, local, robot view; "
-      "8: regular drawing; 9: debug drawing\n",
-      color(0xffcc33cc),
+      ": fullscreen | "
+      "p: pause | g: single-step | Tab: switch robot | "
+      "123: robot view, local view, overview | "
+      "8: toggle drawing | 9: toggle debug drawing\n",
+      color(0xffaa55cc),
       "Granger_ch8plus",
-      24,
-      36, 18
+      22,
+      32, 16
     };
     auto const robot_has_instructions =
       boost::dynamic_pointer_cast<object_with_player_instructions>(w.get_objects().find(config.view_from)->second);
@@ -1036,28 +1064,19 @@ void view_on_the_world::prepare_gl_data(
         }
         else if(shared_ptr<conveyor_belt> belt = dynamic_pointer_cast<conveyor_belt>(objp)) {
           prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
-          vector3<distance> foo = vector3<lint64_t>(cardinal_direction_vectors[belt->direction()]) * tile_width / 3;
-          vector3<distance> bar(foo.y, foo.x, 0);
-          vector3<distance> center = (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2;
-          vector3<distance> up(0, 0, tile_height / 5);
-          push_quad(coll,
-                    convert_coordinates_to_GL(view_loc, center - foo),
-                    convert_coordinates_to_GL(view_loc, center - foo + up),
-                    convert_coordinates_to_GL(view_loc, center + foo + up),
-                    convert_coordinates_to_GL(view_loc, center + foo),
-                    color(0xff0000aa));
-          push_quad(coll,
-                    convert_coordinates_to_GL(view_loc, center + foo),
-                    convert_coordinates_to_GL(view_loc, center + foo + up),
-                    convert_coordinates_to_GL(view_loc, center + bar + up),
-                    convert_coordinates_to_GL(view_loc, center + bar),
-                    color(0xff0000aa));
-          push_quad(coll,
-                    convert_coordinates_to_GL(view_loc, center + foo),
-                    convert_coordinates_to_GL(view_loc, center + foo + up),
-                    convert_coordinates_to_GL(view_loc, center - bar + up),
-                    convert_coordinates_to_GL(view_loc, center - bar),
-                    color(0xff0000aa));
+          draw_arrow(view_loc, coll, (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2, belt->direction(), color(0xff0000aa));
+        }
+        else if(shared_ptr<refinery> ref = dynamic_pointer_cast<refinery>(objp)) {
+          prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
+          draw_arrow(view_loc, coll,
+                     (lower_bound_in_fine_distance_units(ref->input_loc_coords()) +
+                      upper_bound_in_fine_distance_units(ref->input_loc_coords())) / 2, xplus, color(0xff0000aa));
+          draw_arrow(view_loc, coll,
+                     (lower_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords()) +
+                      upper_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords())) / 2, xplus, color(0xff0000aa));
+          draw_arrow(view_loc, coll,
+                     (lower_bound_in_fine_distance_units(ref->metal_output_loc_coords()) +
+                      upper_bound_in_fine_distance_units(ref->metal_output_loc_coords())) / 2, yplus, color(0x00ff00aa));
         }
         else {
           // just in case.
