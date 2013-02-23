@@ -1020,7 +1020,7 @@ void view_on_the_world::prepare_gl_data(
         const auto box = node.bounding_box();
         const lint32_t box_exp = box.size_exponent_in_each_dimension();
         if(box_exp < std::numeric_limits<tile_coordinate>::digits - worldblock_dimension_exp) {
-          const distance frame_width = 1*tile_height*(box_exp+1)*i64sqrt(box_exp+1);
+          const distance frame_width = 1*tile_height*(box_exp+1)*lint32_t(i64sqrt(box_exp+1));
           const tile_bounding_box tile_bbox(
             vector3<tile_coordinate>(box.min())*worldblock_dimension,
             vector3<tile_coordinate>(box.size())*worldblock_dimension);
