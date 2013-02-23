@@ -79,6 +79,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       current_tile_realization_(COMPLETELY_IMAGINARY),
       is_busy_realizing_(false), count_of_non_interior_tiles_here_(0), w_(nullptr),
       non_interior_bitmap_large_scale_(0), non_interior_bitmap_small_scale_{} {}
+    ~worldblock();
     void construct(world* w, vector3<tile_coordinate> global_position);
     bool is_constructed() const { return w_ != nullptr; }
     tile_bounding_box bounding_box()const {

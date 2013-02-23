@@ -48,6 +48,22 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     //}
   }
 
+  worldblock::~worldblock() {
+    return;
+    for(cardinal_direction dir = first_cardinal_direction; dir != num_cardinal_directions; ++dir) {
+      if(neighbors_[dir]) {
+        neighbors_[dir]->neighbors_[opposite_cardinal_direction(dir)] = nullptr;
+      }
+    }
+    if(parent_) {
+      parent_->leaf().worldblock_ = nullptr;
+      //HACK: TODO actual smart things
+      parent_->leaf().everything_here_is_interior_this_ = UNSPECIFIED_TILE_CONTENTS;
+      
+      parent_->erase_if_empty();
+    }
+  }
+
   struct worldblock::helpers {
 
   // For initialization purposes.  May only be called on a tile marked interior.
@@ -322,6 +338,10 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
         // this worldblock's tiles contain.  This is also better than checking all the
         // 6*(nearly 6*(worldblock_dimension**2)) faces of this worldblock's edge *tiles*.
 
+        const auto neighbors_that_are_only_real_because_of_us =
+          value_for_each_cardinal_direction<bool>::from_functor(
+            [this](cardinal_direction dir){return !this->neighbors_[dir];});
+
         // By ensuring neighbors' realization first, realization doesn't have to be checked for
         // every get_loc_across_boundary-equivalent (all 6*(worldblock_dimension**2) of them).
         ensure_neighbor_realization<xminus>(CONTENTS_ONLY);
@@ -359,6 +379,18 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
             const worldblock_dimension_type x2 = worldblock_dimension - 1;
             this->check_local_caches_cross_worldblock_neighbor<xminus>(x1,y,z, x2,y,z);
             this->check_local_caches_cross_worldblock_neighbor<xplus >(x2,y,z, x1,y,z);
+          }
+        }
+
+        if(this->is_deletable()) {
+          for(cardinal_direction dir = first_cardinal_direction; dir != num_cardinal_directions; ++dir) {
+            if(neighbors_that_are_only_real_because_of_us[dir]) {
+              //TODO is it hacky that is_deletable on a CONTENTS_ONLY worldblock
+              //doesn't check whether the contents are uniform?
+              //TODO make it so that when worldblock is re-demanded it uses
+              //cached info.
+              w_->suggest_deleting_worldblock(neighbors_[dir]);
+            }
           }
         }
       }
@@ -422,6 +454,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
           global_position_ + vector3<worldblock_dimension_type>(cardinal_direction_vectors[dir]) * worldblock_dimension,
           realineeded
         );
+    neighbors_[dir]->neighbors_[opposite_cardinal_direction(dir)] = this;
   }
 }
 

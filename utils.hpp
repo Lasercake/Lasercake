@@ -345,18 +345,24 @@ template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_d
 
 
 template<typename ValueType> class value_for_each_cardinal_direction {
-public:
-  explicit value_for_each_cardinal_direction(ValueType const& iv/*initial_value*/)
-      : data({{iv,iv,iv,iv,iv,iv}}) {
-    static_assert(num_cardinal_directions == 6, "fix {{iv,iv,...}} to have the right number");
-  }
-  template<cardinal_direction Dir> ValueType      & get()      { return data[Dir]; }
-  template<cardinal_direction Dir> ValueType const& get()const { return data[Dir]; }
-  ValueType      & operator[](cardinal_direction const& dir)      { return data[dir]; }
-  ValueType const& operator[](cardinal_direction const& dir)const { return data[dir]; }
 private:
   typedef std::array<ValueType, num_cardinal_directions> internal_array;
 public:
+  explicit value_for_each_cardinal_direction(ValueType const& iv/*initial_value*/)
+      : data_({{iv,iv,iv,iv,iv,iv}}) {
+    static_assert(num_cardinal_directions == 6, "fix {{iv,iv,...}} to have the right number");
+  }
+  template<typename Functor>
+  static value_for_each_cardinal_direction from_functor(Functor f) {
+    value_for_each_cardinal_direction result{{{
+      f(xminus), f(yminus), f(zminus), f(xplus), f(yplus), f(zplus)
+    }}};
+    return result;
+  }
+  template<cardinal_direction Dir> ValueType      & get()      { return data_[Dir]; }
+  template<cardinal_direction Dir> ValueType const& get()const { return data_[Dir]; }
+  ValueType      & operator[](cardinal_direction const& dir)      { return data_[dir]; }
+  ValueType const& operator[](cardinal_direction const& dir)const { return data_[dir]; }
   typedef ValueType value_type;
   typedef ValueType& reference;
   typedef ValueType const& const_reference;
@@ -366,14 +372,15 @@ public:
   typedef typename internal_array::const_iterator const_iterator;
   typedef typename internal_array::size_type size_type;
   typedef typename internal_array::difference_type difference_type;
-  iterator begin() { return data.begin(); }
-  iterator end() { return data.end(); }
-  const_iterator begin()const { return data.cbegin(); }
-  const_iterator end()const { return data.cend(); }
-  const_iterator cbegin()const { return data.cbegin(); }
-  const_iterator cend()const { return data.cend(); }
+  iterator begin() { return data_.begin(); }
+  iterator end() { return data_.end(); }
+  const_iterator begin()const { return data_.cbegin(); }
+  const_iterator end()const { return data_.cend(); }
+  const_iterator cbegin()const { return data_.cbegin(); }
+  const_iterator cend()const { return data_.cend(); }
 private:
-  internal_array data;
+  explicit value_for_each_cardinal_direction(internal_array data) : data_(data) {}
+  internal_array data_;
 };
 template<cardinal_direction Dir, typename T>
 void ostream_direction_of_value_for_each_cardinal_direction(std::ostream& os,

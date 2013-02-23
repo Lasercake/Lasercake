@@ -41,6 +41,11 @@ void world::update(unordered_map<object_identifier, input_representation::input_
   }
   update_moving_objects();
   //TODO update_light(vector3<distance>(3,10,-999), 3);
+  for(the_decomposition_of_the_world_into_blocks_impl::worldblock* wb : worldblocks_suggested_to_delete_) {
+    if(wb->is_deletable()) {
+      //blocks_.erase(wb->global_position_);
+    }
+  }
   current_game_time_ += 1*fixed_frame_lengths * identity(time_units / fixed_frame_lengths);
 }
 
