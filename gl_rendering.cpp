@@ -97,9 +97,9 @@ void gl_renderer::output_gl_data_to_OpenGL(
   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
   // Depth func LEQUAL not LESS.  We try to draw objects in back-to-front
   // order, so rounding error means the front (later) one should win.
-  //glEnable(GL_DEPTH_TEST)
-  //glDepthFunc(GL_LEQUAL);
-  glClear(GL_COLOR_BUFFER_BIT/* | GL_DEPTH_BUFFER_BIT*/);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LEQUAL);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
