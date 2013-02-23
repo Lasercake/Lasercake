@@ -106,8 +106,6 @@ private:
   std::array<smaller_num_bits_type, NumDimensions> dim_num_low_bits_;
 
 public:
-  typedef std::ostream hack_to_make_bbox_collision_detector_zbox_ostreamable;
-
   zbox():num_low_bits_(CoordinateBits * NumDimensions){}
 
   // Named constructor idiom
