@@ -469,7 +469,9 @@ public:
 
 
   // erase returns true iff something was erased.
+  // TODO: a nearby node location might be friendly to return
   bool erase(loc_type leaf_loc);
+  bool erase_if_empty();
 
   void update_monoid(monoid_type new_leaf_monoid) {
     caller_correct_if(this->points_to_leaf(),

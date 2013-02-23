@@ -168,6 +168,11 @@ bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_type leaf_
   }
   else { return false; }
 }
+template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
+bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase_if_empty() {
+  node_type& node_that_exists = delete_empty_leaves_(*this);
+  return (&node_that_exists != this);
+}
 
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
 pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>&
