@@ -195,7 +195,7 @@ public:
   typedef typename Traits::leaf_deleter leaf_deleter;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
 
-  patricia_trie_representation() : ptr_(), parent_(), box_(), monoid_() {}
+  patricia_trie_representation() : leaf_(), sub_nodes_(), parent_(), box_(), monoid_() {}
   ~patricia_trie_representation() {
     if(T* leaf_ptr = leaf()) {
       leaf_deleter()(leaf_ptr);
@@ -210,13 +210,13 @@ public:
 
   // It is possible for the root node to also be a ptr-to-leaf node.
   bool is_root_node()const { return !parent_; }
-  bool points_to_leaf()const { return ptr_ && size_exponent_in_each_dimension() == 0; }
-  bool points_to_sub_nodes()const { return ptr_ && size_exponent_in_each_dimension() != 0; }
-  bool is_empty()const { return !ptr_; }
-  sub_nodes_type* sub_nodes() { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr_) : nullptr; }
-  sub_nodes_type const* sub_nodes()const { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr_) : nullptr; }
-  T* leaf() { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
-  T const* leaf()const { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
+  bool points_to_leaf()const { return leaf_; }
+  bool points_to_sub_nodes()const { return sub_nodes_; }
+  bool is_empty()const { return !leaf_ && !sub_nodes_; }
+  sub_nodes_type* sub_nodes() { return sub_nodes_; }
+  sub_nodes_type const* sub_nodes()const { return sub_nodes_; }
+  T* leaf() { return leaf_; }
+  T const* leaf()const { return leaf_; }
   node_type* parent() { return parent_; }
   node_type const* parent()const { return parent_; }
 
@@ -232,19 +232,11 @@ public:
 
 protected:
   void set_sub_nodes(sub_nodes_type* new_sub_nodes) {
-    if(points_to_leaf()) {
-      assert(!new_sub_nodes);
-    }
-    else {
-      if(new_sub_nodes) {
-        assert(size_exponent_in_each_dimension() != 0);
-      }
-      ptr_ = new_sub_nodes;
-    }
+    sub_nodes_ = new_sub_nodes;
   }
   T* move_leaf() {
-    if(T* current_leaf = leaf()) {
-      ptr_ = nullptr;
+    if(T* current_leaf = leaf_) {
+      leaf_ = nullptr;
       return current_leaf;
     }
     else {
@@ -252,18 +244,10 @@ protected:
     }
   }
   void set_leaf(T* new_leaf) {
-    if(points_to_sub_nodes()) {
-      assert(!new_leaf);
+    if(T* old_leaf = leaf()) {
+      leaf_deleter()(old_leaf);
     }
-    else {
-      if(new_leaf) {
-        assert(size_exponent_in_each_dimension() == 0);
-      }
-      if(T* old_leaf = leaf()) {
-        leaf_deleter()(old_leaf);
-      }
-      ptr_ = new_leaf;
-    }
+    leaf_ = new_leaf;
   }
   void set_parent(node_type* parent) {
     parent_ = parent;
@@ -282,14 +266,9 @@ protected:
   }
 
 private:
-  void* ptr_;
+  T* leaf_;
+  sub_nodes_type* sub_nodes_;
   node_type* parent_; // nullptr for root node
-
-  // box_ is after monoid for the sake of patricia_trie_node's
-  // move-constructor.
-  // box_'s exponent value determines the type that ptr_ points to:
-  // 0 for ptr-to-leaf node, nonzero for ptr-to-sub-nodes nodes,
-  // doesn't matter for nullptr nodes.
   power_of_two_bounding_cube_type box_;
   monoid_type monoid_;
   // TODO make box_ and monoid_ a compressed_pair?
