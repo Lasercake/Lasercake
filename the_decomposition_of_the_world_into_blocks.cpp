@@ -28,13 +28,20 @@ using namespace the_decomposition_of_the_world_into_blocks_impl;
 
 namespace the_decomposition_of_the_world_into_blocks_impl {
 
+
+  //just a temp. hack while developing, in between states
+  static const bool only_put_non_interiory_blocks_in_the_trie = true;
+
   void worldblock::construct(world* w, vector3<tile_coordinate> global_position) {
     assert(!w_);
     w_ = w;
     global_position_ = global_position;
     // TODO pass in a nearby node
     // TODO maybe wait until it's been culled
-    parent_ = &w_->worldblock_trie_.insert(global_position_ >> worldblock_dimension_exp, this, 1);
+    if(!only_put_non_interiory_blocks_in_the_trie) {
+      parent_ = &w_->worldblock_trie_.insert(global_position_ >> worldblock_dimension_exp);
+      parent_->leaf().worldblock_ = this;
+    }
     //This was too slow to do for every worldblock:
     //if(assert_everything) {
     //  w_->worldblock_trie_.debug_check_recursive();
@@ -61,12 +68,12 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     wb->non_interior_bitmap_small_scale_[interleaved_high] |= uint64_t(1) << interleaved_low;
     wb->non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
 
-    /*if(wb->count_of_non_interior_tiles_here_ == 1) {
+    if(only_put_non_interiory_blocks_in_the_trie && wb->count_of_non_interior_tiles_here_ == 1) {
       wb->w_->worldblock_trie_.insert(wb->global_position_ >> worldblock_dimension_exp, wb, 1);
       if(assert_everything) {
         wb->w_->worldblock_trie_.debug_check_recursive();
       }
-    }*/
+    }
   }
   };
 
@@ -97,8 +104,13 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     non_interior_bitmap_large_scale_ |= uint64_t(1) << interleaved_high;
     tile& t = tiles_[idx];
     if(count_of_non_interior_tiles_here_ == 0) {
+      if(only_put_non_interiory_blocks_in_the_trie) {
+        w_->worldblock_trie_.insert(global_position_ >> worldblock_dimension_exp, this, 1);
+      }
+      else {
       assert(parent_);
       parent_->leaf().everything_here_is_interior_this_ = UNSPECIFIED_TILE_CONTENTS;
+      }
     }
     count_of_non_interior_tiles_here_ += t.is_interior();
     t.set_interiorness(false);
@@ -117,14 +129,23 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     count_of_non_interior_tiles_here_ -= was_interior;
     t.set_interiorness(true);
     if(was_interior && count_of_non_interior_tiles_here_ == 0) {
+      if(only_put_non_interiory_blocks_in_the_trie) {
+        w_->worldblock_trie_.erase(global_position_ >> worldblock_dimension_exp);
+      }
+      else {
       // Hmm who's responsible for propagating this info upwards, and
       // de-propagating it?
+      // Should it be part of the monoid?
+      // Somehow it would have to persist even when the nodes are deleted; hmm.
+      // Also, when the tree is creating a node, how does it know to make
+      // the parent invalid
       parent_->leaf().everything_here_is_interior_this_ = t.contents();
       // Wait until between frames to deallocate dull worldblocks
       // (this'll sure make tile_physics code simpler)
       // and perhaps wait a few frames to see if it stays all-interior.
       if(this->is_deletable()) {
         w_->suggest_deleting_worldblock(this);
+      }
       }
     }
   }
