@@ -374,6 +374,9 @@ void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shif
   // (though tiles will all be in a correct order).
   template<typename Visitor> void visit_collidable_tiles_and_objects(/*bounding_box bbox,*/ Visitor&& visitor);
 
+  // For displaying in debug-display mode:
+  the_decomposition_of_the_world_into_blocks_impl::worldblock_trie const&
+  debug_get_worldblock_trie()const { return worldblock_trie_; }
 private:
   // No harm in doing this, because worldblock is by definition already hacky:
   friend class the_decomposition_of_the_world_into_blocks_impl::worldblock;

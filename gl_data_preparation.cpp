@@ -21,6 +21,7 @@
 
 #include <initializer_list>
 #include <GL/glew.h>
+#include <stack>
 
 #include "gl_data_preparation.hpp"
 #include "gl_data_format.hpp"
@@ -1001,6 +1002,42 @@ void view_on_the_world::prepare_gl_data(
             get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(tile_fine_bbox, view_loc))
           );
           push_point(coll, vertex(locv.x + 0.5, locv.y + 0.5, locv.z + 0.15), color(0xff770077));
+        }
+      }
+    }
+
+    {
+      using the_decomposition_of_the_world_into_blocks_impl::worldblock_trie;
+      using the_decomposition_of_the_world_into_blocks_impl::worldblock_dimension;
+      using the_decomposition_of_the_world_into_blocks_impl::worldblock_dimension_exp;
+      std::stack<worldblock_trie const*> nodes;
+      nodes.push(&w.debug_get_worldblock_trie());
+      while(!nodes.empty()) {
+        worldblock_trie const& node = *nodes.top();
+        nodes.pop();
+        const auto box = node.bounding_box();
+        const lint32_t box_exp = box.size_exponent_in_each_dimension();
+        if(box_exp < std::numeric_limits<tile_coordinate>::digits - worldblock_dimension_exp) {
+          const distance frame_width = 1*tile_height*(box_exp+1)*i64sqrt(box_exp+1);
+          const tile_bounding_box tile_bbox(
+            vector3<tile_coordinate>(box.min())*worldblock_dimension,
+            vector3<tile_coordinate>(box.size())*worldblock_dimension);
+          const bounding_box bbox = convert_to_fine_distance_units(tile_bbox);
+          // This is not really right - it will show bounding boxes that we are
+          // in the interior of too close to us - but hey it's a debug view
+          if(manhattan_distance_to_bounding_box(bbox, view_loc) <= config.view_radius) {
+            gl_collection& coll = gl_collections_by_distance.at(
+              get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(bbox, view_loc))
+            );
+            push_wireframe(view_loc, coll, bbox, frame_width, color(0xff0000ff));
+          }
+        }
+        if(auto* sub_nodes = node.sub_nodes()) {
+          for(worldblock_trie const& sub_node : *sub_nodes) {
+            if(!sub_node.is_empty()) {
+              nodes.push(&sub_node);
+            }
+          }
         }
       }
     }
