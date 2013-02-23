@@ -29,8 +29,10 @@
 
 #include "specific_object_types.hpp"
 #include "tile_physics.hpp" // to access internals for debugging-displaying...
+#include "data_structures/bbox_collision_detector_iteration.hpp" // ditto
 
 #include "tile_iteration.hpp"
+
 
 using namespace gl_data_format;
 
@@ -1038,6 +1040,38 @@ void view_on_the_world::prepare_gl_data(
               nodes.push(&sub_node);
             }
           }
+        }
+      }
+    }
+
+    {
+      typedef collision_detector::impl::ztree_node<object_identifier, 64, 3> ztree_node;
+      objects_collision_detector const& objects_trie = w.objects_exposed_to_collision();
+      std::stack<ztree_node const*> nodes;
+      if(ztree_node const*const node = objects_trie.debug_get_tree()) {
+        nodes.push(node);
+      }
+      while(!nodes.empty()) {
+        ztree_node const& node = *nodes.top();
+        nodes.pop();
+        const bounding_box bbox(node.here.get_bbox());
+        const lint32_t box_exp_times_three = node.here.num_low_bits();
+        // TODO: this is not the same formula as for the tile boxes
+        const distance frame_width = 1*tile_height
+                  * (box_exp_times_three+1) / 15;
+        // This is not really right - it will show bounding boxes that we are
+        // in the interior of too close to us - but hey it's a debug view
+        if(manhattan_distance_to_bounding_box(bbox, view_loc) <= config.view_radius) {
+          gl_collection& coll = gl_collections_by_distance.at(
+            get_primitive_int(tile_manhattan_distance_to_bounding_box_rounding_down(bbox, view_loc))
+          );
+          push_wireframe(view_loc, coll, bbox, frame_width, color(0x00ff00ff));
+        }
+        if(node.child0) {
+          nodes.push(&*node.child0);
+        }
+        if(node.child1) {
+          nodes.push(&*node.child1);
         }
       }
     }

@@ -442,7 +442,7 @@ public:
   //
   // O(n)
   void print_debug_summary_information(std::ostream& os)const;
-  
+
 private:
   typedef impl::ztree_node<ObjectIdentifier, CoordinateBits, NumDimensions> ztree_node;
   typedef typename impl::ztree_node_ptr<ztree_node>::type ztree_node_ptr;
@@ -462,6 +462,13 @@ private:
 #endif
 
   friend struct impl::zbox_debug_visualizer;
+
+public:
+  // You should only use this for debug output; the 'const' doesn't
+  // even properly protect you from modifying it accidentally.
+  // To use the tree you'll need to include
+  // bbox_collision_detector_iteration.hpp.
+  ztree_node const* debug_get_tree()const { return &*objects_tree_; }
 };
 
 }
