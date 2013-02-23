@@ -23,7 +23,8 @@
 
 
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
-inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc, T&& new_leaf, monoid_type leaf_monoid) {
+pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>&
+pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc, T&& new_leaf, monoid_type leaf_monoid) {
   // invariant: this 'node' variable changes but is never nullptr.
   node_type* node_to_initialize;
   node_type*const node = &this->find_node(leaf_loc);
@@ -86,6 +87,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
       new_location_for_node_original_contents->set_monoid(node->monoid());
       new_location_for_node_original_contents->set_min(node->min());
       new_location_for_node_original_contents->set_size_exponent_in_each_dimension(node->size_exponent_in_each_dimension());
+      new_location_for_node_original_contents->set_stable_node_reference_keeper(node->stable_node_reference_keeper());
 
       // Update monoids.  If they throw, insert() will still
       // be a no-op except for monoid inconsistency
@@ -131,6 +133,7 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
     node->set_size_exponent_in_each_dimension(shared_size_exponent);
     node->set_leaf();
     node->set_sub_nodes(intermediate_nodes);
+    node->set_stable_node_reference_keeper();
     //node->parent remains the same
     //node->monoid remains the same (it will be updated later as one of the parents)
 
@@ -144,11 +147,13 @@ inline void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_ty
 
   // hopefully nothrow
   node_to_initialize->set_leaf(std::move(new_leaf));
+
+  return *node_to_initialize;
 }
 
 
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
-inline bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_type leaf_loc) {
+bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_type leaf_loc) {
   node_type& node = find_node(leaf_loc);
   if (node.points_to_leaf()) {
     node.update_monoid(monoid_type());
@@ -156,16 +161,55 @@ inline bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_typ
     // TODO shorten tree where appropriate
     // (Could keep immediate-children-counts explicitly in nodes
     // to make that a little faster; probably fine either way.)
+
+    delete_empty_leaves_(node);
+    // Now node (which might be *this) might no longer exist.
     return true;
   }
   else { return false; }
 }
 
+template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
+pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>&
+pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::delete_empty_leaves_(node_type& node1) {
+  node_type* node = &node1;
+  while(true) {
+    sub_nodes_type* siblings = node->siblings();
+    if(!siblings) { break; }
+    bool siblings_all_empty = true;
+    for(node_type& sibling : *siblings) {
+      if(!sibling.is_empty()) { siblings_all_empty = false; }
+    }
+    if(siblings_all_empty) {
+      node_type* parent = node->parent();
+      for(node_type& sibling : *siblings) {
+        if(auto sibling_keeper = sibling.stable_node_reference_keeper()) {
+          if(auto parent_keeper = parent->stable_node_reference_keeper()) {
+            sibling_keeper->look_at_this_one_instead_ = parent_keeper;
+            sibling_keeper->here_ = nullptr;
+          }
+          else {
+            sibling_keeper->here_ = parent;
+            parent->set_stable_node_reference_keeper(sibling_keeper);
+          }
+        }
+      }
+      parent->delete_sub_nodes_();
+      node = parent;
+    }
+    else {
+      break;
+    }
+  }
+  return *node;
+}
+
+
 
 #include "../world.hpp"
 template class pow2_radix_patricia_trie_node<3,
   tile_coordinate,
-  the_decomposition_of_the_world_into_blocks_impl::worldblock*,
+  the_decomposition_of_the_world_into_blocks_impl::region_specification,
   the_decomposition_of_the_world_into_blocks_impl::worldblock_trie_traits>;
 
 #include "../tests/patricia_trie_tests.hpp"

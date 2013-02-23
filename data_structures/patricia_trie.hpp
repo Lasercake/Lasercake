@@ -24,6 +24,7 @@
 
 #include <ostream>
 #include <array>
+#include <boost/shared_ptr.hpp>
 
 #include "numbers.hpp"
 #include "bounds_checked_int.hpp"
@@ -173,6 +174,49 @@ struct default_pow2_radix_patricia_trie_traits {
 };
 
 
+// hrm this is not using the allocator
+template<typename Node>
+struct stable_node_reference_keeper {
+  typedef Node node_type;
+  node_type* here_;
+  boost::shared_ptr<stable_node_reference_keeper> look_at_this_one_instead_;
+  stable_node_reference_keeper(node_type* here)
+    : here_(here), look_at_this_one_instead_() {}
+};
+
+// stable references assume the tree as a whole stays around,
+// otherwise they are toast and operator bool is wrong
+// (this can be changed if it's useful)
+template<typename Node>
+class stable_node_reference {
+public:
+  stable_node_reference() : where_() {}
+  explicit operator bool()const { return bool(where_); }
+  stable_node_reference(boost::shared_ptr<stable_node_reference_keeper<Node> > where) : where_(where) {}
+  Node& operator*()const {
+    assert(where_);
+    while(!where_->here_) {
+      where_ = where_->look_at_this_one_instead_;
+      assert(where_);
+    }
+    return *where_->here_;
+  }
+  Node* operator->()const { return &**this; }
+private:
+  mutable boost::shared_ptr<stable_node_reference_keeper<Node> > where_;
+};
+template<typename Node>
+class stable_const_node_reference {
+public:
+  stable_const_node_reference() : nonconst_() {}
+  stable_const_node_reference(stable_node_reference<Node> nonconst) : nonconst_(nonconst) {}
+  stable_const_node_reference(boost::shared_ptr<stable_node_reference_keeper<Node> > where) : nonconst_(where) {}
+  explicit operator bool()const { return bool(nonconst_); }
+  const Node& operator*()const { return *nonconst_; }
+  const Node* operator->()const { return nonconst_.operator->(); }
+private:
+  stable_node_reference<Node> nonconst_;
+};
 
 // This class is here so that I can tweak the representation
 // for efficiency without changing the tricky trie-manipulation
@@ -202,7 +246,7 @@ public:
 
   // Hmm...
   static T null_leaf() { return T(); }
-  static bool is_null_leaf(T const& t) { return t == null_leaf(); }
+  static bool is_null_leaf(T const& t) { return !t; }
 
   // It is possible for the root node to also be a ptr-to-leaf node.
   bool is_root_node()const { return !parent_; }
@@ -255,6 +299,15 @@ protected:
   void set_monoid(monoid_type&& monoid) {
     monoid_ = std::move(monoid);
   }
+  boost::shared_ptr< ::stable_node_reference_keeper<node_type> > stable_node_reference_keeper() {
+    return stable_node_reference_keeper_;
+  }
+  void set_stable_node_reference_keeper() {
+    stable_node_reference_keeper_.reset();
+  }
+  void set_stable_node_reference_keeper(boost::shared_ptr< ::stable_node_reference_keeper<node_type> > keeper ) {
+    stable_node_reference_keeper_ = keeper;
+  }
 
 private:
   T leaf_;
@@ -262,6 +315,7 @@ private:
   node_type* parent_; // nullptr for root node
   power_of_two_bounding_cube_type box_;
   monoid_type monoid_;
+  boost::shared_ptr< ::stable_node_reference_keeper<node_type> > stable_node_reference_keeper_;
   // TODO make box_ and monoid_ a compressed_pair?
 };
 
@@ -282,9 +336,18 @@ public:
   typedef power_of_two_bounding_cube<dimensions, Coord> power_of_two_bounding_cube_type;
   typedef typename Traits::monoid monoid_type;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
+  typedef ::stable_node_reference<node_type> stable_node_reference_type;
+  typedef ::stable_const_node_reference<node_type> stable_const_node_reference_type;
 
   pow2_radix_patricia_trie_node() : rep() {}
   ~pow2_radix_patricia_trie_node() { delete_sub_nodes_(); }
+
+  stable_node_reference_type stable_node_reference() {
+    return stable_node_reference_type(make_stable_node_reference_keeper_());
+  }
+  stable_const_node_reference_type stable_node_reference()const {
+    return const_cast<node_type*>(this)->stable_node_reference();
+  }
 
   // TODO maybe implement copy-constructor that copies whole tree? or subtree?
   // Until I need it to be copyable or movable, better not to risk
@@ -341,13 +404,15 @@ public:
   // An exception will be thrown if the leaf_loc already exists
   // in the tree.
   //
+  // Returns a reference to the node that contains the inserted leaf.
+  //
   // TODO but monoid operations! - they need to propagate to the top.
   // also, it could have subtraction and then it would be a bit faster...hmm.
   // and how can we check whether it doesn't need any propagation...
   // == identity? is-a-boring-type(like nan)? adding-it-didn't-change-the-value-so-aboves-dont-need-changing, ah.
-  void insert(loc_type leaf_loc, T&& new_leaf, monoid_type leaf_monoid = monoid_type());
-  template<typename TT> void insert(loc_type leaf_loc, TT const& new_leaf, monoid_type leaf_monoid = monoid_type()) {
-    this->insert(leaf_loc, T(new_leaf), leaf_monoid);
+  node_type& insert(loc_type leaf_loc, T&& new_leaf, monoid_type leaf_monoid = monoid_type());
+  template<typename TT> node_type& insert(loc_type leaf_loc, TT const& new_leaf, monoid_type leaf_monoid = monoid_type()) {
+    return this->insert(leaf_loc, T(new_leaf), leaf_monoid);
   }
 
   // find_node() returns the leaf node at leaf_loc, if it exists
@@ -501,6 +566,19 @@ private:
     rep::set_sub_nodes(nullptr);
   }
 
+  // returns a remaining node
+  static node_type& delete_empty_leaves_(node_type& node);
+
+  boost::shared_ptr<stable_node_reference_keeper<node_type> > make_stable_node_reference_keeper_() {
+    if(auto keeper = rep::stable_node_reference_keeper()) { return keeper; }
+    /*else*/ {
+      boost::shared_ptr<stable_node_reference_keeper<node_type> > keeper(
+        new stable_node_reference_keeper<node_type>(this)
+      );
+      rep::set_stable_node_reference_keeper(keeper);
+      return keeper;
+    }
+  }
 #if 0
   // Until I need it to be copyable or movable, better not to risk
   // an untested implementation.
