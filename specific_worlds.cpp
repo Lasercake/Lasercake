@@ -318,6 +318,86 @@ public:
 
 
 
+
+class fractal_hills {
+
+public:
+  fractal_hills() {
+    normalization = lint64_t(wcc) - get_height(wcc, wcc);
+  }
+  void operator()(world_column_builder& b, coord x, coord y, coord, coord) {
+    b.specify_lowest(ROCK);
+    lint64_t height = get_height(x, y) + normalization;
+    assert(height >= 0);
+    assert(height < (1LL << 32));
+    b.specify(coord(height), AIR);
+  }
+  
+private:
+  lint64_t normalization;
+    lint64_t get_height(coord x, coord y) {
+      if (lint64_t const* h = find_as_pointer(height_memo_, std::make_pair(x,y))) {
+        return *h;
+      }
+
+      lint64_t height;
+      memo_rng rng_here = make_rng(x, y);
+      uint32_t low_x_bits_zero = 0;
+      uint32_t low_y_bits_zero = 0;
+      lint64_t variance_num = 2;
+      lint64_t variance_denom = 1;
+      const uint32_t max_interesting_bits = 30;
+      for (uint32_t i = 0; i <= max_interesting_bits; ++i) {
+        if (!(x & (1ULL << i))) ++low_x_bits_zero;
+        if (!(y & (1ULL << i))) ++low_y_bits_zero;
+        if ((x | y) & (1ULL << i)) break;
+        variance_num *= 11;
+        variance_denom *= 6;
+        if (variance_num > (1LL << 50)) {
+          variance_num = (variance_num / variance_denom);
+          variance_denom = 1;
+        }
+      }
+      lint64_t variance = (variance_num / variance_denom);
+      const boost::random::uniform_int_distribution<int> random_coord(-variance,variance + 1);
+      if (low_x_bits_zero >= max_interesting_bits && low_y_bits_zero >= max_interesting_bits) {
+        // At a large enough scale, pick arbitrarily
+        height = wcc + random_coord(rng_here);
+      }
+      else if (low_x_bits_zero < low_y_bits_zero) {
+        // next are the ones with more zero x bits
+        // TODO fix duplicate code
+        coord x0 = x & (~((2 << low_x_bits_zero) - 1));
+        coord x1 = x0 + (2 << low_x_bits_zero);
+        assert((x1 - x) == (x - x0));
+        height = (get_height(x0, y) + get_height(x1, y) + random_coord(rng_here)) / 2;
+      }
+      else if (low_x_bits_zero > low_y_bits_zero) {
+        // next are the ones with more zero y bits
+        // TODO fix duplicate code
+        coord y0 = y & (~((2 << low_y_bits_zero) - 1));
+        coord y1 = y0 + (2 << low_y_bits_zero);
+        assert((y1 - y) == (y - y0));
+        height = (get_height(x, y0) + get_height(x, y1) + random_coord(rng_here)) / 2;
+      }
+      else {
+        assert(low_x_bits_zero == low_y_bits_zero);
+        coord x0 = x - (1 << low_x_bits_zero);
+        coord x1 = x + (1 << low_x_bits_zero);
+        coord y0 = y - (1 << low_y_bits_zero);
+        coord y1 = y + (1 << low_y_bits_zero);
+        assert((x1 - x) == (x - x0));
+        assert((y1 - y) == (y - y0));
+        height = (get_height(x0, y) + get_height(x1, y) + get_height(x, y0) + get_height(x, y1) + random_coord(rng_here)) / 4;
+      }
+      height_memo_.insert(std::make_pair(std::make_pair(x,y), height));
+      return height;
+    }
+  std::unordered_map<std::pair<coord, coord>, lint64_t> height_memo_;
+};
+
+
+
 bool in_old_box(coords l) {
   return  l.x >= wcc-1 && l.x < wcc+21 &&
           l.y >= wcc-1 && l.y < wcc+21 &&
@@ -468,6 +548,9 @@ SCENARIO_FUNCTION_NAMED("low_ceiling") {
 }
 SCENARIO_FUNCTION_NAMED("simple_hills") {
     return worldgen_from_column_spec(simple_hills());
+}
+SCENARIO_FUNCTION_NAMED("fractal_hills") {
+    return worldgen_from_column_spec(fractal_hills());
 }
 
 class spiky : public worldgen_type {
