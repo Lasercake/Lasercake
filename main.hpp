@@ -86,6 +86,8 @@ public:
   using QThread::usleep;
 };
 
+typedef shared_ptr<worldgen_type> worldgen_ptr;
+
 // for use in its own QThread
 class LasercakeSimulator : public QObject {
   Q_OBJECT
@@ -93,7 +95,7 @@ class LasercakeSimulator : public QObject {
 public:
   explicit LasercakeSimulator(QObject* parent = 0);
 
-  Q_INVOKABLE void init(worldgen_function_t worldgen, config_struct config);
+  Q_INVOKABLE void init(worldgen_ptr worldgen, config_struct config);
   Q_INVOKABLE void new_input_as_of(time_unit moment, input_news_t new_input);
   //actually_prepare_graphics=false still sends frame_output_ready with useful debug info.
   Q_INVOKABLE void prepare_graphics(input_news_t input_since_last_prepare, distance view_radius, bool actually_prepare_graphics);

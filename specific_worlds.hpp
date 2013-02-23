@@ -29,7 +29,7 @@
 // that's just how we have it for now.
 // If you pass a string that isn't a scenario, you'll get back
 // nothing (if(result) will be false and calling it will be in error).
-worldgen_function_t make_world_building_func(std::string scenario);
+shared_ptr<worldgen_type> make_world_building_func(std::string scenario);
 
 std::vector<std::string> scenario_names();
 

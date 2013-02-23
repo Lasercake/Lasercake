@@ -262,7 +262,7 @@ using tile_physics_impl::tile_physics_state_t;
 
 
 
-
+class worldgen_type;
 
 
 
@@ -273,7 +273,8 @@ std::unordered_map<object_identifier, int> object_litnesses_;
 std::unordered_map<vector3<tile_coordinate>, int> tile_litnesses_;
 void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shift);
 
-  world(worldgen_function_t f);
+  // TODO does this make more sense as a unique_ptr?
+  world(shared_ptr<worldgen_type> gen);
   
   // If worlds being copiable is ever needed (a world is totally copiable in principle),
   // the error will remind us to make sure to implement the copy-constructor correctly
@@ -379,17 +380,23 @@ void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shif
   debug_get_worldblock_trie()const { return worldblock_trie_; }
 
   // For when a worldblock notices it is all super interior
-  void suggest_deleting_worldblock(the_decomposition_of_the_world_into_blocks_impl::worldblock*) {}
+  void suggest_deleting_worldblock(the_decomposition_of_the_world_into_blocks_impl::worldblock* wb) {
+    worldblocks_suggested_to_delete_.insert(wb);
+  }
 private:
   // No harm in doing this, because worldblock is by definition already hacky:
   friend class the_decomposition_of_the_world_into_blocks_impl::worldblock;
   
   time_unit current_game_time_;
-  
+
+  //TODO move this, worldblock_trie, etc into a struct in
+  //  the_decomposition_of_the_world_into_blocks_impl ?
   // This map uses the same coordinates as worldblock::global_position -
   // i.e. worldblocks' coordinates are multiples of worldblock_dimension,
   // and it is an error to give a coordinate that's not.
-  unordered_map<vector3<tile_coordinate>, the_decomposition_of_the_world_into_blocks_impl::worldblock> blocks_; 
+  unordered_map<vector3<tile_coordinate>, the_decomposition_of_the_world_into_blocks_impl::worldblock> blocks_;
+  //currently we just delete them all at the end of every frame
+  std::unordered_set<the_decomposition_of_the_world_into_blocks_impl::worldblock*> worldblocks_suggested_to_delete_;
 
   tile_physics_state_t tile_physics_state_;
   
@@ -409,8 +416,7 @@ private:
 
   laser_sfxes_type laser_sfxes_;
   
-  // Worldgen functions TODO describe them
-  worldgen_function_t worldgen_function_;
+  shared_ptr<worldgen_type> worldgen_;
   
   // RNG, default-initialized for now
   large_fast_noncrypto_rng rng_;

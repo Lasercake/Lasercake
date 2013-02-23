@@ -36,18 +36,6 @@ typedef vector3<coord> coords;
 namespace /* anonymous */ {
 
 const coord wcc = world_center_tile_coord;
-template<typename Functor>
-struct with_state {
-  shared_ptr<Functor> functor_;
-  with_state() : functor_(new Functor()) {}
-  with_state(shared_ptr<Functor> ptr) : functor_(ptr) {}
-  tile_contents operator()(coords l)const {
-    return (*functor_)(l);
-  }
-  void operator()(world_column_builder& b, coord x, coord y, coord min_z_demanded, coord max_z_demanded)const {
-    (*functor_)(b, x, y, min_z_demanded, max_z_demanded);
-  }
-};
 
 
 template<size_t Index, class...Types>
@@ -328,97 +316,6 @@ public:
     }
 };
 
-class spiky1 {
-public:
-  tile_contents operator()(coords l) {
-    const coord height = get_height(make_pair(l.x, l.y));
-    return
-      (l.z < height) ? ROCK : AIR;
-  }
-private:
-  unordered_map<std::pair<coord, coord>, coord> height_map_;
-  // RNG default-initialized for now
-  // (so, deterministic except for worldblock realization order)
-  large_fast_noncrypto_rng rng_;
-
-  static const int a_spike_height = 20;
-
-  coord get_height(pair<coord, coord> loc) {
-    const auto iter = height_map_.find(loc);
-    if (iter == height_map_.end()) {
-      const int which = boost::random::uniform_int_distribution<int>(0,20)(rng_);
-      int spike_max = a_spike_height;
-      if (which < 5) spike_max *= 3;
-      if (which == 0) spike_max *= 5;
-      const boost::random::uniform_int_distribution<int> random_spike_height(0,spike_max);
-      coord height = wcc + random_spike_height(rng_);
-      height_map_.insert(make_pair(loc, height));
-      return height;
-    }
-    else {
-      return iter->second;
-    }
-  }
-};
-
-class spiky2 {
-public:
-  void operator()(world_column_builder& b, coord x, coord y, coord, coord) {
-    b.specify_lowest(ROCK);
-    b.specify(get_height(make_pair(x, y)), AIR);
-  }
-private:
-  unordered_map<std::pair<coord, coord>, coord> height_map_;
-  // RNG default-initialized for now
-  // (so, deterministic except for worldblock realization order)
-  large_fast_noncrypto_rng rng_;
-
-  static const int a_spike_height = 20;
-
-  coord get_height(pair<coord, coord> loc) {
-    const auto iter = height_map_.find(loc);
-    if (iter == height_map_.end()) {
-      const int which = boost::random::uniform_int_distribution<int>(0,20)(rng_);
-      int spike_max = a_spike_height;
-      if (which < 5) spike_max *= 3;
-      if (which == 0) spike_max *= 5;
-      const boost::random::uniform_int_distribution<int> random_spike_height(0,spike_max);
-      coord height = wcc + random_spike_height(rng_);
-      height_map_.insert(make_pair(loc, height));
-      return height;
-    }
-    else {
-      return iter->second;
-    }
-  }
-};
-
-
-class spiky3 {
-  static const int a_spike_height = 20;
-public:
-  void operator()(world_column_builder& b, coord x, coord y, coord, coord)const {
-    b.specify_lowest(ROCK);
-    b.specify(height_memo_(x, y), AIR);
-  }
-
-  struct get_height {
-    coord operator()(coord x, coord y)const {
-      // TODO include a constant-for-this-instance-of-the-world random-seed too.
-      memo_rng rng_here = make_rng(x, y);
-
-      const int which = boost::random::uniform_int_distribution<int>(0,20)(rng_here);
-      int spike_max = a_spike_height;
-      if (which < 5) spike_max *= 3;
-      if (which == 0) spike_max *= 5;
-      const boost::random::uniform_int_distribution<int> random_spike_height(0,spike_max);
-      coord height = wcc + random_spike_height(rng_here);
-      return height;
-    }
-  };
-private:
-  memoized<get_height, coord (coord, coord)> height_memo_;
-};
 
 
 bool in_old_box(coords l) {
@@ -464,7 +361,7 @@ struct twisty {
   }
 };
 
-  worldgen_function_t pressure_tunnel(const bool has_ground) {
+  shared_ptr<worldgen_type> pressure_tunnel(const bool has_ground) {
     return worldgen_from_tilespec([has_ground](coords l)->tile_contents {
       const coord tower_lower_coord = wcc;
       const coord tower_upper_coord = wcc+10;
@@ -501,102 +398,150 @@ struct twisty {
 
 
 static const size_t ctr_begin = __COUNTER__ + 1;
-typedef worldgen_function_t(*worldgen_function_generator_t)();
+typedef shared_ptr<worldgen_type>(*worldgen_generator_t)();
 
 struct scenario_t {
   const char* name;
-  worldgen_function_generator_t worldgen;
+  worldgen_generator_t worldgen;
 };
 
 template<size_t N>
 struct scen_n {
   static constexpr const char* name = nullptr;
-  static constexpr worldgen_function_generator_t worldgen = nullptr;
+  static constexpr worldgen_generator_t worldgen = nullptr;
 };
 
-#define SCENARIO_NAMED(scen_name) \
-  worldgen_function_t BOOST_PP_CAT(scen__, __LINE__)(); \
+#define SCENARIO_CLASS_NAMED(scen_name) \
+  shared_ptr<worldgen_type> BOOST_PP_CAT(scen__, __LINE__)() { \
+    return shared_ptr<worldgen_type>(new scen_name()); \
+  } \
+  template<> struct scen_n<(__COUNTER__ - ctr_begin)> { \
+    static constexpr const char* name = BOOST_PP_STRINGIZE(scen_name); \
+    typedef scen_name worldgen_type; \
+    static constexpr worldgen_generator_t worldgen = &BOOST_PP_CAT(scen__, __LINE__); \
+  }; \
+
+// deprecated
+#define SCENARIO_FUNCTION_NAMED(scen_name) \
+  shared_ptr<worldgen_type> BOOST_PP_CAT(scen__, __LINE__)(); \
   template<> struct scen_n<(__COUNTER__ - ctr_begin)> { \
     static constexpr const char* name = scen_name; \
-    static constexpr worldgen_function_generator_t worldgen = &BOOST_PP_CAT(scen__, __LINE__); \
+    static constexpr worldgen_generator_t worldgen = &BOOST_PP_CAT(scen__, __LINE__); \
   }; \
-  worldgen_function_t BOOST_PP_CAT(scen__, __LINE__)()
+  shared_ptr<worldgen_type> BOOST_PP_CAT(scen__, __LINE__)()
 
-SCENARIO_NAMED("vacuum") {
+SCENARIO_FUNCTION_NAMED("vacuum") {
     return worldgen_from_tilespec([](coords) {
       return AIR;
     });
 }
-SCENARIO_NAMED("flat") {
+SCENARIO_FUNCTION_NAMED("flat") {
     return worldgen_from_tilespec([](coords l) {
       return
         (l.z < wcc) ? ROCK : AIR;
     });
 }
-SCENARIO_NAMED("flat2") {
+SCENARIO_FUNCTION_NAMED("flat2") {
     return worldgen_from_column_spec([](world_column_builder& b, coord, coord, coord, coord) {
       b.specify_lowest(ROCK);
       b.specify(wcc, AIR);
     });
 }
 
-SCENARIO_NAMED("plane") {
+SCENARIO_FUNCTION_NAMED("plane") {
     return worldgen_from_tilespec([](coords l) {
       return
         (l.z == wcc) ? ROCK : AIR;
     });
 }
-SCENARIO_NAMED("ceiling") {
+SCENARIO_FUNCTION_NAMED("ceiling") {
     return worldgen_from_tilespec([](coords l) {
       return
         (l.z > wcc + 100) ? ROCK : AIR;
     });
 }
-SCENARIO_NAMED("low_ceiling") {
+SCENARIO_FUNCTION_NAMED("low_ceiling") {
     return worldgen_from_tilespec([](coords l) {
       return
         (l.z > wcc) ? ROCK : AIR;
     });
 }
-SCENARIO_NAMED("simple_hills") {
+SCENARIO_FUNCTION_NAMED("simple_hills") {
     return worldgen_from_column_spec(simple_hills());
 }
-SCENARIO_NAMED("spiky1") {
-    return worldgen_from_tilespec(with_state<spiky1>());
-}
-SCENARIO_NAMED("spiky2") {
-    return worldgen_from_column_spec(with_state<spiky2>());
-}
-SCENARIO_NAMED("spiky") {
-    return worldgen_from_column_spec(spiky3());
-}
-SCENARIO_NAMED("spiky3") {
-    return worldgen_from_column_spec(spiky3());
-}
+
+class spiky : public worldgen_type {
+  static const coord a_spike_height = 20;
+  static const coord spike_multiplier_1 = 3;
+  static const coord spike_multiplier_2 = 5;
+  static const coord max_spike_height = a_spike_height*spike_multiplier_1*spike_multiplier_2;
+  static const coord all_sky_above = wcc+max_spike_height+1;
+  static const coord all_ground_below = wcc-1;
+public:
+  virtual worldgen_summary_of_area examine_region(tile_bounding_box region) {
+    worldgen_summary_of_area result;
+    if(region.max(Z) >= all_sky_above) {
+      result.everything_here_is = AIR;
+    }
+    if(region.min(Z) <= all_ground_below) {
+      result.everything_here_is = ROCK;
+    }
+    result.all_objects_whose_centres_are_here = worldgen_summary_of_area::no_objects();
+    return result;
+  }
+  void create_tiles(block_initializer b) override {
+    b.initialize_by_column([this](coord x, coord y, column_callback fz) {
+      const coord air_begins_at_z(height_memo_(x, y));
+      fz([air_begins_at_z](coord z) {
+        return (z < air_begins_at_z) ? ROCK : AIR;
+      });
+    });
+  }
+
+  struct get_height {
+    coord operator()(coord x, coord y)const {
+      // TODO include a constant-for-this-instance-of-the-world random-seed too.
+      memo_rng rng_here = make_rng(x, y);
+
+      const int which = uniform_int_distribution<int>(0,20)(rng_here);
+      coord spike_max = a_spike_height;
+      if (which < 5) spike_max *= spike_multiplier_1;
+      if (which == 0) spike_max *= spike_multiplier_2;
+      const uniform_int_distribution<coord> random_spike_height(0,spike_max);
+      coord height = wcc + random_spike_height(rng_here);
+      return height;
+    }
+  };
+private:
+  memoized<get_height, coord (coord, coord)> height_memo_;
+};
+SCENARIO_CLASS_NAMED(spiky)
+
+
 // These are worst cases in terms of number of non-interior (theoretically
 // visible) tiles within a radius; useful to test as a stress-test and
 // because someone might intentionally build them (to be mean, or more
 // likely, because it's actually useful for some in-game-engineering
 // reason).
-SCENARIO_NAMED("spiky_checkerboard") {
+SCENARIO_FUNCTION_NAMED("spiky_checkerboard") {
     return worldgen_from_column_spec([](world_column_builder& b, coord x, coord y, coord, coord) {
       b.specify_lowest(ROCK);
       b.specify(wcc - (1<<14) + (((x ^ y) & 1) << 18), AIR);
     });
 }
-SCENARIO_NAMED("spiky_3dcheckerboard") {
+SCENARIO_FUNCTION_NAMED("spiky_3dcheckerboard") {
     return worldgen_from_tilespec([](coords l) {
       return ((l.x ^ l.y ^ l.z) & 1) ? ROCK : AIR;
     });
 }
 
-SCENARIO_NAMED("pressure_tunnel") {
+SCENARIO_FUNCTION_NAMED("pressure_tunnel") {
     return pressure_tunnel(false);
 }
-SCENARIO_NAMED("pressure_tunnel_ground") {
+SCENARIO_FUNCTION_NAMED("pressure_tunnel_ground") {
     return pressure_tunnel(true);
 }
-SCENARIO_NAMED("stepped_pools") {
+SCENARIO_FUNCTION_NAMED("stepped_pools") {
     return worldgen_from_tilespec([](coords l)->tile_contents {
       typedef lint64_t number;
       const number block_width = 30;
@@ -632,7 +577,7 @@ SCENARIO_NAMED("stepped_pools") {
     });
 }
 
-SCENARIO_NAMED("default") {
+SCENARIO_FUNCTION_NAMED("default") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -640,7 +585,7 @@ SCENARIO_NAMED("default") {
         AIR;
     });
 }
-SCENARIO_NAMED("tower") {
+SCENARIO_FUNCTION_NAMED("tower") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -649,7 +594,7 @@ SCENARIO_NAMED("tower") {
         AIR;
     });
 }
-SCENARIO_NAMED("tower2") {
+SCENARIO_FUNCTION_NAMED("tower2") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -659,7 +604,7 @@ SCENARIO_NAMED("tower2") {
         AIR;
     });
 }
-SCENARIO_NAMED("tower3") {
+SCENARIO_FUNCTION_NAMED("tower3") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -671,7 +616,7 @@ SCENARIO_NAMED("tower3") {
     });
 }
 
-SCENARIO_NAMED("shallow") {
+SCENARIO_FUNCTION_NAMED("shallow") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -683,7 +628,7 @@ SCENARIO_NAMED("shallow") {
         AIR;
     });
 }
-SCENARIO_NAMED("steep") {
+SCENARIO_FUNCTION_NAMED("steep") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -693,7 +638,7 @@ SCENARIO_NAMED("steep") {
         AIR;
     });
 }
-SCENARIO_NAMED("tank") {
+SCENARIO_FUNCTION_NAMED("tank") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -706,7 +651,7 @@ SCENARIO_NAMED("tank") {
         AIR;
     });
 }
-SCENARIO_NAMED("tank2") {
+SCENARIO_FUNCTION_NAMED("tank2") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :
@@ -719,10 +664,10 @@ SCENARIO_NAMED("tank2") {
         AIR;
     });
 }
-SCENARIO_NAMED("twisty") {
+SCENARIO_FUNCTION_NAMED("twisty") {
     return worldgen_from_tilespec(twisty<ROCK>());
 }
-SCENARIO_NAMED("twistyrubble") {
+SCENARIO_FUNCTION_NAMED("twistyrubble") {
     return worldgen_from_tilespec(twisty<RUBBLE>());
 }
 
@@ -744,7 +689,7 @@ template<int N> struct check_number_of_scenarios {
 };
 template struct check_number_of_scenarios<actual_number_of_scenarios>;
 
-worldgen_function_t make_world_building_func(std::string scenario) {
+shared_ptr<worldgen_type> make_world_building_func(std::string scenario) {
   for(auto scen : scenarios) {
     if(scen.name && scenario == scen.name) {
       return (*scen.worldgen)();
@@ -752,7 +697,7 @@ worldgen_function_t make_world_building_func(std::string scenario) {
   }
   // If it wasn't named, we have no function.
   // The caller should probably check for this unfortunateness.
-  return worldgen_function_t();
+  return shared_ptr<worldgen_type>();
 }
 
 std::vector<std::string> scenario_names() {

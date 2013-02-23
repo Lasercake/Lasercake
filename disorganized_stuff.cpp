@@ -24,8 +24,11 @@
 #include "worldgen.hpp"
 
 
-world::world(worldgen_function_t f)
-   : current_game_time_(0), tile_physics_state_(*this), next_object_identifier_(1), worldgen_function_(f) {}
+world::world(shared_ptr<worldgen_type> gen)
+  : current_game_time_(0),
+    tile_physics_state_(*this),
+    next_object_identifier_(1),
+    worldgen_(gen) {}
 
 void world::update(unordered_map<object_identifier, input_representation::input_news_t> input) {
   laser_sfxes_.clear();

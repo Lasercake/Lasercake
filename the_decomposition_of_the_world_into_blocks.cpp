@@ -226,7 +226,16 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
-      w_->worldgen_function_(this, this->bounding_box());
+      const tile_contents everything_here_is =
+        w_->worldgen_->examine_region(this->bounding_box()).everything_here_is;
+      if(everything_here_is != UNSPECIFIED_TILE_CONTENTS) {
+        // also should we even be creating this worldblock :-P
+        check_tile_contents_as_valid_worldgenned_values(everything_here_is);
+        memset(&tile_data_uint8_array, everything_here_is, worldblock_volume);
+      }
+      else {
+        w_->worldgen_->create_tiles(block_initializer(this));
+      }
       //LOG << "A worldblock has been created!\n";
       
       current_tile_realization_ = CONTENTS_ONLY;
@@ -239,7 +248,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       caller_error_if(is_busy_realizing_, "Referring to a realization level currently being computed");
       is_busy_realizing_ = true;
 
-      // Per worldgen function requirements, tiles start out marked interior
+      // Per worldgen requirements, tiles start out marked interior
       // (usually the common case, and also permits the algorithms here)
       // and don't need to be changed if they actually are interior.
 

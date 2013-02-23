@@ -248,7 +248,7 @@ std::string get_world_ztree_debug_info(world const& w) {
 // )
 LasercakeSimulator::LasercakeSimulator(QObject* parent) : QObject(parent) {}
 
-void LasercakeSimulator::init(worldgen_function_t worldgen, config_struct config) {
+void LasercakeSimulator::init(worldgen_ptr worldgen, config_struct config) {
   const microseconds_t microseconds_before_initing = get_this_thread_microseconds();
   world_ptr_.reset(new world(worldgen));
   const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers, config.show_frame_timing);
@@ -338,7 +338,7 @@ boost::program_options::typed_value<bool>* bool_switch_off(bool* v = nullptr) {
 
 int debug_test_sim_avoiding_qt_and_trying_to_be_very_deterministic(config_struct config) {
   LOG << "Constructing worldgen\n";
-  const worldgen_function_t worldgen = make_world_building_func(config.scenario);
+  const worldgen_ptr worldgen = make_world_building_func(config.scenario);
   assert(worldgen);
   LOG << "Constructing world\n";
   world w(worldgen);
@@ -457,7 +457,7 @@ int main(int argc, char *argv[])
       exit(1);
     }
   }
-  qRegisterMetaType<worldgen_function_t>("worldgen_function_t");
+  qRegisterMetaType<worldgen_ptr>("worldgen_ptr");
   qRegisterMetaType<input_news_t>("input_news_t");
   qRegisterMetaType<frame_output_t>("input_representation::key_change_t");
   qRegisterMetaType<frame_output_t>("frame_output_t");
@@ -897,7 +897,7 @@ void LasercakeController::key_changed(input_representation::key_change_t key_cha
 LasercakeController::LasercakeController(config_struct config, QObject* parent)
  : QObject(parent), config_(config), frame_(0), game_time_(0), paused_(false), steps_queued_to_do_while_paused_(0)
 {
-  const worldgen_function_t worldgen = make_world_building_func(config_.scenario);
+  const worldgen_ptr worldgen = make_world_building_func(config_.scenario);
   if(!worldgen) {
     LOG << "Scenario name given that doesn't exist!: \'" << config_.scenario << "\'\n";
     // This constructor is called outside of QCoreApplication::exec(),
@@ -934,7 +934,7 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
   // (Minor) cache reasons, so that the newly created world will be in the
   //   relevant CPU's cache.
   QMetaObject::invokeMethod(&*simulator_, "init", Qt::AutoConnection,
-    Q_ARG(worldgen_function_t, worldgen), Q_ARG(config_struct, config_));
+    Q_ARG(worldgen_ptr, worldgen), Q_ARG(config_struct, config_));
 
   QMetaObject::invokeMethod(&*simulator_, "prepare_graphics", Qt::AutoConnection,
     Q_ARG(input_news_t, input_news_t()), Q_ARG(distance, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));

@@ -24,8 +24,140 @@
 
 #include <limits>
 #include <boost/functional/hash.hpp>
+#include <boost/optional.hpp>
 
 #include "world.hpp"
+
+inline void check_tile_contents_as_valid_worldgenned_values(tile_contents c) {
+  caller_correct_if(c == ROCK || c == AIR || c == GROUPABLE_WATER || c == RUBBLE,
+    "Trying to place a type of tile other than AIR, ROCK, GROUPABLE_WATER, and RUBBLE");
+}
+
+struct worldgen_summary_of_area {
+public:
+  // You are permitted to be conservative and not specify things about
+  // the area even if they're true.  If it'd be slower to be precise
+  // than to let the simulation check smaller areas that it needs,
+  // then just let it check the smaller areas.
+  
+  // Default constructor specifies nothing.
+  worldgen_summary_of_area()
+    : everything_here_is(UNSPECIFIED_TILE_CONTENTS),
+      all_objects_whose_centres_are_here(boost::none) {}
+
+  tile_contents everything_here_is; // or UNSPECIFIED_TILE_CONTENTS
+
+  // worldgen'd objects must deterministically compute a numeric identifier
+  // for each object, with values between half the max numeric object_identifier
+  // and the max object_identifier.  TODO: how can we do better?  Ah we can
+  //boost::optional<std::vector<std::pair<object_identifier, shared_ptr<object>>> all_objects_that_intersect_here;
+  boost::optional<
+    std::pair<
+      std::vector<shared_ptr<object>>, // all_objects_whose_centres_are_here
+      boost::optional<tile_bounding_box> // what region we need to examine to get all objects that *intersect* here
+    >
+  > all_objects_whose_centres_are_here;
+  // ^ with this method, we need to record which regions have been examined
+  // so we won't duplicate objects... hmm.
+
+  static std::pair<
+      std::vector<shared_ptr<object>>, // all_objects_whose_centres_are_here
+      boost::optional<tile_bounding_box> // what region we need to examine to get all objects that *intersect* here
+    > no_objects() { return std::make_pair(
+        std::vector<shared_ptr<object>>(),
+        boost::optional<tile_bounding_box>()); }
+};
+
+class block_initializer {
+public:
+  // If you like, you can check the region first.
+  tile_bounding_box region()const {
+    return bounds_;
+  }
+  // Then call one of the ways of initializing the region's contents.
+  // Most of them involve a callback for you to implement and pass to them.
+
+  void initialize_to_uniform_contents(tile_contents c) {
+    memset(&wb_->tile_data_uint8_array, c,
+      the_decomposition_of_the_world_into_blocks_impl::worldblock_volume);
+  }
+  template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
+  void initialize_by_tile(Functor&& xyz_to_tile_contents) {
+    size_t i = 0;
+    for (tile_coordinate x = bounds_.min(X); x != bounds_.min(X) + bounds_.size(X); ++x) {
+      for (tile_coordinate y = bounds_.min(Y); y != bounds_.min(Y) + bounds_.size(Y); ++y) {
+        for (tile_coordinate z = bounds_.min(Z); z != bounds_.min(Z) + bounds_.size(Z); ++z, ++i) {
+          const vector3<tile_coordinate> l(x, y, z);
+          const tile_contents new_contents = xyz_to_tile_contents(l);
+          check_tile_contents_as_valid_worldgenned_values(new_contents);
+          wb_->tiles_[i] = tile::make_tile_with_contents_and_interiorness(new_contents, true);
+        }
+      }
+    }
+  }
+
+  template<typename Functor /*void (worldblock*, tile_bounding_box*/>
+  void initialize_by_legacy_worldgen_function(Functor&& f) {
+    f(wb_, bounds_);
+  }
+
+
+
+  class column_callback {
+  public:
+    template<typename Functor>
+    void operator()(Functor&& f) const {
+      for(tile_coordinate z = min_z_; z != max_plus_one_z_; ++z, ++*i_) {
+        const tile_contents c = f(z);
+        check_tile_contents_as_valid_worldgenned_values(c);
+        wb_->tiles_[*i_] = tile::make_tile_with_contents_and_interiorness(c, true);
+      }
+    }
+  private:
+    tile_coordinate x_;
+    tile_coordinate y_;
+    tile_coordinate min_z_;
+    tile_coordinate max_plus_one_z_;
+    size_t* i_;
+    the_decomposition_of_the_world_into_blocks_impl::worldblock* wb_;
+    friend class block_initializer;
+  };
+  template<typename Functor
+  /* tile_contents (tile_coordinate x, tile_coordinate y, column_callback fz) */>
+  void initialize_by_column(Functor&& x_y_cbz_to_tile_contents) {
+    size_t i = 0;
+    for (tile_coordinate x = bounds_.min(X); x != bounds_.min(X) + bounds_.size(X); ++x) {
+      for (tile_coordinate y = bounds_.min(Y); y != bounds_.min(Y) + bounds_.size(Y); ++y) {
+        column_callback cb; cb.x_ = x; cb.y_ = y;
+        cb.min_z_ = bounds_.min(Z); cb.max_plus_one_z_ = bounds_.min(Z) + bounds_.size(Z);
+        cb.i_ = &i; cb.wb_ = wb_;
+        x_y_cbz_to_tile_contents(x, y, cb);
+      }
+    }
+  }
+
+  explicit block_initializer(
+    the_decomposition_of_the_world_into_blocks_impl::worldblock* wb) : bounds_(wb->bounding_box()), wb_(wb) {}
+  explicit block_initializer(
+    the_decomposition_of_the_world_into_blocks_impl::worldblock* wb, tile_bounding_box bounds) : bounds_(bounds), wb_(wb) {}
+private:
+  tile_bounding_box bounds_;
+  the_decomposition_of_the_world_into_blocks_impl::worldblock* wb_;
+};
+typedef block_initializer::column_callback column_callback;
+
+
+
+
+class worldgen_type {
+public:
+  virtual worldgen_summary_of_area examine_region(tile_bounding_box /*region*/) {
+    // You should override this!
+    return worldgen_summary_of_area();
+  }
+  virtual void create_tiles(block_initializer b) = 0;
+  virtual ~worldgen_type() {}
+};
 
 namespace std {
   template<> struct hash<pair<tile_coordinate, tile_coordinate> > {
@@ -38,6 +170,29 @@ namespace std {
   };
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////// DEPRECATED
 // Don't construct worldgen_function_t:s yourself; use worldgen_from_tilespec().
 template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
 class worldgen_from_tilespec_t {
@@ -60,6 +215,10 @@ public:
 private:
   Functor xyz_to_tile_contents_;
 };
+template<typename Functor>
+inline worldgen_from_tilespec_t<Functor> make_worldgen_from_tilespec_t(Functor const& f) {
+  return worldgen_from_tilespec_t<Functor>(f);
+}
 
 class world_column_builder {
 public:
@@ -173,16 +332,42 @@ private:
                      std::array<world_column_builder, worldblock_dimension*worldblock_dimension>
   > already_computed_columns_;
 };
+template<typename Functor>
+inline worldblock_column_builder<Functor> make_worldblock_column_builder(Functor const& f) {
+  return worldblock_column_builder<Functor>(f);
+}
+}
+
+template<typename LegacyWorldgenFunctor>
+class legacy_worldgen : public worldgen_type {
+public:
+  legacy_worldgen(LegacyWorldgenFunctor f) : f_(f) {}
+  void create_tiles(block_initializer b) override {
+    b.initialize_by_legacy_worldgen_function(f_);
+  }
+private:
+  LegacyWorldgenFunctor f_;
+};
+template<typename Functor>
+inline legacy_worldgen<Functor> make_legacy_worldgen(Functor const& f) {
+  return legacy_worldgen<Functor>(f);
 }
 template<typename Functor>
-worldgen_function_t worldgen_from_column_spec(Functor const& column_spec) {
-  return worldgen_function_t(the_decomposition_of_the_world_into_blocks_impl::worldblock_column_builder<Functor>(column_spec));
+inline legacy_worldgen<Functor>* new_legacy_worldgen(Functor const& f) {
+  return new legacy_worldgen<Functor>(f);
+}
+
+template<typename Functor>
+shared_ptr<worldgen_type> worldgen_from_column_spec(Functor const& column_spec) {
+  return shared_ptr<worldgen_type>(new_legacy_worldgen(
+    the_decomposition_of_the_world_into_blocks_impl::make_worldblock_column_builder(column_spec)));
 }
 
 
 template<typename Functor /* tile_contents (vector3<tile_coordinate>) */>
-worldgen_function_t worldgen_from_tilespec(Functor const& xyz_to_tile_contents) {
-  return worldgen_function_t(worldgen_from_tilespec_t<Functor>(xyz_to_tile_contents));
+shared_ptr<worldgen_type> worldgen_from_tilespec(Functor const& xyz_to_tile_contents) {
+  return shared_ptr<worldgen_type>(new_legacy_worldgen(
+    make_worldgen_from_tilespec_t(xyz_to_tile_contents)));
 }
 
 #endif
