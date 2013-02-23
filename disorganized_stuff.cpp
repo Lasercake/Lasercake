@@ -46,6 +46,7 @@ void world::update(unordered_map<object_identifier, input_representation::input_
       //blocks_.erase(wb->global_position_);
     }
   }
+  worldblocks_suggested_to_delete_.clear();
   current_game_time_ += 1*fixed_frame_lengths * identity(time_units / fixed_frame_lengths);
 }
 
