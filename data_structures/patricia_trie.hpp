@@ -97,7 +97,7 @@ public:
   Coord size_minus_one(num_coordinates_type)const { return ~(safe_left_shift(~Coord(0), size_exponent_in_each_dimension_)); }
   Coord size(num_coordinates_type)const { return safe_left_shift(Coord(1), size_exponent_in_each_dimension_); }
   Coord max(num_coordinates_type dim)const { return min_[dim] + size_minus_one(dim); }
-  loc_type min()const { return min_; }
+  loc_type const& min()const { return min_; }
   loc_type max()const {
     loc_type result;
     for(num_coordinates_type dim = 0; dim != Dims; ++dim) { result[dim] = max(dim); }
@@ -126,6 +126,11 @@ public:
   }
   friend inline bool operator!=(power_of_two_bounding_cube const& a, power_of_two_bounding_cube const& b) {
     return !(a == b);
+  }
+
+  void set_min(loc_type min) { min_ = min; }
+  void set_size_exponent_in_each_dimension(num_bits_type exp) {
+    size_exponent_in_each_dimension_ = exp;
   }
 private:
   // Friend patricia_trie so that it can be more paranoid about
@@ -170,9 +175,119 @@ struct default_pow2_radix_patricia_trie_traits {
   typedef lasercake_nice_allocator<int>::type node_allocator;
 };
 
+
+
+// This class is here so that I can tweak the representation
+// for efficiency without changing the tricky trie-manipulation
+// code.
+// Its destructor is responsible for destroying leaf/monoid info
+// but not sub nodes.
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits = default_pow2_radix_patricia_trie_traits>
-class pow2_radix_patricia_trie_node {
+struct patricia_trie_representation {
 public:
+  static const num_coordinates_type dimensions = Dims;
+  static const size_t radix = size_t(1) << dimensions;
+  typedef pow2_radix_patricia_trie_node<Dims, Coord, T, Traits> node_type;
+  typedef std::array<node_type, radix> sub_nodes_type;
+  typedef std::array<Coord, dimensions> loc_type;
+  typedef power_of_two_bounding_cube<dimensions, Coord> power_of_two_bounding_cube_type;
+  typedef typename Traits::monoid monoid_type;
+  typedef typename Traits::leaf_deleter leaf_deleter;
+  typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
+
+  patricia_trie_representation() : ptr_(), parent_(), box_(), monoid_() {}
+  ~patricia_trie_representation() {
+    if(T* leaf_ptr = leaf()) {
+      leaf_deleter()(leaf_ptr);
+    }
+  }
+  // Until I need it to be copyable or movable, better not to risk
+  // an untested implementation.
+  patricia_trie_representation(patricia_trie_representation const&) = delete;
+  patricia_trie_representation(patricia_trie_representation&&) = delete;
+  patricia_trie_representation& operator=(patricia_trie_representation const&) = delete;
+  patricia_trie_representation& operator=(patricia_trie_representation&&) = delete;
+
+  // It is possible for the root node to also be a ptr-to-leaf node.
+  bool is_root_node()const { return !parent_; }
+  bool points_to_leaf()const { return ptr_ && size_exponent_in_each_dimension() == 0; }
+  bool points_to_sub_nodes()const { return ptr_ && size_exponent_in_each_dimension() != 0; }
+  bool is_empty()const { return !ptr_; }
+  sub_nodes_type* sub_nodes() { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr_) : nullptr; }
+  sub_nodes_type const* sub_nodes()const { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr_) : nullptr; }
+  T* leaf() { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
+  T const* leaf()const { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
+  node_type* parent() { return parent_; }
+  node_type const* parent()const { return parent_; }
+
+  power_of_two_bounding_cube_type const& bounding_box()const { return box_; }
+  loc_type const& min()const {
+    return box_.min();
+  }
+  num_bits_type size_exponent_in_each_dimension()const {
+    return box_.size_exponent_in_each_dimension();
+  }
+
+  monoid_type const& monoid()const { return monoid_; }
+
+protected:
+  void set_sub_nodes(sub_nodes_type* new_sub_nodes) {
+    if(points_to_leaf()) {
+      assert(!new_sub_nodes);
+    }
+    else {
+      ptr_ = new_sub_nodes;
+    }
+  }
+  void set_leaf(T* new_leaf) {
+    if(points_to_sub_nodes()) {
+      assert(!new_leaf);
+    }
+    else {
+      if(new_leaf) {
+        assert(size_exponent_in_each_dimension() == 0);
+      }
+      if(T* old_leaf = leaf()) {
+        leaf_deleter()(old_leaf);
+      }
+      ptr_ = new_leaf;
+    }
+  }
+  void set_parent(node_type* parent) {
+    parent_ = parent;
+  }
+  void set_min(loc_type min) {
+    box_.set_min(min);
+  }
+  void set_size_exponent_in_each_dimension(num_bits_type exp) {
+    box_.set_size_exponent_in_each_dimension(exp);
+  }
+  void set_monoid(monoid_type const& monoid) {
+    monoid_ = monoid;
+  }
+  void set_monoid(monoid_type&& monoid) {
+    monoid_ = std::move(monoid);
+  }
+
+private:
+  void* ptr_;
+  node_type* parent_; // nullptr for root node
+
+  // box_ is after monoid for the sake of patricia_trie_node's
+  // move-constructor.
+  // box_'s exponent value determines the type that ptr_ points to:
+  // 0 for ptr-to-leaf node, nonzero for ptr-to-sub-nodes nodes,
+  // doesn't matter for nullptr nodes.
+  power_of_two_bounding_cube_type box_;
+  monoid_type monoid_;
+  // TODO make box_ and monoid_ a compressed_pair?
+};
+
+template<num_coordinates_type Dims, typename Coord, typename T, typename Traits = default_pow2_radix_patricia_trie_traits>
+class pow2_radix_patricia_trie_node
+  : public patricia_trie_representation<Dims, Coord, T, Traits> {
+public:
+  typedef patricia_trie_representation<Dims, Coord, T, Traits> rep;
   static const num_coordinates_type dimensions = Dims;
   static const size_t radix = size_t(1) << dimensions;
   typedef pow2_radix_patricia_trie_node node_type;
@@ -183,54 +298,28 @@ public:
   typedef typename Traits::leaf_deleter leaf_deleter;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
 
-  pow2_radix_patricia_trie_node() : ptr_(), parent_(), box_(), monoid_() {}
-  ~pow2_radix_patricia_trie_node() { delete_ptr_(); }
+  pow2_radix_patricia_trie_node() : rep() {}
+  ~pow2_radix_patricia_trie_node() { delete_sub_nodes_(); }
 
   // TODO maybe implement copy-constructor that copies whole tree? or subtree?
-  pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node const& other) = delete;
-  pow2_radix_patricia_trie_node& operator=(pow2_radix_patricia_trie_node const& other) = delete;
+  // Until I need it to be copyable or movable, better not to risk
+  // an untested implementation.
+  pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node const&) = delete;
+  pow2_radix_patricia_trie_node& operator=(pow2_radix_patricia_trie_node const&) = delete;
+  pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node&&) = delete;
+  pow2_radix_patricia_trie_node& operator=(pow2_radix_patricia_trie_node&&) = delete;
 
-  // monoid operations might conceivably throw, but destructors shouldn't
-  // and Coord assignment shouldn't and primitive assignment can't.
-  pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node&& other)
-          : ptr_(nullptr), monoid_(std::move(other.monoid_)) {
-    // It was too hard to exception-safe-ly move-construct
-    // monoid and box_.min and ptr in the right orders,
-    // so we default-construct them and then move-assign some,
-    // potentially alas.
-    box_.min_ = std::move(other.box_.min_);
-    move_initialize_from_except_userdata_(other);
-  }
-  pow2_radix_patricia_trie_node& operator=(pow2_radix_patricia_trie_node&& other) {
-    monoid_ = std::move(other.monoid_);
-    box_.min_ = std::move(other.box_.min_);
-    delete_ptr_();
-    move_initialize_from_except_userdata_(other);
-    return *this;
-  }
-
-  // It is possible for the root node to also be a ptr-to-leaf node.
-  bool is_root_node()const { return !parent_; }
-  bool points_to_leaf()const { return ptr_ && box_.size_exponent_in_each_dimension_ == 0; }
-  bool points_to_sub_nodes()const { return ptr_ && box_.size_exponent_in_each_dimension_ != 0; }
-  bool is_empty()const { return !ptr_; }
-  sub_nodes_type* sub_nodes() { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr_) : nullptr; }
-  sub_nodes_type const* sub_nodes()const { return points_to_sub_nodes() ? static_cast<sub_nodes_type*>(ptr_) : nullptr; }
-  T* leaf() { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
-  T const* leaf()const { return points_to_leaf() ? static_cast<T*>(ptr_) : nullptr; }
-  node_type* parent() { return parent_; }
-  node_type const* parent()const { return parent_; }
-  sub_nodes_type* siblings() { return parent_ ? parent_->sub_nodes() : nullptr; }
-  sub_nodes_type const* siblings()const { return parent_ ? parent_->sub_nodes() : nullptr; }
+  sub_nodes_type* siblings() { return rep::parent() ? rep::parent()->sub_nodes() : nullptr; }
+  sub_nodes_type const* siblings()const { return rep::parent() ? rep::parent()->sub_nodes() : nullptr; }
 
   bool contains(loc_type const& loc)const {
-    if (!shift_value_is_safe_for_type<Coord>(box_.size_exponent_in_each_dimension_)) {
+    if (!shift_value_is_safe_for_type<Coord>(rep::size_exponent_in_each_dimension())) {
       // Avoid left-shifting by an invalidly large amount.
       return true;
     }
-    const Coord mask = (~Coord(0) << box_.size_exponent_in_each_dimension_);
+    const Coord mask = (~Coord(0) << rep::size_exponent_in_each_dimension());
     for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
-      if ((box_.min_[dim] & mask) != (loc[dim] & mask)) { return false; }
+      if ((rep::min()[dim] & mask) != (loc[dim] & mask)) { return false; }
     }
     return true;
   }
@@ -246,9 +335,9 @@ public:
   }
   node_type const& child_matching(loc_type const& loc)const {
     assert(contains(loc));
-    sub_nodes_type const* sub_nodes_ptr = sub_nodes();
+    sub_nodes_type const* sub_nodes_ptr = rep::sub_nodes();
     assert(sub_nodes_ptr);
-    return child_matching(*sub_nodes_ptr, box_.size_exponent_in_each_dimension_, loc);
+    return child_matching(*sub_nodes_ptr, rep::size_exponent_in_each_dimension(), loc);
   }
   node_type& child_matching(loc_type const& loc) {
     return const_cast<node_type&>(const_cast<const node_type*>(this)->child_matching(loc));
@@ -318,7 +407,7 @@ public:
   }
   node_type const& find_root()const {
     node_type const* node = this;
-    while(node->parent_) { node = node->parent_; }
+    while(node->parent()) { node = node->parent(); }
     return *node;
   }
   node_type& find_root() {
@@ -329,49 +418,46 @@ public:
   // erase returns true iff something was erased.
   bool erase(loc_type leaf_loc);
 
-  monoid_type const& monoid()const { return monoid_; }
   void update_monoid(monoid_type new_leaf_monoid) {
     caller_correct_if(this->points_to_leaf(),
         "patricia_trie: Only leaves can have their monoids explicitly set; "
         "parent and empty node monoids are automatically computed.");
     // If monoid_type had a -=, this could be faster.
-    if (!(monoid_ == new_leaf_monoid)) {
-      node_type* parent = parent_;
+    if (!(rep::monoid() == new_leaf_monoid)) {
+      node_type* parent = rep::parent();
 
       //monoid_type old_monoid = std::move(monoid_);
-      monoid_ = std::move(new_leaf_monoid);
+      rep::set_monoid(std::move(new_leaf_monoid));
       while(parent) {
         sub_nodes_type const& siblings = *parent->sub_nodes();
         monoid_type sum = monoid_type();
         for (node_type const& sibling : siblings) {
-          sum = sum + sibling.monoid_;
+          sum = sum + sibling.monoid();
         }
-        if (sum == parent->monoid_) { break; }
-        parent->monoid_ = std::move(sum);
+        if (sum == parent->monoid()) { break; }
+        parent->set_monoid(std::move(sum));
         //parent->monoid_ -= old_monoid;
         //parent->monoid_ += monoid_;
 
-        parent = parent->parent_;
+        parent = parent->parent();
       }
     }
   }
-
-  power_of_two_bounding_cube_type const& bounding_box()const { return box_; }
 
 
   void debug_check_this()const {
-    if(is_empty()) assert(monoid_ == monoid());
-    if(sub_nodes_type const* direct_children = sub_nodes()) {
+    if(this->is_empty()) assert(rep::monoid() == monoid_type());
+    if(sub_nodes_type const* direct_children = rep::sub_nodes()) {
       monoid_type sum = monoid_type();
       for (node_type const& direct_child : *direct_children) {
-        sum = sum + direct_child.monoid_;
+        sum = sum + direct_child.monoid();
       }
-      assert(sum == monoid_);
+      assert(sum == rep::monoid());
     }
   }
   void debug_check_recursive(node_type const* parent = nullptr)const {
-    assert(parent_ == parent);
-    if(sub_nodes_type const* direct_children = sub_nodes()) {
+    assert(rep::parent() == parent);
+    if(sub_nodes_type const* direct_children = rep::sub_nodes()) {
       for (node_type const& direct_child : *direct_children) {
         direct_child.debug_check_recursive(this);
       }
@@ -380,8 +466,12 @@ public:
   }
 
   void debug_print(size_t depth = 0)const {
-    LOG << std::string(depth*2, ' ') << monoid_ << ' ' << std::hex << box_ << ' ' << size_t(this) << " < " << size_t(parent_) << std::dec << '\n';
-    if(sub_nodes_type const* direct_children = sub_nodes()) {
+    LOG << std::string(depth*2, ' ') << rep::monoid()
+        << ' ' << std::hex
+        << rep::bounding_box()
+        << ' ' << size_t(this) << " < " << size_t(rep::parent())
+        << std::dec << '\n';
+    if(sub_nodes_type const* direct_children = rep::sub_nodes()) {
       for (node_type const& direct_child : *direct_children) {
         direct_child.debug_print(depth + 1);
       }
@@ -391,8 +481,8 @@ private:
   friend struct patricia_trie_tester;
   node_type const& ascend_(loc_type const& leaf_loc)const {
     node_type const* node = this;
-    while(!node->contains(leaf_loc) && node->parent_) {
-      node = node->parent_;
+    while(!node->contains(leaf_loc) && node->parent()) {
+      node = node->parent();
     }
     return *node;
   }
@@ -401,29 +491,48 @@ private:
   }
 
   void initialize_monoid_(monoid_type new_leaf_monoid) {
-    node_type* parent = this->parent_;
+    node_type* parent = this->parent();
     //LOG << '@' << '(' << new_leaf_monoid << ')';
     while(parent) {
       // += ?
-      monoid_type sum = parent->monoid_ + new_leaf_monoid;
+      monoid_type sum = parent->monoid() + new_leaf_monoid;
       //LOG << '#' << '(' << parent->monoid_ << ',' << sum << ')';
-      if (sum == parent->monoid_) { break; }
-      parent->monoid_ = std::move(sum);
-      parent = parent->parent_;
+      if (sum == parent->monoid()) { break; }
+      parent->set_monoid(std::move(sum));
+      parent = parent->parent();
     }
     //LOG << '\n';
-    this->monoid_ = std::move(new_leaf_monoid);
+    this->set_monoid(std::move(new_leaf_monoid));
   }
 
-  void delete_ptr_() {
-    if(sub_nodes_type* sub_nodes_ptr = sub_nodes()) {
+  void delete_sub_nodes_() {
+    if(sub_nodes_type* sub_nodes_ptr = rep::sub_nodes()) {
       sub_nodes_ptr->~sub_nodes_type();
       node_allocator().deallocate(sub_nodes_ptr, 1);
     }
-    if(T* leaf_ptr = leaf()) {
-      leaf_deleter()(leaf_ptr);
-    }
-    ptr_ = nullptr;
+    rep::set_sub_nodes(nullptr);
+  }
+
+#if 0
+  // Until I need it to be copyable or movable, better not to risk
+  // an untested implementation.
+  // monoid operations might conceivably throw, but destructors shouldn't
+  // and Coord assignment shouldn't and primitive assignment can't.
+  pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node&& other)
+          : ptr_(nullptr), monoid_(std::move(other.monoid_)) {
+    // It was too hard to exception-safe-ly move-construct
+    // monoid and box_.min and ptr in the right orders,
+    // so we default-construct them and then move-assign some,
+    // potentially alas.
+    box_.min_ = std::move(other.box_.min_);
+    move_initialize_from_except_userdata_(other);
+  }
+  pow2_radix_patricia_trie_node& operator=(pow2_radix_patricia_trie_node&& other) {
+    monoid_ = std::move(other.monoid_);
+    box_.min_ = std::move(other.box_.min_);
+    delete_ptr_();
+    move_initialize_from_except_userdata_(other);
+    return *this;
   }
   void move_initialize_from_except_userdata_(pow2_radix_patricia_trie_node& old) BOOST_NOEXCEPT {
     assert(ptr_ == nullptr);
@@ -446,18 +555,7 @@ private:
       }
     }
   }
-
-  void* ptr_;
-  node_type* parent_; // nullptr for root node
-
-  // box_ is after monoid for the sake of patricia_trie_node's
-  // move-constructor.
-  // box_'s exponent value determines the type that ptr_ points to:
-  // 0 for ptr-to-leaf node, nonzero for ptr-to-sub-nodes nodes,
-  // doesn't matter for nullptr nodes.
-  power_of_two_bounding_cube_type box_;
-  monoid_type monoid_;
-  // TODO make box_ and monoid_ a compressed_pair?
+#endif
 };
 
 #endif
