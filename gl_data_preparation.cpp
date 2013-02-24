@@ -805,6 +805,41 @@ void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
   }
 }
 
+void prepare_object(vector3<distance> view_loc, gl_collection& coll, shared_ptr<object> objp, shape const& obj_shape, bool wireframe = false) {
+  if(dynamic_pointer_cast<solar_panel>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0xffff00aa), wireframe);
+  }
+  else if(dynamic_pointer_cast<robot>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe);
+  }
+  else if(dynamic_pointer_cast<autorobot>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe);
+  }
+  else if(dynamic_pointer_cast<laser_emitter>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0xff7755aa), wireframe);
+  }
+  else if(shared_ptr<conveyor_belt> belt = dynamic_pointer_cast<conveyor_belt>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe);
+    draw_arrow(view_loc, coll, (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2 + vector3<distance>(0,0,tile_height*2/5), belt->direction(), color(0xff0000aa));
+  }
+  else if(shared_ptr<refinery> ref = dynamic_pointer_cast<refinery>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe);
+    draw_arrow(view_loc, coll,
+                (lower_bound_in_fine_distance_units(ref->input_loc_coords()) +
+                upper_bound_in_fine_distance_units(ref->input_loc_coords())) / 2, xplus, color(0xff0000aa));
+    draw_arrow(view_loc, coll,
+                (lower_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords()) +
+                upper_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords())) / 2, xplus, color(0xff0000aa));
+    draw_arrow(view_loc, coll,
+                (lower_bound_in_fine_distance_units(ref->metal_output_loc_coords()) +
+                upper_bound_in_fine_distance_units(ref->metal_output_loc_coords())) / 2, yplus, color(0x00ff00aa));
+  }
+  else {
+    // just in case.
+    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe);
+  }
+}
+
 void view_on_the_world::prepare_gl_data(
   world /*TODO const*/& w,
   gl_data_preparation_config config,
@@ -1127,38 +1162,7 @@ void view_on_the_world::prepare_gl_data(
       assert(maybe_objp);
       shared_ptr<object> objp = *maybe_objp;
       if ((view_type != ROBOT) || (id != config.view_from)) {
-        if(dynamic_pointer_cast<solar_panel>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0xffff00aa));
-        }
-        else if(dynamic_pointer_cast<robot>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
-        }
-        else if(dynamic_pointer_cast<autorobot>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
-        }
-        else if(dynamic_pointer_cast<laser_emitter>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0xff7755aa));
-        }
-        else if(shared_ptr<conveyor_belt> belt = dynamic_pointer_cast<conveyor_belt>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
-          draw_arrow(view_loc, coll, (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2 + vector3<distance>(0,0,tile_height*2/5), belt->direction(), color(0xff0000aa));
-        }
-        else if(shared_ptr<refinery> ref = dynamic_pointer_cast<refinery>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
-          draw_arrow(view_loc, coll,
-                     (lower_bound_in_fine_distance_units(ref->input_loc_coords()) +
-                      upper_bound_in_fine_distance_units(ref->input_loc_coords())) / 2, xplus, color(0xff0000aa));
-          draw_arrow(view_loc, coll,
-                     (lower_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords()) +
-                      upper_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords())) / 2, xplus, color(0xff0000aa));
-          draw_arrow(view_loc, coll,
-                     (lower_bound_in_fine_distance_units(ref->metal_output_loc_coords()) +
-                      upper_bound_in_fine_distance_units(ref->metal_output_loc_coords())) / 2, yplus, color(0x00ff00aa));
-        }
-        else {
-          // just in case.
-          prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
-        }
+        prepare_object(view_loc, coll, objp, obj_shape);
       }
       else {
         if(shared_ptr<robot> rob = dynamic_pointer_cast<robot>(objp)) {
@@ -1170,7 +1174,10 @@ void view_on_the_world::prepare_gl_data(
             case DECONSTRUCT_OBJECT: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xffff0077)); break;
             case SHOOT_LASERS: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077), (((obj_shape.bounds().min() + obj_shape.bounds().max()) / 2) - a.fine_target_location).magnitude_within_32_bits() / 200); break;
             case ROTATE_CONVEYOR: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x0000ff77)); break;
-            case BUILD_OBJECT: prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0077), true); break;
+            case BUILD_OBJECT:
+              //prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0077), true);
+              prepare_object(view_loc, coll, a.object_built, a.object_built->get_initial_personal_space_shape(), true);
+              break;
             default: break;
           }
         }
