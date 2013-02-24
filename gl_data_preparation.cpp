@@ -1171,12 +1171,29 @@ void view_on_the_world::prepare_gl_data(
         if(shared_ptr<robot> rob = dynamic_pointer_cast<robot>(objp)) {
           click_action a = rob->get_current_click_action(w, id);
           switch (a.type) {
-            case DIG_ROCK_TO_RUBBLE: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077)); break;
-            case THROW_RUBBLE: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xdd770077)); break;
-            case COLLECT_METAL: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x00ff0077)); break;
-            case DECONSTRUCT_OBJECT: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xffff0077)); break;
-            case SHOOT_LASERS: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077), (((obj_shape.bounds().min() + obj_shape.bounds().max()) / 2) - a.fine_target_location).magnitude_within_32_bits() / 200); break;
-            case ROTATE_CONVEYOR: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x0000ff77)); break;
+            // TODO reduce duplicate code
+            case DIG_ROCK_TO_RUBBLE:
+              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077));
+              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0xff000077));
+              break;
+            case THROW_RUBBLE:
+              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xdd770077));
+              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0xdd770077));
+              break;
+            case COLLECT_METAL: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x00ff0077));
+              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0x00ff0077));
+              break;
+            case DECONSTRUCT_OBJECT:
+              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xffff0077));
+              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), color(0xffff0077), true);
+              break;
+            case SHOOT_LASERS:
+              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077), (((obj_shape.bounds().min() + obj_shape.bounds().max()) / 2) - a.fine_target_location).magnitude_within_32_bits() / 200);
+              break;
+            case ROTATE_CONVEYOR:
+              draw_target_marker(view_loc, coll, a.fine_target_location, color(0x0000ff77));
+              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), color(0x0000ff77), true);
+              break;
             case BUILD_OBJECT:
               //prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0077), true);
               prepare_object(view_loc, coll, a.object_built, a.object_built->get_initial_personal_space_shape(), true);
