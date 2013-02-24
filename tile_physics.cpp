@@ -293,6 +293,7 @@ void replace_substance(
 }
 
 water_group_identifier get_water_group_id_by_grouped_tile(state_t const& state, tile_location const& loc) {
+  assert_if_ASSERT_EVERYTHING(loc.stuff_at().contents() == GROUPABLE_WATER);
   {
     water_groups_by_location_t::const_iterator i = state.water_groups_by_surface_tile.find(loc);
     if (i != state.water_groups_by_surface_tile.end()) {
@@ -311,6 +312,9 @@ water_group_identifier get_water_group_id_by_grouped_tile(state_t const& state, 
   if (surface_loc.coords().y != loc.coords().y || surface_loc.coords().z != loc.coords().z) {
     return NO_WATER_GROUP;
   }
+  assert_if_ASSERT_EVERYTHING(surface_loc.stuff_at().contents() == GROUPABLE_WATER);
+  assert_if_ASSERT_EVERYTHING(surface_loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER);
+  assert_if_ASSERT_EVERYTHING(surface_loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
   return state.water_groups_by_surface_tile.find(surface_loc)->second;
 }
 persistent_water_group_info const& get_water_group_by_grouped_tile(state_t const& state, tile_location const& loc) {
@@ -461,6 +465,12 @@ void check_group_surface_tiles_cache_and_layer_size_caches(state_t& state, persi
       check_succeeded = false;
     }
   }
+  if (!check_succeeded) {
+    LOG << "All surface tiles:\n";
+    for (auto const& s : h.surface_tiles) {
+      LOG << s.coords() << "\n";
+    }
+  }
   assert(check_succeeded);
 }
 
@@ -499,8 +509,25 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
   water_group_identifier& next_water_group_identifier = state.next_water_group_identifier;
   persistent_water_groups_t& persistent_water_groups = state.persistent_water_groups;
   water_groups_by_location_t& water_groups_by_surface_tile = state.water_groups_by_surface_tile;
-  
-  if (get_water_group_id_by_grouped_tile(state, loc) != NO_WATER_GROUP) return;
+
+  // Check if we're already initialized, by trying the "jump to a surface tile" thing or just looking up our location.
+  {
+    assert_if_ASSERT_EVERYTHING(loc.stuff_at().contents() == GROUPABLE_WATER);
+    if (state.water_groups_by_surface_tile.find(loc) != state.water_groups_by_surface_tile.end()) return;
+
+    auto iter = state.groupable_water_volume_calipers.boundary_tiles_in_dimension.lower_bound(loc);
+    if (iter != state.groupable_water_volume_calipers.boundary_tiles_in_dimension.end()) {
+      tile_location const& surface_loc = *iter;
+      if (surface_loc.coords().y == loc.coords().y && surface_loc.coords().z == loc.coords().z) {
+        if (surface_loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
+          assert_if_ASSERT_EVERYTHING(surface_loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
+          assert_if_ASSERT_EVERYTHING(state.water_groups_by_surface_tile.find(surface_loc) != state.water_groups_by_surface_tile.end());
+          assert_if_ASSERT_EVERYTHING(state.water_groups_by_surface_tile.find(surface_loc)->second != NO_WATER_GROUP);
+          return;
+        }
+      }
+    }
+  }
   
   // Walk until we get a location on the surface.
   // We *could* just ignore interior tiles and only do the initialization if we started from a surface
@@ -603,6 +630,7 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
         assert_if_ASSERT_EVERYTHING(end_tile.coords().y == surface_loc.coords().y && end_tile.coords().z == surface_loc.coords().z);
         assert_if_ASSERT_EVERYTHING(end_tile.coords().x > surface_loc.coords().x);
         assert_if_ASSERT_EVERYTHING(surface_tiles.find(end_tile) != surface_tiles.end());
+        assert_if_ASSERT_EVERYTHING(end_tile.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
 
         num_tiles_by_height[surface_loc.coords().z] += 1 + end_tile.coords().x - surface_loc.coords().x;
       }
@@ -1209,6 +1237,7 @@ void replace_substance_impl(
         inf.try_collect_loc(adj_loc, adj_loc);
       }
     }
+    assert_if_ASSERT_EVERYTHING(inf.disconnected_frontiers.size() >= 1);
     while(inf.disconnected_frontiers.size() > 1) {
       for (auto p = inf.disconnected_frontiers.begin(); p != inf.disconnected_frontiers.end(); ) {
         tile_location const& which_neighbor = p->first;
@@ -1245,6 +1274,7 @@ void replace_substance_impl(
             assert_if_ASSERT_EVERYTHING(iter->second >= p.second);
             iter->second -= p.second;
             if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
+            assert_if_ASSERT_EVERYTHING(!water_group->num_tiles_by_height.empty());
           }
           water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(new_group.num_tiles_by_height.rbegin()->first));
           
