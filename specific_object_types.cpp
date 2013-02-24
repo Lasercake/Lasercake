@@ -231,7 +231,7 @@ std::string robot::player_instructions()const {
       "Unknown mode, this is an error!"
     ) + "\n\n"
     "Metal carried: " + draw_m3(metal_carried_) + "/" + draw_m3(storage_volume()) + "\n\n"
-    "WASD: move  |  arrows/mouse: rotate view  |  space: jump  |  CLRBOM: switch mode"
+    "WASD: move  |  arrows/mouse: rotate view  |  space: jump  |  ZXCVBR: switch mode"
     "\n"
     ;
   return instructions;
@@ -310,12 +310,12 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     perform_click_action(w, my_id, get_current_click_action(w, my_id));
   }
   
-  if (input_news.num_times_pressed("c")) mode_ = "digging";
-  if (input_news.num_times_pressed("l")) mode_ = "laser";
+  if (input_news.num_times_pressed("z")) mode_ = "digging";
+  if (input_news.num_times_pressed("x")) mode_ = "laser";
   if (input_news.num_times_pressed("r")) mode_ = "rockets";
-  if (input_news.num_times_pressed("o")) mode_ = "building_refinery";
-  if (input_news.num_times_pressed("m")) mode_ = "building_autorobot";
-  if (input_news.num_times_pressed("b")) mode_ = "building_conveyor";
+  if (input_news.num_times_pressed("v")) mode_ = "building_refinery";
+  if (input_news.num_times_pressed("b")) mode_ = "building_autorobot";
+  if (input_news.num_times_pressed("c")) mode_ = "building_conveyor";
 }
 
 click_action robot::get_current_click_action(world& w, object_identifier my_id)const { // TODO: This use of world& should be able to be world const&
