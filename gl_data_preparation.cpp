@@ -46,6 +46,11 @@ std::ostream& operator<<(std::ostream& os, glm::vec4 v) {
   return os << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
 }
 
+struct view_sphere {
+  distance radius;
+  vector3<distance> center;
+};
+
 // These view-frustum-checking functions are tricky.
 //
 // 'float' has only 24 bits of significand, so, when preparing to
@@ -100,6 +105,80 @@ inline bool subsumes(frustum const& f, Bbox const& bbox) {
   //LOG << "frustsubsumes!!\n";
   return true;
 }
+
+
+
+template<typename Bbox>
+inline bool overlaps(view_sphere s, Bbox const& bbox) {
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq;
+  for (which_dimension_type dim = 0; dim < 3; ++dim) {
+    const distance d1 = lower_bound_in_fine_distance_units(bbox.min(dim), dim) - s.center(dim);
+    if (d1 > 0) {
+      if (d1 > s.radius) return false;
+      distsq += d1*d1;
+    }
+    else {
+      const distance d2 = s.center(dim) - upper_bound_in_fine_distance_units(bbox.max(dim), dim);
+      if (d2 > 0) {
+        if (d2 > s.radius) return false;
+        distsq += d2*d2;
+      }
+    }
+  }
+  return (distsq <= (s.radius * s.radius));
+}
+
+// TODO: find a way to remove the duplicate code that results from
+// this template specialization (and the one for subsumes below)
+template<>
+inline bool overlaps<bounding_box>(view_sphere s, bounding_box const& bbox) {
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq;
+  for (which_dimension_type dim = 0; dim < 3; ++dim) {
+    const distance d1 = bbox.min(dim) - s.center(dim);
+    if (d1 > 0) {
+      if (d1 > s.radius) return false;
+      distsq += d1*d1;
+    }
+    else {
+      const distance d2 = s.center(dim) - bbox.max(dim);
+      if (d2 > 0) {
+        if (d2 > s.radius) return false;
+        distsq += d2*d2;
+      }
+    }
+  }
+  return (distsq <= (s.radius * s.radius));
+}
+
+template<typename Bbox>
+inline bool subsumes(view_sphere s, Bbox const& bbox) {
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq;
+  for (which_dimension_type dim = 0; dim < 3; ++dim) {
+    const distance d1 = abs(lower_bound_in_fine_distance_units(bbox.min(dim), dim) - s.center(dim));
+    const distance d2 = abs(s.center(dim) - upper_bound_in_fine_distance_units(bbox.max(dim), dim));
+    const distance d = std::max(d1, d2);
+    if (d > s.radius) return false;
+    distsq += d*d;
+  }
+  return (distsq <= (s.radius * s.radius));
+}
+
+// TODO: find a way to remove the duplicate code that results from
+// this template specialization (and the one for overlaps above)
+template<>
+inline bool subsumes<bounding_box>(view_sphere s, bounding_box const& bbox) {
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq;
+  for (which_dimension_type dim = 0; dim < 3; ++dim) {
+    const distance d1 = abs(bbox.min(dim) - s.center(dim));
+    const distance d2 = abs(s.center(dim) - bbox.max(dim));
+    const distance d = std::max(d1, d2);
+    if (d > s.radius) return false;
+    distsq += d*d;
+  }
+  return (distsq <= (s.radius * s.radius));
+}
+
+
 
 // there's not really any need for it to be normalized, though we easily could
 // half_space = glm::normalize(half_space)
@@ -646,12 +725,12 @@ struct bbox_tile_prep_visitor {
   tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
     const num_bits_type exp = bbox.size_exponent_in_each_dimension();
     if(exp < tile_exponent_below_which_we_dont_filter) return true;
-    if(!overlaps(bounds_, bbox)) return false;
+    if(!overlaps(view_shape_, bbox)) return false;
     power_of_two_bounding_cube<3, tile_coordinate_signed_type> mostly_centred_bbox(
       vector3<tile_coordinate>(bbox.min()) - view_tile_loc_rounded_down, exp);
     if((exp >= tile_exponent_below_which_we_dont_filter_frustums)
         && !overlaps(tile_view_frustum_, mostly_centred_bbox)) return false;
-    if(subsumes(bounds_, bbox) &&
+    if(subsumes(view_shape_, bbox) &&
       ((exp < tile_exponent_below_which_we_dont_filter_frustums)
         || subsumes(tile_view_frustum_, mostly_centred_bbox))
     ) {
@@ -705,7 +784,7 @@ struct bbox_tile_prep_visitor {
   gl_collectionplex& gl_collections_by_distance;
   vector3<double> view_loc_double;
   vector3<tile_coordinate> view_tile_loc_rounded_down;
-  tile_bounding_box bounds_;
+  view_sphere view_shape_;
   frustum tile_view_frustum_;
   view_on_the_world& view;
   world& w;
@@ -1017,6 +1096,9 @@ void view_on_the_world::prepare_gl_data(
   //if(w.game_time_elapsed() % (time_units_per_second/3) == 0)
   w.ensure_realization_of_space(tile_view_bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
 
+  const view_sphere tile_view_shape { view_dist, view_loc };
+  
+
   if (this->drawing_debug_stuff) {
     // Issue: this doesn't limit to nearby tile state; it iterates everything.
     for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
@@ -1161,6 +1243,10 @@ void view_on_the_world::prepare_gl_data(
       assert(maybe_obj_shape);
       shape const& obj_shape = *maybe_obj_shape;
 
+      // hack : eliminate things outside the view sphere
+      // TODO : just don't collect them
+      if (!overlaps(tile_view_shape, obj_shape.bounds())) continue;
+
       shared_ptr<object>* maybe_objp = w.get_object(id);
       assert(maybe_objp);
       shared_ptr<object> objp = *maybe_objp;
@@ -1208,7 +1294,7 @@ void view_on_the_world::prepare_gl_data(
   if (this->drawing_regular_stuff) {
     w.visit_collidable_tiles(bbox_tile_prep_visitor{
       gl_collections_by_distance, view_loc_double, view_tile_loc_rounded_down,
-      tile_view_bounds, view_frustum_in_tile_count_units, *this, w
+      tile_view_shape, view_frustum_in_tile_count_units, *this, w
     });
   }
 }
