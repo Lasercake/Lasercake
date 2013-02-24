@@ -27,6 +27,8 @@
 
 namespace /* anonymous */ {
 
+const distance default_laser_length = 100*tile_width;
+
 namespace laserbeam {
   struct beam_first_contact_finder {
     beam_first_contact_finder(world const& w, geom::line_segment beam, object_or_tile_identifier ignore)
@@ -125,7 +127,7 @@ object_or_tile_identifier laser_find(
 }
 
 void fire_standard_laser(world& w, object_identifier my_id, vector3<distance> location, vector3<distance> facing) {
-  const vector3<distance> beam_vector = facing * tile_width * 2 / facing.magnitude_within_32_bits() * 50;
+  const vector3<distance> beam_vector = facing * default_laser_length / facing.magnitude_within_32_bits();
   const object_or_tile_identifier hit_thing = laser_find(w, my_id, location, beam_vector, true);
   if(tile_location const* locp = hit_thing.get_tile_location()) {
     if (locp->stuff_at().contents() == ROCK) {
@@ -325,7 +327,7 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
   
   vector3<distance> action_laser_delta = facing_ * 2;
   if (mode_ == "laser") {
-    action_laser_delta = facing_ * 50;
+    action_laser_delta = facing_ * default_laser_length / facing_.magnitude_within_32_bits();
     result.type = SHOOT_LASERS;
   }
   if (mode_ == "building_refinery") action_laser_delta = facing_ * 3;
@@ -482,9 +484,9 @@ void robot::perform_click_action(world& w, object_identifier my_id, click_action
 
     case SHOOT_LASERS: {
       const vector3<distance> offset(-facing_.y / 4, facing_.x / 4, 0);
-      const vector3<distance> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
+      const vector3<distance> beam_vector = facing_ * default_laser_length / facing_.magnitude_within_32_bits();
 
-      const uniform_int_distribution<distance> random_delta(-tile_width*10, tile_width*10);
+      const uniform_int_distribution<distance> random_delta(-(default_laser_length / 10), (default_laser_length / 10));
       for (int i = 0; i < 20; ++i)
       {
         const object_or_tile_identifier hit_thing = laser_find(
