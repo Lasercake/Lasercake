@@ -39,6 +39,15 @@ void world::update(unordered_map<object_identifier, input_representation::input_
     if (input_for_obj == nullptr) { input_for_obj = &no_input; }
     obj.second->update(*this, *input_for_obj, obj.first);
   }
+  for (auto oid : objects_to_delete_) {
+    objects_.erase(oid);
+    moving_objects_.erase(oid);
+    autonomously_active_objects_.erase(oid);
+    object_personal_space_shapes_.erase(oid);
+    object_detail_shapes_.erase(oid);
+    objects_exposed_to_collision_.erase(oid);
+  }
+  objects_to_delete_.clear();
   update_moving_objects();
   //TODO update_light(vector3<distance>(3,10,-999), 3);
   for(the_decomposition_of_the_world_into_blocks_impl::worldblock* wb : worldblocks_suggested_to_delete_) {

@@ -216,6 +216,20 @@ cubic_meters conveyor_cost = 10*meters*meters*meters;
 cubic_meters refinery_cost = 50*meters*meters*meters;
 cubic_meters autorobot_cost = 100*meters*meters*meters;
 
+// TODO remove duplicate stuff
+cubic_meters object_cost(shared_ptr<object> objp) {
+  if(dynamic_pointer_cast<conveyor_belt>(objp)) {
+    return conveyor_cost;
+  }
+  else if(dynamic_pointer_cast<refinery>(objp)) {
+    return refinery_cost;
+  }
+  else if(dynamic_pointer_cast<autorobot>(objp)) {
+    return autorobot_cost;
+  }
+  return 0;
+}
+
 
 std::string draw_m3(cubic_meters m3) {
   return std::to_string(get_primitive_int(m3 / meters / meters / meters))/* + " m^3"*/; // omitting "m^3" at least until we can get a proper superscript (TODO?)
@@ -418,9 +432,11 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
       }
     }
     if (object_identifier const* oidp = thing_hit.get_object_identifier()) {
-      if (w.get_object(*oidp)) {
-        result.type = DECONSTRUCT_OBJECT;
-        result.which_affected = *oidp;
+      if (shared_ptr<object>* objpp = w.get_object(*oidp)) {
+        if (metal_carried_ + object_cost(*objpp) <= storage_volume()) {
+          result.type = DECONSTRUCT_OBJECT;
+          result.which_affected = *oidp;
+        }
       }
     }
   }
@@ -472,7 +488,10 @@ void robot::perform_click_action(world& w, object_identifier my_id, click_action
     case DECONSTRUCT_OBJECT: {
       object_identifier const* oidp = a.which_affected.get_object_identifier();
       assert(oidp);
-      // TODO actually do something here.
+      if (shared_ptr<object>* objpp = w.get_object(*oidp)) {
+        w.delete_object_soon(*oidp);
+        metal_carried_ += object_cost(*objpp);
+      }
     } break;
 
     case FIRE_ROCKETS: {
