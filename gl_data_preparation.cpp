@@ -110,7 +110,7 @@ inline bool subsumes(frustum const& f, Bbox const& bbox) {
 
 template<typename Bbox>
 inline bool overlaps(view_sphere s, Bbox const& bbox) {
-  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq;
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq = 0;
   for (which_dimension_type dim = 0; dim < 3; ++dim) {
     const distance d1 = lower_bound_in_fine_distance_units(bbox.min(dim), dim) - s.center(dim);
     if (d1 > 0) {
@@ -132,7 +132,7 @@ inline bool overlaps(view_sphere s, Bbox const& bbox) {
 // this template specialization (and the one for subsumes below)
 template<>
 inline bool overlaps<bounding_box>(view_sphere s, bounding_box const& bbox) {
-  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq;
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq = 0;
   for (which_dimension_type dim = 0; dim < 3; ++dim) {
     const distance d1 = bbox.min(dim) - s.center(dim);
     if (d1 > 0) {
@@ -152,7 +152,7 @@ inline bool overlaps<bounding_box>(view_sphere s, bounding_box const& bbox) {
 
 template<typename Bbox>
 inline bool subsumes(view_sphere s, Bbox const& bbox) {
-  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq;
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq = 0;
   for (which_dimension_type dim = 0; dim < 3; ++dim) {
     const distance d1 = abs(lower_bound_in_fine_distance_units(bbox.min(dim), dim) - s.center(dim));
     const distance d2 = abs(s.center(dim) - upper_bound_in_fine_distance_units(bbox.max(dim), dim));
@@ -167,7 +167,7 @@ inline bool subsumes(view_sphere s, Bbox const& bbox) {
 // this template specialization (and the one for overlaps above)
 template<>
 inline bool subsumes<bounding_box>(view_sphere s, bounding_box const& bbox) {
-  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq;
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq = 0;
   for (which_dimension_type dim = 0; dim < 3; ++dim) {
     const distance d1 = abs(bbox.min(dim) - s.center(dim));
     const distance d2 = abs(s.center(dim) - bbox.max(dim));
