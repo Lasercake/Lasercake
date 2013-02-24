@@ -841,13 +841,13 @@ void draw_arrow(vector3<distance> view_loc, gl_collection& coll, vector3<distanc
 }
 
 void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
-                   shape const& object_shape, color shape_color, bool wireframe = false) {
+                   shape const& object_shape, color shape_color, distance wireframe_width = 0) {
   lasercake_vector<bounding_box>::type const& obj_bboxes = object_shape.get_boxes();
   for (bounding_box const& bbox : obj_bboxes) {
     const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
     const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
-    if (wireframe) push_wireframe(view_loc, coll, bbox, tile_width / 10, shape_color);
-    else           push_bbox     (coll, bmin, bmax, shape_color);
+    if (wireframe_width != 0) push_wireframe(view_loc, coll, bbox, wireframe_width, shape_color);
+    else                      push_bbox     (coll, bmin, bmax, shape_color);
   }
 
   lasercake_vector<geom::convex_polygon>::type const& obj_polygons = object_shape.get_polygons();
@@ -868,13 +868,13 @@ void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
   lasercake_vector<geom::convex_polyhedron>::type const& obj_polyhedra = object_shape.get_polyhedra();
   for (geom::convex_polyhedron const& ph : obj_polyhedra) {
     for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
-      if (wireframe) {
+      if (wireframe_width != 0) {
         std::vector<glm::vec3> poly;
         for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
           vector3<GLfloat> v = convert_coordinates_to_GL(view_loc, ph.vertices()[ph.face_info()[i + j + 1]]);
           poly.push_back(glm::vec3(v.x, v.y, v.z));
         }
-        push_wireframe_convex_polygon(coll, shape_color, convert_distance_to_GL(tile_width / 10), poly);
+        push_wireframe_convex_polygon(coll, shape_color, convert_distance_to_GL(wireframe_width), poly);
       }
       else {
         std::vector<geom::vect> poly;
@@ -887,25 +887,25 @@ void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
   }
 }
 
-void prepare_object(vector3<distance> view_loc, gl_collection& coll, shared_ptr<object> objp, shape const& obj_shape, bool wireframe = false) {
+void prepare_object(vector3<distance> view_loc, gl_collection& coll, shared_ptr<object> objp, shape const& obj_shape, distance wireframe_width = 0) {
   if(dynamic_pointer_cast<solar_panel>(objp)) {
-    prepare_shape(view_loc, coll, obj_shape, color(0xffff00aa), wireframe);
+    prepare_shape(view_loc, coll, obj_shape, color(0xffff00aa), wireframe_width);
   }
   else if(dynamic_pointer_cast<robot>(objp)) {
-    prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe);
+    prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe_width);
   }
   else if(dynamic_pointer_cast<autorobot>(objp)) {
-    prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe);
+    prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe_width);
   }
   else if(dynamic_pointer_cast<laser_emitter>(objp)) {
-    prepare_shape(view_loc, coll, obj_shape, color(0xff7755aa), wireframe);
+    prepare_shape(view_loc, coll, obj_shape, color(0xff7755aa), wireframe_width);
   }
   else if(shared_ptr<conveyor_belt> belt = dynamic_pointer_cast<conveyor_belt>(objp)) {
-    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe);
+    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe_width);
     draw_arrow(view_loc, coll, (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2 + vector3<distance>(0,0,tile_height*2/5), belt->direction(), color(0xff0000aa));
   }
   else if(shared_ptr<refinery> ref = dynamic_pointer_cast<refinery>(objp)) {
-    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe);
+    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe_width);
     draw_arrow(view_loc, coll,
                 (lower_bound_in_fine_distance_units(ref->input_loc_coords()) +
                 upper_bound_in_fine_distance_units(ref->input_loc_coords())) / 2, xplus, color(0xff0000aa));
@@ -918,7 +918,7 @@ void prepare_object(vector3<distance> view_loc, gl_collection& coll, shared_ptr<
   }
   else {
     // just in case.
-    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe);
+    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe_width);
   }
 }
 
@@ -1281,7 +1281,7 @@ void view_on_the_world::prepare_gl_data(
             case DECONSTRUCT_OBJECT:
               c = color(0xff000077);
               target_marker_scale = default_target_marker_scale;
-              overlaid_wireframe_width = default_wireframe_width;
+              overlaid_wireframe_width = default_wireframe_width * 2;
               break;
             case SHOOT_LASERS:
               c = color(0xff000077);
@@ -1294,7 +1294,7 @@ void view_on_the_world::prepare_gl_data(
               break;
             case BUILD_OBJECT:
               //prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0077), true);
-              prepare_object(view_loc, coll, a.object_built, a.object_built->get_initial_personal_space_shape(), true);
+              prepare_object(view_loc, coll, a.object_built, a.object_built->get_initial_personal_space_shape(), default_wireframe_width);
               break;
             default: break;
           }
@@ -1306,7 +1306,7 @@ void view_on_the_world::prepare_gl_data(
               push_wireframe(view_loc, coll, fine_bounding_box_of_tile(locp->coords()), overlaid_wireframe_width, c);
             }
             else {
-              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), c, true);
+              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), c, overlaid_wireframe_width);
             }
           }
         }
