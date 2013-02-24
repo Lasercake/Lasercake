@@ -323,77 +323,130 @@ class fractal_hills {
 
 public:
   fractal_hills() {
-    normalization = lint64_t(wcc) - get_height(wcc, wcc);
+    auto inf = get_column_info(wcc - 3203, wcc - 2930);
+    normalization = lint64_t(wcc) - std::max(inf.land_height, inf.potential_water_height);
   }
   void operator()(world_column_builder& b, coord x, coord y, coord, coord) {
     b.specify_lowest(ROCK);
-    lint64_t height = get_height(x, y) + normalization;
+    auto inf = get_column_info(lint64_t(x- 3203), lint64_t(y - 2930));
+    lint64_t height = inf.land_height + normalization;
     assert(height >= 0);
     assert(height < (1LL << 32));
-    b.specify(coord(height), AIR);
+    lint64_t water_height = inf.potential_water_height + normalization;
+    if (water_height > height) {
+      assert(water_height >= 0);
+      assert(water_height < (1LL << 32));
+      b.specify(coord(height), GROUPABLE_WATER);
+      b.specify(coord(water_height), AIR);
+    }
+    else {
+      b.specify(coord(height), AIR);
+    }
   }
   
 private:
   lint64_t normalization;
-    lint64_t get_height(coord x, coord y) {
-      if (lint64_t const* h = find_as_pointer(height_memo_, std::make_pair(x,y))) {
+  struct column_info {
+    lint64_t land_height;
+    lint64_t potential_water_height;
+  };
+  
+    column_info get_column_info(lint64_t x, lint64_t y) {
+      if (column_info const* h = find_as_pointer(column_memo_, vector3<lint64_t>(x,y,0))) {
         return *h;
       }
 
-      lint64_t height;
+      column_info info;
       memo_rng rng_here = make_rng(x, y);
       uint32_t low_x_bits_zero = 0;
       uint32_t low_y_bits_zero = 0;
-      lint64_t variance_num = 2;
-      lint64_t variance_denom = 1;
+      luint64_t variance_num = 2;
+      luint64_t variance_denom = 1;
       const uint32_t max_interesting_bits = 30;
       for (uint32_t i = 0; i <= max_interesting_bits; ++i) {
-        if (!(x & (1ULL << i))) ++low_x_bits_zero;
-        if (!(y & (1ULL << i))) ++low_y_bits_zero;
-        if ((x | y) & (1ULL << i)) break;
-        variance_num *= 11;
-        variance_denom *= 6;
-        if (variance_num > (1LL << 50)) {
+        if (!(x & (lint64_t(1) << i))) ++low_x_bits_zero;
+        if (!(y & (lint64_t(1) << i))) ++low_y_bits_zero;
+        if ((x | y) & (lint64_t(1) << i)) break;
+        if (i < 5) {
+          variance_num *= 13ULL;
+          variance_denom *= 6ULL;
+        }
+        else {
+          variance_num *= 8ULL;
+          variance_denom *= 7ULL;
+        }
+        if (variance_num > (1ULL << 50)) {
           variance_num = (variance_num / variance_denom);
-          variance_denom = 1;
+          variance_denom = 1ULL;
         }
       }
-      lint64_t variance = (variance_num / variance_denom);
+      luint64_t variance64 = (variance_num / variance_denom);
+      assert(variance64 < (1ULL << 31) - 1);
+      int variance(get_primitive_int(variance64));
       const boost::random::uniform_int_distribution<int> random_coord(-variance,variance + 1);
       if (low_x_bits_zero >= max_interesting_bits && low_y_bits_zero >= max_interesting_bits) {
         // At a large enough scale, pick arbitrarily
-        height = wcc + random_coord(rng_here);
+        info.land_height = wcc + random_coord(rng_here);
+        info.potential_water_height = 0;
       }
       else if (low_x_bits_zero < low_y_bits_zero) {
         // next are the ones with more zero x bits
         // TODO fix duplicate code
-        coord x0 = x & (~((2 << low_x_bits_zero) - 1));
-        coord x1 = x0 + (2 << low_x_bits_zero);
+        lint64_t x0 = x & (~((2 << low_x_bits_zero) - 1));
+        lint64_t x1 = x0 + (2 << low_x_bits_zero);
         assert((x1 - x) == (x - x0));
-        height = (get_height(x0, y) + get_height(x1, y) + random_coord(rng_here)) / 2;
+        column_info inf0 = get_column_info(x0, y);
+        column_info inf1 = get_column_info(x1, y);
+        info.land_height = (inf0.land_height + inf1.land_height + random_coord(rng_here)) / 2;
+        info.potential_water_height = std::max(inf0.potential_water_height, inf1.potential_water_height);
       }
       else if (low_x_bits_zero > low_y_bits_zero) {
         // next are the ones with more zero y bits
         // TODO fix duplicate code
-        coord y0 = y & (~((2 << low_y_bits_zero) - 1));
-        coord y1 = y0 + (2 << low_y_bits_zero);
+        lint64_t y0 = y & (~((2 << low_y_bits_zero) - 1));
+        lint64_t y1 = y0 + (2 << low_y_bits_zero);
         assert((y1 - y) == (y - y0));
-        height = (get_height(x, y0) + get_height(x, y1) + random_coord(rng_here)) / 2;
+        column_info inf0 = get_column_info(x, y0);
+        column_info inf1 = get_column_info(x, y1);
+        info.land_height = (inf0.land_height + inf1.land_height + random_coord(rng_here)) / 2;
+        info.potential_water_height = std::max(inf0.potential_water_height, inf1.potential_water_height);
       }
       else {
         assert(low_x_bits_zero == low_y_bits_zero);
-        coord x0 = x - (1 << low_x_bits_zero);
-        coord x1 = x + (1 << low_x_bits_zero);
-        coord y0 = y - (1 << low_y_bits_zero);
-        coord y1 = y + (1 << low_y_bits_zero);
+        lint64_t x0 = x - (1 << low_x_bits_zero);
+        lint64_t x1 = x + (1 << low_x_bits_zero);
+        lint64_t y0 = y - (1 << low_y_bits_zero);
+        lint64_t y1 = y + (1 << low_y_bits_zero);
+        column_info infx0 = get_column_info(x0, y);
+        column_info infx1 = get_column_info(x1, y);
+        column_info infy0 = get_column_info(x, y0);
+        column_info infy1 = get_column_info(x, y1);
         assert((x1 - x) == (x - x0));
         assert((y1 - y) == (y - y0));
-        height = (get_height(x0, y) + get_height(x1, y) + get_height(x, y0) + get_height(x, y1) + random_coord(rng_here)) / 4;
+        
+        info.land_height = (infx0.land_height + infx1.land_height + infy0.land_height + infy1.land_height + random_coord(rng_here)) / 4;
+        
+        info.potential_water_height = std::max(std::max(infx0.potential_water_height, infx1.potential_water_height), std::max(infy0.potential_water_height, infy1.potential_water_height));
+        
+        if (low_x_bits_zero < 12) {
+          lint64_t new_lake_height = (1LL << 62); // hack - "bigger than anything" //std::min(std::min(infx0.land_height, infx1.land_height), std::min(infy0.land_height, infy1.land_height));
+          for (lint64_t offs = 0; offs <= (2 << low_x_bits_zero); ++offs) {
+            column_info lakeborder_infx0 = get_column_info(x0, y0+offs);
+            column_info lakeborder_infx1 = get_column_info(x1, y0+offs);
+            column_info lakeborder_infy0 = get_column_info(x0+offs, y0);
+            column_info lakeborder_infy1 = get_column_info(x0+offs, y1);
+            if (lakeborder_infx0.land_height < new_lake_height) new_lake_height = lakeborder_infx0.land_height;
+            if (lakeborder_infx1.land_height < new_lake_height) new_lake_height = lakeborder_infx1.land_height;
+            if (lakeborder_infy0.land_height < new_lake_height) new_lake_height = lakeborder_infy0.land_height;
+            if (lakeborder_infy1.land_height < new_lake_height) new_lake_height = lakeborder_infy1.land_height;
+          }
+          if (new_lake_height > info.potential_water_height) info.potential_water_height = new_lake_height;
+        }
       }
-      height_memo_.insert(std::make_pair(std::make_pair(x,y), height));
-      return height;
+      column_memo_.insert(std::make_pair(vector3<lint64_t>(x,y,0), info));
+      return info;
     }
-  std::unordered_map<std::pair<coord, coord>, lint64_t> height_memo_;
+  std::unordered_map<vector3<lint64_t>, column_info> column_memo_;
 };
 
 
@@ -552,7 +605,7 @@ SCENARIO_FUNCTION_NAMED("simple_hills") {
 SCENARIO_FUNCTION_NAMED("fractal_hills") {
     return worldgen_from_column_spec(fractal_hills());
 }
-
+#if 0
 class spiky : public worldgen_type {
   static const coord a_spike_height = 20;
   static const coord spike_multiplier_1 = 3;
@@ -599,7 +652,7 @@ private:
   memoized<get_height, coord (coord, coord)> height_memo_;
 };
 SCENARIO_CLASS_NAMED(spiky)
-
+#endif
 
 // These are worst cases in terms of number of non-interior (theoretically
 // visible) tiles within a radius; useful to test as a stress-test and
