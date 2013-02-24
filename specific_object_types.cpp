@@ -366,7 +366,10 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
       // if the loop finishes with no result, leave it at the first guess
     }
 
-    if (mode_ == "building_refinery" && metal_carried_ >= refinery_cost) {
+    tile_contents foundation = result.which_affected.get_tile_location()->get_neighbor<zminus>(FULL_REALIZATION).stuff_at().contents();
+    bool can_build_building = ((foundation != AIR) && !is_water(foundation));
+
+    if (mode_ == "building_refinery" && can_build_building && metal_carried_ >= refinery_cost) {
       result.type = BUILD_OBJECT;
       assert(result.which_affected.get_tile_location());
       result.object_built = shared_ptr<object>(new refinery(result.which_affected.get_tile_location()->coords()));
@@ -381,7 +384,7 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
           }
         }
       }
-      if (result.type != ROTATE_CONVEYOR && metal_carried_ >= conveyor_cost) {
+      if (result.type != ROTATE_CONVEYOR && can_build_building && metal_carried_ >= conveyor_cost) {
         result.type = BUILD_OBJECT;
         assert(result.which_affected.get_tile_location());
         result.object_built = shared_ptr<object>(new conveyor_belt(result.which_affected.get_tile_location()->coords()));
