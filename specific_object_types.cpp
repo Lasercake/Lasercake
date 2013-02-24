@@ -224,7 +224,7 @@ std::string robot::player_instructions()const {
   const std::string instructions = (
       (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, collect pure metal, or deconstruct objects (not yet implemented)." :
       (mode_ == "laser")   ? "Laser mode: Hold mouse button to fire dual lasers." :
-      (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing. (This usually slows down the simulation.)" :
+      (mode_ == "rockets") ? "Rockets mode: Hold mouse to create many silly fast-moving objects for testing. (This usually slows down the simulation.)" :
       (mode_ == "building_conveyor") ? "Conveyor mode: Click to build a conveyor belt (costs "+draw_m3(conveyor_cost)+") or click a conveyor to rotate it. Conveyors move rubble only." :
       (mode_ == "building_refinery") ? "Refinery mode: Click to build a refinery (costs "+draw_m3(refinery_cost)+"). Once built, refineries take rubble at the in-arrow and convert it to pure metal and waste rock." :
       (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot (costs "+draw_m3(autorobot_cost)+").\nIt will dig up/down/straight depending on the up/down angle you're facing when you build it, move in the cardinal direction closest to the left/right angle you're facing, and dump its rubble at the x/y position where it was created." :
