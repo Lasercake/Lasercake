@@ -237,7 +237,7 @@ std::string draw_m3(cubic_meters m3) {
 
 std::string robot::player_instructions()const {
   const std::string instructions = (
-      (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, collect pure metal, or deconstruct objects (not yet implemented)." :
+      (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, collect pure metal, or deconstruct objects." :
       (mode_ == "laser")   ? "Laser mode: Hold mouse button to fire dual lasers." :
       (mode_ == "rockets") ? "Rockets mode: Hold mouse to create many silly fast-moving objects for testing. (This usually slows down the simulation.)" :
       (mode_ == "building_conveyor") ? "Conveyor mode: Click to build a conveyor belt (costs "+draw_m3(conveyor_cost)+") or click a conveyor to rotate it. Conveyors move rubble only." :
