@@ -23,6 +23,10 @@
 #include "world.hpp"
 #include "worldgen.hpp"
 
+// these two are only used for the refinery hack: TODO remove them after replacing the hack.
+#include "specific_object_types.hpp"
+#include "tile_physics.hpp"
+
 
 world::world(shared_ptr<worldgen_type> gen)
   : current_game_time_(0),
@@ -40,6 +44,23 @@ void world::update(unordered_map<object_identifier, input_representation::input_
     obj.second->update(*this, *input_for_obj, obj.first);
   }
   for (auto oid : objects_to_delete_) {
+    if(shared_ptr<object>* q = get_object(oid)) {
+      if(shared_ptr<refinery> m = dynamic_pointer_cast<refinery>(*q)) {
+        // HACK haaaaaack TODO replace ALSO DUPLICATE CODE
+        auto foo = m->input_loc_coords() + vector3<tile_coordinate_signed_type>(1,-1,0);
+        for (tile_coordinate x = foo.x; x < foo.x + 3; ++x) {
+        for (tile_coordinate y = foo.y; y < foo.y + 3; ++y) {
+        for (tile_coordinate z = foo.z; z < foo.z + 5; ++z) {
+          tile_physics_impl::mutable_stuff_at(make_tile_location(vector3<tile_coordinate>(x,y,z), FULL_REALIZATION)).set_whether_there_is_an_object_here_that_affects_the_tile_based_physics(false);
+        }}}
+        for (tile_coordinate x = foo.x-1; x < foo.x + 3+1; ++x) {
+        for (tile_coordinate y = foo.y-1; y < foo.y + 3+1; ++y) {
+        for (tile_coordinate z = foo.z-1; z < foo.z + 5+1; ++z) {
+          tile_location loc = make_tile_location(vector3<tile_coordinate>(x,y,z), FULL_REALIZATION);
+          if (is_fluid(loc.stuff_at().contents())) get_state(tile_physics_state_).active_fluids[loc];
+        }}}
+      }
+    }
     objects_.erase(oid);
     moving_objects_.erase(oid);
     autonomously_active_objects_.erase(oid);
@@ -85,6 +106,15 @@ object_identifier world::try_create_object(shared_ptr<object> obj) {
     // TODO: don't do this if you're in the middle of updating autonomous objects
     if(shared_ptr<autonomous_object> m = boost::dynamic_pointer_cast<autonomous_object>(obj)) {
       autonomously_active_objects_.insert(make_pair(id, m));
+    }
+    if(shared_ptr<refinery> m = dynamic_pointer_cast<refinery>(obj)) {
+      // HACK haaaaaack TODO replace ALSO DUPLICATE CODE
+      auto foo = m->input_loc_coords() + vector3<tile_coordinate_signed_type>(1,-1,0);
+      for (tile_coordinate x = foo.x; x < foo.x + 3; ++x) {
+      for (tile_coordinate y = foo.y; y < foo.y + 3; ++y) {
+      for (tile_coordinate z = foo.z; z < foo.z + 5; ++z) {
+        tile_physics_impl::mutable_stuff_at(make_tile_location(vector3<tile_coordinate>(x,y,z), FULL_REALIZATION)).set_whether_there_is_an_object_here_that_affects_the_tile_based_physics(true);
+      }}}
     }
     return id;
   }

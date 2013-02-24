@@ -1374,6 +1374,10 @@ int obstructiveness(tile_contents tc) {
   else if (tc == AIR) return 1;
   else assert(false); // reaching this would mean we implemented a new material type but forgot to set its obstructiveness
 }
+int obstructiveness(tile const& t) {
+  if (t.there_is_an_object_here_that_affects_the_tile_based_physics()) return 4;
+  else return obstructiveness(t.contents());
+}
 
 const sub_tile_velocity st_gravity_acceleration_magnitude =
   sub_tile_velocity(gravity_acceleration_magnitude
@@ -1440,7 +1444,7 @@ void update_fluids_impl(state_t& state) {
           bool pinned_between_obstacles;
           while(true) {
             tile_contents contents_there = walking_loc.stuff_at().contents();
-            if (contents_there == GROUPABLE_WATER || contents_there == ROCK) {
+            if ((contents_there == GROUPABLE_WATER) || (contents_there == ROCK) || (walking_loc.stuff_at().there_is_an_object_here_that_affects_the_tile_based_physics())) {
               pinned_between_obstacles = true;
               break;
             }
@@ -1496,7 +1500,7 @@ void update_fluids_impl(state_t& state) {
           const tile_location neighbor_neighbor = neighbor_neighbors[d2];
           if (neighbor_neighbor.is_location()) {
             tile_location const& diag_loc = neighbor_neighbor;
-            if (fluid.blockage_amount_this_frame[d2] > 0 && obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness(neighbors[d2].stuff_at().contents())) {
+            if (fluid.blockage_amount_this_frame[d2] > 0 && obstructiveness(diag_loc.stuff_at()) < obstructiveness(neighbors[d2].stuff_at())) {
               new_progress[dir] += fluid.blockage_amount_this_frame[d2];
             }
           }
@@ -1567,8 +1571,8 @@ void update_fluids_impl(state_t& state) {
     }
     
     // Rubble is 'heavier' than water and basically ignores it, while water has to yield to rubble.
-    int src_weight = obstructiveness(src_tile.contents());
-    int dst_weight = obstructiveness(dst_tile.contents());
+    int src_weight = obstructiveness(src_tile);
+    int dst_weight = obstructiveness(dst_tile);
     if (src_weight > dst_weight) {
       bool dst_was_active_fluid = false;
       active_fluid_tile_info dst_info_store;
@@ -1686,14 +1690,14 @@ void update_fluids_impl(state_t& state) {
     if (is_water(stuff)) {
       active_fluid_tile_info& fluid = p.second;
       const auto lower_loc = loc.get_neighbor<zminus>(CONTENTS_ONLY);
-      const auto lower_stuff = lower_loc.stuff_at().contents();
-      bool anywhere_downwards_is_a_supporting_tile = ((lower_stuff == GROUPABLE_WATER)
+      const auto lower_stuff = lower_loc.stuff_at();
+      bool anywhere_downwards_is_a_supporting_tile = ((lower_stuff.contents() == GROUPABLE_WATER)
                     || (obstructiveness(lower_stuff) > obstructiveness(GROUPABLE_WATER)));
       if (!anywhere_downwards_is_a_supporting_tile) {
         const auto adj_neighbors = get_perpendicular_neighbors(lower_loc, zminus, CONTENTS_ONLY);
         for (tile_location adj_neighbor : adj_neighbors) {
-          const auto adj_lower_stuff = adj_neighbor.stuff_at().contents();
-          if ((adj_lower_stuff == GROUPABLE_WATER)
+          const auto adj_lower_stuff = adj_neighbor.stuff_at();
+          if ((adj_lower_stuff.contents() == GROUPABLE_WATER)
                 || (obstructiveness(adj_lower_stuff) > obstructiveness(GROUPABLE_WATER))) {
             anywhere_downwards_is_a_supporting_tile = true;
             break;
@@ -1773,7 +1777,7 @@ void update_fluids_impl(state_t& state) {
       // the one directly below, the ones cardinally-horizontally, and the ones horizontally-and-below.
       // at the 2-diagonals. This comment is duplicated one one other place in this file.
       std::array<tile_location, num_cardinal_directions> cneighbors = get_all_neighbors(loc, CONTENTS_ONLY);
-      if (obstructiveness(cneighbors[zminus].stuff_at().contents()) < obstructiveness(t.contents())) goto fake_continue;
+      if (obstructiveness(cneighbors[zminus].stuff_at()) < obstructiveness(t)) goto fake_continue;
 
       // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.
       for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
@@ -1781,7 +1785,7 @@ void update_fluids_impl(state_t& state) {
           tile_location const& dst_loc = cneighbors[dir];
           if (dst_loc.stuff_at().contents() == AIR) {
             tile_location const& diag_loc = dst_loc.get_neighbor<zminus>(CONTENTS_ONLY);
-            if (obstructiveness(diag_loc.stuff_at().contents()) < obstructiveness(cneighbors[zminus].stuff_at().contents())) {
+            if (obstructiveness(diag_loc.stuff_at()) < obstructiveness(cneighbors[zminus].stuff_at())) {
               goto fake_continue;
             }
           }
