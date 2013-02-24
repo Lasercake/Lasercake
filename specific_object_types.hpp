@@ -51,6 +51,9 @@ private:
 };
 #endif
 
+// TODO: Decide if this is a unit we want to regularly use for volume,
+// and if it is, put it in world_constants.hpp
+typedef physical_quantity<lint64_t, units<dim::meter<3>>> cubic_meters;
 
 enum click_action_type {
   NO_CLICK_ACTION,
@@ -69,7 +72,7 @@ struct click_action {
   vector3<distance> fine_target_location;
   object_or_tile_identifier which_affected;
   shared_ptr<object> object_built;
-  physical_quantity<lint64_t, units<dim::meter<3>>> metal_spent;
+  cubic_meters metal_spent;
 };
 
 class robot : public mobile_object, public autonomous_object, public object_with_eye_direction, public object_with_player_instructions {
@@ -89,10 +92,10 @@ public:
   click_action get_current_click_action(world& w, object_identifier my_id)const; // TODO: This use of world& should be able to be world const&
 private:
   void perform_click_action(world& w, object_identifier my_id, click_action a);
-  physical_quantity<lint64_t, units<dim::meter<3>>> storage_volume()const;
+  cubic_meters storage_volume()const;
   vector3<distance> location_;
   vector3<distance> facing_;
-  physical_quantity<lint64_t, units<dim::meter<3>>> metal_carried_;
+  cubic_meters metal_carried_;
   std::string mode_;
 };
 
@@ -170,8 +173,8 @@ public:
                       object_identifier my_id) override;
 private:
   vector3<tile_coordinate> initial_location_;
-  physical_quantity<lint64_t, units<dim::meter<3>>> waste_rock_inside_;
-  physical_quantity<lint64_t, units<dim::meter<3>>> metal_inside_;
+  cubic_meters waste_rock_inside_;
+  cubic_meters metal_inside_;
 };
 
 

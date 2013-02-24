@@ -204,7 +204,7 @@ shape robot::get_initial_personal_space_shape()const {
   return shape(geom::convex_polyhedron(verts));*/
 }
 
-physical_quantity<lint64_t, units<dim::meter<3>>> robot::storage_volume()const {
+cubic_meters robot::storage_volume()const {
   return tile_width * tile_width * tile_width * 15 * 15 * 15 / (20LL*20*20 * identity(fine_distance_units*fine_distance_units*fine_distance_units / meters/meters/meters));
 }
 
@@ -212,11 +212,12 @@ shape robot::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
-auto conveyor_cost = 10*meters*meters*meters;
-auto refinery_cost = 50*meters*meters*meters;
-auto autorobot_cost = 100*meters*meters*meters;
+cubic_meters conveyor_cost = 10*meters*meters*meters;
+cubic_meters refinery_cost = 50*meters*meters*meters;
+cubic_meters autorobot_cost = 100*meters*meters*meters;
 
-std::string draw_m3(physical_quantity<lint64_t, units<dim::meter<3>>> m3) {
+
+std::string draw_m3(cubic_meters m3) {
   return std::to_string(get_primitive_int(m3 / meters / meters / meters))/* + " m^3"*/; // omitting "m^3" at least until we can get a proper superscript (TODO?)
 }
 
