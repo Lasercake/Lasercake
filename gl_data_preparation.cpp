@@ -730,10 +730,13 @@ void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3
   }}}
 }
 
-void draw_arrow(vector3<distance> view_loc, gl_collection& coll, vector3<distance> center, cardinal_direction dir, color c) {
+void draw_arrow(vector3<distance> view_loc, gl_collection& coll, vector3<distance> center, cardinal_direction dir, color c, uint8_t dim1 = X, uint8_t dim2 = Y, uint8_t dim3 = Z) {
   vector3<distance> foo = vector3<lint64_t>(cardinal_direction_vectors[dir]) * tile_width / 3;
-  vector3<distance> bar(foo.y, foo.x, 0);
-  vector3<distance> up_a_little(0, 0, tile_height / 5);
+  vector3<distance> bar(0, 0, 0);
+  bar[dim1] = foo(dim2);
+  bar[dim2] = foo(dim1);
+  vector3<distance> up_a_little(0, 0, 0);
+  up_a_little[dim3] = tile_height / 5;
   vector3<distance> bar_a_little = bar * 3 / 25;
   for (int i = 0; i < 2; ++i) {
     vector3<distance> little_adjustment = i ? up_a_little : bar_a_little;
@@ -829,10 +832,10 @@ void prepare_object(vector3<distance> view_loc, gl_collection& coll, shared_ptr<
                 upper_bound_in_fine_distance_units(ref->input_loc_coords())) / 2, xplus, color(0xff0000aa));
     draw_arrow(view_loc, coll,
                 (lower_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords()) +
-                upper_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords())) / 2, xplus, color(0xff0000aa));
+                upper_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords())) / 2, xplus, color(0xff0000aa), X, Z, Y);
     draw_arrow(view_loc, coll,
                 (lower_bound_in_fine_distance_units(ref->metal_output_loc_coords()) +
-                upper_bound_in_fine_distance_units(ref->metal_output_loc_coords())) / 2, yplus, color(0x00ff00aa));
+                upper_bound_in_fine_distance_units(ref->metal_output_loc_coords())) / 2, yplus, color(0x00ff00aa), Y, Z, X);
   }
   else {
     // just in case.
