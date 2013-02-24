@@ -790,7 +790,7 @@ struct bbox_tile_prep_visitor {
   world& w;
 };
 
-void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3<distance> marker_loc, color marker_color, distance scale = 20*fine_distance_units) {
+void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3<distance> marker_loc, color marker_color, distance scale) {
   for (int xoffs = -1; xoffs <= 1; xoffs += 2) {
   for (int yoffs = -1; yoffs <= 1; yoffs += 2) {
   for (int zoffs = -1; zoffs <= 1; zoffs += 2) {
@@ -1256,35 +1256,58 @@ void view_on_the_world::prepare_gl_data(
       else {
         if(shared_ptr<robot> rob = dynamic_pointer_cast<robot>(objp)) {
           click_action a = rob->get_current_click_action(w, id);
+          color c(0x00000000);
+          distance target_marker_scale(0);
+          distance overlaid_wireframe_width(0);
+          const distance default_target_marker_scale = tile_width / 100;
+          const distance default_wireframe_width = tile_width / 10;
           switch (a.type) {
             // TODO reduce duplicate code
             case DIG_ROCK_TO_RUBBLE:
-              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077));
-              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0xff000077));
+              c = color(0xff000077);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width;
               break;
             case THROW_RUBBLE:
-              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xdd660077));
-              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0xdd660077));
+              c = color(0xdd660077);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width;
               break;
-            case COLLECT_METAL: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x00ff0077));
-              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0x00ff0077));
+            case COLLECT_METAL:
+              c = color(0x00ff0077);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width;
               break;
             case DECONSTRUCT_OBJECT:
-              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077));
-              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), color(0xff000077), true);
+              c = color(0xff000077);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width;
               break;
             case SHOOT_LASERS:
-              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077), (((obj_shape.bounds().min() + obj_shape.bounds().max()) / 2) - a.fine_target_location).magnitude_within_32_bits() / 200);
+              c = color(0xff000077);
+              target_marker_scale = (((obj_shape.bounds().min() + obj_shape.bounds().max()) / 2) - a.fine_target_location).magnitude_within_32_bits() / 200;
               break;
             case ROTATE_CONVEYOR:
-              draw_target_marker(view_loc, coll, a.fine_target_location, color(0x0000ff77));
-              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), color(0x0000ff77), true);
+              c = color(0x0000ff77);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width;
               break;
             case BUILD_OBJECT:
               //prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0077), true);
               prepare_object(view_loc, coll, a.object_built, a.object_built->get_initial_personal_space_shape(), true);
               break;
             default: break;
+          }
+          if (target_marker_scale != 0) {
+            draw_target_marker(view_loc, coll, a.fine_target_location, c, target_marker_scale);
+          }
+          if (overlaid_wireframe_width != 0) {
+            if (tile_location const* locp = a.which_affected.get_tile_location()) {
+              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(locp->coords()), overlaid_wireframe_width, c);
+            }
+            else {
+              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), c, true);
+            }
           }
         }
       }
