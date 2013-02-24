@@ -1263,15 +1263,15 @@ void view_on_the_world::prepare_gl_data(
               push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0xff000077));
               break;
             case THROW_RUBBLE:
-              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xdd770077));
-              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0xdd770077));
+              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xdd660077));
+              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0xdd660077));
               break;
             case COLLECT_METAL: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x00ff0077));
               push_wireframe(view_loc, coll, fine_bounding_box_of_tile(a.which_affected.get_tile_location()->coords()), tile_width / 10, color(0x00ff0077));
               break;
             case DECONSTRUCT_OBJECT:
-              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xffff0077));
-              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), color(0xffff0077), true);
+              draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077));
+              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), color(0xff000077), true);
               break;
             case SHOOT_LASERS:
               draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077), (((obj_shape.bounds().min() + obj_shape.bounds().max()) / 2) - a.fine_target_location).magnitude_within_32_bits() / 200);
