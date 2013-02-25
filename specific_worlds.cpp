@@ -913,7 +913,7 @@ SCENARIO_FUNCTION_NAMED("stepped_pools") {
     });
 }
 
-SCENARIO_FUNCTION_NAMED("default") {
+SCENARIO_FUNCTION_NAMED("empty_box") {
     return worldgen_from_tilespec([](coords l) {
       return
         (!in_old_box(l)) ? AIR :

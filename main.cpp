@@ -442,7 +442,7 @@ int main(int argc, char *argv[])
 #endif
     if(!vm.count("scenario")) {
       LOG << "You didn't give an argument saying which scenario to use! Using default value...\n";
-      config.scenario = "default";
+      config.scenario = "playground";
     }
 
     if(vm.count("avoid-qt")) {
