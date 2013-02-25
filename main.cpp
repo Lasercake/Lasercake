@@ -399,6 +399,7 @@ int main(int argc, char *argv[])
       ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
       ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
       ("avoid-qt,Q", "debug: don't call Qt at all (implies --no-gui and --no-threads; attempts to be even more deterministic than normal)")
+      ("max-framerate", po::value<int64_t>(&config.max_frames_per_seconds)->default_value(60), "Limit frame-rate")
       ("no-frame-timing", bool_switch_off(&config.show_frame_timing), "don't log timing info each frame")
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
@@ -946,7 +947,7 @@ void LasercakeController::invoke_simulation_step_() {
   const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
   const microseconds_t monotonic_microseconds_for_frame =
     end_frame_monotonic_microseconds - monotonic_microseconds_at_beginning_of_frame_for_framerate_limiter_;
-  const microseconds_t frame_duration_at_60fps = 1000000 / 60;
+  const microseconds_t frame_duration_at_60fps = 1000000 / config_.max_frames_per_seconds;
   const microseconds_t estimated_extra_delay_after_sleep = 0;//frame_duration_at_60fps / 6;
   const microseconds_t want_to_sleep =
     frame_duration_at_60fps - monotonic_microseconds_for_frame - estimated_extra_delay_after_sleep;
