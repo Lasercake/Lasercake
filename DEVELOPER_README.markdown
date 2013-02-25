@@ -82,3 +82,10 @@ Alternatively, you can run the profile-generating Lasercake with --no-threads.)
 
 TODO: look into CPack
 
+### process ###
+
+1: Git tag a release candidate.
+2: Build binaries; upload them; get them tested on several platforms.
+3: If there are any problems, repeat starting at step 1
+4: Otherwise git tag and rebuild with the non -rc version number, upload that,
+   update the website, etc.
