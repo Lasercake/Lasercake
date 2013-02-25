@@ -460,13 +460,16 @@ void robot::perform_click_action(world& w, object_identifier my_id, click_action
       assert(locp);
       
           // hack way to speed the tile?
-          get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_velocity>(
-            facing_ *
-
-              // the actual value: the rest of this line is conversions
-              tile_width * 6 / seconds
-
-            / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
+          vector3<velocity1d> push_dir = facing_ / seconds;
+          push_dir.z = 0;
+          push_dir = push_dir * (tile_width * 3 / seconds) / push_dir.magnitude_within_32_bits();
+          if ((((push_dir.x > 0) ? locp->get_neighbor<xplus>(CONTENTS_ONLY) : locp->get_neighbor<xminus>(CONTENTS_ONLY)).stuff_at().contents() != AIR) &&
+            (((push_dir.y > 0) ? locp->get_neighbor<yplus>(CONTENTS_ONLY) : locp->get_neighbor<yminus>(CONTENTS_ONLY)).stuff_at().contents() != AIR)) {
+            push_dir = push_dir * 2 / 3;
+            push_dir.z += (tile_width * 2 / seconds);
+          }
+          get_state(w.tile_physics()).active_fluids[*locp].velocity += vector3<sub_tile_velocity>(
+            push_dir * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
     } break;
 
     case COLLECT_METAL: {
