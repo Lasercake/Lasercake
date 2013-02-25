@@ -180,7 +180,7 @@ private:
 
 class conveyor_belt : public tile_aligned_object, public autonomous_object {
 public:
-  conveyor_belt(vector3<tile_coordinate> location):initial_location_(location),direction_(xplus){}
+  conveyor_belt(vector3<tile_coordinate> location, cardinal_direction dir = xplus):initial_location_(location),direction_(dir){}
   virtual shape get_initial_personal_space_shape()const override;
   virtual shape get_initial_detail_shape()const override;
 
