@@ -18,6 +18,16 @@ option (BUILD_SELF_TESTS "Build Lasercake's self-testing code component (recomme
 include (FindPkgConfig)
 set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_SOURCE_DIR}/cmake")
 
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("thread_local void* tls; int main(){return(tls==0);}" HAS_THREAD_LOCAL)
+check_cxx_source_compiles("__thread void* tls; int main(){return(tls==0);}" HAS___THREAD)
+if(HAS___THREAD AND NOT HAS_THREAD_LOCAL)
+	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -Dthread_local=__thread)
+endif()
+if(NOT HAS___THREAD AND NOT HAS_THREAD_LOCAL)
+	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DNO_COMPILER_SUPPORTED_TLS=1)
+endif()
+
 if (USE_BOOST_CXX11_LIBS)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DUSE_BOOST_CXX11_LIBS=1)
 endif()

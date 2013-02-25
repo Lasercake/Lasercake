@@ -189,35 +189,7 @@ static const size_t bit_exponent_below_which_its_worth_tracking_bits_individuall
 // array of array_of_bitset_lists_len sizes, from 2**bit_to_min_size_exponent bits up.
 typedef zeroable_bitset_list* zeroable_bitset_array;
 
-extern thread_local zeroable_bitset_array array_of_bitset_lists;
-
-inline
-void delete_array_of_bitset_lists() { delete[] array_of_bitset_lists; }
-
-inline
-zeroable_bitset_array get_this_thread_array_of_bitset_lists() {
-  if(array_of_bitset_lists == nullptr) {
-    array_of_bitset_lists = new zeroable_bitset_list[array_of_bitset_lists_len];
-    #if 0
-    // No Boost.Thread for now; fewer deps.
-    // Currently, the borrowed_bitset won't leak memory in Lasercake
-    // because we only create a small, finite number of threads.
-    // We'll use some better solution if that changes (TODO).
-      try {
-        // (note, if we use forcible thread cancelation, this won't run)
-        // Also, donating them to another thread might be more useful
-        // than deleting them.
-        boost::this_thread::at_thread_exit(delete_array_of_bitset_lists);
-      }
-      catch(...) {
-        delete array_of_bitset_lists;
-        array_of_bitset_lists = nullptr;
-        throw;
-      }
-    #endif
-  }
-  return array_of_bitset_lists;
-};
+zeroable_bitset_array get_this_thread_array_of_bitset_lists();
 
 inline size_t which_bitset_index_is_size(bit_index_type num_bits) {
   if(num_bits == 0) return 0;

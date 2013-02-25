@@ -113,10 +113,10 @@
     #define override
   #endif
 
-  #if defined(__GNUC__)
+  /*#if defined(__GNUC__)
     // current compilers (e.g. GCC 4.7, Clang 3.1) don't seem to support the 'thread_local' C++11 name
     #define thread_local __thread
-  #endif
+  #endif*/
 
   // Don't use LASERCAKE_IT_SEEMS_TO_BE_WINDOWS outside this fake feature
   // detection section if you can help it! Ask about specific features
