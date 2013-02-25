@@ -436,13 +436,16 @@ public:
   iterator() : c_() {}
   explicit iterator(bbox_collision_detector const& detector,
                     GetCost const& getcost = GetCost(),
-                    CostOrdering const& costordering = CostOrdering()) : c_(new contents_(detector, getcost, costordering)) {}
+                    CostOrdering const& costordering = CostOrdering())
+    : c_(new contents_(detector, getcost, costordering)) {}
   template<typename T>
   explicit iterator(bbox_collision_detector const& detector,
                     T const& initial,
                     GetCost const& getcost = GetCost(),
                     CostOrdering const& costordering = CostOrdering())
-    : c_(new contents_(detector, getcost, costordering)) { push(initial); }
+    : c_(new contents_(detector, getcost, costordering)) {
+    push(initial);
+  }
 
   template<typename T>
   void push(T const& v) { c_->add_child(v); advance_to_a_returnable_(); }
