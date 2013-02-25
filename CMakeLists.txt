@@ -22,11 +22,11 @@ include(CheckCXXSourceCompiles)
 
 
 check_cxx_source_compiles("#include<utility>\nint main(){return 0;}" COMPILER_SUPPORTS_CXX)
-set(CMAKE_REQUIRED_FLAGS -std=c++11)
+set(CMAKE_REQUIRED_FLAGS -std=c++0x)
 # constexpr is a not perfect but pretty good proxy for supporting our code...
 # if this doesn't compile, our code definitely won't.
 check_cxx_source_compiles("constexpr int i = 3; int main(){int arr[i]={};return arr[1];}" COMPILER_SUPPORTS_CXX11)
-check_cxx_source_compiles("#include<array>\n#include<atomic>\nint main(){std::array<std::atomic<int>, 1> arr = {{}}; return arr[0].load();}" COMPILER_SUPPORTS_CXX11_STDLIB)
+check_cxx_source_compiles("#include<array>\n#include<atomic>\nint main(){std::array<int,1> arr = {{}};std::atomic<int> atom(0); return atom.load();}" COMPILER_SUPPORTS_CXX11_STDLIB)
 check_cxx_source_compiles("thread_local void* tls; int main(){return(tls==0);}" HAS_THREAD_LOCAL)
 check_cxx_source_compiles("__thread void* tls; int main(){return(tls==0);}" HAS___THREAD)
 set(CMAKE_REQUIRED_FLAGS )
