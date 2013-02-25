@@ -34,7 +34,6 @@ typedef int object_id;
 typedef lint32_t time_int_type;
 typedef non_normalized_rational<time_int_type> time_type;
 //typedef faux_optional<time_type> optional_time;
-typedef boost::random::uniform_int_distribution<int64_t> uniform_random;
 
 template <int NumDimensions>
 struct bbox {
