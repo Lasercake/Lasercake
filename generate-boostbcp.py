@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 print("""
-Usage: ./generate-boostbcp /path/to/boost/1.50.0/
+Usage: ./generate-boostbcp /path/to/boost/1.53.0/
     [ in top-level Lasercake source dir ]
 """)
 
@@ -9,7 +9,7 @@ import os, sys, glob, subprocess, shutil
 if len(sys.argv) != 2: sys.exit(1)
 
 sources = []
-for source_dir in ['.', 'tests', 'data_structures']:
+for source_dir in ['.', 'tests', 'data_structures', 'cxx11']:
 	sources += glob.glob(source_dir+'/*.[ch]pp')
 
 boost_dir = sys.argv[1]
