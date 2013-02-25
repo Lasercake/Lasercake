@@ -97,7 +97,16 @@ namespace std {
 
 namespace /*anonymous*/ {
 
-template<typename Functor, typename Signature>
+
+template<typename MemberFn>
+struct de_member_fn_ize;
+template<typename Ret, typename Class, typename... Args>
+struct de_member_fn_ize<Ret (Class::*)(Args...)> { typedef Ret (type)(Args...); };
+template<typename Ret, typename Class, typename... Args>
+struct de_member_fn_ize<Ret (Class::*)(Args...) const> { typedef Ret (type)(Args...); };
+
+template<typename Functor, typename Signature =
+    typename de_member_fn_ize<decltype(&Functor::operator())>::type>
 struct memoized;
 template<typename Functor, typename Result, typename...Arguments>
 struct memoized<Functor, Result(Arguments...)> {
@@ -614,7 +623,7 @@ static constexpr coord all_sky_above = wcc+max_spike_height+1;
 static constexpr coord all_ground_below = wcc-1;
 class spiky : public worldgen_type {
 public:
-  virtual worldgen_summary_of_area examine_region(tile_bounding_box region) {
+  virtual worldgen_summary_of_area examine_region(tile_bounding_box region) override {
     worldgen_summary_of_area result;
     if(region.max(Z) >= all_sky_above) {
       result.everything_here_is = AIR;
@@ -634,6 +643,7 @@ public:
     });
   }
 
+private:
   struct get_height {
     coord operator()(coord x, coord y)const {
       // TODO include a constant-for-this-instance-of-the-world random-seed too.
@@ -648,8 +658,7 @@ public:
       return height;
     }
   };
-private:
-  memoized<get_height, coord (coord, coord)> height_memo_;
+  memoized<get_height> height_memo_;
 };
 }
 using spiky_::spiky;
