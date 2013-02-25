@@ -625,10 +625,10 @@ class spiky : public worldgen_type {
 public:
   virtual worldgen_summary_of_area examine_region(tile_bounding_box region) override {
     worldgen_summary_of_area result;
-    if(region.max(Z) >= all_sky_above) {
+    if(region.min(Z) >= all_sky_above) {
       result.everything_here_is = AIR;
     }
-    if(region.min(Z) <= all_ground_below) {
+    if(region.max(Z) <= all_ground_below) {
       result.everything_here_is = ROCK;
     }
     result.all_objects_whose_centres_are_here = worldgen_summary_of_area::no_objects();
