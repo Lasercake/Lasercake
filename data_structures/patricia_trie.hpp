@@ -469,6 +469,9 @@ public:
   }
 
 
+  // does not recursively erase:
+  void erase_sub_nodes();
+  // does recursively erase:
   // erase returns true iff something was erased.
   // TODO: a nearby node location might be friendly to return
   bool erase(loc_type leaf_loc);
