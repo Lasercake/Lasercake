@@ -1,5 +1,14 @@
 #!/bin/sh
+#usage: ./gdb-lasercake [lasercake arguments...]
+#or: ./gdb-lasercake path/to/lasercake/binary [lasercake arguments...]
+#
+#The latter is detected by whether the first argument
+#exists as an executable file.
 set -eu
+lasercake=./lasercake
+if [ $# -gt 0 ] && [ -f "$1" -a -x "$1" ]
+then lasercake="$1"; shift
+fi
 printf 'set args %s\nrun\n' "$*" > build/gdbarg
 GDB="$(command -v ggdb || command -v gdb)"
-"$GDB" ./lasercake -x build/gdbarg
+"$GDB" "$lasercake" -x build/gdbarg
