@@ -147,8 +147,8 @@ object_identifier init_test_world_and_return_our_robot(
                            10LL*tile_width + 2*fine_distance_units,
                            10LL*tile_width + 2*fine_distance_units);
   const shared_ptr<robot> baz (new robot(
-    laser_loc - vector3<distance>(0, 0, tile_width*2),
-    vector3<distance>((5<<9)*fine_distance_units, (3<<9)*fine_distance_units, 0 /*TODO UNITS make class vector3_direction*/)));
+    (scenario == "playground") ? (world_center_fine_coords + vector3<distance>(4*tile_width, 8*tile_width, 6*tile_width)) : (laser_loc - vector3<distance>(0, 0, tile_width*2)),
+    (scenario == "playground") ? vector3<distance>(-4*tile_width, -8*tile_width, -2*tile_width) : vector3<distance>((5<<9)*fine_distance_units, (3<<9)*fine_distance_units, 0 /*TODO UNITS make class vector3_direction*/)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
   //const shared_ptr<autorobot> aur (new autorobot(
   //  get_min_containing_tile_coordinates(laser_loc - vector3<distance>(tile_width*4,tile_width*4,tile_width*2)),
