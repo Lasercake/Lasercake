@@ -8,7 +8,7 @@ set (OPTIONS_DEFINES )
 option (USE_BUNDLED_BOOST "On: Use Boost from ./bundled_libs/; off: use system Boost." ON)
 option (USE_BUNDLED_GLM "On: Use glm from ./bundled_libs/; off: use system glm." ON)
 option (USE_BUNDLED_GLEW "On: Use GLEW from ./bundled_libs/; off: use system GLEW." ON)
-option (USE_BOOST_CXX11_LIBS "On: Use Boost's implementation of C++11 standard library features; off: use the standard library." OFF)
+option (USE_BOOST_CXX11_LIBS "On: Use Boost's implementation of C++11 standard library features; off: use the standard library or autodetect that using Boost's is necessary." OFF)
 option (GLIB "Use GLib slices for some memory allocation (requires glib)." OFF)
 option (USE_BOUNDS_CHECKED_INTS "Check for overflow of most int computations at runtime (slow)." OFF)
 option (PARANOID "Turn on various code paranoia checks (slow)." OFF)
@@ -19,8 +19,27 @@ include (FindPkgConfig)
 set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_SOURCE_DIR}/cmake")
 
 include(CheckCXXSourceCompiles)
+
+
+check_cxx_source_compiles("#include<utility>\nint main(){return 0;}" COMPILER_SUPPORTS_CXX)
+set(CMAKE_REQUIRED_FLAGS -std=c++11)
+# constexpr is a not perfect but pretty good proxy for supporting our code...
+# if this doesn't compile, our code definitely won't.
+check_cxx_source_compiles("constexpr int i = 3; int main(){int arr[i]={};return arr[1];}" COMPILER_SUPPORTS_CXX11)
+check_cxx_source_compiles("#include<array>\n#include<atomic>\nint main(){std::array<std::atomic<int>, 1> arr = {{}}; return arr[0].load();}" COMPILER_SUPPORTS_CXX11_STDLIB)
 check_cxx_source_compiles("thread_local void* tls; int main(){return(tls==0);}" HAS_THREAD_LOCAL)
 check_cxx_source_compiles("__thread void* tls; int main(){return(tls==0);}" HAS___THREAD)
+set(CMAKE_REQUIRED_FLAGS )
+
+# check COMPILER_SUPPORTS_CXX just so that we don't give the C++11 error message
+# if they actually just have a completely broken C++ compiler.
+if(NOT COMPILER_SUPPORTS_CXX)
+	message(FATAL_ERROR "Your C++ compiler is broken.")
+endif()
+if(NOT COMPILER_SUPPORTS_CXX11)
+	message(FATAL_ERROR "Your compiler doesn't support the C++11 features Lasercake requires.\n(Or it was released since we wrote this message in Feb 2013 and has a way to enable C++11 features that we haven't implemented yet; if so, tell us)")
+endif()
+
 if(HAS___THREAD AND NOT HAS_THREAD_LOCAL)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -Dthread_local=__thread)
 endif()
@@ -28,8 +47,10 @@ if(NOT HAS___THREAD AND NOT HAS_THREAD_LOCAL)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DNO_COMPILER_SUPPORTED_TLS=1)
 endif()
 
-if (USE_BOOST_CXX11_LIBS)
-	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DUSE_BOOST_CXX11_LIBS=1)
+if (USE_BOOST_CXX11_LIBS OR NOT COMPILER_SUPPORTS_CXX11_STDLIB)
+	# We undef __GXX_EXPERIMENTAL_CXX0X__ so as to more effectively
+	# test USE_BOOST_CXX11_LIBS on our dev machines.
+	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DUSE_BOOST_CXX11_LIBS=1 -U__GXX_EXPERIMENTAL_CXX0X__)
 endif()
 set(CXX11_LIB_WRAPPERS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/bundled_libs/cxx11/")
 
