@@ -27,33 +27,18 @@
 
 namespace /* anonymous */ {
 
+const distance default_laser_length = 100*tile_width;
+
 namespace laserbeam {
-  static const uint64_t too_large = (1ULL << 32) - 1; // HACK
-  static const tile_coordinate too_many_tiles_wide(too_large / get_primitive_int(get(tile_width, fine_distance_units)));
-  static const tile_coordinate too_many_tiles_high(too_large / get_primitive_int(get(tile_height, fine_distance_units)));
-  inline bool bbox_is_too_large(world_collision_detector::bounding_box const& bbox) {
-    return (bbox.size_minus_one(X) >= too_large
-         || bbox.size_minus_one(Y) >= too_large
-         || bbox.size_minus_one(Z) >= too_large);
-  }
-  inline bool bbox_is_too_large(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
-    return (bbox.size_minus_one(X) >= too_many_tiles_wide
-         || bbox.size_minus_one(Y) >= too_many_tiles_wide
-         || bbox.size_minus_one(Z) >= too_many_tiles_high);
-  }
   struct beam_first_contact_finder {
     beam_first_contact_finder(world const& w, geom::line_segment beam, object_or_tile_identifier ignore)
       : w_(w), beam_(beam) {ignores_.insert(ignore);}
     typedef geom::dimensionless_rational cost_type;
     typedef geom::optional_dimensionless_rational result_type;
     result_type min_cost(world_collision_detector::bounding_box const& bbox) const {
-      // hack - avoid overflow - don't try to filter out too-large regions
-      if(bbox_is_too_large(bbox)) return cost_type(0);
       return get_first_intersection(beam_, bbox);
     }
-    result_type cost(object_identifier id, world_collision_detector::bounding_box const& bbox) const {
-      // hack - avoid overflow - effect: incredibly large objects can't be hit by lasers
-      if(bbox_is_too_large(bbox)) return result_type();
+    result_type cost(object_identifier id, world_collision_detector::bounding_box const&) const {
       if(ignores_.find(id) != ignores_.end()) return result_type();
       return get_first_intersection(beam_, w_.get_detail_shape_of_object_or_tile(id));
     }
@@ -68,8 +53,9 @@ namespace laserbeam {
       : octant_(octant), beam_(beam), latest_distance_(0), found_tile_() {}
 
     tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
-      // hack - avoid overflow - don't try to filter out too-large regions
-      if(bbox_is_too_large(bbox)) {
+      // You can't convert the world-bbox to tile coords (and also it will never rule out the laser)
+      // TODO: Is there a better way to specify this than using std::numeric_limits?
+      if((1LL << bbox.size_exponent_in_each_dimension()) > std::numeric_limits<tile_coordinate>::max()) {
         return indeterminate;
       }
       const tile_bounding_box tile_bbox = cube_bbox_to_tile_bounding_box(bbox);
@@ -141,7 +127,7 @@ object_or_tile_identifier laser_find(
 }
 
 void fire_standard_laser(world& w, object_identifier my_id, vector3<distance> location, vector3<distance> facing) {
-  const vector3<distance> beam_vector = facing * tile_width * 2 / facing.magnitude_within_32_bits() * 50;
+  const vector3<distance> beam_vector = facing * default_laser_length / facing.magnitude_within_32_bits();
   const object_or_tile_identifier hit_thing = laser_find(w, my_id, location, beam_vector, true);
   if(tile_location const* locp = hit_thing.get_tile_location()) {
     if (locp->stuff_at().contents() == ROCK) {
@@ -218,7 +204,7 @@ shape robot::get_initial_personal_space_shape()const {
   return shape(geom::convex_polyhedron(verts));*/
 }
 
-physical_quantity<lint64_t, units<dim::meter<3>>> robot::storage_volume()const {
+cubic_meters robot::storage_volume()const {
   return tile_width * tile_width * tile_width * 15 * 15 * 15 / (20LL*20*20 * identity(fine_distance_units*fine_distance_units*fine_distance_units / meters/meters/meters));
 }
 
@@ -226,26 +212,41 @@ shape robot::get_initial_detail_shape()const {
   return get_initial_personal_space_shape();
 }
 
-auto conveyor_cost = 10*meters*meters*meters;
-auto refinery_cost = 50*meters*meters*meters;
-auto autorobot_cost = 100*meters*meters*meters;
+cubic_meters conveyor_cost = 10*meters*meters*meters;
+cubic_meters refinery_cost = 50*meters*meters*meters;
+cubic_meters autorobot_cost = 100*meters*meters*meters;
 
-std::string draw_m3(physical_quantity<lint64_t, units<dim::meter<3>>> m3) {
+// TODO remove duplicate stuff
+cubic_meters object_cost(shared_ptr<object> objp) {
+  if(dynamic_pointer_cast<conveyor_belt>(objp)) {
+    return conveyor_cost;
+  }
+  else if(dynamic_pointer_cast<refinery>(objp)) {
+    return refinery_cost;
+  }
+  else if(dynamic_pointer_cast<autorobot>(objp)) {
+    return autorobot_cost;
+  }
+  return 0;
+}
+
+
+std::string draw_m3(cubic_meters m3) {
   return std::to_string(get_primitive_int(m3 / meters / meters / meters))/* + " m^3"*/; // omitting "m^3" at least until we can get a proper superscript (TODO?)
 }
 
 std::string robot::player_instructions()const {
   const std::string instructions = (
-      (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, collect pure metal, or deconstruct objects (not yet implemented)." :
+      (mode_ == "digging") ? "Digging mode: click to turn rock to rubble, throw rubble, collect pure metal, or deconstruct objects." :
       (mode_ == "laser")   ? "Laser mode: Hold mouse button to fire dual lasers." :
-      (mode_ == "rockets") ? "Rockets mode: Hold mouse to fire many silly rockets for testing. (This usually slows down the simulation.)" :
+      (mode_ == "rockets") ? "Rockets mode: Hold mouse to create many silly fast-moving objects for testing. (This usually slows down the simulation.)" :
       (mode_ == "building_conveyor") ? "Conveyor mode: Click to build a conveyor belt (costs "+draw_m3(conveyor_cost)+") or click a conveyor to rotate it. Conveyors move rubble only." :
       (mode_ == "building_refinery") ? "Refinery mode: Click to build a refinery (costs "+draw_m3(refinery_cost)+"). Once built, refineries take rubble at the in-arrow and convert it to pure metal and waste rock." :
       (mode_ == "building_autorobot") ? "Autorobot mode: Click to build a digging robot (costs "+draw_m3(autorobot_cost)+").\nIt will dig up/down/straight depending on the up/down angle you're facing when you build it, move in the cardinal direction closest to the left/right angle you're facing, and dump its rubble at the x/y position where it was created." :
       "Unknown mode, this is an error!"
     ) + "\n\n"
     "Metal carried: " + draw_m3(metal_carried_) + "/" + draw_m3(storage_volume()) + "\n\n"
-    "WASD: move  |  arrows/mouse: rotate view  |  space: jump  |  CLRBOM: switch mode"
+    "WASD: move  |  arrows/mouse: rotate view  |  space: jump  |  ZXCVBR: switch mode"
     "\n"
     ;
   return instructions;
@@ -324,12 +325,12 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     perform_click_action(w, my_id, get_current_click_action(w, my_id));
   }
   
-  if (input_news.num_times_pressed("c")) mode_ = "digging";
-  if (input_news.num_times_pressed("l")) mode_ = "laser";
+  if (input_news.num_times_pressed("z")) mode_ = "digging";
+  if (input_news.num_times_pressed("x")) mode_ = "laser";
   if (input_news.num_times_pressed("r")) mode_ = "rockets";
-  if (input_news.num_times_pressed("o")) mode_ = "building_refinery";
-  if (input_news.num_times_pressed("m")) mode_ = "building_autorobot";
-  if (input_news.num_times_pressed("b")) mode_ = "building_conveyor";
+  if (input_news.num_times_pressed("v")) mode_ = "building_refinery";
+  if (input_news.num_times_pressed("b")) mode_ = "building_autorobot";
+  if (input_news.num_times_pressed("c")) mode_ = "building_conveyor";
 }
 
 click_action robot::get_current_click_action(world& w, object_identifier my_id)const { // TODO: This use of world& should be able to be world const&
@@ -341,7 +342,7 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
   
   vector3<distance> action_laser_delta = facing_ * 2;
   if (mode_ == "laser") {
-    action_laser_delta = facing_ * 50;
+    action_laser_delta = facing_ * default_laser_length / facing_.magnitude_within_32_bits();
     result.type = SHOOT_LASERS;
   }
   if (mode_ == "building_refinery") action_laser_delta = facing_ * 3;
@@ -380,7 +381,10 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
       // if the loop finishes with no result, leave it at the first guess
     }
 
-    if (mode_ == "building_refinery" && metal_carried_ >= refinery_cost) {
+    tile_contents foundation = result.which_affected.get_tile_location()->get_neighbor<zminus>(FULL_REALIZATION).stuff_at().contents();
+    bool can_build_building = ((foundation != AIR) && !is_water(foundation));
+
+    if (mode_ == "building_refinery" && can_build_building && metal_carried_ >= refinery_cost) {
       result.type = BUILD_OBJECT;
       assert(result.which_affected.get_tile_location());
       result.object_built = shared_ptr<object>(new refinery(result.which_affected.get_tile_location()->coords()));
@@ -395,7 +399,7 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
           }
         }
       }
-      if (result.type != ROTATE_CONVEYOR && metal_carried_ >= conveyor_cost) {
+      if (result.type != ROTATE_CONVEYOR && can_build_building && metal_carried_ >= conveyor_cost) {
         result.type = BUILD_OBJECT;
         assert(result.which_affected.get_tile_location());
         result.object_built = shared_ptr<object>(new conveyor_belt(result.which_affected.get_tile_location()->coords()));
@@ -428,9 +432,11 @@ click_action robot::get_current_click_action(world& w, object_identifier my_id)c
       }
     }
     if (object_identifier const* oidp = thing_hit.get_object_identifier()) {
-      if (w.get_object(*oidp)) {
-        result.type = DECONSTRUCT_OBJECT;
-        result.which_affected = *oidp;
+      if (shared_ptr<object>* objpp = w.get_object(*oidp)) {
+        if (metal_carried_ + object_cost(*objpp) <= storage_volume()) {
+          result.type = DECONSTRUCT_OBJECT;
+          result.which_affected = *oidp;
+        }
       }
     }
   }
@@ -482,7 +488,10 @@ void robot::perform_click_action(world& w, object_identifier my_id, click_action
     case DECONSTRUCT_OBJECT: {
       object_identifier const* oidp = a.which_affected.get_object_identifier();
       assert(oidp);
-      // TODO actually do something here.
+      if (shared_ptr<object>* objpp = w.get_object(*oidp)) {
+        w.delete_object_soon(*oidp);
+        metal_carried_ += object_cost(*objpp);
+      }
     } break;
 
     case FIRE_ROCKETS: {
@@ -498,9 +507,9 @@ void robot::perform_click_action(world& w, object_identifier my_id, click_action
 
     case SHOOT_LASERS: {
       const vector3<distance> offset(-facing_.y / 4, facing_.x / 4, 0);
-      const vector3<distance> beam_vector = facing_ * tile_width * 2 / facing_.magnitude_within_32_bits() * 50;
+      const vector3<distance> beam_vector = facing_ * default_laser_length / facing_.magnitude_within_32_bits();
 
-      const uniform_int_distribution<distance> random_delta(-tile_width*10, tile_width*10);
+      const uniform_int_distribution<distance> random_delta(-(default_laser_length / 10), (default_laser_length / 10));
       for (int i = 0; i < 20; ++i)
       {
         const object_or_tile_identifier hit_thing = laser_find(

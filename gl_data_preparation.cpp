@@ -46,6 +46,11 @@ std::ostream& operator<<(std::ostream& os, glm::vec4 v) {
   return os << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
 }
 
+struct view_sphere {
+  distance radius;
+  vector3<distance> center;
+};
+
 // These view-frustum-checking functions are tricky.
 //
 // 'float' has only 24 bits of significand, so, when preparing to
@@ -100,6 +105,80 @@ inline bool subsumes(frustum const& f, Bbox const& bbox) {
   //LOG << "frustsubsumes!!\n";
   return true;
 }
+
+
+
+template<typename Bbox>
+inline bool overlaps(view_sphere s, Bbox const& bbox) {
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq = 0;
+  for (which_dimension_type dim = 0; dim < 3; ++dim) {
+    const distance d1 = lower_bound_in_fine_distance_units(bbox.min(dim), dim) - s.center(dim);
+    if (d1 > 0) {
+      if (d1 > s.radius) return false;
+      distsq += d1*d1;
+    }
+    else {
+      const distance d2 = s.center(dim) - upper_bound_in_fine_distance_units(bbox.max(dim), dim);
+      if (d2 > 0) {
+        if (d2 > s.radius) return false;
+        distsq += d2*d2;
+      }
+    }
+  }
+  return (distsq <= (s.radius * s.radius));
+}
+
+// TODO: find a way to remove the duplicate code that results from
+// this template specialization (and the one for subsumes below)
+template<>
+inline bool overlaps<bounding_box>(view_sphere s, bounding_box const& bbox) {
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq = 0;
+  for (which_dimension_type dim = 0; dim < 3; ++dim) {
+    const distance d1 = bbox.min(dim) - s.center(dim);
+    if (d1 > 0) {
+      if (d1 > s.radius) return false;
+      distsq += d1*d1;
+    }
+    else {
+      const distance d2 = s.center(dim) - bbox.max(dim);
+      if (d2 > 0) {
+        if (d2 > s.radius) return false;
+        distsq += d2*d2;
+      }
+    }
+  }
+  return (distsq <= (s.radius * s.radius));
+}
+
+template<typename Bbox>
+inline bool subsumes(view_sphere s, Bbox const& bbox) {
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq = 0;
+  for (which_dimension_type dim = 0; dim < 3; ++dim) {
+    const distance d1 = abs(lower_bound_in_fine_distance_units(bbox.min(dim), dim) - s.center(dim));
+    const distance d2 = abs(s.center(dim) - upper_bound_in_fine_distance_units(bbox.max(dim), dim));
+    const distance d = std::max(d1, d2);
+    if (d > s.radius) return false;
+    distsq += d*d;
+  }
+  return (distsq <= (s.radius * s.radius));
+}
+
+// TODO: find a way to remove the duplicate code that results from
+// this template specialization (and the one for overlaps above)
+template<>
+inline bool subsumes<bounding_box>(view_sphere s, bounding_box const& bbox) {
+  physical_quantity<lint64_t, units_pow<fine_distance_units_t, 2>::type> distsq = 0;
+  for (which_dimension_type dim = 0; dim < 3; ++dim) {
+    const distance d1 = abs(bbox.min(dim) - s.center(dim));
+    const distance d2 = abs(s.center(dim) - bbox.max(dim));
+    const distance d = std::max(d1, d2);
+    if (d > s.radius) return false;
+    distsq += d*d;
+  }
+  return (distsq <= (s.radius * s.radius));
+}
+
+
 
 // there's not really any need for it to be normalized, though we easily could
 // half_space = glm::normalize(half_space)
@@ -646,12 +725,12 @@ struct bbox_tile_prep_visitor {
   tribool look_here(power_of_two_bounding_cube<3, tile_coordinate> const& bbox) {
     const num_bits_type exp = bbox.size_exponent_in_each_dimension();
     if(exp < tile_exponent_below_which_we_dont_filter) return true;
-    if(!overlaps(bounds_, bbox)) return false;
+    if(!overlaps(view_shape_, bbox)) return false;
     power_of_two_bounding_cube<3, tile_coordinate_signed_type> mostly_centred_bbox(
       vector3<tile_coordinate>(bbox.min()) - view_tile_loc_rounded_down, exp);
     if((exp >= tile_exponent_below_which_we_dont_filter_frustums)
         && !overlaps(tile_view_frustum_, mostly_centred_bbox)) return false;
-    if(subsumes(bounds_, bbox) &&
+    if(subsumes(view_shape_, bbox) &&
       ((exp < tile_exponent_below_which_we_dont_filter_frustums)
         || subsumes(tile_view_frustum_, mostly_centred_bbox))
     ) {
@@ -705,13 +784,13 @@ struct bbox_tile_prep_visitor {
   gl_collectionplex& gl_collections_by_distance;
   vector3<double> view_loc_double;
   vector3<tile_coordinate> view_tile_loc_rounded_down;
-  tile_bounding_box bounds_;
+  view_sphere view_shape_;
   frustum tile_view_frustum_;
   view_on_the_world& view;
   world& w;
 };
 
-void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3<distance> marker_loc, color marker_color) {
+void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3<distance> marker_loc, color marker_color, distance scale) {
   for (int xoffs = -1; xoffs <= 1; xoffs += 2) {
   for (int yoffs = -1; yoffs <= 1; yoffs += 2) {
   for (int zoffs = -1; zoffs <= 1; zoffs += 2) {
@@ -719,49 +798,56 @@ void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3
     poly.push_back(marker_loc);
     // TODO express these in a better unit
     poly.push_back(marker_loc + vector3<distance>(
-      xoffs*140*fine_distance_units,
-      yoffs*140*fine_distance_units,
-      zoffs*400*fine_distance_units));
+      xoffs*7*scale,
+      yoffs*7*scale,
+      zoffs*20*scale));
     poly.push_back(marker_loc + vector3<distance>(
-      xoffs*280*fine_distance_units,
-      yoffs*280*fine_distance_units,
-      zoffs*200*fine_distance_units));
+      xoffs*14*scale,
+      yoffs*14*scale,
+      zoffs*10*scale));
     push_convex_polygon(view_loc, coll, poly, marker_color);
   }}}
 }
 
-void draw_arrow(vector3<distance> view_loc, gl_collection& coll, vector3<distance> center, cardinal_direction dir, color c) {
+void draw_arrow(vector3<distance> view_loc, gl_collection& coll, vector3<distance> center, cardinal_direction dir, color c, uint8_t dim1 = X, uint8_t dim2 = Y, uint8_t dim3 = Z) {
   vector3<distance> foo = vector3<lint64_t>(cardinal_direction_vectors[dir]) * tile_width / 3;
-  vector3<distance> bar(foo.y, foo.x, 0);
-  vector3<distance> up(0, 0, tile_height / 5);
-  push_quad(coll,
-            convert_coordinates_to_GL(view_loc, center - foo),
-            convert_coordinates_to_GL(view_loc, center - foo + up),
-            convert_coordinates_to_GL(view_loc, center + foo + up),
-            convert_coordinates_to_GL(view_loc, center + foo),
-            c);
-  push_quad(coll,
-            convert_coordinates_to_GL(view_loc, center + foo),
-            convert_coordinates_to_GL(view_loc, center + foo + up),
-            convert_coordinates_to_GL(view_loc, center + bar + up),
-            convert_coordinates_to_GL(view_loc, center + bar),
-            c);
-  push_quad(coll,
-            convert_coordinates_to_GL(view_loc, center + foo),
-            convert_coordinates_to_GL(view_loc, center + foo + up),
-            convert_coordinates_to_GL(view_loc, center - bar + up),
-            convert_coordinates_to_GL(view_loc, center - bar),
-            c);
+  vector3<distance> bar(0, 0, 0);
+  bar[dim1] = foo(dim2);
+  bar[dim2] = foo(dim1);
+  vector3<distance> up_a_little(0, 0, 0);
+  up_a_little[dim3] = tile_height / 5;
+  vector3<distance> bar_a_little = bar * 3 / 25;
+  for (int i = 0; i < 2; ++i) {
+    vector3<distance> little_adjustment = i ? up_a_little : bar_a_little;
+    push_quad(coll,
+              convert_coordinates_to_GL(view_loc, center - foo - little_adjustment),
+              convert_coordinates_to_GL(view_loc, center - foo + little_adjustment),
+              convert_coordinates_to_GL(view_loc, center + foo + little_adjustment),
+              convert_coordinates_to_GL(view_loc, center + foo - little_adjustment),
+              c);
+    push_quad(coll,
+              convert_coordinates_to_GL(view_loc, center + foo - little_adjustment),
+              convert_coordinates_to_GL(view_loc, center + foo + little_adjustment),
+              convert_coordinates_to_GL(view_loc, center + bar + little_adjustment),
+              convert_coordinates_to_GL(view_loc, center + bar - little_adjustment),
+              c);
+    push_quad(coll,
+              convert_coordinates_to_GL(view_loc, center + foo - little_adjustment),
+              convert_coordinates_to_GL(view_loc, center + foo + little_adjustment),
+              convert_coordinates_to_GL(view_loc, center - bar + little_adjustment),
+              convert_coordinates_to_GL(view_loc, center - bar - little_adjustment),
+              c);
+  }
 }
 
 void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
-                   shape const& object_shape, color shape_color, bool wireframe = false) {
+                   shape const& object_shape, color shape_color, distance wireframe_width = 0) {
   lasercake_vector<bounding_box>::type const& obj_bboxes = object_shape.get_boxes();
   for (bounding_box const& bbox : obj_bboxes) {
     const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, bbox.min());
     const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, bbox.max());
-    if (wireframe) push_wireframe(view_loc, coll, bbox, tile_width / 10, shape_color);
-    else           push_bbox     (coll, bmin, bmax, shape_color);
+    if (wireframe_width != 0) push_wireframe(view_loc, coll, bbox, wireframe_width, shape_color);
+    else                      push_bbox     (coll, bmin, bmax, shape_color);
   }
 
   lasercake_vector<geom::convex_polygon>::type const& obj_polygons = object_shape.get_polygons();
@@ -782,13 +868,13 @@ void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
   lasercake_vector<geom::convex_polyhedron>::type const& obj_polyhedra = object_shape.get_polyhedra();
   for (geom::convex_polyhedron const& ph : obj_polyhedra) {
     for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
-      if (wireframe) {
+      if (wireframe_width != 0) {
         std::vector<glm::vec3> poly;
         for (uint8_t j = 0; j < ph.face_info()[i]; ++j) {
           vector3<GLfloat> v = convert_coordinates_to_GL(view_loc, ph.vertices()[ph.face_info()[i + j + 1]]);
           poly.push_back(glm::vec3(v.x, v.y, v.z));
         }
-        push_wireframe_convex_polygon(coll, shape_color, convert_distance_to_GL(tile_width / 10), poly);
+        push_wireframe_convex_polygon(coll, shape_color, convert_distance_to_GL(wireframe_width), poly);
       }
       else {
         std::vector<geom::vect> poly;
@@ -798,6 +884,41 @@ void prepare_shape(vector3<distance> view_loc, gl_collection& coll,
         push_convex_polygon(view_loc, coll, poly, shape_color);
       }
     }
+  }
+}
+
+void prepare_object(vector3<distance> view_loc, gl_collection& coll, shared_ptr<object> objp, shape const& obj_shape, distance wireframe_width = 0) {
+  if(dynamic_pointer_cast<solar_panel>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0xffff00aa), wireframe_width);
+  }
+  else if(dynamic_pointer_cast<robot>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe_width);
+  }
+  else if(dynamic_pointer_cast<autorobot>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe_width);
+  }
+  else if(dynamic_pointer_cast<laser_emitter>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0xff7755aa), wireframe_width);
+  }
+  else if(shared_ptr<conveyor_belt> belt = dynamic_pointer_cast<conveyor_belt>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe_width);
+    draw_arrow(view_loc, coll, (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2 + vector3<distance>(0,0,tile_height*2/5), belt->direction(), color(0xff0000aa));
+  }
+  else if(shared_ptr<refinery> ref = dynamic_pointer_cast<refinery>(objp)) {
+    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe_width);
+    draw_arrow(view_loc, coll,
+                (lower_bound_in_fine_distance_units(ref->input_loc_coords()) +
+                upper_bound_in_fine_distance_units(ref->input_loc_coords())) / 2, xplus, color(0xff0000aa));
+    draw_arrow(view_loc, coll,
+                (lower_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords()) +
+                upper_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords())) / 2, xplus, color(0xff0000aa), X, Z, Y);
+    draw_arrow(view_loc, coll,
+                (lower_bound_in_fine_distance_units(ref->metal_output_loc_coords()) +
+                upper_bound_in_fine_distance_units(ref->metal_output_loc_coords())) / 2, yplus, color(0x00ff00aa), Y, Z, X);
+  }
+  else {
+    // just in case.
+    prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa), wireframe_width);
   }
 }
 
@@ -975,6 +1096,9 @@ void view_on_the_world::prepare_gl_data(
   //if(w.game_time_elapsed() % (time_units_per_second/3) == 0)
   w.ensure_realization_of_space(tile_view_bounds, CONTENTS_AND_LOCAL_CACHES_ONLY);
 
+  const view_sphere tile_view_shape { view_dist, view_loc };
+  
+
   if (this->drawing_debug_stuff) {
     // Issue: this doesn't limit to nearby tile state; it iterates everything.
     for (auto const& p : tile_physics_impl::get_state(w.tile_physics()).persistent_water_groups) {
@@ -1119,55 +1243,71 @@ void view_on_the_world::prepare_gl_data(
       assert(maybe_obj_shape);
       shape const& obj_shape = *maybe_obj_shape;
 
+      // hack : eliminate things outside the view sphere
+      // TODO : just don't collect them
+      if (!overlaps(tile_view_shape, obj_shape.bounds())) continue;
+
       shared_ptr<object>* maybe_objp = w.get_object(id);
       assert(maybe_objp);
       shared_ptr<object> objp = *maybe_objp;
       if ((view_type != ROBOT) || (id != config.view_from)) {
-        if(dynamic_pointer_cast<solar_panel>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0xffff00aa));
-        }
-        else if(dynamic_pointer_cast<robot>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
-        }
-        else if(dynamic_pointer_cast<autorobot>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa));
-        }
-        else if(dynamic_pointer_cast<laser_emitter>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0xff7755aa));
-        }
-        else if(shared_ptr<conveyor_belt> belt = dynamic_pointer_cast<conveyor_belt>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
-          draw_arrow(view_loc, coll, (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2, belt->direction(), color(0xff0000aa));
-        }
-        else if(shared_ptr<refinery> ref = dynamic_pointer_cast<refinery>(objp)) {
-          prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
-          draw_arrow(view_loc, coll,
-                     (lower_bound_in_fine_distance_units(ref->input_loc_coords()) +
-                      upper_bound_in_fine_distance_units(ref->input_loc_coords())) / 2, xplus, color(0xff0000aa));
-          draw_arrow(view_loc, coll,
-                     (lower_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords()) +
-                      upper_bound_in_fine_distance_units(ref->waste_rock_output_loc_coords())) / 2, xplus, color(0xff0000aa));
-          draw_arrow(view_loc, coll,
-                     (lower_bound_in_fine_distance_units(ref->metal_output_loc_coords()) +
-                      upper_bound_in_fine_distance_units(ref->metal_output_loc_coords())) / 2, yplus, color(0x00ff00aa));
-        }
-        else {
-          // just in case.
-          prepare_shape(view_loc, coll, obj_shape, color(0xffffffaa));
-        }
+        prepare_object(view_loc, coll, objp, obj_shape);
       }
       else {
         if(shared_ptr<robot> rob = dynamic_pointer_cast<robot>(objp)) {
           click_action a = rob->get_current_click_action(w, id);
+          color c(0x00000000);
+          distance target_marker_scale(0);
+          distance overlaid_wireframe_width(0);
+          const distance default_target_marker_scale = tile_width / 100;
+          const distance default_wireframe_width = tile_width / 10;
           switch (a.type) {
-            case DIG_ROCK_TO_RUBBLE: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077)); break;
-            case THROW_RUBBLE: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xdd770077)); break;
-            case COLLECT_METAL: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x00ff0077)); break;
-            case DECONSTRUCT_OBJECT: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xffff0077)); break;
-            case SHOOT_LASERS: draw_target_marker(view_loc, coll, a.fine_target_location, color(0xff000077)); break;
-            case ROTATE_CONVEYOR: draw_target_marker(view_loc, coll, a.fine_target_location, color(0x0000ff77)); break;
-            case BUILD_OBJECT: prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0077), true); break;
+            // TODO reduce duplicate code
+            case DIG_ROCK_TO_RUBBLE:
+              c = color(0xff000077);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width;
+              break;
+            case THROW_RUBBLE:
+              c = color(0xdd660077);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width;
+              break;
+            case COLLECT_METAL:
+              c = color(0x00ff0077);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width;
+              break;
+            case DECONSTRUCT_OBJECT:
+              c = color(0xff000077);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width * 2;
+              break;
+            case SHOOT_LASERS:
+              c = color(0xff000077);
+              target_marker_scale = (((obj_shape.bounds().min() + obj_shape.bounds().max()) / 2) - a.fine_target_location).magnitude_within_32_bits() / 200;
+              break;
+            case ROTATE_CONVEYOR:
+              c = color(0x0000ff77);
+              target_marker_scale = default_target_marker_scale;
+              overlaid_wireframe_width = default_wireframe_width;
+              break;
+            case BUILD_OBJECT:
+              //prepare_shape(view_loc, coll, a.object_built->get_initial_personal_space_shape(), color(0xffff0077), true);
+              prepare_object(view_loc, coll, a.object_built, a.object_built->get_initial_personal_space_shape(), default_wireframe_width);
+              break;
             default: break;
+          }
+          if (target_marker_scale != 0) {
+            draw_target_marker(view_loc, coll, a.fine_target_location, c, target_marker_scale);
+          }
+          if (overlaid_wireframe_width != 0) {
+            if (tile_location const* locp = a.which_affected.get_tile_location()) {
+              push_wireframe(view_loc, coll, fine_bounding_box_of_tile(locp->coords()), overlaid_wireframe_width, c);
+            }
+            else {
+              prepare_shape(view_loc, coll, w.get_personal_space_shape_of_object_or_tile(a.which_affected), c, overlaid_wireframe_width);
+            }
           }
         }
       }
@@ -1177,7 +1317,7 @@ void view_on_the_world::prepare_gl_data(
   if (this->drawing_regular_stuff) {
     w.visit_collidable_tiles(bbox_tile_prep_visitor{
       gl_collections_by_distance, view_loc_double, view_tile_loc_rounded_down,
-      tile_view_bounds, view_frustum_in_tile_count_units, *this, w
+      tile_view_shape, view_frustum_in_tile_count_units, *this, w
     });
   }
 }

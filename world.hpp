@@ -323,6 +323,7 @@ void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shif
      tile_contents new_substance_type);
   
   object_identifier try_create_object(shared_ptr<object> obj);
+  void delete_object_soon(object_identifier oid) { objects_to_delete_.insert(oid); }
   
   //  If objects overlap with the new position, returns their IDs. If not,
   //  changes the shape and returns an empty set.
@@ -403,6 +404,10 @@ private:
   objects_map<object>::type objects_;
   objects_map<mobile_object>::type moving_objects_;
   objects_map<autonomous_object>::type autonomously_active_objects_;
+
+  // hacky(?) way to allow objects to delete other objects during their update functions without breaking iterators;
+  // we'll probably replace this during some future rewrite.
+  unordered_set<object_identifier> objects_to_delete_;
   
   object_identifier next_object_identifier_;
   vector<shared_ptr<object>> objects_to_add_;

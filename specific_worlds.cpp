@@ -389,10 +389,10 @@ private:
           variance_denom = 1ULL;
         }
       }
-      luint64_t variance64 = (variance_num / variance_denom);
-      assert(variance64 < (1ULL << 31) - 1);
-      int variance(get_primitive_int(variance64));
-      const boost::random::uniform_int_distribution<int> random_coord(-variance,variance + 1);
+      luint64_t uvariance = (variance_num / variance_denom);
+      assert(uvariance <= luint64_t(std::numeric_limits<lint64_t>::max()));
+      lint64_t variance(uvariance);
+      const uniform_int_distribution<lint64_t> random_coord(-variance,variance + 1);
       if (low_x_bits_zero >= max_interesting_bits && low_y_bits_zero >= max_interesting_bits) {
         // At a large enough scale, pick arbitrarily
         info.land_height = wcc + random_coord(rng_here);
