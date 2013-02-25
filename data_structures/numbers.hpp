@@ -862,16 +862,17 @@ struct int128 {
   constexpr bool operator!=(int128 other)const {
     return high != other.high || low != other.low;
   }
+  static const uint64_t sign_bit_of_uint64 = uint64_t(1) << 63;
   constexpr bool operator<(int128 other)const {
-    const uint64_t sign_bit = uint64_t(1) << 63;
-    return (high^sign_bit) < (other.high^sign_bit) || (high == other.high && low < other.low);
+    return (high^sign_bit_of_uint64) < (other.high^sign_bit_of_uint64)
+        || (high == other.high && low < other.low);
   }
   constexpr bool operator>(int128 other)const {
     return other < *this;
   }
   constexpr bool operator<=(int128 other)const {
-    static const uint64_t sign_bit = uint64_t(1) << 63;
-    return (high^sign_bit) < (other.high^sign_bit) || (high == other.high && low <= other.low);
+    return (high^sign_bit_of_uint64) < (other.high^sign_bit_of_uint64)
+        || (high == other.high && low <= other.low);
   }
   constexpr bool operator>=(int128 other)const {
     return other <= *this;
