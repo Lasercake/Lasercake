@@ -30,6 +30,7 @@
 #include <boost/variant.hpp>
 #include <boost/compressed_pair.hpp>
 #include <boost/range/iterator_range.hpp>
+#include "../cxx11/unordered_set.hpp"
 
 #include "bbox_collision_detector.hpp"
 #include "borrowed_bitset.hpp"
@@ -57,7 +58,7 @@ struct coordinate_bit_math {
 
 
 template<typename Coordinate, size_t/*template argument deduction requires this type here*/ NumDimensions>
-inline Coordinate max_in_array_of_unsigned(std::array<Coordinate, NumDimensions> const& arr) {
+inline Coordinate max_in_array_of_unsigned(array<Coordinate, NumDimensions> const& arr) {
   if(NumDimensions == 0) {
     return 0;
   }
@@ -93,7 +94,7 @@ private:
   typedef typename coordinate_type_from_bits<CoordinateBits>::type Coordinate;
   typedef collision_detector::bounding_box<CoordinateBits, NumDimensions> bounding_box;
   typedef coordinate_bit_math<CoordinateBits> math_;
-  typedef std::array<Coordinate, NumDimensions> coordinate_array;
+  typedef array<Coordinate, NumDimensions> coordinate_array;
   // We ensure that every bit except the ones specifically supposed to be on is off.
   // (Specifically, the "low bits" are zero.)
   coordinate_array coords_;
@@ -103,7 +104,7 @@ private:
   typedef typename boost::uint_t<static_num_bits_in_integer_that_are_not_leading_zeroes<CoordinateBits*NumDimensions>::value>::least small_num_bits_type;
   typedef typename boost::uint_t<static_num_bits_in_integer_that_are_not_leading_zeroes<CoordinateBits>::value>::least smaller_num_bits_type;
   small_num_bits_type num_low_bits_;
-  std::array<smaller_num_bits_type, NumDimensions> dim_num_low_bits_;
+  array<smaller_num_bits_type, NumDimensions> dim_num_low_bits_;
 
 public:
   zbox():num_low_bits_(CoordinateBits * NumDimensions){}
@@ -261,7 +262,7 @@ struct ztree_node {
   typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
   typedef std::pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
   typedef id_and_bbox_type* id_and_bbox_ptr;
-  typedef std::unordered_set<id_and_bbox_ptr> objects_here_type;
+  typedef unordered_set<id_and_bbox_ptr> objects_here_type;
 
   const zbox here;
   ztree_node_ptr child0;

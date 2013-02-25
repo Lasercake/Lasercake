@@ -23,9 +23,6 @@
 #include <boost/integer.hpp>
 #include <boost/integer/static_log2.hpp>
 #include <limits>
-#include <unordered_map>
-#include <unordered_set>
-#include <array>
 #include <stack>
 #include <cassert>
 #include <cstdlib>
@@ -37,8 +34,6 @@
 
 using std::pair;
 using std::make_pair;
-using std::unordered_map;
-using std::unordered_set;
 
 // a hack to help test this code a bit more reliably
 #ifdef BBOX_COLLISION_DETECTOR_IMPL_TREAT_AS_HEADER
@@ -178,7 +173,7 @@ struct ztree_ops {
     const num_zboxes_type number_of_zboxes_to_use_if_necessary = num_zboxes_type(1) << num_dims_using_two_zboxes_each_of_base_box_size;
 
     for (num_zboxes_type i = 0; i < number_of_zboxes_to_use_if_necessary; ++i) {
-      std::array<Coordinate, NumDimensions> coords = bbox.min();
+      array<Coordinate, NumDimensions> coords = bbox.min();
       for (num_coordinates_type j = num_dims_using_one_zbox_of_twice_base_box_size; j < NumDimensions - num_dims_using_one_zbox_of_exactly_base_box_size; ++j) {
         // By checking this bit of "i" arbitrarily, by the last time
         // we get through the "number_of_zboxes_to_use_if_necessary" loop,

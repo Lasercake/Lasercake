@@ -38,8 +38,8 @@ typedef boost::random::uniform_int_distribution<int64_t> uniform_random;
 
 template <int NumDimensions>
 struct bbox {
-  std::array<int64_t, NumDimensions> min;
-  std::array<int64_t, NumDimensions> max;
+  array<int64_t, NumDimensions> min;
+  array<int64_t, NumDimensions> max;
 
   bbox combined_with(bbox const& o)const {
     bbox result;
@@ -96,7 +96,7 @@ template <int NumDimensions>
 struct moving_object {
   object_id id;
   bbox<NumDimensions> phys_bounds;
-  std::array<int64_t, NumDimensions> vel;
+  array<int64_t, NumDimensions> vel;
 
   bbox<NumDimensions*2> bounds()const {
     bbox<NumDimensions*2> result;

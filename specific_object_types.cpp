@@ -19,6 +19,8 @@
 
 */
 
+#include <boost/lexical_cast.hpp>
+
 #include "specific_object_types.hpp"
 
 #include "data_structures/bbox_collision_detector_iteration.hpp"
@@ -232,7 +234,7 @@ cubic_meters object_cost(shared_ptr<object> objp) {
 
 
 std::string draw_m3(cubic_meters m3) {
-  return std::to_string(get_primitive_int(m3 / meters / meters / meters))/* + " m^3"*/; // omitting "m^3" at least until we can get a proper superscript (TODO?)
+  return boost::lexical_cast<std::string>(get_primitive_int(m3 / meters / meters / meters))/* + " m^3"*/; // omitting "m^3" at least until we can get a proper superscript (TODO?)
 }
 
 std::string robot::player_instructions()const {

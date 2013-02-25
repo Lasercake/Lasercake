@@ -23,7 +23,7 @@
 #define LASERCAKE_GL_RENDERING_HPP__
 
 #include <boost/scoped_ptr.hpp>
-#include <atomic>
+#include "cxx11/atomic.hpp"
 #include "gl_data_abstract.hpp"
 
 // Avoid including any Qt headers because Qt headers and GLEW
@@ -54,7 +54,7 @@ public:
       // It's polled between GL calls.
       // When polled and found to be 'true', this function
       // returns before drawing everything.
-      std::atomic_bool const volatile& interrupt
+      atomic::atomic_bool const volatile& interrupt
   );
   void fini();
 

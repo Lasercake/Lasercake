@@ -29,6 +29,8 @@
 #include <boost/ratio/ratio.hpp>
 #include <boost/integer.hpp>
 #include <boost/type_traits/conditional.hpp>
+#include "cxx11/cxx11_utils.hpp"
+#include "cxx11/hash.hpp"
 #include "utils.hpp"
 
 // === units ===
@@ -685,7 +687,7 @@ public:
   // dimensions.
   friend inline constexpr this_t operator+(this_t a) { return a; }
   friend inline constexpr this_t operator-(this_t a) { return this_t(-a.val_, units()); }
-  friend inline size_t hash_value(this_t a) { return std::hash<base_type>()(a.val_); }
+  friend inline size_t hash_value(this_t a) { return hash<base_type>()(a.val_); }
   friend inline constexpr this_t operator+(this_t a, this_t b) { return this_t(a.val_ + b.val_, units()); }
   friend inline constexpr this_t operator-(this_t a, this_t b) { return this_t(a.val_ - b.val_, units()); }
   friend inline constexpr this_t operator%(this_t a, this_t b) { return this_t(a.val_ % b.val_, units()); }
@@ -722,8 +724,8 @@ public:
   template<typename AnyNum>
   friend inline constexpr
   typename rebase<decltype(
-    std::declval<base_type>() *
-     std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
+    declval<base_type>() *
+     declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
   )>::type
   operator*(this_t a, AnyNum factor)
   { return typename rebase<decltype(a.val_ * factor)>::type(a.val_ * factor, units()); }
@@ -731,8 +733,8 @@ public:
   template<typename AnyNum>
   friend inline constexpr
   typename rebase<decltype(
-    std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
-     * std::declval<base_type>()
+    declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
+     * declval<base_type>()
   )>::type
   operator*(AnyNum factor, this_t b)
   { return typename rebase<decltype(factor * b.val_)>::type(factor * b.val_, units()); }
@@ -740,8 +742,8 @@ public:
   template<typename AnyNum>
   friend inline constexpr
   typename rebase<decltype(
-    std::declval<base_type>()
-     / std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
+    declval<base_type>()
+     / declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
   )>::type
   operator/(this_t a, AnyNum divisor)
   { return typename rebase<decltype(a.val_ / divisor)>::type(a.val_ / divisor, units()); }
@@ -749,8 +751,8 @@ public:
   template<typename AnyNum>
   friend inline constexpr
   typename rebase<decltype(
-    std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
-     / std::declval<base_type>()
+    declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>()
+     / declval<base_type>()
   )>::type::reciprocal_type
   operator/(AnyNum dividend, this_t b)
   { typedef typename rebase<decltype(dividend / b.val_)>::type::reciprocal_type result_type;
@@ -764,7 +766,7 @@ public:
 // imbue_sign() multiplies the sign of arg 1 into the (signed) value of arg 2.
 template<typename T1, typename T2>
 inline constexpr
-decltype(std::declval<T2>() * typename get_sign_components_of_units<T1>::type())
+decltype(declval<T2>() * typename get_sign_components_of_units<T1>::type())
 imbue_sign(T1 signum, T2 base_val) {
   static_assert(get_dimension_kind<dim::ratio_tag, T1>::type::num != 0, "imbuing an ambiguous sign");
   return
@@ -814,9 +816,9 @@ struct make_non_normalized_rational_physical_quantity_info {
 // are dimensionless).
 template<typename Num, typename Den>
 inline constexpr typename
-make_non_normalized_rational_physical_quantity_info<decltype(std::declval<Num>() / std::declval<Den>())>::type
+make_non_normalized_rational_physical_quantity_info<decltype(declval<Num>() / declval<Den>())>::type
 make_non_normalized_rational_physical_quantity(Num num, Den den) {
-  typedef make_non_normalized_rational_physical_quantity_info<decltype(std::declval<Num>() / std::declval<Den>())> info;
+  typedef make_non_normalized_rational_physical_quantity_info<decltype(declval<Num>() / declval<Den>())> info;
   return make(
     typename info::rational_number_type(
       get(num, typename get_units<Num>::type()),
@@ -1133,7 +1135,7 @@ struct get_units_impl<bounds_checked_int<Int,Min,Max>> : get_units_impl<Int> {
 
 template<typename T> struct identity { typedef T type; }; // work around GCC 4.6 bug
 template<typename T>
-struct get_units_impl : identity<decltype(overload_find_units_type(std::declval<T>()))>::type {};
+struct get_units_impl : identity<decltype(overload_find_units_type(declval<T>()))>::type {};
 
 
 
@@ -1232,12 +1234,12 @@ operator/(units<UA...>, units<UB...>) {
 template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
 inline constexpr typename
 make_physical_quantity_type<
-    decltype(std::declval<NumA>() * std::declval<NumB>()),
+    decltype(declval<NumA>() * declval<NumB>()),
     typename units_impl::multiply_units<UnitsA, UnitsB>::type
   >::type
 operator*(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b) {
   return make_physical_quantity_type<
-          decltype(std::declval<NumA>() * std::declval<NumB>()),
+          decltype(declval<NumA>() * declval<NumB>()),
           typename units_impl::multiply_units<UnitsA, UnitsB>::type
       >::construct(a.get(UnitsA()) * b.get(UnitsB()));
 }
@@ -1245,12 +1247,12 @@ operator*(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b) 
 template<typename NumA, typename NumB, typename UnitsA, typename UnitsB>
 inline constexpr typename
 make_physical_quantity_type<
-    decltype(std::declval<NumA>() / std::declval<NumB>()),
+    decltype(declval<NumA>() / declval<NumB>()),
     typename units_impl::divide_units<UnitsA, UnitsB>::type
   >::type
 operator/(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b) {
   return make_physical_quantity_type<
-          decltype(std::declval<NumA>() / std::declval<NumB>()),
+          decltype(declval<NumA>() / declval<NumB>()),
           typename units_impl::divide_units<UnitsA, UnitsB>::type
       >::construct(a.get(UnitsA()) / b.get(UnitsB()));
 }
@@ -1309,12 +1311,12 @@ operator/(physical_quantity<Num, UnitsA> a, units<UB...>) {
 template<typename NumA, typename NumB, typename UnitsA, typename UnitsB, typename RoundingStrategy>
 inline constexpr
 typename make_physical_quantity_type<
-    decltype(divide(std::declval<NumA>(), std::declval<NumB>(), std::declval<RoundingStrategy>())),
+    decltype(divide(declval<NumA>(), declval<NumB>(), declval<RoundingStrategy>())),
     typename units_impl::divide_units<UnitsA, UnitsB>::type
   >::type
 divide(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b, RoundingStrategy strat) {
   return make_physical_quantity_type<
-      decltype(divide(std::declval<NumA>(), std::declval<NumB>(), std::declval<RoundingStrategy>())),
+      decltype(divide(declval<NumA>(), declval<NumB>(), declval<RoundingStrategy>())),
       typename units_impl::divide_units<UnitsA, UnitsB>::type
     >::construct(divide(a.get(UnitsA()), b.get(UnitsB()), strat));
 }
@@ -1322,30 +1324,30 @@ divide(physical_quantity<NumA, UnitsA> a, physical_quantity<NumB, UnitsB> b, Rou
 template<typename Num, typename Units, typename AnyNum, typename RoundingStrategy>
 inline constexpr
 typename make_physical_quantity_type<decltype(
-  divide(std::declval<Num>(),
-         std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
-         std::declval<RoundingStrategy>())
+  divide(declval<Num>(),
+         declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
+         declval<RoundingStrategy>())
 ), Units>::type
 divide(physical_quantity<Num, Units> a, AnyNum b, RoundingStrategy strat) {
   return make_physical_quantity_type<decltype(
-      divide(std::declval<Num>(),
-             std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
-             std::declval<RoundingStrategy>())
+      divide(declval<Num>(),
+             declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
+             declval<RoundingStrategy>())
     ), Units>::construct(divide(a.get(Units()), b, strat));
 }
 
 template<typename Num, typename Units, typename AnyNum, typename RoundingStrategy>
 inline constexpr
 typename make_physical_quantity_type<decltype(
-  divide(std::declval<Num>(),
-         std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
-         std::declval<RoundingStrategy>())
+  divide(declval<Num>(),
+         declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
+         declval<RoundingStrategy>())
 ), typename units_recip<Units>::type>::type
 divide(AnyNum a, physical_quantity<Num, Units> b, RoundingStrategy strat) {
   return make_physical_quantity_type<decltype(
-      divide(std::declval<Num>(),
-             std::declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
-             std::declval<RoundingStrategy>())
+      divide(declval<Num>(),
+             declval<typename boost::enable_if_c<get_units<AnyNum>::is_nonunit_scalar, AnyNum>::type>(),
+             declval<RoundingStrategy>())
     ), typename units_recip<Units>::type>::construct(divide(a, b.get(Units()), strat));
 }
 

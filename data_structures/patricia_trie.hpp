@@ -23,7 +23,8 @@
 #define LASERCAKE_PATRICIA_TRIE_HPP__
 
 #include <ostream>
-#include <array>
+#include "../cxx11/array.hpp"
+#include "../cxx11/cxx11_utils.hpp"
 #include <boost/shared_ptr.hpp>
 
 #include "numbers.hpp"
@@ -80,12 +81,12 @@ class pow2_radix_patricia_trie_node;
 template<num_coordinates_type Dims, typename Coord>
 class power_of_two_bounding_cube {
 public:
-  typedef std::array<Coord, Dims> loc_type;
+  typedef array<Coord, Dims> loc_type;
   power_of_two_bounding_cube() : min_(), size_exponent_in_each_dimension_() {}
   power_of_two_bounding_cube(loc_type const& min, num_bits_type size_exponent_in_each_dimension)
    : min_(min), size_exponent_in_each_dimension_(size_exponent_in_each_dimension) {}
   power_of_two_bounding_cube(loc_type&& min, num_bits_type size_exponent_in_each_dimension)
-   : min_(std::move(min)), size_exponent_in_each_dimension_(size_exponent_in_each_dimension) {}
+   : min_(::move(min)), size_exponent_in_each_dimension_(size_exponent_in_each_dimension) {}
 
   power_of_two_bounding_cube(power_of_two_bounding_cube const& other) = default;
   power_of_two_bounding_cube& operator=(power_of_two_bounding_cube const& other) = default;
@@ -229,8 +230,8 @@ public:
   static const num_coordinates_type dimensions = Dims;
   static const size_t radix = size_t(1) << dimensions;
   typedef pow2_radix_patricia_trie_node<Dims, Coord, T, Traits> node_type;
-  typedef std::array<node_type, radix> sub_nodes_type;
-  typedef std::array<Coord, dimensions> loc_type;
+  typedef array<node_type, radix> sub_nodes_type;
+  typedef array<Coord, dimensions> loc_type;
   typedef power_of_two_bounding_cube<dimensions, Coord> power_of_two_bounding_cube_type;
   typedef typename Traits::monoid monoid_type;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
@@ -277,12 +278,12 @@ protected:
     sub_nodes_ = new_sub_nodes;
   }
   T move_leaf() {
-    T result = std::move(leaf_);
+    T result = ::move(leaf_);
     leaf_ = null_leaf();
-    return std::move(result);
+    return ::move(result);
   }
   void set_leaf(T&& new_leaf = null_leaf()) {
-    leaf_ = std::move(new_leaf);
+    leaf_ = ::move(new_leaf);
   }
   void set_parent(node_type* parent) {
     parent_ = parent;
@@ -297,7 +298,7 @@ protected:
     monoid_ = monoid;
   }
   void set_monoid(monoid_type&& monoid) {
-    monoid_ = std::move(monoid);
+    monoid_ = ::move(monoid);
   }
   boost::shared_ptr< ::stable_node_reference_keeper<node_type> > stable_node_reference_keeper() {
     return stable_node_reference_keeper_;
@@ -331,8 +332,8 @@ public:
   static const num_coordinates_type dimensions = Dims;
   static const size_t radix = size_t(1) << dimensions;
   typedef pow2_radix_patricia_trie_node node_type;
-  typedef std::array<node_type, radix> sub_nodes_type;
-  typedef std::array<Coord, dimensions> loc_type;
+  typedef array<node_type, radix> sub_nodes_type;
+  typedef array<Coord, dimensions> loc_type;
   typedef power_of_two_bounding_cube<dimensions, Coord> power_of_two_bounding_cube_type;
   typedef typename Traits::monoid monoid_type;
   typedef typename Traits::node_allocator::template rebind<sub_nodes_type>::other node_allocator;
@@ -485,8 +486,8 @@ public:
     if (!(rep::monoid() == new_leaf_monoid)) {
       node_type* parent = rep::parent();
 
-      //monoid_type old_monoid = std::move(monoid_);
-      rep::set_monoid(std::move(new_leaf_monoid));
+      //monoid_type old_monoid = move(monoid_);
+      rep::set_monoid(::move(new_leaf_monoid));
       while(parent) {
         sub_nodes_type const& siblings = *parent->sub_nodes();
         monoid_type sum = monoid_type();
@@ -494,7 +495,7 @@ public:
           sum = sum + sibling.monoid();
         }
         if (sum == parent->monoid()) { break; }
-        parent->set_monoid(std::move(sum));
+        parent->set_monoid(::move(sum));
         //parent->monoid_ -= old_monoid;
         //parent->monoid_ += monoid_;
 
@@ -557,11 +558,11 @@ private:
       monoid_type sum = parent->monoid() + new_leaf_monoid;
       //LOG << '#' << '(' << parent->monoid_ << ',' << sum << ')';
       if (sum == parent->monoid()) { break; }
-      parent->set_monoid(std::move(sum));
+      parent->set_monoid(::move(sum));
       parent = parent->parent();
     }
     //LOG << '\n';
-    this->set_monoid(std::move(new_leaf_monoid));
+    this->set_monoid(::move(new_leaf_monoid));
   }
 
   void delete_sub_nodes_() {
@@ -591,17 +592,17 @@ private:
   // monoid operations might conceivably throw, but destructors shouldn't
   // and Coord assignment shouldn't and primitive assignment can't.
   pow2_radix_patricia_trie_node(pow2_radix_patricia_trie_node&& other)
-          : ptr_(nullptr), monoid_(std::move(other.monoid_)) {
+          : ptr_(nullptr), monoid_(::move(other.monoid_)) {
     // It was too hard to exception-safe-ly move-construct
     // monoid and box_.min and ptr in the right orders,
     // so we default-construct them and then move-assign some,
     // potentially alas.
-    box_.min_ = std::move(other.box_.min_);
+    box_.min_ = ::move(other.box_.min_);
     move_initialize_from_except_userdata_(other);
   }
   pow2_radix_patricia_trie_node& operator=(pow2_radix_patricia_trie_node&& other) {
-    monoid_ = std::move(other.monoid_);
-    box_.min_ = std::move(other.box_.min_);
+    monoid_ = ::move(other.monoid_);
+    box_.min_ = ::move(other.box_.min_);
     delete_ptr_();
     move_initialize_from_except_userdata_(other);
     return *this;

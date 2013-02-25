@@ -108,6 +108,7 @@ lt*(Dy2 - Dy1) = sl1x * ol2x*y2 - sl2x * ol2x*y1
 
 #include <boost/type_traits.hpp>
 #include <boost/range/iterator_range.hpp>
+#include "../cxx11/cxx11_utils.hpp"
 
 #include "geometry.hpp"
 
@@ -123,9 +124,9 @@ namespace {
 
 
 template<typename T1, typename T2>
-vector3<decltype(std::declval<T1>() * std::declval<T2>() * pseudo)>
+vector3<decltype(declval<T1>() * declval<T2>() * pseudo)>
 cross_product(vector3<T1> a, vector3<T2> b) {
-  return vector3<decltype(std::declval<T1>() * std::declval<T2>() * pseudo)>(
+  return vector3<decltype(declval<T1>() * declval<T2>() * pseudo)>(
     ((a(Y) * b(Z)) - (b(Y) * a(Z)))*pseudo,
     ((a(Z) * b(X)) - (b(Z) * a(X)))*pseudo,
     ((a(X) * b(Y)) - (b(X) * a(Y)))*pseudo
@@ -537,7 +538,7 @@ faux_optional<base_point_and_outward_facing_normal> get_excluding_face(
 // in this file (geometry.cpp) that uses int.
 template<typename VectorType, int ArraySize> class arrayvector {
 private:
-  std::array<typename VectorType::value_type, ArraySize> first_n_values_;
+  array<typename VectorType::value_type, ArraySize> first_n_values_;
   int size_;
   VectorType* real_vector_;
 public:
@@ -623,7 +624,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
   std::list<line_building_info> lines;
   
   // Hack: Start by making a tetrahedron with the first four non-coplanar verts.
-  std::array<int, 4> first_four_noncoplanar_verts{{0,-1,-1,-1}};
+  array<int, 4> first_four_noncoplanar_verts{{0,-1,-1,-1}};
   for (int i = 1; i < (int)vs.size(); ++i) {
     if (vs[i] != vs[0]) {
       first_four_noncoplanar_verts[1] = i;
@@ -648,7 +649,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
   assert(first_four_noncoplanar_verts[3] != -1);
   
   
-  std::array<face_reference_t, 4> first_four_faces;
+  array<face_reference_t, 4> first_four_faces;
   for(int q = 0; q < 4; ++q) {
     faces.push_front(face_building_info());
     first_four_faces[q] = faces.begin();
@@ -939,7 +940,7 @@ convex_polyhedron::convex_polyhedron(
   // of p + a*dirs[0] + b*dirs[1] + c*dirs[2] + d.dirs[3]
   // for p \in start_shape, a,b,c,d \in [0,1]
   
-  std::array<vect, 4> dirs = {{
+  array<vect, 4> dirs = {{
     vect(max_error(X), 0, 0),
     vect(0, max_error(Y), 0),
     vect(0, 0, max_error(Z)),
@@ -953,7 +954,7 @@ convex_polyhedron::convex_polyhedron(
       //LOG << "eliminating parallel " << dir << "\n";
     }
   }
-  std::array<bool, 4> dir_existences = {{
+  array<bool, 4> dir_existences = {{
     dirs[0] != 0,
     dirs[1] != 0,
     dirs[2] != 0,
@@ -962,14 +963,14 @@ convex_polyhedron::convex_polyhedron(
   
   // In order from "fewest to most components" to make things more efficient in one place.
   // Each bit (1 << n) represents whether the nth direction vector was used.
-  /*static const std::array<uint8_t, 16> combinations_by_idx = {{
+  /*static const array<uint8_t, 16> combinations_by_idx = {{
     0,
     0x1, 0x2, 0x4, 0x8,
     0x3, 0x5, 0x9, 0x6, 0xA, 0xC,
     0x7, 0xB, 0xD, 0xE,
     0xF
   }};*/
-  const std::array<vect, 16> vectors_by_combo = {{
+  const array<vect, 16> vectors_by_combo = {{
     /*0x0*/ 0,
     /*0x1*/ dirs[0],
     /*0x2*/           dirs[1],
@@ -987,17 +988,17 @@ convex_polyhedron::convex_polyhedron(
     /*0xE*/           dirs[1] + dirs[2] + dirs[3],
     /*0xF*/ dirs[0] + dirs[1] + dirs[2] + dirs[3]
   }};
-  /*static const std::array<uint16_t, 3> B_and_not_v_combos = {{
+  /*static const array<uint16_t, 3> B_and_not_v_combos = {{
     (1<<0x1) | (1<<0x3) | (1<<0x5) | (1<<0x7),
     (1<<0x2) | (1<<0x3) | (1<<0x6) | (1<<0x7),
     (1<<0x4) | (1<<0x5) | (1<<0x6) | (1<<0x7),
   }};
-  static const std::array<uint16_t, 3> v_and_not_B_combos = {{
+  static const array<uint16_t, 3> v_and_not_B_combos = {{
     (1<<0x8) | (1<<0xA) | (1<<0xC) | (1<<0xE),
     (1<<0x8) | (1<<0x9) | (1<<0xC) | (1<<0xD),
     (1<<0x8) | (1<<0x9) | (1<<0xA) | (1<<0xB),
   }};*/
-  static const std::array<uint16_t, 4> combos_including_dir = {{
+  static const array<uint16_t, 4> combos_including_dir = {{
     (1<<0x1) | (1<<0x3) | (1<<0x5) | (1<<0x7) | (1<<0x9) | (1<<0xB) | (1<<0xD) | (1<<0xF),
     (1<<0x2) | (1<<0x3) | (1<<0x6) | (1<<0x7) | (1<<0xA) | (1<<0xB) | (1<<0xE) | (1<<0xF),
     (1<<0x4) | (1<<0x5) | (1<<0x6) | (1<<0x7) | (1<<0xC) | (1<<0xD) | (1<<0xE) | (1<<0xF),
@@ -1064,7 +1065,7 @@ convex_polyhedron::convex_polyhedron(
 #if 0
   return;
   
-  std::unordered_multimap<uint8_t, vector3<geometry_int_type>> normals_by_point_idx;
+  unordered_multimap<uint8_t, vector3<geometry_int_type>> normals_by_point_idx;
   for (uint8_t i = 0; i < ph.face_info().size(); i += ph.face_info()[i] + 1) {
     // relying on the fact that the first three vertices of each face are in the proper order.
     auto normal = plane_normal(ph.vertices()[ph.face_info()[i + 1]], ph.vertices()[ph.face_info()[i + 2]], ph.vertices()[ph.face_info()[i + 3]]);
@@ -1144,8 +1145,8 @@ convex_polyhedron::convex_polyhedron(
     
     // Eliminate all combos that are obscured by another combo.
     // I'm sure this could be optimized.
-    std::array<int, 4> di1 = {{0,0,0,0}};
-    std::array<int, 4> di2 = {{0,0,0,0}};
+    array<int, 4> di1 = {{0,0,0,0}};
+    array<int, 4> di2 = {{0,0,0,0}};
     for(di1[0] = 0; di1[0] < 2; ++di1[0]) {
       if (di1[0] && (dirs[0] == vector3<geometry_int_type>(0,0,0))) continue;
       for(di1[1] = 0; di1[1] < 2; ++di1[1]) {
@@ -1382,8 +1383,8 @@ convex_polyhedron::convex_polyhedron(
                 (!(combo & (1 << i))
              && (!(combo & parallel_dir_bit)))
             ) { // i.e. "for each combo without those directions in it"
-          std::array<vector3<geometry_int_type>, 2> moved_line_ends;
-          std::array<bool, 2> ends_found = {{false, false}};
+          array<vector3<geometry_int_type>, 2> moved_line_ends;
+          array<bool, 2> ends_found = {{false, false}};
           for (int j = 0; j < 2; ++j) {
             const auto v = j ? l.second : l.first;
             uint16_t combos_check1 =
@@ -1749,7 +1750,7 @@ optional_dimensionless_rational get_first_intersection(line_segment l, convex_po
   for (vect& v : l.ends) v = vect(v[(0 + c.amount_twisted) % 3], v[(1 + c.amount_twisted) % 3], v[(2 + c.amount_twisted) % 3]);
   // Now skew the z values. Skews are linear and hence preserve everything we need.
   // The line's z values are scaled up as well as skewed.
-  std::array<coord3, 2> skewed_z;
+  array<coord3, 2> skewed_z;
   for (size_t i = 0; i != 2; ++i) {
     vect const& v = l.ends[i];
     skewed_z[i] = v.z * c.denom + (c.a_times_denom * v.x + c.b_times_denom * v.y);
@@ -1866,8 +1867,8 @@ optional_dimensionless_rational get_first_intersection(line_segment l, convex_po
 }
 
 namespace /*anonymous*/ {
-std::array<line_segment, 12> edges_of_bounding_box_as_line_segments(bounding_box b) {
-  std::array<line_segment, 12> result = {{
+array<line_segment, 12> edges_of_bounding_box_as_line_segments(bounding_box b) {
+  array<line_segment, 12> result = {{
     line_segment(vect(b.min(X), b.min(Y), b.min(Z)),
                  vect(b.max(X), b.min(Y), b.min(Z))),
     line_segment(vect(b.min(X), b.max(Y), b.min(Z)),

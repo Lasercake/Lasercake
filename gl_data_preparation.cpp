@@ -19,7 +19,6 @@
 
 */
 
-#include <initializer_list>
 #include <GL/glew.h>
 #include <stack>
 
@@ -409,6 +408,14 @@ void push_wireframe_convex_polygon(
                  );
 //  push_vertex(coll.triangle_strip, vs[i] + towards_center, c);
 }
+
+template<typename Member1, typename...Member>
+std::vector<Member1> make(Member1&& member1, Member&&... member) {
+  Member1 members[] = { member1, member... };
+  std::vector<Member1> result(&members[0], &members[sizeof(members)/sizeof(*members)]);
+  return result;
+}
+
 void push_wireframe(vector3<distance> const& view_loc,
                     gl_collection& coll,
                     bounding_box box,
@@ -418,42 +425,42 @@ void push_wireframe(vector3<distance> const& view_loc,
   const GLfloat width = convert_distance_to_GL(frame_width);
   const vector3<GLfloat> bmin = convert_coordinates_to_GL(view_loc, box.min());
   const vector3<GLfloat> bmax = convert_coordinates_to_GL(view_loc, box.max());
-  push_wireframe_convex_polygon(coll, c, width, {
+  push_wireframe_convex_polygon(coll, c, width, make(
             glm::vec3(bmin.x, bmin.y, bmin.z),
             glm::vec3(bmax.x, bmin.y, bmin.z),
             glm::vec3(bmax.x, bmax.y, bmin.z),
-            glm::vec3(bmin.x, bmax.y, bmin.z),
-  });
-  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmax.y, bmin.z)
+  ));
+  push_wireframe_convex_polygon(coll, c, width, make(
             glm::vec3(bmin.x, bmin.y, bmin.z),
             glm::vec3(bmax.x, bmin.y, bmin.z),
             glm::vec3(bmax.x, bmin.y, bmax.z),
-            glm::vec3(bmin.x, bmin.y, bmax.z),
-  });
-  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmin.y, bmax.z)
+  ));
+  push_wireframe_convex_polygon(coll, c, width, make(
             glm::vec3(bmin.x, bmin.y, bmin.z),
             glm::vec3(bmin.x, bmin.y, bmax.z),
             glm::vec3(bmin.x, bmax.y, bmax.z),
-            glm::vec3(bmin.x, bmax.y, bmin.z),
-  });
-  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmax.y, bmin.z)
+  ));
+  push_wireframe_convex_polygon(coll, c, width, make(
             glm::vec3(bmin.x, bmin.y, bmax.z),
             glm::vec3(bmax.x, bmin.y, bmax.z),
             glm::vec3(bmax.x, bmax.y, bmax.z),
-            glm::vec3(bmin.x, bmax.y, bmax.z),
-  });
-  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmax.y, bmax.z)
+  ));
+  push_wireframe_convex_polygon(coll, c, width, make(
             glm::vec3(bmin.x, bmax.y, bmin.z),
             glm::vec3(bmax.x, bmax.y, bmin.z),
             glm::vec3(bmax.x, bmax.y, bmax.z),
-            glm::vec3(bmin.x, bmax.y, bmax.z),
-  });
-  push_wireframe_convex_polygon(coll, c, width, {
+            glm::vec3(bmin.x, bmax.y, bmax.z)
+  ));
+  push_wireframe_convex_polygon(coll, c, width, make(
             glm::vec3(bmax.x, bmin.y, bmin.z),
             glm::vec3(bmax.x, bmin.y, bmax.z),
             glm::vec3(bmax.x, bmax.y, bmax.z),
-            glm::vec3(bmax.x, bmax.y, bmin.z),
-  });
+            glm::vec3(bmax.x, bmax.y, bmin.z)
+  ));
 }
 
 
@@ -618,7 +625,7 @@ void prepare_tile(world const& w, gl_collection& coll, tile_location const& loc,
   const bool is_same_z_coord_as_viewer = (view_tile_loc_rounded_down.z == coords.z);
 
   // Only output the faces that are not interior to a single kind of material.
-  const std::array<tile, num_cardinal_directions> neighbor_tiles = loc.get_all_neighbor_tiles(CONTENTS_ONLY);
+  const array<tile, num_cardinal_directions> neighbor_tiles = loc.get_all_neighbor_tiles(CONTENTS_ONLY);
   // Also, for tiles aligned in a dimension with the viewer,
   // neither face in that dimension is facing towards the viewer.
   //->near
@@ -936,6 +943,10 @@ void view_on_the_world::prepare_gl_data(
     2*(config.view_radius / tile_width) + (config.view_radius / tile_height)
     + 3*((1<<tile_exponent_below_which_we_dont_filter)-1)
     + 5);
+  // Warning: if gl_collections_by_distance had not been cleared,
+  // this could use the members' copy-constructors (at least
+  // when using C++98 standard library related to USE_BOOST_CXX11_LIBS),
+  // which would waste a lot of time.
   gl_collections_by_distance.resize(max_gl_collection);
 
   //These values are computed every GL-preparation-frame.

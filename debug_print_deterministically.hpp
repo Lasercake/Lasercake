@@ -25,7 +25,8 @@
 #include <boost/preprocessor/stringize.hpp>
 
 #include <iostream>
-#include <unordered_map>
+#include "cxx11/unordered_map.hpp"
+#include "cxx11/function.hpp"
 inline std::ostream& debug_print_ostream() {return std::cout;}
 template<typename T>
 inline void debug_print_val_deterministically(T const& t) {
@@ -40,7 +41,7 @@ inline void debug_print_val_deterministically(T const& t) {
 // but their identity still holds interesting information.
 inline void debug_print_ptr_deterministically(void const* p) {
   //TODO prevent reuse of pointers from malloc/free: prevent freeing!?
-  typedef std::unordered_map<void const*, size_t> ptrmap;
+  typedef unordered_map<void const*, size_t> ptrmap;
   typedef typename ptrmap::value_type ptrmapelem;
   static ptrmap ptr_names;
   static size_t next_ptr_name = 0;
@@ -120,8 +121,8 @@ inline void debug_print_val_deterministically(gl_data_preparation::gl_all_data c
 }
 #include <functional>
 template<typename F>
-inline void debug_print_val_deterministically(std::function<F> const&) {
-  debug_print_ostream() << "<std::function>"; //oh well
+inline void debug_print_val_deterministically(function<F> const&) {
+  debug_print_ostream() << "<function>"; //oh well
 }*/
 
 #endif

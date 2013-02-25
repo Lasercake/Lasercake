@@ -19,8 +19,9 @@
 
 */
 
-#include <tuple>
-#include <unordered_map>
+#include "cxx11/tuple.hpp"
+#include "cxx11/unordered_map.hpp"
+#include "cxx11/cxx11_utils.hpp"
 #include <boost/random/ranlux.hpp>
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/repetition/repeat.hpp>
@@ -40,15 +41,15 @@ constexpr coord wcc = world_center_tile_coord;
 
 template<size_t Index, class...Types>
 struct tuple_hash_impl {
-  static BOOST_FORCEINLINE void impl(size_t& v, std::tuple<Types...> const& tup) {
+  static BOOST_FORCEINLINE void impl(size_t& v, tuple<Types...> const& tup) {
     tuple_hash_impl<Index - 1, Types...>::impl(v, tup);
-    boost::hash_combine(v, std::get<Index>(tup));
+    boost::hash_combine(v, get<Index>(tup));
   }
 };
 template<class...Types>
 struct tuple_hash_impl<0, Types...> {
-  static BOOST_FORCEINLINE void impl(size_t& v, std::tuple<Types...> const& tup) {
-    boost::hash_combine(v, std::get<0>(tup));
+  static BOOST_FORCEINLINE void impl(size_t& v, tuple<Types...> const& tup) {
+    boost::hash_combine(v, get<0>(tup));
   }
 };
 
@@ -57,7 +58,7 @@ struct tuple_hash_impl<0, Types...> {
 template<typename T>
 struct unhashed {
   template<typename...Args>
-  unhashed(Args&&... args) : t(std::forward<Args>(args)...) {}
+  unhashed(Args&&... args) : t(forward<Args>(args)...) {}
   T t;
   operator T()const { return t; }
   T operator->()const { return t; }
@@ -68,25 +69,25 @@ struct unhashed {
 
 } /*end anonymous namespace*/
 
-namespace std {
+namespace HASH_NAMESPACE {
   template<typename...Types>
-  struct hash<std::tuple<Types...>> {
-    size_t operator()(std::tuple<Types...> const& tup)const {
+  struct hash<tuple<Types...>> {
+    size_t operator()(tuple<Types...> const& tup)const {
       size_t result = 0;
       tuple_hash_impl<
-        std::tuple_size<std::tuple<Types...>>::value - 1,
+        tuple_size<tuple<Types...>>::value - 1,
         Types...
       >::impl(result, tup);
       return result;
     }
   };
   template<typename...Types>
-  inline size_t hash_value(std::tuple<Types...> const& tup) {
-    return std::hash<std::tuple<Types...>>()(tup);
+  inline size_t hash_value(tuple<Types...> const& tup) {
+    return hash<tuple<Types...>>()(tup);
   }
 }
 
-namespace std {
+namespace HASH_NAMESPACE {
   template<typename T>
   struct hash<unhashed<T>> {
     size_t operator()(unhashed<T> const&)const {
@@ -111,10 +112,10 @@ struct memoized;
 template<typename Functor, typename Result, typename...Arguments>
 struct memoized<Functor, Result(Arguments...)> {
   Functor functor_;
-  typedef std::tuple<Arguments...> arguments_tuple_type;
+  typedef tuple<Arguments...> arguments_tuple_type;
   typedef Result original_result_type;
   typedef original_result_type const& result_type;
-  typedef std::unordered_map<arguments_tuple_type, original_result_type> memo_type;
+  typedef unordered_map<arguments_tuple_type, original_result_type> memo_type;
   typedef typename memo_type::value_type memo_pair_type;
   mutable memo_type memo_;
 
@@ -129,14 +130,14 @@ struct memoized<Functor, Result(Arguments...)> {
       return memo_.insert(
         memo_pair_type(
           args_tuple,
-          functor_(std::forward<Arguments>(args)...)
+          functor_(forward<Arguments>(args)...)
         )
       ).first->second;
     }
   }
 
   memoized() : functor_() {}
-  memoized(Functor&& f) : functor_(std::forward<Functor>(f)) {}
+  memoized(Functor&& f) : functor_(forward<Functor>(f)) {}
 };
 
 // This is a mechanism to make pseudo-random worlds whose contents
@@ -161,11 +162,11 @@ typedef boost::random::ranlux3 memo_rng;
 // version.  Probably we'll just use some code duplication at some point.)
 template<typename...HashableArguments>
 inline memo_rng make_rng(HashableArguments&&... args) {
-  typedef std::tuple<HashableArguments...> arguments_tuple_type;
-  const size_t hash = hash_value(arguments_tuple_type(args...));
+  typedef tuple<HashableArguments...> arguments_tuple_type;
+  const size_t hash_val = hash<arguments_tuple_type>()(arguments_tuple_type(args...));
   // ranlux3 uses a 32-bit seed.
   // (Don't ">> 32" to avoid silly compiler warnings on 32-bit.)
-  const uint32_t seed = ((sizeof(hash) == 4) ? hash : (hash ^ (hash >> 16 >> 16)));
+  const uint32_t seed = ((sizeof(hash_val) == 4) ? hash_val : (hash_val ^ (hash_val >> 16 >> 16)));
   memo_rng result(seed);
   return result;
 }
@@ -298,7 +299,7 @@ class simple_hills {
       return *this;
     }
   };
-  std::unordered_map<vector3<coord>, hill_block> hill_blocks;
+  unordered_map<vector3<coord>, hill_block> hill_blocks;
   
 public:
   void operator()(world_column_builder& b, coord x, coord y, coord, coord) {
@@ -455,7 +456,7 @@ private:
       column_memo_.insert(std::make_pair(vector3<lint64_t>(x,y,0), info));
       return info;
     }
-  std::unordered_map<vector3<lint64_t>, column_info> column_memo_;
+  unordered_map<vector3<lint64_t>, column_info> column_memo_;
 };
 
 

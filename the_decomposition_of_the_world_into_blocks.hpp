@@ -144,7 +144,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
     uint64_t non_interior_bitmap_small_scale_[64];
 
     // A three-dimensional array of tile, of worldblock_dimension in each dimension.
-    // std::array<std::array<std::array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
+    // array<array<array<tile, worldblock_dimension>, worldblock_dimension>, worldblock_dimension> tiles_;
 
     // Accessing multiple members of unions as a cast does not meet the
     // standard's strict-aliasing rules[*], but most compilers treat unions of data
@@ -222,7 +222,7 @@ template<cardinal_direction Dir> inline tile_location tile_location::get_neighbo
   }
 }
 
-inline std::array<tile, num_cardinal_directions> tile_location::get_all_neighbor_tiles(level_of_tile_realization_needed realineeded)const {
+inline array<tile, num_cardinal_directions> tile_location::get_all_neighbor_tiles(level_of_tile_realization_needed realineeded)const {
   using namespace the_decomposition_of_the_world_into_blocks_impl;
   const worldblock_dimension_type local_x = get_primitive_int(v_.x) & (worldblock_dimension-1);
   const worldblock_dimension_type local_y = get_primitive_int(v_.y) & (worldblock_dimension-1);
@@ -230,7 +230,7 @@ inline std::array<tile, num_cardinal_directions> tile_location::get_all_neighbor
   const worldblock_dimension_type idx = local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor;
 
   wb_->ensure_realization(realineeded);
-  std::array<tile, num_cardinal_directions> result = {{
+  array<tile, num_cardinal_directions> result = {{
     ((local_x == 0) ? wb_->ensure_neighbor_realization<xminus>(realineeded).tiles_[idx + (worldblock_x_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_x_factor]),
     ((local_y == 0) ? wb_->ensure_neighbor_realization<yminus>(realineeded).tiles_[idx + (worldblock_y_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_y_factor]),
     ((local_z == 0) ? wb_->ensure_neighbor_realization<zminus>(realineeded).tiles_[idx + (worldblock_z_factor*(worldblock_dimension-1))] : wb_->tiles_[idx - worldblock_z_factor]),

@@ -103,8 +103,8 @@ struct tile_visitor {
   octant_number octant_;
   //get_cost<Visitor> get_cost_;
   typedef decltype(
-    std::declval<objects_collision_detector>().iterate(
-        std::declval<get_cost<Visitor>>()  ).begin()) objects_iterator;
+    declval<objects_collision_detector>().iterate(
+        declval<get_cost<Visitor>>()  ).begin()) objects_iterator;
   objects_iterator obj_i_;
   objects_iterator obj_end_;
   Visitor& visitor_;

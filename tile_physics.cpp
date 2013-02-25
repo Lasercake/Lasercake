@@ -415,7 +415,7 @@ void check_group_surface_tiles_cache_and_layer_size_caches(state_t& state, persi
     const tile_location search_loc = inf.frontier.back();
     inf.frontier.pop_back();
     
-    std::array<tile_location, num_cardinal_directions> search_neighbors = get_all_neighbors(search_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    array<tile_location, num_cardinal_directions> search_neighbors = get_all_neighbors(search_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       tile_location const& adj_loc = search_neighbors[dir];
       inf.try_collect_loc(adj_loc);
@@ -582,7 +582,7 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
     const tile_location search_loc = inf.frontier.back();
     inf.frontier.pop_back();
     
-    std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(search_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
+    array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(search_loc, CONTENTS_AND_LOCAL_CACHES_ONLY);
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       tile_location const& adj_loc = neighbors[dir];
       inf.try_collect_loc(adj_loc);
@@ -845,8 +845,8 @@ void replace_substance_impl(
   assert_if_ASSERT_EVERYTHING(loc.stuff_at().contents() == old_substance_type);
   //check_pushable_tiles_sanity(state);
   
-  std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc);
-  
+  array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc);
+
   if (old_substance_type != AIR && new_substance_type == AIR) {
     // We might have moved away from a tile that was trying to push water into us.
     // This system formerly used rules where the emptied tile naturally didn't refill until the following frame.
@@ -1031,7 +1031,7 @@ void replace_substance_impl(
           assert(adj_loc.stuff_at().contents() != AIR);
           
           bool they_should_be_interior = true;
-          std::array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc);
+          array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc);
           for (tile_location const& adj_adj_loc : adj_neighbors) {
             if (neighboring_tiles_with_these_contents_are_not_interior(adj_adj_loc.stuff_at().contents(), adj_loc.stuff_at().contents())) {
               they_should_be_interior = false;
@@ -1071,7 +1071,7 @@ void replace_substance_impl(
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
         bool adjacent_tile_has_any_adjacent_tiles_that_are_not_groupable_water = false;
         
-        std::array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc);
+        array<tile_location, num_cardinal_directions> adj_neighbors = get_all_neighbors(adj_loc);
         for (tile_location const& adj_adj_loc : adj_neighbors) {
           if (adj_adj_loc.stuff_at().contents() != GROUPABLE_WATER) {
             adjacent_tile_has_any_adjacent_tiles_that_are_not_groupable_water = true;
@@ -1158,7 +1158,7 @@ void replace_substance_impl(
     for (tile_location const& adj_loc : neighbors) {
       if (adj_loc.stuff_at().contents() == AIR) {
         bool can_be_pushable = false;
-        std::array<tile_location, num_cardinal_directions> neighbor_neighbors = get_all_neighbors(adj_loc);
+        array<tile_location, num_cardinal_directions> neighbor_neighbors = get_all_neighbors(adj_loc);
         for (tile_location const& adj_adj_loc : neighbor_neighbors) {
           if (adj_adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
             water_groups_by_location_t::const_iterator foo = water_groups_by_surface_tile.find(adj_adj_loc);
@@ -1283,7 +1283,7 @@ void replace_substance_impl(
             for(auto const& p : ph.second) {
               assert_if_ASSERT_EVERYTHING(p.stuff_at().contents() == AIR);
               bool is_pushable_for_original_group = false;
-              std::array<tile_location, num_cardinal_directions> p_neighbors = get_all_neighbors(p);
+              array<tile_location, num_cardinal_directions> p_neighbors = get_all_neighbors(p);
               for (tile_location const& adj_loc : p_neighbors) {
                 if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
                   const water_group_identifier pushable_having_group_id = get_water_group_id_by_grouped_tile(state, adj_loc);
@@ -1315,7 +1315,7 @@ void replace_substance_impl(
             assert(iter->second == water_group_id);
           }
 
-          std::array<tile_location, num_cardinal_directions> search_neighbors = get_all_neighbors(search_loc);
+          array<tile_location, num_cardinal_directions> search_neighbors = get_all_neighbors(search_loc);
           for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
             tile_location const& adj_loc = search_neighbors[dir];
             
@@ -1408,7 +1408,7 @@ void update_fluids_impl(state_t& state) {
     active_fluid_tile_info& fluid = p.second;
     tile const& t = loc.stuff_at();
     assert_if_ASSERT_EVERYTHING(is_fluid(t.contents()));
-    std::array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc);
+    array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc);
     
     value_for_each_cardinal_direction<sub_tile_distance> new_progress(0);
     
@@ -1494,7 +1494,7 @@ void update_fluids_impl(state_t& state) {
     for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
       tile_location const& dst_loc = neighbors[dir];
       if (dst_loc.stuff_at().contents() == AIR) {
-        const std::array<tile_location, num_cardinal_directions> neighbor_neighbors =
+        const array<tile_location, num_cardinal_directions> neighbor_neighbors =
               get_perpendicular_neighbors_numbered_as_neighbors(dst_loc, dir, CONTENTS_ONLY);
         for (cardinal_direction d2 = 0; d2 < num_cardinal_directions; ++d2) {
           const tile_location neighbor_neighbor = neighbor_neighbors[d2];
@@ -1546,7 +1546,7 @@ void update_fluids_impl(state_t& state) {
   //  composite them when they conflict with each other.
   // ==============================================================================
   
-  std::unordered_set<tile_location> disturbed_tiles;
+  unordered_set<tile_location> disturbed_tiles;
   
   
   for (const wanted_move move : wanted_moves) {
@@ -1776,7 +1776,7 @@ void update_fluids_impl(state_t& state) {
       // NOTE "Adjacent tile conditions for activation/deactivation": The only relevant ones are
       // the one directly below, the ones cardinally-horizontally, and the ones horizontally-and-below.
       // at the 2-diagonals. This comment is duplicated one one other place in this file.
-      std::array<tile_location, num_cardinal_directions> cneighbors = get_all_neighbors(loc, CONTENTS_ONLY);
+      array<tile_location, num_cardinal_directions> cneighbors = get_all_neighbors(loc, CONTENTS_ONLY);
       if (obstructiveness(cneighbors[zminus].stuff_at()) < obstructiveness(t)) goto fake_continue;
 
       // TODO: figure out a way to reduce the definition-duplication for the "fall off pillars" rule.

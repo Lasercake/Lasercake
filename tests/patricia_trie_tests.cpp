@@ -58,8 +58,8 @@ struct patricia_trie_tester {
     BOOST_CHECK_EQUAL(root.monoid(), 0u);
     BOOST_CHECK_EQUAL(tree_size(root), 1);
     BOOST_CHECK_THROW(root.update_monoid(5), std::logic_error);
-    const std::array<coord, 3> somewhere = {{ 7, 27, -3 }};
-    const std::array<coord, 3> zerozerozero = {{ 0, 0, 0 }};
+    const array<coord, 3> somewhere = {{ 7, 27, -3 }};
+    const array<coord, 3> zerozerozero = {{ 0, 0, 0 }};
 
     // This is undesirable but harmless:
     BOOST_CHECK(root.contains(zerozerozero));
@@ -75,8 +75,8 @@ struct patricia_trie_tester {
 
     BOOST_CHECK(!root.erase(somewhere));
     BOOST_CHECK(!root.erase(zerozerozero));
-    BOOST_CHECK_NO_THROW(root.insert(somewhere, std::unique_ptr<block>(new block{86}), 2));
-    BOOST_CHECK_THROW(root.insert(somewhere, std::unique_ptr<block>(new block{86}), 5), std::logic_error);
+    BOOST_CHECK_NO_THROW(root.insert(somewhere, unique_ptr<block>(new block{86}), 2));
+    BOOST_CHECK_THROW(root.insert(somewhere, unique_ptr<block>(new block{86}), 5), std::logic_error);
     BOOST_CHECK_EQUAL(root.monoid(), 2u);
     BOOST_CHECK_EQUAL(tree_size(root), 1);
     BOOST_CHECK_NO_THROW(root.update_monoid(5));
@@ -89,17 +89,17 @@ struct patricia_trie_tester {
     BOOST_CHECK(root.is_empty());
     BOOST_CHECK_EQUAL(tree_size(root), 1);
 
-    const std::array<coord, 3> v1 = {{ 10, 100, 1000 }};
-    const std::array<coord, 3> v2 = {{ 10, 100, 1001 }};
-    const std::array<coord, 3> v3 = {{ 10, 100, 1010 }};
-    const std::array<coord, 3> v4 = {{ 10, 200, 1005 }};
-    BOOST_CHECK_NO_THROW(root.insert(v1, std::unique_ptr<block>(new block{87}), 2));
+    const array<coord, 3> v1 = {{ 10, 100, 1000 }};
+    const array<coord, 3> v2 = {{ 10, 100, 1001 }};
+    const array<coord, 3> v3 = {{ 10, 100, 1010 }};
+    const array<coord, 3> v4 = {{ 10, 200, 1005 }};
+    BOOST_CHECK_NO_THROW(root.insert(v1, unique_ptr<block>(new block{87}), 2));
     BOOST_CHECK_EQUAL(tree_size(root), 1);
-    BOOST_CHECK_NO_THROW(root.insert(v2, std::unique_ptr<block>(new block{88}), 3));
+    BOOST_CHECK_NO_THROW(root.insert(v2, unique_ptr<block>(new block{88}), 3));
     BOOST_CHECK_EQUAL(tree_size(root), 9);
-    BOOST_CHECK_NO_THROW(root.insert(v3, std::unique_ptr<block>(new block{89}), 4));
+    BOOST_CHECK_NO_THROW(root.insert(v3, unique_ptr<block>(new block{89}), 4));
     BOOST_CHECK_EQUAL(tree_size(root), 17);
-    BOOST_CHECK_NO_THROW(root.insert(v4, std::unique_ptr<block>(new block{90}), 5));
+    BOOST_CHECK_NO_THROW(root.insert(v4, unique_ptr<block>(new block{90}), 5));
     BOOST_CHECK_EQUAL(tree_size(root), 25);
     BOOST_CHECK_EQUAL(root.monoid(), 14u);
     BOOST_CHECK_THROW(root.update_monoid(5), std::logic_error);
