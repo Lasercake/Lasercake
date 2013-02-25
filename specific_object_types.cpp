@@ -830,6 +830,9 @@ void conveyor_belt::update(world& w, input_representation::input_news_t const&, 
         if (-tile_vel(dim) > target_vel) tile_vel[dim] = -target_vel;
       }
     }
+    const which_dimension_type dim2 = (dim == X) ? Y : X;
+    if (abs(tile_vel(dim2)) <= one_frame_acceleration) tile_vel[dim2] = 0;
+    else tile_vel[dim2] -= one_frame_acceleration * sign(tile_vel(dim2));
     tile_location next_loc = loc.get_neighbor_by_variable(direction_, CONTENTS_ONLY);
     sub_tile_velocity target_zvel((next_loc.stuff_at().contents() == AIR) ? 0 : ((tile_height / seconds) * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds)));
     if (tile_vel(Z) < target_zvel) {
