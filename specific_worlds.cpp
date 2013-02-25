@@ -451,6 +451,99 @@ private:
 
 
 
+
+
+class fractal_hills_tweaked_for_playground {
+
+public:
+  struct column_info {
+    lint64_t land_height;
+  };
+  
+    column_info get_column_info(lint64_t x, lint64_t y) {
+      if (column_info const* h = find_as_pointer(column_memo_, vector3<lint64_t>(x,y,0))) {
+        return *h;
+      }
+
+      column_info info;
+      if ((x == 0) || (y == 0)) {
+        info.land_height = 0;
+        return info;
+      }
+      memo_rng rng_here = make_rng(x, y);
+      uint32_t low_x_bits_zero = 0;
+      uint32_t low_y_bits_zero = 0;
+      luint64_t variance_num = 2;
+      luint64_t variance_denom = 1;
+      const uint32_t max_interesting_bits = 30;
+      for (uint32_t i = 0; i <= max_interesting_bits; ++i) {
+        if (!(x & (lint64_t(1) << i))) ++low_x_bits_zero;
+        if (!(y & (lint64_t(1) << i))) ++low_y_bits_zero;
+        if ((x | y) & (lint64_t(1) << i)) break;
+        if (i < 5) {
+          variance_num *= 13ULL;
+          variance_denom *= 6ULL;
+        }
+        else {
+          variance_num *= 8ULL;
+          variance_denom *= 7ULL;
+        }
+        if (variance_num > (1ULL << 50)) {
+          variance_num = (variance_num / variance_denom);
+          variance_denom = 1ULL;
+        }
+      }
+      luint64_t uvariance = (variance_num / variance_denom);
+      assert(uvariance <= luint64_t(std::numeric_limits<lint64_t>::max()));
+      lint64_t variance(uvariance);
+      const uniform_int_distribution<lint64_t> random_coord(-variance,variance + 1);
+      if (low_x_bits_zero >= max_interesting_bits && low_y_bits_zero >= max_interesting_bits) {
+        // At a large enough scale, pick arbitrarily
+        info.land_height = random_coord(rng_here);
+      }
+      else if (low_x_bits_zero < low_y_bits_zero) {
+        // next are the ones with more zero x bits
+        // TODO fix duplicate code
+        lint64_t x0 = x & (~((2 << low_x_bits_zero) - 1));
+        lint64_t x1 = x0 + (2 << low_x_bits_zero);
+        assert((x1 - x) == (x - x0));
+        column_info inf0 = get_column_info(x0, y);
+        column_info inf1 = get_column_info(x1, y);
+        info.land_height = (inf0.land_height + inf1.land_height + random_coord(rng_here)) / 2;
+      }
+      else if (low_x_bits_zero > low_y_bits_zero) {
+        // next are the ones with more zero y bits
+        // TODO fix duplicate code
+        lint64_t y0 = y & (~((2 << low_y_bits_zero) - 1));
+        lint64_t y1 = y0 + (2 << low_y_bits_zero);
+        assert((y1 - y) == (y - y0));
+        column_info inf0 = get_column_info(x, y0);
+        column_info inf1 = get_column_info(x, y1);
+        info.land_height = (inf0.land_height + inf1.land_height + random_coord(rng_here)) / 2;
+      }
+      else {
+        assert(low_x_bits_zero == low_y_bits_zero);
+        lint64_t x0 = x - (1 << low_x_bits_zero);
+        lint64_t x1 = x + (1 << low_x_bits_zero);
+        lint64_t y0 = y - (1 << low_y_bits_zero);
+        lint64_t y1 = y + (1 << low_y_bits_zero);
+        column_info infx0 = get_column_info(x0, y);
+        column_info infx1 = get_column_info(x1, y);
+        column_info infy0 = get_column_info(x, y0);
+        column_info infy1 = get_column_info(x, y1);
+        assert((x1 - x) == (x - x0));
+        assert((y1 - y) == (y - y0));
+
+        info.land_height = (infx0.land_height + infx1.land_height + infy0.land_height + infy1.land_height + random_coord(rng_here)) / 4;
+      }
+      column_memo_.insert(std::make_pair(vector3<lint64_t>(x,y,0), info));
+      return info;
+    }
+  std::unordered_map<vector3<lint64_t>, column_info> column_memo_;
+};
+
+
+
 bool in_old_box(coords l) {
   return  l.x >= wcc-1 && l.x < wcc+21 &&
           l.y >= wcc-1 && l.y < wcc+21 &&
@@ -653,6 +746,103 @@ private:
 };
 SCENARIO_CLASS_NAMED(spiky)
 #endif
+
+const coord tower_min = 80;
+const coord tower_max = 90;
+const coord tower_freq = 60;
+
+bool tower_boundary(coord b) {
+  if (b > wcc - tower_min) return false;
+  if ((((wcc - tower_min) - b) % tower_freq) == 0) return true;
+  if ((((wcc - tower_min) - b) % tower_freq) == (tower_max - tower_min)) return true;
+  return false;
+}
+bool tower_any(coord b) {
+  if (b > wcc - tower_min) return false;
+  if ((((wcc - tower_min) - b) % tower_freq) <= (tower_max - tower_min)) return true;
+  return false;
+}
+coord tower_center(coord b) {
+  assert ((((wcc - tower_min) - b) % tower_freq) <= tower_freq);
+  assert ((((wcc - tower_min) - b) % tower_freq) >= 0);
+  /*LOG << b << "\n";
+  LOG << (((wcc - tower_min) - b) % tower_freq) << "\n";
+  LOG << ((tower_max - tower_min)/2) << "\n";
+  LOG << b + (((wcc - tower_min) - b) % tower_freq) - ((tower_max - tower_min)/2) << "\n";*/
+  return b + (((wcc - tower_min) - b) % tower_freq) - ((tower_max - tower_min)/2);
+}
+
+class playground : public worldgen_type {
+public:
+  virtual worldgen_summary_of_area examine_region(tile_bounding_box region) {
+    worldgen_summary_of_area result;
+#if 0
+    if(region.min(Z) >= wcc + 2000) {
+      result.everything_here_is = AIR;
+    }
+    if(region.max(Z) <= wcc - 7000) {
+      result.everything_here_is = ROCK;
+    }
+    if (region.subsumes(tile_bounding_box(world_center_tile_coords))) {
+      result.all_objects_whose_centres_are_here = worldgen_summary_of_area::no_objects();
+      result.all_objects_whose_centres_are_here->first.push_back(shared_ptr<object>(new refinery(world_center_tile_coords)));
+    }
+    else {
+      result.all_objects_whose_centres_are_here = worldgen_summary_of_area::no_objects();
+    }
+      result.all_objects_whose_centres_are_here->first.push_back(shared_ptr<object>(new refinery(world_center_tile_coords)));
+      result.all_objects_whose_centres_are_here->second = tile_bounding_box(vector3<tile_coordinate>(wcc-200,wcc-200,wcc-200), vector3<tile_coordinate>(400,400,400));
+#endif
+    return result;
+  }
+  void create_tiles(block_initializer b) override {
+    b.initialize_by_column([this](coord x, coord y, column_callback fz) {
+      const coord air_begins_at_z(get_height(x, y));
+      if (tower_any(x) && tower_any(y)) {
+        const coord water_height = fhillsheight(tower_center(x), tower_center(y))+80;
+        fz([air_begins_at_z, water_height](coord z) {
+          return (z < air_begins_at_z) ? ROCK : (z < water_height) ? GROUPABLE_WATER : AIR;
+        });
+      }
+      else {
+        fz([air_begins_at_z](coord z) {
+          return (z < air_begins_at_z) ? ROCK : AIR;
+        });
+      }
+    });
+  }
+
+    coord get_height(coord x, coord y) {
+      if (((x >= wcc - 4) && (x <= wcc + 4)) || ((y >= wcc - 4) && (y <= wcc + 4))) {
+        return wcc;
+      }
+      else if ((x < wcc - 4) && (y < wcc - 4)) {
+        if ((x == wcc - 5) && (y >= (wcc - 5 - 20))) return (2*wcc - 5 - y);
+        else if ((x > wcc - 20) || (y > wcc - 20)) return wcc + 20;
+        else if (tower_any(x) && tower_any(y) && (tower_boundary(x) || tower_boundary(y))) {
+          return fhillsheight(tower_center(x), tower_center(y))+150;
+        }
+        else {
+          return fhillsheight(x, y);
+        }
+      }
+      else if ((x > wcc + 4) && (y > wcc + 4)) {
+        if ((x == wcc + 5) && (y <= (wcc + 5 + 20))) return (2*wcc - y + 5);
+        return wcc - 20;
+      }
+      else if ((x > wcc + 4) && (y < wcc - 4)) {
+        return wcc;
+      }
+      else {
+        assert((x < wcc - 4) && (y > wcc + 4));
+        return wcc;
+      }
+    }
+private:
+  coord fhillsheight(coord x, coord y) { return wcc + 20 + fhills.get_column_info(lint64_t(wcc - 20) - x, lint64_t(wcc - 20) - y).land_height; }
+  fractal_hills_tweaked_for_playground fhills;
+};
+SCENARIO_CLASS_NAMED(playground)
 
 // These are worst cases in terms of number of non-interior (theoretically
 // visible) tiles within a radius; useful to test as a stress-test and
