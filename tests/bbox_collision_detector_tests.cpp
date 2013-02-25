@@ -44,10 +44,10 @@ struct boring_dist_struct {
   typedef uint64_t cost_type;
   uint64_t min_cost(bounding_box_2d bbox) {
     //bug for wrapping bboxes, if any
-    return uint64_t(bbox.min(X)) + bbox.min(Y) + bbox.min(Z);
+    return uint64_t(bbox.min(X)) + bbox.min(Y);
   }
   uint64_t cost(obj_t, bounding_box_2d bbox) {
-    return uint64_t(bbox.min(X)) + bbox.min(Y) + bbox.min(Z);
+    return uint64_t(bbox.min(X)) + bbox.min(Y);
   }
 };
 
