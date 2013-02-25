@@ -147,6 +147,14 @@ pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc,
   return inserted;
 }
 
+
+template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
+void pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase_sub_nodes() {
+  delete_sub_nodes_();
+  //TODO allow setting/preserving of monoids on non-leaves?
+  this->update_monoid(monoid_type());
+}
+
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
 bool pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::erase(loc_type leaf_loc) {
   node_type& node = find_node(leaf_loc);

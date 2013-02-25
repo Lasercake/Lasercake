@@ -35,6 +35,7 @@
 #include <QtGui/QDesktopWidget>
 #include <QtCore/QMetaEnum>
 #include <QtCore/QLocale>
+#include <QtCore/QTimer>
 #include <QtGui/QFontDatabase>
 
 #include <iomanip>
@@ -398,6 +399,7 @@ int main(int argc, char *argv[])
       ("no-gui,n", bool_switch_off(&config.have_gui), "debug: don't run the GUI")
       ("sim-only,s", bool_switch_off(&config.run_drawing_code), "debug: don't draw/render at all")
       ("avoid-qt,Q", "debug: don't call Qt at all (implies --no-gui and --no-threads; attempts to be even more deterministic than normal)")
+      ("max-framerate", po::value<int64_t>(&config.max_frames_per_seconds)->default_value(60), "Limit frame-rate")
       ("no-frame-timing", bool_switch_off(&config.show_frame_timing), "don't log timing info each frame")
       ("no-threads", "debug: don't use threads even when supported")
       ("no-sim-thread", bool_switch_off(&config.use_simulation_thread), "debug: don't use a thread for the simulation")
@@ -926,6 +928,7 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
   monotonic_microseconds_at_beginning_of_frame_ = get_monotonic_microseconds();
   monotonic_microseconds_at_beginning_of_ten_frame_block_ = monotonic_microseconds_at_beginning_of_frame_;
   monotonic_microseconds_at_beginning_of_hundred_frame_block_ = monotonic_microseconds_at_beginning_of_frame_;
+  monotonic_microseconds_at_beginning_of_frame_for_framerate_limiter_ = monotonic_microseconds_at_beginning_of_frame_;
 
   // Initialization of the simulation has to happen in its thread for several
   // reasons:
@@ -940,13 +943,27 @@ LasercakeController::LasercakeController(config_struct config, QObject* parent)
     Q_ARG(input_news_t, input_news_t()), Q_ARG(distance, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
 }
 
-// returns false if exiting the program
-bool LasercakeController::invoke_simulation_step_() {
-  ++frame_;
-  if(config_.exit_after_frames == frame_) {
-    QCoreApplication::quit();
-    return false;
+void LasercakeController::invoke_simulation_step_() {
+  const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
+  const microseconds_t monotonic_microseconds_for_frame =
+    end_frame_monotonic_microseconds - monotonic_microseconds_at_beginning_of_frame_for_framerate_limiter_;
+  const microseconds_t frame_duration_at_60fps = 1000000 / config_.max_frames_per_seconds;
+  const microseconds_t estimated_extra_delay_after_sleep = 0;//frame_duration_at_60fps / 6;
+  const microseconds_t want_to_sleep =
+    frame_duration_at_60fps - monotonic_microseconds_for_frame - estimated_extra_delay_after_sleep;
+  if(want_to_sleep > 0) {
+    //LOG << "frame duration " << monotonic_microseconds_for_frame << " vs "
+    //<< frame_duration_at_60fps << " target min duration; sleeping for "
+    //<< want_to_sleep << ".\n";
+    QTimer::singleShot((want_to_sleep+1000)/1000, this, SLOT(invoke_simulation_step_()));
+    return;
   }
+  /*else {
+    LOG << "frame duration " << monotonic_microseconds_for_frame << " vs "
+    << frame_duration_at_60fps << " target min duration; not sleeping.\n";
+  }*/
+  monotonic_microseconds_at_beginning_of_frame_for_framerate_limiter_ = get_monotonic_microseconds();
+
 
   // get the simulator going again as promptly as possible
   const bool paused_this_time = paused_ && steps_queued_to_do_while_paused_ == 0;
@@ -965,12 +982,18 @@ bool LasercakeController::invoke_simulation_step_() {
     QMetaObject::invokeMethod(&*simulator_, "prepare_graphics", Qt::QueuedConnection,
       Q_ARG(input_news_t, input_news), Q_ARG(distance, config_.view_radius), Q_ARG(bool, config_.run_drawing_code));
   }
-  return true;
 }
 
 void LasercakeController::output_new_frame(time_unit moment, frame_output_t output) {
   game_time_ = moment;
-  if(!invoke_simulation_step_()) {return;}
+
+  ++frame_;
+  if(config_.exit_after_frames == frame_) {
+    QCoreApplication::quit();
+    return;
+  }
+
+  invoke_simulation_step_();
 
   microseconds_t last_gl_render_microseconds = 0;
   if(config_.have_gui) {
@@ -982,6 +1005,7 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
 
   const microseconds_t end_frame_monotonic_microseconds = get_monotonic_microseconds();
   const microseconds_t monotonic_microseconds_for_frame = end_frame_monotonic_microseconds - monotonic_microseconds_at_beginning_of_frame_;
+  monotonic_microseconds_at_beginning_of_frame_ = end_frame_monotonic_microseconds;
 
   if(config_.show_frame_timing) {
     LOG << output.extra_debug_info;
@@ -1023,19 +1047,5 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
     << " fps over the last hundred frames " << (frame_-100) << "-" << frame_ << ".\n";
     }
   }
-
-  // HACK - limit to about 60 FPS
-  // TODO - use Qt timer events instead.
-  // TODO - make this configurable and/or changeable
-  // at runtime.
-  const microseconds_t frame_duration_at_60fps = 1000000 / 60;
-  const microseconds_t estimated_extra_delay_after_sleep = frame_duration_at_60fps / 6;
-  const microseconds_t want_to_sleep =
-    frame_duration_at_60fps - last_gl_render_microseconds - estimated_extra_delay_after_sleep;
-  if(want_to_sleep > 0) {
-    sleeper::usleep(want_to_sleep);
-  }
-
-  monotonic_microseconds_at_beginning_of_frame_ = end_frame_monotonic_microseconds;
 }
 

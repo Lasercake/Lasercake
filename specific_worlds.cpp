@@ -35,7 +35,7 @@ typedef vector3<coord> coords;
 
 namespace /* anonymous */ {
 
-const coord wcc = world_center_tile_coord;
+constexpr coord wcc = world_center_tile_coord;
 
 
 template<size_t Index, class...Types>
@@ -97,7 +97,16 @@ namespace std {
 
 namespace /*anonymous*/ {
 
-template<typename Functor, typename Signature>
+
+template<typename MemberFn>
+struct de_member_fn_ize;
+template<typename Ret, typename Class, typename... Args>
+struct de_member_fn_ize<Ret (Class::*)(Args...)> { typedef Ret (type)(Args...); };
+template<typename Ret, typename Class, typename... Args>
+struct de_member_fn_ize<Ret (Class::*)(Args...) const> { typedef Ret (type)(Args...); };
+
+template<typename Functor, typename Signature =
+    typename de_member_fn_ize<decltype(&Functor::operator())>::type>
 struct memoized;
 template<typename Functor, typename Result, typename...Arguments>
 struct memoized<Functor, Result(Arguments...)> {
@@ -698,21 +707,21 @@ SCENARIO_FUNCTION_NAMED("simple_hills") {
 SCENARIO_FUNCTION_NAMED("fractal_hills") {
     return worldgen_from_column_spec(fractal_hills());
 }
-#if 0
+namespace spiky_ {
+static constexpr coord a_spike_height = 20;
+static constexpr coord spike_multiplier_1 = 3;
+static constexpr coord spike_multiplier_2 = 5;
+static constexpr coord max_spike_height = a_spike_height*spike_multiplier_1*spike_multiplier_2;
+static constexpr coord all_sky_above = wcc+max_spike_height+1;
+static constexpr coord all_ground_below = wcc-1;
 class spiky : public worldgen_type {
-  static const coord a_spike_height = 20;
-  static const coord spike_multiplier_1 = 3;
-  static const coord spike_multiplier_2 = 5;
-  static const coord max_spike_height = a_spike_height*spike_multiplier_1*spike_multiplier_2;
-  static const coord all_sky_above = wcc+max_spike_height+1;
-  static const coord all_ground_below = wcc-1;
 public:
-  virtual worldgen_summary_of_area examine_region(tile_bounding_box region) {
+  virtual worldgen_summary_of_area examine_region(tile_bounding_box region) override {
     worldgen_summary_of_area result;
-    if(region.max(Z) >= all_sky_above) {
+    if(region.min(Z) >= all_sky_above) {
       result.everything_here_is = AIR;
     }
-    if(region.min(Z) <= all_ground_below) {
+    if(region.max(Z) <= all_ground_below) {
       result.everything_here_is = ROCK;
     }
     result.all_objects_whose_centres_are_here = worldgen_summary_of_area::no_objects();
@@ -727,6 +736,7 @@ public:
     });
   }
 
+private:
   struct get_height {
     coord operator()(coord x, coord y)const {
       // TODO include a constant-for-this-instance-of-the-world random-seed too.
@@ -741,11 +751,11 @@ public:
       return height;
     }
   };
-private:
-  memoized<get_height, coord (coord, coord)> height_memo_;
+  memoized<get_height> height_memo_;
 };
+}
+using spiky_::spiky;
 SCENARIO_CLASS_NAMED(spiky)
-#endif
 
 const coord tower_min = 80;
 const coord tower_max = 90;

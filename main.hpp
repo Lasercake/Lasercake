@@ -59,6 +59,8 @@ struct config_struct {
   bool have_gui;
   bool run_drawing_code;
   bool initially_drawing_debug_stuff;
+  //microseconds_t min_microseconds_per_frame;
+  int64_t max_frames_per_seconds;
   bool show_frame_timing;
   int64_t exit_after_frames;
   bool use_opengl_thread;
@@ -78,7 +80,6 @@ inline std::ostream& operator<<(std::ostream& os, config_struct const& config) {
     << '}';
 }
 
-// TODO use Qt timer events where possible instead of this.
 struct sleeper : private QThread {
 public:
   using QThread::sleep;
@@ -214,9 +215,10 @@ public Q_SLOTS:
   void output_new_frame(time_unit moment, frame_output_t output);
   void key_changed(input_representation::key_change_t);
 
-private:
-  bool invoke_simulation_step_();
+private Q_SLOTS:
+  void invoke_simulation_step_();
 
+private:
   config_struct config_;
   boost::scoped_ptr<LasercakeGLWidget> gl_widget_;
   boost::scoped_ptr<QThread> simulator_thread_;
@@ -224,6 +226,11 @@ private:
   microseconds_t monotonic_microseconds_at_beginning_of_frame_;
   microseconds_t monotonic_microseconds_at_beginning_of_ten_frame_block_;
   microseconds_t monotonic_microseconds_at_beginning_of_hundred_frame_block_;
+  // We limit the simulation frame-rate to 60 FPS so that the simulation goes
+  // at a somewhat consistent speed (which limits the display to the same
+  // frequency in the current implementation, which we would also want to limit
+  // but it is already limited by this).
+  microseconds_t monotonic_microseconds_at_beginning_of_frame_for_framerate_limiter_;
   int64_t frame_;
   time_unit game_time_;
   bool paused_;
