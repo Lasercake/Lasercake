@@ -246,7 +246,7 @@ std::string robot::player_instructions()const {
       "Unknown mode, this is an error!"
     ) + "\n\n"
     "Metal carried: " + draw_m3(metal_carried_) + "/" + draw_m3(storage_volume()) + "\n\n"
-    "WASD: move  |  arrows/mouse: rotate view  |  space: jump  |  ZXCVBR: switch mode"
+    "WASD: move  |  arrows/mouse: rotate view  |  space: jump/fly  |  ZXCVBR: switch mode"
     "\n"
     ;
   return instructions;
@@ -285,7 +285,9 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     }
   }
   if (input_news.is_currently_pressed("space")) {
-    velocity_.z = tile_width * 15 / 4 / seconds;
+    if (velocity_.z < tile_width * 15 / 4 / seconds) {
+      velocity_.z += tile_width / 4 / seconds;
+    }
   }
   const bool turn_right = input_news.is_currently_pressed("right")/* || input_news.is_currently_pressed("d")*/;
   const bool turn_left = input_news.is_currently_pressed("left")/* || input_news.is_currently_pressed("a")*/;
