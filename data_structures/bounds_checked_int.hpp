@@ -29,6 +29,7 @@
 #include <boost/integer_traits.hpp>
 #include <boost/integer/static_min_max.hpp>
 #include <boost/mpl/if.hpp>
+#include "../cxx11/hash.hpp"
 
 #include <ostream>
 
@@ -179,7 +180,7 @@ public:
     return os << i.get();
   }
   friend inline size_t hash_value(bounds_checked_int i) {
-    return std::hash<Int>()(i.get());
+    return hash<Int>()(i.get());
   }
   friend inline constexpr bounds_checked_int abs(bounds_checked_int i) {
     return (i < 0) ? -i : i;
@@ -214,7 +215,7 @@ private:
   int_type val_;
 };
 
-namespace std {
+namespace HASH_NAMESPACE {
   template<typename Int, Int Min, Int Max>
   struct hash< bounds_checked_int<Int,Min,Max> > {
     inline size_t operator()(bounds_checked_int<Int,Min,Max> const& i) const {

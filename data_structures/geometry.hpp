@@ -25,7 +25,7 @@
 
 #include <cassert>
 #include <vector>
-#include <array>
+#include "../cxx11/array.hpp"
 
 #include "../utils.hpp"
 #include "../units.hpp"
@@ -225,9 +225,9 @@ inline std::ostream& operator<<(std::ostream& os, bounding_box const& bb) {
 
 // TODO: rays and lines
 struct line_segment {
-  line_segment(std::array<vect, 2> ends):ends(ends){}
+  line_segment(array<vect, 2> ends):ends(ends){}
   line_segment(vect end1, vect end2):ends({{end1, end2}}){}
-  std::array<vect, 2> ends;
+  array<vect, 2> ends;
   
   void translate(vect t);
   bounding_box bounds()const;

@@ -23,7 +23,7 @@
 #define LASERCAKE_PATRICIA_TRIE_TESTS_HPP__
 
 #include "../data_structures/patricia_trie.hpp"
-#include <memory>
+#include "../cxx11/unique_ptr.hpp"
 
 namespace patricia_trie_testing {
 struct trie_traits : default_pow2_radix_patricia_trie_traits {
@@ -34,7 +34,7 @@ struct block {
   int contents;
 };
 // tile_coordinates here are right-shifted by worldblock_dimension_exp
-typedef pow2_radix_patricia_trie_node<3, coord, std::unique_ptr<block>, trie_traits> trie_node;
+typedef pow2_radix_patricia_trie_node<3, coord, unique_ptr<block>, trie_traits> trie_node;
 }
 
 #endif

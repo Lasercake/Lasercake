@@ -23,9 +23,11 @@
 #define LASERCAKE_UTILS_HPP__
 
 
-#include <array>
-#include <unordered_set>
-#include <unordered_map>
+#include "cxx11/unordered_map.hpp"
+#include "cxx11/unordered_set.hpp"
+#include "cxx11/hash.hpp"
+#include "cxx11/array.hpp"
+#include "cxx11/cxx11_utils.hpp"
 #include <vector>
 #include <memory>
 #include <cmath>
@@ -107,11 +109,11 @@ public:
     x(other.x),y(other.y),z(other.z){}
 
   // implicit conversions to/from array:
-  BOOST_FORCEINLINE operator std::array<ScalarType, 3>()const {
-    std::array<ScalarType, 3> result = {{ x, y, z }};
+  BOOST_FORCEINLINE operator array<ScalarType, 3>()const {
+    array<ScalarType, 3> result = {{ x, y, z }};
     return result;
   }
-  BOOST_FORCEINLINE vector3(std::array<ScalarType, 3> const& arr)
+  BOOST_FORCEINLINE vector3(array<ScalarType, 3> const& arr)
     : x(arr[0]), y(arr[1]), z(arr[2]) {}
   
   BOOST_FORCEINLINE ScalarType& operator[](which_dimension_type index) {
@@ -148,7 +150,7 @@ public:
   }
   template<typename OtherType, typename RoundingStrategy>
   friend inline constexpr auto divide(vector3 const& v, OtherType const& other, RoundingStrategy strat)
-  -> vector3<decltype(std::declval<ScalarType>() / other)>{
+  -> vector3<decltype(declval<ScalarType>() / other)>{
     return vector3<decltype(v.x / other)>(
       divide(v.x, other, strat),
       divide(v.y, other, strat),
@@ -267,7 +269,7 @@ public:
   }
 };
 
-namespace std {
+namespace HASH_NAMESPACE {
   template<typename ScalarType> struct hash<vector3<ScalarType> > {
     inline size_t operator()(vector3<ScalarType> const& v) const {
       return hash_value(v);
@@ -346,7 +348,7 @@ template<typename ScalarType> inline vector3<ScalarType> project_onto_cardinal_d
 
 template<typename ValueType> class value_for_each_cardinal_direction {
 private:
-  typedef std::array<ValueType, num_cardinal_directions> internal_array;
+  typedef array<ValueType, num_cardinal_directions> internal_array;
 public:
   explicit value_for_each_cardinal_direction(ValueType const& iv/*initial_value*/)
       : data_({{iv,iv,iv,iv,iv,iv}}) {
@@ -499,13 +501,13 @@ struct lasercake_nice_deleter {
 
 template<typename T>
 struct lasercake_set {
-  typedef std::unordered_set<T, std::hash<T>, std::equal_to<T>,
+  typedef unordered_set<T, hash<T>, std::equal_to<T>,
               typename lasercake_nice_allocator<T>::type
           > type;
 };
 template<typename K, typename V>
 struct lasercake_map {
-  typedef std::unordered_map<K, V, std::hash<K>, std::equal_to<K>,
+  typedef unordered_map<K, V, hash<K>, std::equal_to<K>,
               typename lasercake_nice_allocator< std::pair<const K, V> >::type
           > type;
 };

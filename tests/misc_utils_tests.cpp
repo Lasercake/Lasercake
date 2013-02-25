@@ -28,7 +28,7 @@
 
 #include "../utils.hpp"
 #include <limits>
-#include <array>
+#include "../cxx11/array.hpp"
 #include <algorithm>
 #include <boost/random/mersenne_twister.hpp>
 #include <boost/random/uniform_int_distribution.hpp>
@@ -289,7 +289,7 @@ BOOST_AUTO_TEST_CASE( my_popcount ) {
   BOOST_CHECK_EQUAL(popcount(uint16_t(0xef)), 7);
   BOOST_CHECK_EQUAL(popcount(uint8_t(0xef)), 7);
 
-  std::array<uint64_t, 20> numbers_to_test = {{ 0, 1, 2, 3, 4, 5, 17, 232, 500,
+  array<uint64_t, 20> numbers_to_test = {{ 0, 1, 2, 3, 4, 5, 17, 232, 500,
     78978978, 8948954789789349789ull, 0xfffffffful, 0x100000000ull,
     0x100000001ull, 0xffffffffffffffffull, 0xfffffffffffffffeull,
     0xeeeeeeeeeeeeeeeeull, 0xfffffffe00000001ull, 0xfffffffe00000000ull,
@@ -308,7 +308,7 @@ void i64sqrt_test(uint64_t radicand) {
 
 
 BOOST_AUTO_TEST_CASE( my_sqrt ) {
-  std::array<uint64_t, 19> numbers_to_test = {{ 0, 1, 2, 3, 4, 5, 17, 232, 500,
+  array<uint64_t, 19> numbers_to_test = {{ 0, 1, 2, 3, 4, 5, 17, 232, 500,
     78978978, 8948954789789349789ull, 0xfffffffful, 0x100000000ull,
     0x100000001ull, 0xffffffffffffffffull, 0xfffffffffffffffeull,
     0xeeeeeeeeeeeeeeeeull, 0xfffffffe00000001ull, 0xfffffffe00000000ull
@@ -327,7 +327,7 @@ void i64log2_test(uint64_t argument) {
 
 BOOST_AUTO_TEST_CASE( my_log ) {
   BOOST_CHECK_THROW(ilog2(0u), std::logic_error);
-  std::array<uint64_t, 18> numbers_to_test = {{ 1, 2, 3, 4, 5, 17, 232, 500,
+  array<uint64_t, 18> numbers_to_test = {{ 1, 2, 3, 4, 5, 17, 232, 500,
     78978978, 8948954789789349789ull, 0xfffffffful, 0x100000000ull,
     0x100000001ull, 0xffffffffffffffffull, 0xfffffffffffffffeull,
     0xeeeeeeeeeeeeeeeeull, 0xfffffffe00000001ull, 0xfffffffe00000000ull

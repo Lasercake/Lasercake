@@ -21,6 +21,33 @@
 
 #include "borrowed_bitset.hpp"
 
+// This makes the process not safe to exit while the
+// sim thread is running...
+//#include <QtCore/QThreadStorage>
+
 namespace borrowed_bitset_impl {
-thread_local zeroable_bitset_array array_of_bitset_lists = nullptr;
-}
+
+#ifdef NO_COMPILER_SUPPORTED_TLS
+// TODO - QThreadStorage? pthreads? atomic operations on a shared global
+// structure? drop support?
+#warning "borrowed_bitset is not thread-safe with this compiler/environment!"
+#else
+thread_local
+#endif
+zeroable_bitset_array array_of_bitset_lists = nullptr;
+
+//QThreadStorage<zeroable_bitset_array> thread_local_array_of_bitset_lists;
+
+/*
+void delete_array_of_bitset_lists() { delete[] array_of_bitset_lists; }
+*/
+
+zeroable_bitset_array get_this_thread_array_of_bitset_lists() {
+  //zeroable_bitset_array& array_of_bitset_lists = thread_local_array_of_bitset_lists.localData();
+  if(array_of_bitset_lists == nullptr) {
+    array_of_bitset_lists = new zeroable_bitset_list[array_of_bitset_lists_len];
+  }
+  return array_of_bitset_lists;
+};
+
+} /* end namespace borrowed_bitset_impl */

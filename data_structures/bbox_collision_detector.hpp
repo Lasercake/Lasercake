@@ -23,10 +23,9 @@
 #define LASERCAKE_BBOX_COLLISION_DETECTOR_HPP__
 
 #include <boost/integer.hpp>
-#include <unordered_map>
-#include <unordered_set>
-#include <array>
-#include <memory>
+#include "../cxx11/unordered_map.hpp"
+#include "../cxx11/array.hpp"
+#include "../cxx11/unique_ptr.hpp"
 #include "../utils.hpp"
 
 namespace collision_detector {
@@ -68,7 +67,7 @@ public:
   typedef Coordinate coordinate_type;
   static const num_bits_type num_coordinate_bits = CoordinateBits;
   static const num_coordinates_type num_dimensions = NumDimensions;
-  typedef std::array<Coordinate, NumDimensions> coordinate_array;
+  typedef array<Coordinate, NumDimensions> coordinate_array;
 
   // The default-constructor can reasonably be private or public; it creates
   // a bounding_box with undefined values.  We choose public (the default)
@@ -164,7 +163,7 @@ namespace impl {
   template<typename T>
   struct ztree_node_ptr {
     // boost::scoped_ptr works as well, except it doesn't allow custom deleters.
-    typedef std::unique_ptr<T, lasercake_nice_deleter<T> > type;
+    typedef unique_ptr<T, lasercake_nice_deleter<T> > type;
   };
 
   struct access_visitor_found_objects;
@@ -450,7 +449,7 @@ private:
   typedef impl::object_metadata<CoordinateBits, NumDimensions> object_metadata;
   typedef std::pair<const ObjectIdentifier, object_metadata> id_and_bbox_type;
   typedef id_and_bbox_type* id_and_bbox_ptr;
-  std::unordered_map<ObjectIdentifier, object_metadata> bboxes_by_object_;
+  unordered_map<ObjectIdentifier, object_metadata> bboxes_by_object_;
   ztree_node_ptr objects_tree_;
   //(implicitly) indexed by numeric_id
   std::vector<id_and_bbox_ptr> objects_sequence_;

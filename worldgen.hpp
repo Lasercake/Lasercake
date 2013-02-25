@@ -23,6 +23,7 @@
 #define LASERCAKE_WORLDGEN_HPP__
 
 #include <limits>
+#include "cxx11/hash.hpp"
 #include <boost/functional/hash.hpp>
 #include <boost/optional.hpp>
 
@@ -159,7 +160,7 @@ public:
   virtual ~worldgen_type() {}
 };
 
-namespace std {
+namespace HASH_NAMESPACE {
   template<> struct hash<pair<tile_coordinate, tile_coordinate> > {
     inline size_t operator()(pair<tile_coordinate, tile_coordinate> const& v) const {
       size_t seed = 0;
@@ -235,7 +236,7 @@ public:
     bool operator<(spec_from other) { return min < other.min; }
   };
   size_t len;
-  std::array<spec_from, 12> arr;
+  array<spec_from, 12> arr;
 };
 inline void world_column_builder::specify_lowest(tile_contents contents) {
   arr[len++] = spec_from{0, contents};
@@ -265,7 +266,7 @@ public:
     // heyy.. first, just ask every wb and fill and see how it speeds ^_^
     const tile_coordinate min_z = bounds.min(Z);
     const tile_coordinate max_z = bounds.max(Z);
-    std::array<world_column_builder, worldblock_dimension*worldblock_dimension>& worldblock_column =
+    array<world_column_builder, worldblock_dimension*worldblock_dimension>& worldblock_column =
       already_computed_columns_[make_pair(bounds.min(X), bounds.min(Y))];
     // Hack - if there is any data in the worldblock_column,
     // assume it has all the information we need. (TODO.)
@@ -328,8 +329,8 @@ public:
   }
 private:
   Functor column_spec_;
-  std::unordered_map<std::pair<tile_coordinate, tile_coordinate>,
-                     std::array<world_column_builder, worldblock_dimension*worldblock_dimension>
+  unordered_map<std::pair<tile_coordinate, tile_coordinate>,
+                array<world_column_builder, worldblock_dimension*worldblock_dimension>
   > already_computed_columns_;
 };
 template<typename Functor>

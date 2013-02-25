@@ -8,6 +8,7 @@ set (OPTIONS_DEFINES )
 option (USE_BUNDLED_BOOST "On: Use Boost from ./bundled_libs/; off: use system Boost." ON)
 option (USE_BUNDLED_GLM "On: Use glm from ./bundled_libs/; off: use system glm." ON)
 option (USE_BUNDLED_GLEW "On: Use GLEW from ./bundled_libs/; off: use system GLEW." ON)
+option (USE_BOOST_CXX11_LIBS "On: Use Boost's implementation of C++11 standard library features; off: use the standard library." OFF)
 option (GLIB "Use GLib slices for some memory allocation (requires glib)." OFF)
 option (USE_BOUNDS_CHECKED_INTS "Check for overflow of most int computations at runtime (slow)." OFF)
 option (PARANOID "Turn on various code paranoia checks (slow)." OFF)
@@ -16,6 +17,22 @@ option (BUILD_SELF_TESTS "Build Lasercake's self-testing code component (recomme
 
 include (FindPkgConfig)
 set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_SOURCE_DIR}/cmake")
+
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("thread_local void* tls; int main(){return(tls==0);}" HAS_THREAD_LOCAL)
+check_cxx_source_compiles("__thread void* tls; int main(){return(tls==0);}" HAS___THREAD)
+if(HAS___THREAD AND NOT HAS_THREAD_LOCAL)
+	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -Dthread_local=__thread)
+endif()
+if(NOT HAS___THREAD AND NOT HAS_THREAD_LOCAL)
+	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DNO_COMPILER_SUPPORTED_TLS=1)
+endif()
+
+if (USE_BOOST_CXX11_LIBS)
+	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DUSE_BOOST_CXX11_LIBS=1)
+endif()
+set(CXX11_LIB_WRAPPERS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/bundled_libs/cxx11/")
+
 
 if (_GLIBCXX_DEBUG)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -D_GLIBCXX_DEBUG)
@@ -136,7 +153,7 @@ set(CMAKE_C_FLAGS "${OUR_C_FLAGS_spaces} ${THEIR_C_FLAGS_spaces}")
 
 message(STATUS "compiler flags: ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS}")
 
-set(INCLUDE_DIRS ${BOOST_INCLUDE_DIR} ${GLEW_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS} ${GLIB_INCLUDE_DIR} ${GLIB_CONFIG_INCLUDE_DIR})
+set(INCLUDE_DIRS ${BOOST_INCLUDE_DIR} ${GLEW_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS} ${GLIB_INCLUDE_DIR} ${GLIB_CONFIG_INCLUDE_DIR} ${CXX11_LIB_WRAPPERS_INCLUDE_DIRS})
 message(STATUS "qt defs: ${QT_DEFINITIONS}")
 add_definitions(${QT_DEFINITIONS})
 semicolons_to_spaces(INCLUDE_DIRS_spaces ${INCLUDE_DIRS})

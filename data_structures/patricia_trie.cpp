@@ -104,7 +104,7 @@ pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc)
       //
       // Nevertheless do this inside the try/catch so we at least
       // don't leak memory if it throws.
-      node->set_min(std::move(shared_loc_min));
+      node->set_min(::move(shared_loc_min));
     }
     catch(...) {
       intermediate_nodes->~sub_nodes_type();
@@ -134,7 +134,7 @@ pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc)
   }
 
   assert(!node_to_initialize->sub_nodes());
-  node_to_initialize->set_min(std::move(leaf_loc));
+  node_to_initialize->set_min(::move(leaf_loc));
   return *node_to_initialize;
 }
 template<num_coordinates_type Dims, typename Coord, typename T, typename Traits>
@@ -142,8 +142,8 @@ pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>&
 pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc, T&& new_leaf, monoid_type leaf_monoid) {
   node_type& inserted = this->insert(leaf_loc);
   caller_error_if(inserted.points_to_leaf() && inserted.min() == leaf_loc, "Inserting a leaf in a location that's already in the tree");
-  inserted.set_leaf(std::move(new_leaf));
-  inserted.initialize_monoid_(std::move(leaf_monoid));
+  inserted.set_leaf(::move(new_leaf));
+  inserted.initialize_monoid_(::move(leaf_monoid));
   return inserted;
 }
 
@@ -223,5 +223,5 @@ template class pow2_radix_patricia_trie_node<3,
 #include "../tests/patricia_trie_tests.hpp"
 template class pow2_radix_patricia_trie_node<3,
   patricia_trie_testing::coord,
-  std::unique_ptr<patricia_trie_testing::block>,
+  unique_ptr<patricia_trie_testing::block>,
   patricia_trie_testing::trie_traits>;

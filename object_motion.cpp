@@ -196,7 +196,17 @@ void update_object_for_whole_frame(boost::shared_ptr<mobile_object>& obj, shape&
     //LOG << "!Moving object by " << delta << "\n";
 }
 
-void collect_collisions(time_type min_time, bool erase_old_sweep, object_identifier id, boost::shared_ptr<mobile_object> const& obj, shape const* personal_space_shape, world &w, objects_collision_detector& sweep_box_cd, std::priority_queue<collision_info, std::vector<collision_info>>& anticipated_collisions, std::unordered_map<object_or_tile_identifier, moving_object_info>& objects_info, objects_map<mobile_object>::type const& moving_objects) {
+void collect_collisions(
+      time_type min_time,
+      bool erase_old_sweep,
+      object_identifier id,
+      shared_ptr<mobile_object> const& obj,
+      shape const* personal_space_shape,
+      world &w,
+      objects_collision_detector& sweep_box_cd,
+      std::priority_queue<collision_info, std::vector<collision_info>>& anticipated_collisions,
+      unordered_map<object_or_tile_identifier, moving_object_info>& objects_info,
+      objects_map<mobile_object>::type const& moving_objects) {
   if (erase_old_sweep) sweep_box_cd.erase(id);
   
   bounding_box sweep_bounds = personal_space_shape->bounds();
@@ -274,9 +284,9 @@ void collect_collisions(time_type min_time, bool erase_old_sweep, object_identif
 }
 
 void assert_about_overlaps(objects_map<mobile_object>::type & moving_objects,
-   object_shapes_t                  & personal_space_shapes,
-   std::unordered_map<object_or_tile_identifier, moving_object_info>& objects_info, bool consider_updated_time = true) {
-  
+      object_shapes_t& personal_space_shapes,
+      unordered_map<object_or_tile_identifier, moving_object_info>& objects_info,
+      bool consider_updated_time = true) {
   for (auto const& p1 : moving_objects) {
     for (auto const& p2 : moving_objects) {
       if (p1.first != p2.first) {
@@ -325,7 +335,7 @@ void update_moving_objects_impl(
   
   objects_collision_detector sweep_box_cd;
   std::priority_queue<collision_info, std::vector<collision_info>> anticipated_collisions;
-  std::unordered_map<object_or_tile_identifier, moving_object_info> objects_info;
+  unordered_map<object_or_tile_identifier, moving_object_info> objects_info;
   
   // Initialize all the objects' presumed sweeps through space this frame.
   for (auto const& p : moving_objects) {

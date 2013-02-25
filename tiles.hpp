@@ -25,9 +25,8 @@
 #include <utility>
 #include <map>
 #include <set>
-#include <unordered_map>
-#include <unordered_set>
 #include <ostream>
+#include "cxx11/hash.hpp"
 
 #include "utils.hpp"
 #include "world_constants.hpp"
@@ -38,8 +37,6 @@ using std::pair;
 using std::make_pair;
 using std::map;
 using std::set;
-using std::unordered_map;
-using std::unordered_set;
 
 
 
@@ -274,7 +271,7 @@ public:
   // Equivalent to operator+, except allowing you to specify the amount of realization needed.
   template<cardinal_direction Dir> tile_location get_neighbor(level_of_tile_realization_needed realineeded)const;
   tile_location get_neighbor_by_variable(cardinal_direction dir, level_of_tile_realization_needed realineeded)const;
-  std::array<tile, num_cardinal_directions> get_all_neighbor_tiles(level_of_tile_realization_needed realineeded)const;
+  array<tile, num_cardinal_directions> get_all_neighbor_tiles(level_of_tile_realization_needed realineeded)const;
 
   bool operator==(tile_location const& other)const { return v_ == other.v_; }
   bool operator!=(tile_location const& other)const { return v_ != other.v_; }
@@ -289,7 +286,7 @@ public:
   friend inline std::ostream& operator<<(std::ostream& os, tile_location const& l) {
     return os << l.v_;
   }
-  friend inline size_t hash_value(tile_location const& l) { return std::hash<vector3<tile_coordinate>>()(l.coords()); }
+  friend inline size_t hash_value(tile_location const& l) { return hash<vector3<tile_coordinate>>()(l.coords()); }
 
   // This constructor should only be used when you know exactly what worldblock it's in!!
   // i.e. the worldblock code.
@@ -311,7 +308,7 @@ private:
 
 inline tile_location trivial_invalid_location() { return tile_location(); }
 
-namespace std {
+namespace HASH_NAMESPACE {
   template<> struct hash<tile_location> {
     inline size_t operator()(tile_location const& l) const {
       return hash_value(l);
@@ -323,12 +320,12 @@ struct tile_compare_xyz { bool operator()(tile_location const& i, tile_location 
 struct tile_compare_yzx { bool operator()(tile_location const& i, tile_location const& j)const; };
 struct tile_compare_zxy { bool operator()(tile_location const& i, tile_location const& j)const; };
 
-inline std::array<tile_location, num_cardinal_directions>
+inline array<tile_location, num_cardinal_directions>
 get_all_neighbors(
       tile_location const& loc,
       level_of_tile_realization_needed realineeded = FULL_REALIZATION
 ) {
-  return std::array<tile_location, num_cardinal_directions>({{
+  return array<tile_location, num_cardinal_directions>({{
     loc.get_neighbor<0>(realineeded),
     loc.get_neighbor<1>(realineeded),
     loc.get_neighbor<2>(realineeded),
@@ -338,13 +335,13 @@ get_all_neighbors(
   }});
 }
 
-inline std::array<tile_location, num_cardinal_directions-2>
+inline array<tile_location, num_cardinal_directions-2>
 get_perpendicular_neighbors(
       tile_location const& loc,
       cardinal_direction dir,
       level_of_tile_realization_needed realineeded = FULL_REALIZATION
 ) {
-  std::array<tile_location, num_cardinal_directions-2> result = {{
+  array<tile_location, num_cardinal_directions-2> result = {{
     trivial_invalid_location(), trivial_invalid_location(),
     trivial_invalid_location(), trivial_invalid_location()
   }};
@@ -359,13 +356,13 @@ get_perpendicular_neighbors(
   return result;
 }
 
-inline std::array<tile_location, num_cardinal_directions>
+inline array<tile_location, num_cardinal_directions>
 get_perpendicular_neighbors_numbered_as_neighbors(
       tile_location const& loc,
       cardinal_direction dir,
       level_of_tile_realization_needed realineeded = FULL_REALIZATION
 ) {
-  return std::array<tile_location, num_cardinal_directions>({{
+  return array<tile_location, num_cardinal_directions>({{
     cardinal_directions_are_perpendicular(dir, 0) ? loc.get_neighbor<0>(realineeded) : trivial_invalid_location(),
     cardinal_directions_are_perpendicular(dir, 1) ? loc.get_neighbor<1>(realineeded) : trivial_invalid_location(),
     cardinal_directions_are_perpendicular(dir, 2) ? loc.get_neighbor<2>(realineeded) : trivial_invalid_location(),
@@ -379,8 +376,8 @@ get_perpendicular_neighbors_numbered_as_neighbors(
 Nobody actually cares to learn what all the 2diagonals are without knowing the directions.
 This stands as a reminder of what we could do, anyway.
 
-inline std::array<tile_location, 12> get_all_2diagonals(std::array<tile_location, num_cardinal_directions>& neighbors) {
-  return std::array<tile_location, 12>({{
+inline array<tile_location, 12> get_all_2diagonals(array<tile_location, num_cardinal_directions>& neighbors) {
+  return array<tile_location, 12>({{
     neighbors[zplus ].get_neighbor<xplus >(realineeded),
     neighbors[zplus ].get_neighbor<yplus >(realineeded),
     neighbors[zplus ].get_neighbor<xminus>(realineeded),

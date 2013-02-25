@@ -23,6 +23,7 @@
 #define LASERCAKE_DEQUE_HPP__
 
 #include <boost/iterator/iterator_facade.hpp>
+#include "../cxx11/cxx11_utils.hpp"
 #include "numbers.hpp"
 
 // This is a double-ended queue that
@@ -217,6 +218,11 @@ public:
   }
 
 private:
+  static void move_(T* src_begin, T* src_end, T* dst_begin) {
+    for(ptrdiff_t i = 0; i != src_end - src_begin; ++i) {
+      new (dst_begin + i) T (::move(src_begin[i]));
+    }
+  }
   void do_realloc_(bool bias_towards_push_back) {
     if(alloc_ == ((size_type(1)<<31) - 1)) {
       throw std::bad_alloc(); //"attempt to exceed queue max_size()");
@@ -240,7 +246,7 @@ private:
         if(contents_first_idx_ <= contents_last_idx_) {
           T* range_begin = alloc_begin_+contents_first_idx_;
           T* range_end = alloc_begin_+contents_last_idx_+1;
-          std::move(range_begin, range_end, dest_begin);
+          move_(range_begin, range_end, dest_begin);
           for(T* i = range_begin; i != range_end; ++i) { Alloc().destroy(i); }
         }
         else {
@@ -249,8 +255,8 @@ private:
           T* range2_begin = alloc_begin_;
           T* range2_end = alloc_begin_+contents_last_idx_+1;
           T* dest_begin2 = new_alloc_begin + (old_alloc_size - contents_first_idx_);
-          std::move(range1_begin, range1_end, dest_begin);
-          std::move(range2_begin, range2_end, dest_begin2);
+          move_(range1_begin, range1_end, dest_begin);
+          move_(range2_begin, range2_end, dest_begin2);
           for(T* i = range1_begin; i != range1_end; ++i) { Alloc().destroy(i); }
           for(T* i = range2_begin; i != range2_end; ++i) { Alloc().destroy(i); }
         }

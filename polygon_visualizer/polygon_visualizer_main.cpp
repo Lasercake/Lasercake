@@ -106,12 +106,12 @@ inline geom::vect vect_literal(geom::geometry_int_type x, geom::geometry_int_typ
 }
 
 struct floating_line {
-  std::array<geom::vect, 2> ends;
+  array<geom::vect, 2> ends;
   bool collided;
 };
 
 struct floating_poly {
-  std::array<geom::vect, 2> ends;
+  array<geom::vect, 2> ends;
   std::vector<geom::vect> vertices;
   bool collided;
 };

@@ -31,7 +31,7 @@
 
 #include <string>
 #include <vector>
-#include <array>
+#include "cxx11/array.hpp"
 #include <ostream>
 #include <stdlib.h> //malloc
 #include <string.h> //memcpy
@@ -123,6 +123,12 @@ struct gl_call_data {
       vertices((vertex_with_color*)malloc(default_size*sizeof(vertex_with_color))) {
     assert(vertices);
   }
+  gl_call_data(gl_call_data&& other)
+    : count(other.count),
+      alloced(other.alloced),
+      vertices(other.vertices) {
+    other.vertices = nullptr;
+  }
   gl_call_data(gl_call_data const& other)
     : count(other.count),
       alloced(other.alloced),
@@ -130,7 +136,23 @@ struct gl_call_data {
     assert(vertices);
     memcpy(vertices, other.vertices, count*sizeof(vertex_with_color));
   }
-  gl_call_data& operator=(gl_call_data const& other) = delete;
+  gl_call_data& operator=(gl_call_data const& other) {
+    free(vertices);
+    count = other.count;
+    alloced = other.alloced;
+    vertices = ((vertex_with_color*)malloc(other.alloced*sizeof(vertex_with_color)));
+    assert(vertices);
+    memcpy(vertices, other.vertices, count*sizeof(vertex_with_color));
+    return *this;
+  }
+  gl_call_data& operator=(gl_call_data&& other) {
+    free(vertices);
+    count = other.count;
+    alloced = other.alloced;
+    vertices = other.vertices;
+    other.vertices = nullptr;
+    return *this;
+  }
   ~gl_call_data() { free(vertices); }
   void push_vertex(vertex_with_color const& v) {
     if(count == alloced) do_realloc(alloced * expand_multiplier);
@@ -232,7 +254,7 @@ struct frustum {
     // them, so just add an underscore to those names here.
     LEFT, RIGHT, BOTTOM, TOP, NEAR_, FAR_
   };
-  std::array<glm::vec4, 6> half_spaces;
+  array<glm::vec4, 6> half_spaces;
 };
 inline frustum make_frustum_from_matrix(glm::mat4 m) {
   frustum result;

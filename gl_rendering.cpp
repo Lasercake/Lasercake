@@ -20,7 +20,7 @@
 */
 
 #include <vector>
-#include <array>
+#include "cxx11/array.hpp"
 
 #include <GL/glew.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -39,7 +39,7 @@ enum by_distance_idx_adjustment_enum {
   DISTANCE_IDX_FACTOR
 };
 
-typedef std::array<vertex_with_color, 4> rect_type;
+typedef array<vertex_with_color, 4> rect_type;
 
 struct gl_renderer::state_t_ {
   GLuint rect_VBO_name;
@@ -57,7 +57,7 @@ void gl_renderer::output_gl_data_to_OpenGL(
     LasercakeGLWidget& gl_widget,
     // volatile: Ensure that every load is in fact done,
     // even though they look redundant.
-    std::atomic_bool const volatile& interrupt
+    atomic::atomic_bool const volatile& interrupt
 ) {
   // This code is intended to have no operations in it that can possibly
   // throw exceptions, to simplify dealing with OpenGL context state.
@@ -66,7 +66,7 @@ void gl_renderer::output_gl_data_to_OpenGL(
 
   gl_all_data const& gl_data = abstract_gl_data.data();
 
-  if(interrupt.load(std::memory_order_relaxed)) {return;};
+  if(interrupt.load(atomic::memory_order_relaxed)) {return;};
 
   if(!state_) {
     try {
@@ -88,7 +88,7 @@ void gl_renderer::output_gl_data_to_OpenGL(
     glBindBufferARB(GL_ARRAY_BUFFER, state_->rect_VBO_name);
     glBufferDataARB(GL_ARRAY_BUFFER, sizeof(rect_type), nullptr, GL_STREAM_DRAW);
 
-    if(interrupt.load(std::memory_order_relaxed)) {return;};
+    if(interrupt.load(atomic::memory_order_relaxed)) {return;};
   }
 
   glViewport(0, 0, viewport_width, viewport_height);
@@ -116,8 +116,7 @@ void gl_renderer::output_gl_data_to_OpenGL(
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
 
-  if(interrupt.load(std::memory_order_relaxed)) {return;};
-
+  if(interrupt.load(atomic::memory_order_relaxed)) {return;};
   if(gl_data.stuff_to_draw_as_gl_collections_by_distance.size() > state_->by_distance_VBO_names.size()) {
     const size_t new_buffers_base = state_->by_distance_VBO_names.size()*DISTANCE_IDX_FACTOR;
     const size_t num_new_buffers = gl_data.stuff_to_draw_as_gl_collections_by_distance.size()*DISTANCE_IDX_FACTOR - new_buffers_base;
@@ -130,13 +129,13 @@ void gl_renderer::output_gl_data_to_OpenGL(
     }
     glGenBuffersARB(num_new_buffers, &state_->by_distance_VBO_names[new_buffers_base]);
     for(size_t i = 0; i != num_new_buffers; ++i) {
-      if(interrupt.load(std::memory_order_relaxed)) {return;};
+      if(interrupt.load(atomic::memory_order_relaxed)) {return;};
       state_->by_distance_VBO_sizes[new_buffers_base + i] = 0;
     }
   }
 
   for(size_t dist_plus_one = gl_data.stuff_to_draw_as_gl_collections_by_distance.size(); dist_plus_one != 0; --dist_plus_one) {
-    if(interrupt.load(std::memory_order_relaxed)) {return;};
+    if(interrupt.load(atomic::memory_order_relaxed)) {return;};
     const size_t dist = dist_plus_one - 1;
     gl_collection const& coll = gl_data.stuff_to_draw_as_gl_collections_by_distance[dist];
     struct polygon_type {
@@ -144,14 +143,14 @@ void gl_renderer::output_gl_data_to_OpenGL(
       by_distance_idx_adjustment_enum our_idx_adj;
       gl_call_data gl_collection::* gl_data_container_ptr_to_member;
     };
-    const std::array<polygon_type, DISTANCE_IDX_FACTOR> types = {{
+    const array<polygon_type, DISTANCE_IDX_FACTOR> types = {{
       { GL_QUADS, QUADS_IDX, &gl_collection::quads },
       { GL_TRIANGLES, TRIANGLES_IDX, &gl_collection::triangles },
       { GL_LINES, LINES_IDX, &gl_collection::lines },
       { GL_POINTS, POINTS_IDX, &gl_collection::points },
     }};
     for (polygon_type type : types) {
-      if(interrupt.load(std::memory_order_relaxed)) {return;};
+      if(interrupt.load(atomic::memory_order_relaxed)) {return;};
       gl_call_data const& data = coll.*(type.gl_data_container_ptr_to_member);
       if(const size_t count = data.size()) {
         const size_t buf_name_idx = dist*DISTANCE_IDX_FACTOR + type.our_idx_adj;
@@ -168,8 +167,7 @@ void gl_renderer::output_gl_data_to_OpenGL(
       }
     }
   }
-  if(interrupt.load(std::memory_order_relaxed)) {return;};
-
+  if(interrupt.load(atomic::memory_order_relaxed)) {return;};
   // Is there a simpler way to tint the whole screen a color?
   const color tint = gl_data.tint_everything_with_this_color;
   const rect_type rect = {{
@@ -186,7 +184,7 @@ void gl_renderer::output_gl_data_to_OpenGL(
   glDrawArrays(GL_QUADS, 0, 4);
   glBindBufferARB(GL_ARRAY_BUFFER, INVALID_BUFFER_ID);
 
-  if(interrupt.load(std::memory_order_relaxed)) {return;};
+  if(interrupt.load(atomic::memory_order_relaxed)) {return;};
 
   render_2d_text_overlay_(abstract_gl_data, viewport_width, viewport_height, gl_widget);
 }

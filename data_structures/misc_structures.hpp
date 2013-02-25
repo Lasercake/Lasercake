@@ -25,7 +25,7 @@
 #include <utility>
 #include <functional>
 #include <vector>
-#include <unordered_map>
+#include "../cxx11/unordered_map.hpp"
 #include <boost/utility.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #pragma GCC diagnostic push
@@ -110,7 +110,7 @@ class literally_random_access_set {
 public:
   typedef size_t size_type;
 private:
-  typedef std::unordered_map<T, size_type> contents_type_;
+  typedef unordered_map<T, size_type> contents_type_;
   typedef typename contents_type_::value_type contents_value_type_;
   typedef typename contents_type_::iterator contents_iterator_;
   typedef typename contents_type_::const_iterator contents_const_iterator_;

@@ -22,9 +22,10 @@
 #ifndef LASERCAKE_WORLD_HPP__
 #define LASERCAKE_WORLD_HPP__
 
-#include <array>
-#include <unordered_map>
-#include <unordered_set>
+#include "cxx11/array.hpp"
+#include "cxx11/unordered_map.hpp"
+#include "cxx11/unordered_set.hpp"
+#include "cxx11/hash.hpp"
 #include <vector>
 #include <memory>
 #include <cmath>
@@ -58,10 +59,7 @@ using std::pair;
 using std::make_pair;
 using std::map;
 using std::set;
-using std::unordered_map;
-using std::unordered_set;
 using std::vector;
-using std::array;
 using boost::shared_ptr;
 using boost::dynamic_pointer_cast;
 
@@ -111,11 +109,11 @@ struct object_or_tile_identifier {
     struct hash_visitor : public boost::static_visitor<size_t>
     {
       size_t operator()(tile_location const& i) const {
-        return std::hash<tile_location>()(i);
+        return hash<tile_location>()(i);
       }
     
       size_t operator()(object_identifier i) const {
-        return std::hash<object_identifier>()(i);
+        return hash<object_identifier>()(i);
       }
     };
     return boost::apply_visitor( hash_visitor(), id.data_ );
@@ -151,7 +149,7 @@ private:
   boost::variant<tile_location, object_identifier> data_;
 };
 
-namespace std {
+namespace HASH_NAMESPACE {
   template<> struct hash<object_or_tile_identifier> {
     inline size_t operator()(object_or_tile_identifier const& id) const {
       return hash_value(id);
@@ -216,14 +214,6 @@ typedef bbox_collision_detector<object_or_tile_identifier, 64, 3> world_collisio
 typedef bbox_collision_detector<object_identifier, 64, 3> objects_collision_detector;
 
 
-// worldgen_function_t is responsible for initializing every tile in
-// the worldblock, making them initialized to 'interior' (worldblock
-// will take care of detecting the true interiorness), and not marked
-// as anything else.
-typedef std::function<void (the_decomposition_of_the_world_into_blocks_impl::worldblock*, tile_bounding_box)>
-  worldgen_function_t;
-
-
 typedef unordered_map<object_identifier, shape> object_shapes_t;
 template<typename ObjectSubtype>
 struct objects_map {
@@ -269,8 +259,8 @@ class worldgen_type;
 class world {
 public:
   // lolhack. TODO: Replace this with a for-real thing
-std::unordered_map<object_identifier, int> object_litnesses_;
-std::unordered_map<vector3<tile_coordinate>, int> tile_litnesses_;
+unordered_map<object_identifier, int> object_litnesses_;
+unordered_map<vector3<tile_coordinate>, int> tile_litnesses_;
 void update_light(vector3<distance> sun_direction, uint32_t sun_direction_z_shift);
 
   // TODO does this make more sense as a unique_ptr?
@@ -397,7 +387,7 @@ private:
   // and it is an error to give a coordinate that's not.
   unordered_map<vector3<tile_coordinate>, the_decomposition_of_the_world_into_blocks_impl::worldblock> blocks_;
   //currently we just delete them all at the end of every frame
-  std::unordered_set<the_decomposition_of_the_world_into_blocks_impl::worldblock*> worldblocks_suggested_to_delete_;
+  unordered_set<the_decomposition_of_the_world_into_blocks_impl::worldblock*> worldblocks_suggested_to_delete_;
 
   tile_physics_state_t tile_physics_state_;
   
