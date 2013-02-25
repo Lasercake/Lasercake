@@ -149,7 +149,7 @@ def main():
 			# filesystem semantics anyway but it will on
 			# Mac/Linux/BSD.
 			try: os.unlink('../../'+exe_name)
-			except FileNotFoundError: pass
+			except (OSError, FileNotFoundError): pass
 			shutil.copy2(exe_name, '../../'+exe_name)
 	exit()
 
