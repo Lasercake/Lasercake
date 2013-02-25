@@ -23,11 +23,17 @@
 #define LASERCAKE_NUMBER_STRUCTURES_HPP__
 
 #include "../config.hpp"
-#include <numeric>
+#include <cstdlib>
 #include <boost/integer/static_log2.hpp>
 #include <boost/type_traits/make_signed.hpp>
 #include <boost/type_traits/make_unsigned.hpp>
 #include <boost/utility/enable_if.hpp>
+
+// Double-check that we have included all necessary headers for std::abs()
+// to have the right overloads.  Some discussion is at
+//   http://stackoverflow.com/questions/13460750/on-the-stdabs-function
+static_assert(boost::is_same<decltype(std::abs(int64_t(1))), int64_t>::value, "bug");
+static_assert(boost::is_same<decltype(std::abs(int32_t(1))), int32_t>::value, "bug");
 
 
 namespace comparators {
