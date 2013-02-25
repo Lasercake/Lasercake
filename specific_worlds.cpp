@@ -35,7 +35,7 @@ typedef vector3<coord> coords;
 
 namespace /* anonymous */ {
 
-const coord wcc = world_center_tile_coord;
+constexpr coord wcc = world_center_tile_coord;
 
 
 template<size_t Index, class...Types>
@@ -605,14 +605,14 @@ SCENARIO_FUNCTION_NAMED("simple_hills") {
 SCENARIO_FUNCTION_NAMED("fractal_hills") {
     return worldgen_from_column_spec(fractal_hills());
 }
-#if 0
+namespace spiky_ {
+static constexpr coord a_spike_height = 20;
+static constexpr coord spike_multiplier_1 = 3;
+static constexpr coord spike_multiplier_2 = 5;
+static constexpr coord max_spike_height = a_spike_height*spike_multiplier_1*spike_multiplier_2;
+static constexpr coord all_sky_above = wcc+max_spike_height+1;
+static constexpr coord all_ground_below = wcc-1;
 class spiky : public worldgen_type {
-  static const coord a_spike_height = 20;
-  static const coord spike_multiplier_1 = 3;
-  static const coord spike_multiplier_2 = 5;
-  static const coord max_spike_height = a_spike_height*spike_multiplier_1*spike_multiplier_2;
-  static const coord all_sky_above = wcc+max_spike_height+1;
-  static const coord all_ground_below = wcc-1;
 public:
   virtual worldgen_summary_of_area examine_region(tile_bounding_box region) {
     worldgen_summary_of_area result;
@@ -651,8 +651,9 @@ public:
 private:
   memoized<get_height, coord (coord, coord)> height_memo_;
 };
+}
+using spiky_::spiky;
 SCENARIO_CLASS_NAMED(spiky)
-#endif
 
 // These are worst cases in terms of number of non-interior (theoretically
 // visible) tiles within a radius; useful to test as a stress-test and
