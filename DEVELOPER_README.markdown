@@ -22,13 +22,10 @@ This is what I have to do as of 2012-11-01 on Arch Linux,
 after installing several mingw32 packages:
 
 - Extra CMake arguments:
-    -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-ArchLinux-mingw32.cmake -DGLIB=NO
+    -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-ArchLinux-mingw32.cmake
 
     (use/make a different toolchain file if your distro puts mingw files in
     a different place)
-
-    (GLIB=NO because it's only an ineffective performance thing currently
-    and it's easier to have less deps here)
 
 - CMake might say
 
