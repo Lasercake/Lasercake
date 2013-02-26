@@ -700,7 +700,7 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
             tile_location const& loc = *locp;
             if ((loc.stuff_at().contents() == ROCK || loc.stuff_at().contents() == RUBBLE)) {
               // TODO probably have autorobots use cardinal directions in the first place
-              tile_location backloc = loc.get_neighbor_by_variable((facing_.x > 0) ? xminus : (facing_.y > 0) ? yminus : (facing_.x < 0) ? xplus : yplus, CONTENTS_ONLY);
+              tile_location backloc = loc.get_neighbor_by_variable(opposite_cardinal_direction(get_cdir()), CONTENTS_ONLY);
               if ( ((facing_.z  > 0) && (backloc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() == AIR))
                 || ((facing_.z == 0) && (backloc                                    .stuff_at().contents() == AIR))
                 || ((facing_.z  < 0) && (backloc.get_neighbor<zplus >(CONTENTS_ONLY).stuff_at().contents() == AIR))

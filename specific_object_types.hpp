@@ -124,6 +124,8 @@ public:
   virtual void update(world& w, input_representation::input_news_t const& mind_control,
                       object_identifier my_id) override;
   vector3<distance> get_facing()const override { return facing_; }
+  
+  cardinal_direction get_cdir()const { return (facing_.x > 0) ? xplus : (facing_.y > 0) ? yplus : (facing_.x < 0) ? xminus : yminus; }
 private:
   vector3<distance> location_;
   vector3<tile_coordinate> initial_location_;

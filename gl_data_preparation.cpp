@@ -809,8 +809,8 @@ void draw_target_marker(vector3<distance> view_loc, gl_collection& coll, vector3
   }}}
 }
 
-void draw_arrow(vector3<distance> view_loc, gl_collection& coll, vector3<distance> center, cardinal_direction dir, color c, uint8_t dim1 = X, uint8_t dim2 = Y, uint8_t dim3 = Z) {
-  vector3<distance> foo = vector3<lint64_t>(cardinal_direction_vectors[dir]) * tile_width / 3;
+void draw_arrow(vector3<distance> view_loc, gl_collection& coll, vector3<distance> center, cardinal_direction dir, color c, uint8_t dim1 = X, uint8_t dim2 = Y, uint8_t dim3 = Z, vector3<distance> skew = 0) {
+  vector3<distance> foo = (vector3<lint64_t>(cardinal_direction_vectors[dir]) * tile_width / 3) + skew;
   vector3<distance> bar(0, 0, 0);
   bar[dim1] = foo(dim2);
   bar[dim2] = foo(dim1);
@@ -894,8 +894,9 @@ void prepare_object(vector3<distance> view_loc, gl_collection& coll, shared_ptr<
   else if(dynamic_pointer_cast<robot>(objp)) {
     prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe_width);
   }
-  else if(dynamic_pointer_cast<autorobot>(objp)) {
+  else if(shared_ptr<autorobot> bot = dynamic_pointer_cast<autorobot>(objp)) {
     prepare_shape(view_loc, coll, obj_shape, color(0x00ffffaa), wireframe_width);
+    draw_arrow(view_loc, coll, (obj_shape.bounds().min() + obj_shape.bounds().max()) / 2, bot->get_cdir(), color(0xff0000aa), X,Y,Z, vector3<distance>(0,0,bot->get_facing().z));
   }
   else if(dynamic_pointer_cast<laser_emitter>(objp)) {
     prepare_shape(view_loc, coll, obj_shape, color(0xff7755aa), wireframe_width);
