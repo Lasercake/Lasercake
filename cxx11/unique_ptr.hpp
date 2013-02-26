@@ -29,7 +29,15 @@ using std::default_delete;
 
 #include "cxx11_utils.hpp"
 
+#include "../config.hpp"
+
 // TODO: what if we're actually compiling against an old libcxx?
+#ifdef LASERCAKE_GCC_LESS_THAN_4_7
+#define _LIBCPP_HAS_NO_TEMPLATE_ALIASES
+// This is inaccurate but GCC 4.6 doesn't like something
+// about the syntactic interaction between noexcept and default.
+#define _LIBCPP_HAS_NO_DEFAULTED_FUNCTIONS
+#endif
 #define _LIBCPP_INLINE_VISIBILITY
 #define _LIBCPP_VISIBLE
 #define _LIBCPP_CONSTEXPR constexpr
