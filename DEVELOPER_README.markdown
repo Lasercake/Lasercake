@@ -25,7 +25,7 @@ after installing several mingw32 packages:
     -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-ArchLinux-mingw32.cmake
 
     (use/make a different toolchain file if your distro puts mingw files in
-    a different place)
+    a different place, or if you want to use a different toolchain)
 
 - CMake might say
 
@@ -36,6 +36,10 @@ after installing several mingw32 packages:
 
 - Then copy
 /usr/i486-mingw32/{bin/{zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll,QtCore4.dll,QtGui4.dll,QtOpenGL4.dll}}
+or
+/usr/i686-w64-mingw32/{bin/{QtCore4.dll,QtGui4.dll,QtOpenGL4.dll,zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll}}
+or
+/usr/x86_64-w64-mingw32/{bin/{QtCore4.dll,QtGui4.dll,QtOpenGL4.dll,zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll}}
 next to lasercake.exe
 (the path for those dlls will depend on your distro)
 (Anyone: do you know whether you're supposed to do it this way,
