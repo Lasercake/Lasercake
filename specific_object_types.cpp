@@ -617,7 +617,7 @@ autorobot::autorobot(vector3<tile_coordinate> location, vector3<distance> facing
     facing_.x = 0;
     facing_.y = facing_.y > 0 ? tile_width : -tile_width;
   }
-  if (std::abs(bigger_dir) < std::abs(facing.z) * 8) {
+  if (std::abs(bigger_dir) < std::abs(facing.z) * 4) {
     facing_.z = facing_.z > 0 ? tile_height : -tile_height;
   }
   else facing_.z = 0;
