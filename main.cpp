@@ -778,8 +778,7 @@ void LasercakeGLWidget::grab_input_() {
   if(!has_quit_) {
     input_is_grabbed_ = true;
     setMouseTracking(true);
-    grabMouse();
-    QApplication::setOverrideCursor(QCursor(Qt::BlankCursor));
+    grabMouse(QCursor(Qt::BlankCursor));
   }
 }
 void LasercakeGLWidget::ungrab_input_() {
@@ -787,7 +786,6 @@ void LasercakeGLWidget::ungrab_input_() {
     setMouseTracking(false);
     releaseMouse();
     input_is_grabbed_ = false;
-    QApplication::restoreOverrideCursor();
   }
 }
 
