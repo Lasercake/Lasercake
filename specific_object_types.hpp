@@ -77,7 +77,7 @@ struct click_action {
 
 class robot : public mobile_object, public autonomous_object, public object_with_eye_direction, public object_with_player_instructions {
 public:
-  robot(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing),metal_carried_(storage_volume()),mode_("digging"){}
+  robot(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing * tile_width / facing.magnitude_within_32_bits()),metal_carried_(storage_volume()),mode_("digging"){}
   
   virtual shape get_initial_personal_space_shape()const override;
   virtual shape get_initial_detail_shape()const override;
@@ -180,7 +180,7 @@ private:
 
 class conveyor_belt : public tile_aligned_object, public autonomous_object {
 public:
-  conveyor_belt(vector3<tile_coordinate> location):initial_location_(location),direction_(xplus){}
+  conveyor_belt(vector3<tile_coordinate> location, cardinal_direction dir = xplus):initial_location_(location),direction_(dir){}
   virtual shape get_initial_personal_space_shape()const override;
   virtual shape get_initial_detail_shape()const override;
 

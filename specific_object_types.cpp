@@ -248,7 +248,7 @@ std::string robot::player_instructions()const {
       "Unknown mode, this is an error!"
     ) + "\n\n"
     "Metal carried: " + draw_m3(metal_carried_) + "/" + draw_m3(storage_volume()) + "\n\n"
-    "WASD: move  |  arrows/mouse: rotate view  |  space: jump  |  ZXCVBR: switch mode"
+    "WASD: move  |  arrows/mouse: rotate view  |  space: jump/fly  |  ZXCVBR: switch mode"
     "\n"
     ;
   return instructions;
@@ -287,7 +287,9 @@ void robot::update(world& w, input_representation::input_news_t const& input_new
     }
   }
   if (input_news.is_currently_pressed("space")) {
-    velocity_.z = tile_width * 15 / 4 / seconds;
+    if (velocity_.z < tile_width * 15 / 4 / seconds) {
+      velocity_.z += tile_width / 4 / seconds;
+    }
   }
   const bool turn_right = input_news.is_currently_pressed("right")/* || input_news.is_currently_pressed("d")*/;
   const bool turn_left = input_news.is_currently_pressed("left")/* || input_news.is_currently_pressed("a")*/;
@@ -460,13 +462,16 @@ void robot::perform_click_action(world& w, object_identifier my_id, click_action
       assert(locp);
       
           // hack way to speed the tile?
-          get_state(w.tile_physics()).active_fluids[*locp].velocity -= vector3<sub_tile_velocity>(
-            facing_ *
-
-              // the actual value: the rest of this line is conversions
-              tile_width * 6 / seconds
-
-            / facing_.magnitude_within_32_bits() * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
+          vector3<velocity1d> push_dir = facing_ / seconds;
+          push_dir.z = 0;
+          push_dir = push_dir * (tile_width * 3 / seconds) / push_dir.magnitude_within_32_bits();
+          if ((((push_dir.x > 0) ? locp->get_neighbor<xplus>(CONTENTS_ONLY) : locp->get_neighbor<xminus>(CONTENTS_ONLY)).stuff_at().contents() != AIR) &&
+            (((push_dir.y > 0) ? locp->get_neighbor<yplus>(CONTENTS_ONLY) : locp->get_neighbor<yminus>(CONTENTS_ONLY)).stuff_at().contents() != AIR)) {
+            push_dir = push_dir * 2 / 3;
+            push_dir.z += (tile_width * 2 / seconds);
+          }
+          get_state(w.tile_physics()).active_fluids[*locp].velocity += vector3<sub_tile_velocity>(
+            push_dir * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
     } break;
 
     case COLLECT_METAL: {
@@ -817,18 +822,22 @@ void conveyor_belt::update(world& w, input_representation::input_news_t const&, 
     vector3<sub_tile_velocity>& tile_vel = get_state(w.tile_physics()).active_fluids[loc].velocity;
     sub_tile_velocity target_vel((tile_width / seconds) * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds));
     sub_tile_velocity one_frame_acceleration((20 * meters / seconds / seconds) * identity(tile_physics_sub_tile_distance_units / meters) / identity(fixed_frame_lengths / seconds) / identity(fixed_frame_lengths / seconds) * fixed_frame_lengths);
+    const which_dimension_type dim = which_dimension_is_cardinal_direction(direction_);
     if (is_a_positive_directional_cardinal_direction(direction_)) {
-      if (tile_vel(which_dimension_is_cardinal_direction(direction_)) < target_vel) {
-        tile_vel[which_dimension_is_cardinal_direction(direction_)] += one_frame_acceleration;
-        if (tile_vel(which_dimension_is_cardinal_direction(direction_)) > target_vel) tile_vel[which_dimension_is_cardinal_direction(direction_)] = target_vel;
+      if (tile_vel(dim) < target_vel) {
+        tile_vel[dim] += one_frame_acceleration;
+        if (tile_vel(dim) > target_vel) tile_vel[dim] = target_vel;
       }
     }
     else {
-      if (-tile_vel(which_dimension_is_cardinal_direction(direction_)) < target_vel) {
-        tile_vel[which_dimension_is_cardinal_direction(direction_)] -= one_frame_acceleration;
-        if (-tile_vel(which_dimension_is_cardinal_direction(direction_)) > target_vel) tile_vel[which_dimension_is_cardinal_direction(direction_)] = -target_vel;
+      if (-tile_vel(dim) < target_vel) {
+        tile_vel[dim] -= one_frame_acceleration;
+        if (-tile_vel(dim) > target_vel) tile_vel[dim] = -target_vel;
       }
     }
+    const which_dimension_type dim2 = (dim == X) ? Y : X;
+    if (abs(tile_vel(dim2)) <= one_frame_acceleration) tile_vel[dim2] = 0;
+    else tile_vel[dim2] -= one_frame_acceleration * sign(tile_vel(dim2));
     tile_location next_loc = loc.get_neighbor_by_variable(direction_, CONTENTS_ONLY);
     sub_tile_velocity target_zvel((next_loc.stuff_at().contents() == AIR) ? 0 : ((tile_height / seconds) * identity(tile_physics_sub_tile_distance_units / fine_distance_units) / identity(fixed_frame_lengths / seconds)));
     if (tile_vel(Z) < target_zvel) {

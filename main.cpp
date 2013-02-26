@@ -141,14 +141,14 @@ std::string show_microseconds_per_frame_as_fps(microseconds_t monotonic_microsec
 
 
 object_identifier init_test_world_and_return_our_robot(
-      world& w, bool crazy_lasers, bool log_microseconds = true) {
+      world& w, bool crazy_lasers, std::string scenario, bool log_microseconds = true) {
   const vector3<distance> laser_loc = world_center_fine_coords
     + vector3<distance>(10LL*tile_width + 2*fine_distance_units,
                            10LL*tile_width + 2*fine_distance_units,
                            10LL*tile_width + 2*fine_distance_units);
   const shared_ptr<robot> baz (new robot(
-    laser_loc - vector3<distance>(0, 0, tile_width*2),
-    vector3<distance>((5<<9)*fine_distance_units, (3<<9)*fine_distance_units, 0 /*TODO UNITS make class vector3_direction*/)));
+    (scenario == "playground") ? (world_center_fine_coords + vector3<distance>(4*tile_width, 8*tile_width, 6*tile_width)) : (laser_loc - vector3<distance>(0, 0, tile_width*2)),
+    (scenario == "playground") ? vector3<distance>(-4*tile_width, -8*tile_width, -2*tile_width) : vector3<distance>((5<<9)*fine_distance_units, (3<<9)*fine_distance_units, 0 /*TODO UNITS make class vector3_direction*/)));
   const object_identifier robot_id = w.try_create_object(baz); // we just assume that this works
   //const shared_ptr<autorobot> aur (new autorobot(
   //  get_min_containing_tile_coordinates(laser_loc - vector3<distance>(tile_width*4,tile_width*4,tile_width*2)),
@@ -164,6 +164,22 @@ object_identifier init_test_world_and_return_our_robot(
       vector3<distance>(5*fine_distance_units, 4*fine_distance_units, -1*fine_distance_units /*TODO UNITS make class vector3_direction*/)));
     w.try_create_object(foo);
     w.try_create_object(bar);
+  }
+
+  if (scenario == "playground") {
+    w.try_create_object(shared_ptr<object>(new refinery(world_center_tile_coords)));
+    for (tile_coordinate_signed_type i = 0; i < 20; ++i) {
+      w.try_create_object(shared_ptr<object>(new conveyor_belt(world_center_tile_coords + vector3<tile_coordinate_signed_type>(2+i, 0, 0))));
+      if (i < 12) {
+        w.try_create_object(shared_ptr<object>(new conveyor_belt(world_center_tile_coords + vector3<tile_coordinate_signed_type>(-2-i, 0, 0))));
+      }
+      if (i < 5) {
+        w.try_create_object(shared_ptr<object>(new conveyor_belt(world_center_tile_coords + vector3<tile_coordinate_signed_type>(0, 2+i, 0), yplus)));
+      }
+      if (i < 5) {
+        w.try_create_object(shared_ptr<object>(new conveyor_belt(world_center_tile_coords + vector3<tile_coordinate_signed_type>(2+20, i, 0), yplus)));
+      }
+    }
   }
 
   // HACK - TODO remove at least the second effect
@@ -252,7 +268,7 @@ LasercakeSimulator::LasercakeSimulator(QObject* parent) : QObject(parent) {}
 void LasercakeSimulator::init(worldgen_ptr worldgen, config_struct config) {
   const microseconds_t microseconds_before_initing = get_this_thread_microseconds();
   world_ptr_.reset(new world(worldgen));
-  const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers, config.show_frame_timing);
+  const object_identifier robot_id = init_test_world_and_return_our_robot(*world_ptr_, config.crazy_lasers, config.scenario, config.show_frame_timing);
   currently_focused_object_ = robot_id;
   view_ptr_.reset(new view_on_the_world(world_center_fine_coords));
   view_ptr_->drawing_debug_stuff = config.initially_drawing_debug_stuff;
@@ -344,7 +360,7 @@ int debug_test_sim_avoiding_qt_and_trying_to_be_very_deterministic(config_struct
   LOG << "Constructing world\n";
   world w(worldgen);
   LOG << "Initing world\n";
-  const object_identifier robot_id = init_test_world_and_return_our_robot(w, config.crazy_lasers, false);
+  const object_identifier robot_id = init_test_world_and_return_our_robot(w, config.crazy_lasers, config.scenario, false);
   shared_ptr<view_on_the_world> view_ptr;
   if(config.run_drawing_code) {
     LOG << "Initing graphics-prep code\n";
@@ -442,7 +458,7 @@ int main(int argc, char *argv[])
 #endif
     if(!vm.count("scenario")) {
       LOG << "You didn't give an argument saying which scenario to use! Using default value...\n";
-      config.scenario = "default";
+      config.scenario = "playground";
     }
 
     if(vm.count("avoid-qt")) {
