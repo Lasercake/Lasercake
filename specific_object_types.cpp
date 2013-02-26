@@ -26,8 +26,8 @@
 #include "tile_physics.hpp"
 
 namespace /* anonymous */ {
-
-const distance default_laser_length = 100*tile_width;
+//TODO make downrobots dig sideways first?
+const distance default_laser_length = 10000*tile_width;
 
 namespace laserbeam {
   struct beam_first_contact_finder {
