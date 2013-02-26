@@ -9,6 +9,7 @@ option (USE_BUNDLED_BOOST "On: Use Boost from ./bundled_libs/; off: use system B
 option (USE_BUNDLED_GLM "On: Use glm from ./bundled_libs/; off: use system glm." ON)
 option (USE_BUNDLED_GLEW "On: Use GLEW from ./bundled_libs/; off: use system GLEW." ON)
 option (USE_BOOST_CXX11_LIBS "On: Use Boost's implementation of C++11 standard library features; off: use the standard library or autodetect that using Boost's is necessary." OFF)
+option (LTO "Use link-time optimization (roughly halves the size of the binary)" OFF)
 option (GLIB "Use GLib slices for some memory allocation (requires glib)." OFF)
 option (USE_BOUNDS_CHECKED_INTS "Check for overflow of most int computations at runtime (slow)." OFF)
 option (PARANOID "Turn on various code paranoia checks (slow)." OFF)
@@ -53,7 +54,6 @@ if (USE_BOOST_CXX11_LIBS OR NOT COMPILER_SUPPORTS_CXX11_STDLIB)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DUSE_BOOST_CXX11_LIBS=1 -U__GXX_EXPERIMENTAL_CXX0X__)
 endif()
 set(CXX11_LIB_WRAPPERS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/bundled_libs/cxx11/")
-
 
 if (_GLIBCXX_DEBUG)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -D_GLIBCXX_DEBUG)
@@ -131,6 +131,11 @@ macro(show_paths output_var_name)
 endmacro()
 
 set(OPT_FLAGS -O3)
+set(OPT_LINK_FLAGS )
+if (LTO)
+	set(OPT_FLAGS ${OPT_FLAGS} -flto)
+	set(OPT_LINK_FLAGS ${OPT_LINK_FLAGS} -fwhole-program)
+endif()
 set(WARNING_FLAGS )
 include(CheckCXXCompilerFlag)
 foreach(flag -g -Wall -Wextra -Wglobal-constructors -Wno-unknown-pragmas -Wno-unused-function -fmax-errors=5 -ferror-limit=5 -fdiagnostics-show-option)
@@ -161,16 +166,13 @@ else()
 	set(SECURITY_FLAGS -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4)
 endif()
 set(OUR_CXX_FLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS})
-set(THEIR_CXX_FLAGS_spaces ${CMAKE_CXX_FLAGS})
 semicolons_to_spaces(OUR_CXX_FLAGS_spaces ${OUR_CXX_FLAGS})
-set(CMAKE_CXX_FLAGS "${OUR_CXX_FLAGS_spaces} ${THEIR_CXX_FLAGS_spaces}")
 
-# certain bundled libs are C files so we need to set their C flags,
-# not just assume the whole world uses C++ flags
-set(OUR_C_FLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES})
-set(THEIR_C_FLAGS_spaces ${CMAKE_C_FLAGS})
-semicolons_to_spaces(OUR_C_FLAGS_spaces ${OUR_C_FLAGS})
-set(CMAKE_C_FLAGS "${OUR_C_FLAGS_spaces} ${THEIR_C_FLAGS_spaces}")
+set(OUR_LINK_FLAGS
+	${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS}
+	${OPT_LINK_FLAGS}
+)
+semicolons_to_spaces(OUR_LINK_FLAGS_spaces ${OUR_LINK_FLAGS})
 
 message(STATUS "compiler flags: ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_FLAGS}")
 
@@ -196,6 +198,8 @@ message(STATUS "lasercake link flags: ${LASERCAKE_LINK_FLAGS_spaces}")
 message(STATUS "lasercake sources: ${LASERCAKE_SOURCES_pretty}")
 add_executable (lasercake WIN32 ${LASERCAKE_GLEW_SOURCES} ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC} ${LASERCAKE_RESOURCES_RCC})
 target_link_libraries(lasercake ${LASERCAKE_LINK_FLAGS})
+set_target_properties(lasercake PROPERTIES COMPILE_FLAGS "${OUR_CXX_FLAGS_spaces}")
+set_target_properties(lasercake PROPERTIES LINK_FLAGS "${OUR_LINK_FLAGS_spaces}")
 
 if(BUILD_SELF_TESTS)
 	enable_testing()
