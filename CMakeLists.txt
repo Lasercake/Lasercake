@@ -1,8 +1,12 @@
 cmake_minimum_required (VERSION 2.6)
 project (Lasercake)
 
+# TODO #define these and emit them on --help/--version.
 set (Lasercake_VERSION_MAJOR 0)
-set (Lasercake_VERSION_MINOR 1)
+set (Lasercake_VERSION_MINOR 22)
+set (Lasercake_VERSION_PATCH 0)
+set (Lasercake_version_desc ${Lasercake_VERSION_MAJOR}.${Lasercake_VERSION_MINOR}.${Lasercake_VERSION_PATCH})
+
 
 set (OPTIONS_DEFINES )
 option (USE_BUNDLED_BOOST "On: Use Boost from ./bundled_libs/; off: use system Boost." ON)
@@ -201,8 +205,39 @@ target_link_libraries(lasercake ${LASERCAKE_LINK_FLAGS})
 set_target_properties(lasercake PROPERTIES COMPILE_FLAGS "${OUR_CXX_FLAGS_spaces}")
 set_target_properties(lasercake PROPERTIES LINK_FLAGS "${OUR_LINK_FLAGS_spaces}")
 
+install (TARGETS lasercake RUNTIME DESTINATION bin)
+
 if(BUILD_SELF_TESTS)
 	enable_testing()
 	add_test(TestPasses lasercake --run-self-tests)
 endif()
+
+set (CPACK_INCLUDE_TOPLEVEL_DIRECTORY 1)
+set (CPACK_PACKAGE_VENDOR "re:calib - Eli Dupree and Isaac Dupree")
+set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/principles.markdown") #TODO: intro file shown by NSIS Windows installer, I think
+set (CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/generate-boostbcp.py") #TODO: a longer(?) readme shown by some installers
+set (CPACK_RESOURCE_FILE_WELCOME "${CMAKE_SOURCE_DIR}/determinacy-debugging.txt") #TODO: what is the difference between all these readme-ish files?
+#set (CPACK_MONOLITHIC_INSTALL 1) #since we just have one thing to package; do we need to say this?
+set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Lasercake is an open-world game about the environment")
+set (CPACK_PACKAGE_EXECUTABLES lasercake;Lasercake) #TODO name the executable Lasercake too maybe?
+# are these redundant/necessary?
+set (CPACK_PACKAGE_VERSION_MAJOR ${Lasercake_VERSION_MAJOR})
+set (CPACK_PACKAGE_VERSION_MINOR ${Lasercake_VERSION_MINOR})
+set (CPACK_PACKAGE_VERSION_PATCH ${Lasercake_VERSION_PATCH})
+
+# why show a license; it's not required by law or custom with FOSS software
+# set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
+set (CPACK_PACKAGE_INSTALL_DIRECTORY "Lasercake-${Lasercake_version_desc}")
+
+#file(READ .gitignore gitignore_contents)
+#string(REPLACE "." "\\\\." gitignore_contents_regexified1 ${gitignore_contents})
+#string(REPLACE "*" ".*" gitignore_contents_regexified2 ${gitignore_contents_regexified1})
+#string(REPLACE "\n" ";" gitignore_contents_list ${gitignore_contents_regexified2})
+#set(CPACK_SOURCE_IGNORE_FILES ${gitignore_contents_list})
+#Never mind, just make source from a completely clean tree.
+
+#set(CPACK_GENERATOR "TGZ")
+set(CPACK_SOURCE_GENERATOR "ZIP;TGZ")
+
+include (CPack)
 
