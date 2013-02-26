@@ -673,7 +673,7 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
     velocity_.x = facing_.x * 15 / 4 / seconds;
     velocity_.y = facing_.y * 15 / 4 / seconds;
     
-    if (facing_.z >= 0 || direction_home_xymag >= 10*tile_width) {
+    //if (facing_.z >= 0 || direction_home_xymag >= 10*tile_width) {
       const vector3<distance> laser_start_point = top_middle + (facing_xy * 4 / 10) + vector3<distance>(0,0,(facing_.z > 0) ? tile_height : 1*fine_distance_units);
       /*const vector3<distance> top_middle(
         uniform_int_distribution<distance>(shape_bounds.min(X), shape_bounds.max(X))(rng),
@@ -702,8 +702,9 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
               // TODO probably have autorobots use cardinal directions in the first place
               tile_location backloc = loc.get_neighbor_by_variable(opposite_cardinal_direction(get_cdir()), CONTENTS_ONLY);
               if ( ((facing_.z  > 0) && (backloc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() == AIR))
-                || ((facing_.z == 0) && (backloc                                    .stuff_at().contents() == AIR))
-                || ((facing_.z  < 0) && (backloc.get_neighbor<zplus >(CONTENTS_ONLY).stuff_at().contents() == AIR))
+                || ((facing_.z <= 0) && (backloc                                    .stuff_at().contents() == AIR))
+                || ((facing_.z  < 0) && (direction_home_xymag >= 10*tile_width)
+                                     && (backloc.get_neighbor<zplus >(CONTENTS_ONLY).stuff_at().contents() == AIR))
                 ) {
                 carried_minerals.push_back(w.get_minerals(loc.coords()));
                 ++carrying_;
@@ -713,7 +714,7 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
           }
         }
       }
-    }
+    //}
   }
 }
 
