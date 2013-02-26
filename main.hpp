@@ -210,6 +210,7 @@ class LasercakeController : public QObject {
 
 public:
   explicit LasercakeController(config_struct config, QObject* parent = 0);
+  void killSimulator();
 
 public Q_SLOTS:
   void output_new_frame(time_unit moment, frame_output_t output);

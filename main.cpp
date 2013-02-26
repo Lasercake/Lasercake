@@ -480,7 +480,15 @@ int main(int argc, char *argv[])
   // and we make sure not to use the destructor for any critical
   // end-of-process stuff (if there even is any currently).
   const int exitcode = qapp.exec();
-  LOG << "Qt main loop has ended; calling exit()." << std::endl;
+  LOG << "Qt main loop has ended; " << std::flush;
+  if(false) {
+    // Currently it seems better not to do this than to do this,
+    // on the whole, in terms of adverse side-effects on various
+    // platforms.
+    LOG << "terminating simulation thread; " << std::flush;
+    controller.killSimulator();
+  }
+  LOG << "calling exit()." << std::endl;
   exit(exitcode);
 }
 
@@ -1049,3 +1057,9 @@ void LasercakeController::output_new_frame(time_unit moment, frame_output_t outp
   }
 }
 
+void LasercakeController::killSimulator() {
+  if(simulator_thread_) {
+    simulator_thread_->terminate();
+    simulator_thread_->wait();
+  }
+}
