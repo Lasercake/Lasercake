@@ -195,8 +195,14 @@ inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
 #undef BOOST_CHECK
 #undef BOOST_CHECK_NO_THROW
 #undef BOOST_CHECK_THROW
+// Don't parenthesize 'a' and 'b' expressions in return statements in these
+// because it makes Clang warn (perhaps correctly?)
+// "reference to stack memory associated with local variable '...' returned
+//      [-Wreturn-stack-address]
+// and because they are used as complete statements so the usual
+// parentheses-for-correct-grouping-in-macros reason isn't a risk here.
 #define BINARY_CHECK_IMPL(a, b, comparator_type, comparator_str) \
-  do_test([&]()->decltype((a)){return (a);}, [&]()->decltype((b)){return (b);}, comparator_type(), \
+  do_test([&]()->decltype(a){return a;}, [&]()->decltype(b){return b;}, comparator_type(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "` " comparator_str " `" BOOST_PP_STRINGIZE(b) "`" \
   )
 #define BOOST_CHECK_EQUAL(a, b) BINARY_CHECK_IMPL(a, b, comparators::equal_to, "==")
@@ -206,16 +212,16 @@ inline void do_test(AF&& af, BF&& bf, Predicate&& p, const char* desc) {
 #define BOOST_CHECK_LE(a, b)    BINARY_CHECK_IMPL(a, b, comparators::less_equal, "<=")
 #define BOOST_CHECK_NE(a, b)    BINARY_CHECK_IMPL(a, b, comparators::not_equal_to, "!=")
 #define BOOST_CHECK(a) \
-  do_test([&]()->decltype((a)){return (a);}, &make_uninteresting, comparators::first_is_true(), \
+  do_test([&]()->decltype(a){return a;}, &make_uninteresting, comparators::first_is_true(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "`" \
   )
 #define BOOST_CHECK_NO_THROW(a) \
-  do_test([&]{(a); return true;}, &make_uninteresting, comparators::first_is_true(), \
+  do_test([&]{a; return true;}, &make_uninteresting, comparators::first_is_true(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "`" \
   )
 #define BOOST_CHECK_THROW(a, e) \
   do_test([&]() -> msg { \
-      try{ (a); } catch(e const& test_suite_expected_exception){return msg{true, test_suite_expected_exception.what()};} \
+      try{ a; } catch(e const& test_suite_expected_exception){return msg{true, test_suite_expected_exception.what()};} \
       return msg{false, "(something)"}; \
     }, &make_uninteresting, comparators::first_is_true(), \
     BOOST_PP_STRINGIZE(TESTS_FILE) ":" BOOST_PP_STRINGIZE(__LINE__) ": `" BOOST_PP_STRINGIZE(a) "` throws `" BOOST_PP_STRINGIZE(e) "`" \
