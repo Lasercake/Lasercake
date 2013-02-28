@@ -248,7 +248,7 @@ set_target_properties(lasercake PROPERTIES
 	MACOSX_BUNDLE_COPYRIGHT "Free/libre/open-source AGPLv3 by Eli Dupree, Isaac Dupree, et al."
 )
 
-install (TARGETS lasercake RUNTIME DESTINATION bin)
+#install (TARGETS lasercake RUNTIME DESTINATION bin)
 
 if(BUILD_SELF_TESTS)
 	enable_testing()
