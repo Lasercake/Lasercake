@@ -433,7 +433,7 @@ int main(int argc, char** argv)
     po::options_description desc("Allowed options");
     desc.add_options()
       ("help,h", "produce help message")
-      ("view-radius,v", po::value<uint32_t>()->default_value(50), "view radius, in tile_widths") //TODO - in meters?
+      ("view-radius,v", po::value<uint32_t>()->default_value(120), "view radius, in tile_widths") //TODO - in meters?
       ("crazy-lasers,l", po::bool_switch(&config.crazy_lasers), "start with some lasers firing in lots of random directions")
       ("initially-drawing-debug-stuff,d", po::bool_switch(&config.initially_drawing_debug_stuff), "initially drawing debug stuff")
       ("scenario", po::value<std::string>(&config.scenario), "which scenario to run (also accepted with --scenario omitted)")

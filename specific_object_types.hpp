@@ -77,7 +77,7 @@ struct click_action {
 
 class robot : public mobile_object, public autonomous_object, public object_with_eye_direction, public object_with_player_instructions {
 public:
-  robot(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing * tile_width / facing.magnitude_within_32_bits()),metal_carried_(storage_volume()),mode_("digging"){}
+  robot(vector3<distance> location, vector3<distance> facing):location_(location),facing_(facing * tile_width / facing.magnitude_within_32_bits()),metal_carried_(storage_volume() / 2),mode_("digging"){}
   
   virtual shape get_initial_personal_space_shape()const override;
   virtual shape get_initial_detail_shape()const override;
@@ -124,6 +124,8 @@ public:
   virtual void update(world& w, input_representation::input_news_t const& mind_control,
                       object_identifier my_id) override;
   vector3<distance> get_facing()const override { return facing_; }
+  
+  cardinal_direction get_cdir()const { return (facing_.x > 0) ? xplus : (facing_.y > 0) ? yplus : (facing_.x < 0) ? xminus : yminus; }
 private:
   vector3<distance> location_;
   vector3<tile_coordinate> initial_location_;

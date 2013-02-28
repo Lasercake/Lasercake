@@ -28,8 +28,8 @@
 #include "tile_physics.hpp"
 
 namespace /* anonymous */ {
-
-const distance default_laser_length = 100*tile_width;
+//TODO make downrobots dig sideways first?
+const distance default_laser_length = 10000*tile_width;
 
 namespace laserbeam {
   struct beam_first_contact_finder {
@@ -619,7 +619,7 @@ autorobot::autorobot(vector3<tile_coordinate> location, vector3<distance> facing
     facing_.x = 0;
     facing_.y = facing_.y > 0 ? tile_width : -tile_width;
   }
-  if (std::abs(bigger_dir) < std::abs(facing.z) * 8) {
+  if (std::abs(bigger_dir) < std::abs(facing.z) * 4) {
     facing_.z = facing_.z > 0 ? tile_height : -tile_height;
   }
   else facing_.z = 0;
@@ -675,7 +675,7 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
     velocity_.x = facing_.x * 15 / 4 / seconds;
     velocity_.y = facing_.y * 15 / 4 / seconds;
     
-    if (facing_.z >= 0 || direction_home_xymag >= 10*tile_width) {
+    //if (facing_.z >= 0 || direction_home_xymag >= 10*tile_width) {
       const vector3<distance> laser_start_point = top_middle + (facing_xy * 4 / 10) + vector3<distance>(0,0,(facing_.z > 0) ? tile_height : 1*fine_distance_units);
       /*const vector3<distance> top_middle(
         uniform_int_distribution<distance>(shape_bounds.min(X), shape_bounds.max(X))(rng),
@@ -702,10 +702,11 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
             tile_location const& loc = *locp;
             if ((loc.stuff_at().contents() == ROCK || loc.stuff_at().contents() == RUBBLE)) {
               // TODO probably have autorobots use cardinal directions in the first place
-              tile_location backloc = loc.get_neighbor_by_variable((facing_.x > 0) ? xminus : (facing_.y > 0) ? yminus : (facing_.x < 0) ? xplus : yplus, CONTENTS_ONLY);
+              tile_location backloc = loc.get_neighbor_by_variable(opposite_cardinal_direction(get_cdir()), CONTENTS_ONLY);
               if ( ((facing_.z  > 0) && (backloc.get_neighbor<zminus>(CONTENTS_ONLY).stuff_at().contents() == AIR))
-                || ((facing_.z == 0) && (backloc                                    .stuff_at().contents() == AIR))
-                || ((facing_.z  < 0) && (backloc.get_neighbor<zplus >(CONTENTS_ONLY).stuff_at().contents() == AIR))
+                || ((facing_.z <= 0) && (backloc                                    .stuff_at().contents() == AIR))
+                || ((facing_.z  < 0) && (direction_home_xymag >= 10*tile_width)
+                                     && (backloc.get_neighbor<zplus >(CONTENTS_ONLY).stuff_at().contents() == AIR))
                 ) {
                 carried_minerals.push_back(w.get_minerals(loc.coords()));
                 ++carrying_;
@@ -715,7 +716,7 @@ void autorobot::update(world& w, input_representation::input_news_t const&, obje
           }
         }
       }
-    }
+    //}
   }
 }
 
