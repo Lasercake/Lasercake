@@ -222,8 +222,10 @@ target_link_libraries(Lasercake ${LASERCAKE_LINK_FLAGS})
 set_target_properties(Lasercake PROPERTIES
 	COMPILE_FLAGS "${OUR_CXX_FLAGS_spaces}"
 	LINK_FLAGS "${OUR_LINK_FLAGS_spaces}"
+
 	# On Windows, add WinMain() to make this a GUI program:
 	WIN32_EXECUTABLE ON
+
 	# On Mac, GUI programs are put into a directory called a "bundle"
 	# that behaves like a file to users (it contains an executable
 	# and metadata like an icon).
@@ -239,16 +241,27 @@ set_target_properties(Lasercake PROPERTIES
 	MACOSX_BUNDLE_GUI_IDENTIFIER "net.lasercake.Lasercake"
 	MACOSX_BUNDLE_BUNDLE_NAME "Lasercake"
 	MACOSX_BUNDLE_INFO_STRING "Lasercake ${Lasercake_version_desc}, a free/libre/open-source game, http://lasercake.net/"
+	# OS X Finder "Get Info" seems to display the info string
+	# as "Version: ..." *or* the copyright as "Copyright: ...",
+	# not both, so specify the one with the friendlier prefix
+	# ("Version", i.e. the "info-string" one).
+	#MACOSX_BUNDLE_COPYRIGHT "Free/libre/open-source AGPLv3 by Eli Dupree, Isaac Dupree, et al."
 	# TODO: do we want to set <key>NSHighResolutionCapable</key> <true/> ?
 	# Probably once we ensure that displayed text scales sensibly in
 	# relation to window size.
 	# Why does the template set LSRequiresCarbon? Aren't we using a Qt
 	# build that is Cocoa-based?  Yet that setting doesn't seem to be
 	# causing any harm?
-	MACOSX_BUNDLE_COPYRIGHT "Free/libre/open-source AGPLv3 by Eli Dupree, Isaac Dupree, et al."
 )
 
-#install (TARGETS Lasercake RUNTIME DESTINATION bin)
+if(APPLE)
+	install (TARGETS Lasercake RUNTIME DESTINATION .)
+	install ("CODE
+		include(BundleUtilities)
+		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/Lasercake.app\" \"\" \"\")
+	")
+	install (FILES README.markdown DESTINATION . RENAME README.txt)
+endif()
 
 if(BUILD_SELF_TESTS)
 	enable_testing()
@@ -257,7 +270,7 @@ endif()
 
 
 # This CPack stuff may or may not be functional.
-set (CPACK_INCLUDE_TOPLEVEL_DIRECTORY 1)
+set (CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)
 set (CPACK_PACKAGE_VENDOR "re:calib - Eli Dupree and Isaac Dupree")
 # TODO: auto-convert these to HTML or RTF or at least a .txt extension
 # so they're opened in the right editors?
