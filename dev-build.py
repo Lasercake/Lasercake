@@ -1,4 +1,15 @@
 #!/usr/bin/env python
+docs = """
+Usage: ./dev-build.py [cmake args] [certain make args]
+
+This script wraps `cmake` and `make`; you can use CMake directly
+or use this, whichever you prefer.  This script takes `cmake` and
+some `make` flags directly on the command-line, puts the build in
+a directory under build/ that is determined by which `cmake` flags you
+specified (so that you can store separate intermediate compilation results
+for various flag/compiler combinations), runs Lasercake's self-tests,
+and if they're successful, copies Lasercake to the main directory.
+"""
 
 import os, sys, subprocess, re, shutil, hashlib
 
@@ -57,9 +68,7 @@ def main():
 	make_jobs_flags = ['-j'+str(MAKE_PARALLEL_JOBS_DEFAULT)]
 	for arg in sys.argv[1:]:
 		if arg in ['-?', '-h', '--help', '-help']:
-			say(
-				"""Usage:\n./dev-build.py\n\t[CXX=g++-4.6|clang++|..]\n\t[CXXFLAGS='-Os -w']\n\t[args for cmake]\n\nCompiles in a build dir that depends on the flags you give,\nthen runs tests.\n"""
-			   )
+			say(docs)
 			sys.exit()
 		elif arg == 'no-test':
 			running_tests = False
