@@ -243,6 +243,8 @@ set (CPACK_PACKAGE_VERSION_PATCH ${Lasercake_VERSION_PATCH})
 # set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
 set (CPACK_PACKAGE_INSTALL_DIRECTORY "Lasercake-${Lasercake_version_desc}")
 
+set (CPACK_BUNDLE_NAME "Lasercake")
+
 #file(READ .gitignore gitignore_contents)
 #string(REPLACE "." "\\\\." gitignore_contents_regexified1 ${gitignore_contents})
 #string(REPLACE "*" ".*" gitignore_contents_regexified2 ${gitignore_contents_regexified1})
