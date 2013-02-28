@@ -214,11 +214,13 @@ semicolons_to_spaces(LASERCAKE_LINK_FLAGS_spaces ${LASERCAKE_LINK_FLAGS})
 show_paths(LASERCAKE_SOURCES_pretty ${LASERCAKE_SOURCES})
 message(STATUS "lasercake link flags: ${LASERCAKE_LINK_FLAGS_spaces}")
 message(STATUS "lasercake sources: ${LASERCAKE_SOURCES_pretty}")
-add_executable (lasercake WIN32 ${LASERCAKE_GLEW_SOURCES} ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC} ${LASERCAKE_RESOURCES_RCC})
+add_executable (lasercake ${LASERCAKE_GLEW_SOURCES} ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC} ${LASERCAKE_RESOURCES_RCC})
 target_link_libraries(lasercake ${LASERCAKE_LINK_FLAGS})
 set_target_properties(lasercake PROPERTIES
 	COMPILE_FLAGS "${OUR_CXX_FLAGS_spaces}"
 	LINK_FLAGS "${OUR_LINK_FLAGS_spaces}"
+	# On Windows, add WinMain() to make this a GUI program:
+	WIN32_EXECUTABLE ON
 )
 
 install (TARGETS lasercake RUNTIME DESTINATION bin)
