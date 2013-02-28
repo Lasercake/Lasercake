@@ -255,7 +255,7 @@ set_target_properties(Lasercake PROPERTIES
 )
 
 if(APPLE)
-	install (TARGETS Lasercake RUNTIME DESTINATION .)
+	install (TARGETS Lasercake BUNDLE DESTINATION .)
 	install ("CODE
 		include(BundleUtilities)
 		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/Lasercake.app\" \"\" \"\")
