@@ -56,13 +56,19 @@ Releasing
 
 ### build flags ###
 
-Using link-time optimization (LTO) (tested with GCC 4.7, Feb 2013) cuts
-the Lasercake binary size in half, though it doesn't make the program run
+#### LTO (link-time optimization)
+
+Using link-time optimization (tested with GCC 4.7, Feb 2013) cuts the
+Lasercake binary size in half, though it doesn't make the program run
 significantly faster (probably because we already put the performance
 critical code in templates in the headers).  Linking with -flto takes
 about a minute on my modern CPU so you probably don't want to do this
 while developing.
--DCMAKE_CXX_FLAGS=-flto -DCMAKE_C_FLAGS=-flto -DCMAKE_EXE_LINKER_FLAGS=-fwhole-program
+-DLTO=ON (which is shorthand for
+    -DCMAKE_CXX_FLAGS=-flto -DCMAKE_C_FLAGS=-flto -DCMAKE_EXE_LINKER_FLAGS=-fwhole-program
+)
+
+#### PGO (profile-guided optimization)
 
 Profile-guided optimization did not currently appear to profitable enough
 to bother with, but it has been before, so perhaps it will in the future. How to:
