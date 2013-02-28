@@ -262,6 +262,16 @@ if(APPLE)
 	")
 	install (FILES README.markdown DESTINATION . RENAME README.txt)
 endif()
+# Note: This only makes sense when doing out-of-tree builds;
+# otherwise it might try to include the build contents and any other
+# temporary files or uncommitted changes.
+#Also, do we want to exclude bundled_libs/ and .git/ for binary
+#distribution builds? Or how to decrease the download size?  We could include
+#a URL to the source code in the README (perhaps a Readme.txt.in which
+#fills in the version number automatically) which could point directly
+#to a download as well as online browsing on a GitHub
+#tree-specific-to-this-tag view, or to an online page that gives the option.
+#install (DIRECTORY ${CMAKE_SOURCE_DIR}/ DESTINATION source-code)
 
 if(BUILD_SELF_TESTS)
 	enable_testing()
