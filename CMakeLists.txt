@@ -154,7 +154,7 @@ if(WIN32)
 	# the compiler with -std=c++0x defines __STRICT_ANSI__
 	# and thus Windows-related headers don't define everything
 	# that Boost headers expect them to.
-	set(ESSENTIAL_FLAGS -std=gnu++0x)
+	set(CMAKE_CXX_FLAGS "-std=gnu++0x ${CMAKE_CXX_FLAGS}")
 	# Sadly my MinGW cross-compile leads to linking errors with
 	# -fstack-protector.  TODO try things with the compiler rather
 	# than assuming based on the target platform.  TODO can we
@@ -166,7 +166,7 @@ else()
 	# enables various GCC extensions in headers like __float128 that
 	# Clang doesn't understand.  (For some versions of clang and
 	# libstdc++.)  Also, we don't need these GNU extensions.
-	set(ESSENTIAL_FLAGS -std=c++0x)
+	set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
 	set(SECURITY_FLAGS -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4)
 endif()
 set(OUR_CXX_FLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS})
