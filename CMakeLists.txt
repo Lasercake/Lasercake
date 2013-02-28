@@ -13,12 +13,17 @@ option (USE_BUNDLED_BOOST "On: Use Boost from ./bundled_libs/; off: use system B
 option (USE_BUNDLED_GLM "On: Use glm from ./bundled_libs/; off: use system glm." ON)
 option (USE_BUNDLED_GLEW "On: Use GLEW from ./bundled_libs/; off: use system GLEW." ON)
 option (USE_BOOST_CXX11_LIBS "On: Use Boost's implementation of C++11 standard library features; off: use the standard library or autodetect that using Boost's is necessary." OFF)
-option (LTO "Use link-time optimization (roughly halves the size of the binary)" OFF)
 option (GLIB "Use GLib slices for some memory allocation (requires glib)." OFF)
 option (USE_BOUNDS_CHECKED_INTS "Check for overflow of most int computations at runtime (slow)." OFF)
 option (PARANOID "Turn on various code paranoia checks (slow)." OFF)
 option (_GLIBCXX_DEBUG "Defines _GLIBCXX_DEBUG iterator-validity debugging (slow)." OFF)
 option (BUILD_SELF_TESTS "Build Lasercake's self-testing code component (recommended)." ON)
+
+# These are merely shorthand for CMake options that I use for
+# releases on various systems. -Isaac
+option (LTO "Use link-time optimization (roughly halves the size of the binary)" OFF)
+option (OSX_TARGET_10_5 "OS X: make binary run on 10.5 even if building on later OS X" OFF)
+
 
 include (FindPkgConfig)
 set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_SOURCE_DIR}/cmake")
@@ -58,6 +63,15 @@ if (USE_BOOST_CXX11_LIBS OR NOT COMPILER_SUPPORTS_CXX11_STDLIB)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DUSE_BOOST_CXX11_LIBS=1 -U__GXX_EXPERIMENTAL_CXX0X__)
 endif()
 set(CXX11_LIB_WRAPPERS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/bundled_libs/cxx11/")
+
+if (OSX_TARGET_10_5)
+	find_file(OSX_10_5_SDK MacOSX10.5.sdk /Developer/SDKs/)
+	if("${OSX_10_5_SDK}" STREQUAL "OSX_10_5_SDK-NOTFOUND")
+		message(FATAL_ERROR "You asked to target OS X 10.5 but we couldn't find the MacOSX 10.5 SDK.")
+	endif()
+	set(CMAKE_OSX_DEPLOYMENT_TARGET 10.5)
+	set(CMAKE_OSX_SYSROOT "${OSX_10_5_SDK}")
+endif()
 
 if (_GLIBCXX_DEBUG)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -D_GLIBCXX_DEBUG)
