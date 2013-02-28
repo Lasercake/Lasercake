@@ -215,11 +215,11 @@ qt4_add_resources(LASERCAKE_RESOURCES_RCC fonts.qrc)
 set(LASERCAKE_LINK_FLAGS ${QT_LIBRARIES} ${OPENGL_LIBRARIES} ${GLEW_LIBRARIES} ${Boost_LIBRARIES} ${GLIB_LIBRARIES})
 semicolons_to_spaces(LASERCAKE_LINK_FLAGS_spaces ${LASERCAKE_LINK_FLAGS})
 show_paths(LASERCAKE_SOURCES_pretty ${LASERCAKE_SOURCES})
-message(STATUS "lasercake link flags: ${LASERCAKE_LINK_FLAGS_spaces}")
-message(STATUS "lasercake sources: ${LASERCAKE_SOURCES_pretty}")
-add_executable (lasercake ${LASERCAKE_GLEW_SOURCES} ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC} ${LASERCAKE_RESOURCES_RCC})
-target_link_libraries(lasercake ${LASERCAKE_LINK_FLAGS})
-set_target_properties(lasercake PROPERTIES
+message(STATUS "Lasercake link flags: ${LASERCAKE_LINK_FLAGS_spaces}")
+message(STATUS "Lasercake sources: ${LASERCAKE_SOURCES_pretty}")
+add_executable (Lasercake ${LASERCAKE_GLEW_SOURCES} ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC} ${LASERCAKE_RESOURCES_RCC})
+target_link_libraries(Lasercake ${LASERCAKE_LINK_FLAGS})
+set_target_properties(Lasercake PROPERTIES
 	COMPILE_FLAGS "${OUR_CXX_FLAGS_spaces}"
 	LINK_FLAGS "${OUR_LINK_FLAGS_spaces}"
 	# On Windows, add WinMain() to make this a GUI program:
@@ -248,11 +248,11 @@ set_target_properties(lasercake PROPERTIES
 	MACOSX_BUNDLE_COPYRIGHT "Free/libre/open-source AGPLv3 by Eli Dupree, Isaac Dupree, et al."
 )
 
-#install (TARGETS lasercake RUNTIME DESTINATION bin)
+#install (TARGETS Lasercake RUNTIME DESTINATION bin)
 
 if(BUILD_SELF_TESTS)
 	enable_testing()
-	add_test(TestPasses lasercake --run-self-tests)
+	add_test(TestPasses Lasercake --run-self-tests)
 endif()
 
 
@@ -266,7 +266,7 @@ set (CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: a 
 set (CPACK_RESOURCE_FILE_WELCOME "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: what is the difference between all these readme-ish files?
 #set (CPACK_MONOLITHIC_INSTALL 1) #since we just have one thing to package; do we need to say this?
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Lasercake is an open-world game about the environment")
-set (CPACK_PACKAGE_EXECUTABLES lasercake;Lasercake) #TODO name the executable Lasercake too maybe?
+set (CPACK_PACKAGE_EXECUTABLES Lasercake;Lasercake)
 # are these redundant/necessary?
 set (CPACK_PACKAGE_VERSION_MAJOR ${Lasercake_VERSION_MAJOR})
 set (CPACK_PACKAGE_VERSION_MINOR ${Lasercake_VERSION_MINOR})

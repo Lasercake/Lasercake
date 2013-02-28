@@ -4,7 +4,9 @@ sim
 /output
 /build
 /lasercake
+/Lasercake
 /lasercake-*
+/Lasercake-*
 .*.swp
 .*.kate-swp
 /.kdev4/

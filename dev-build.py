@@ -118,13 +118,13 @@ def main():
 		say(ansi_red+'build failed'+ansi_end+'\n')
 		exit(1)
 	is_windows_exe = False
-	if os.access('lasercake', os.F_OK):
-		exe_name = 'lasercake'
-	if os.access('lasercake.exe', os.F_OK):
-		exe_name = 'lasercake.exe'
+	if os.access('Lasercake', os.F_OK):
+		exe_name = 'Lasercake'
+	if os.access('Lasercake.exe', os.F_OK):
+		exe_name = 'Lasercake.exe'
 		is_windows_exe = True
 	if exe_name == None:
-		say(ansi_red+"couldn't find lasercake binary?!"+ansi_end+'\n')
+		say(ansi_red+"couldn't find Lasercake binary?!"+ansi_end+'\n')
 		exit(1)
 	# poor estimate that assumes people only cross-compile
 	# if it involves Windows:
@@ -136,8 +136,8 @@ def main():
 	else:
 		if running_tests:
 			say(ansi_cyan+'Testing...\n')
-			say_we_are_calling('./'+build_dir+'/lasercake --run-self-tests')
-			test_status = subprocess.call(['./lasercake', '--run-self-tests'])
+			say_we_are_calling('./'+build_dir+'/Lasercake --run-self-tests')
+			test_status = subprocess.call(['./Lasercake', '--run-self-tests'])
 			if test_status != 0:
 				say(ansi_red+'Tests failed.\n')
 				exit(test_status)
@@ -145,7 +145,7 @@ def main():
 		else:
 			say(ansi_yellow+'NOT RUNNING TESTS')
 		if making_lasercake:
-			say('; copying '+build_dir+'/lasercake to ./lasercake')
+			say('; copying '+build_dir+'/Lasercake to ./Lasercake')
 		say(ansi_end+'\n')
 		if making_lasercake:
 			# shutil.copy*() throws
