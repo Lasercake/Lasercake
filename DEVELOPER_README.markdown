@@ -85,6 +85,37 @@ enjoy your new binary.
 (-fprofile-correction is necessary because Lasercake is multi-threaded.
 Alternatively, you can run the profile-generating Lasercake with --no-threads.)
 
+#### Mac OS X
+
+-DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-3.2
+-DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-3.2
+-DOSX_TARGET_10_5=ON
+-DUSE_BOOST_CXX11_LIBS=ON
+
+Compilers: Those paths are right if using Macports Clang.  If you have a
+new enough XCode, it should have a new enough Clang already. (I don't have the
+latest OS X to check.  Apple keep including snapshot Clang versions, so
+I don't know which one is the first to fix all the bugs that make Clang
+crash when compiling Lasercake.  Upstream Clang 3.1 is too old and upstream
+Clang 3.2 is new enough.)  Recent GCC from Macports probably works too, but
+Apple are moving towards Clang so it's probably better to prefer Clang on Mac
+(all else equal).
+
+Targeting 10.5: it's valuable not to exclude too many users! If you have
+too new an OS X / XCode setup, you might not have the 10.5 SDK, or even 10.6.
+(A good fraction of OS X users are still on 10.6! -Isaac, Feb 2013)
+
+USE_BOOST_CXX11_LIBS: OS X before 10.7 uses GCC 4.2's libstdc++, which doesn't
+support any C++11 library features.  This flag makes us use equivalent Boost
+libraries instead.  Alternatives: OS X 10.7 has a copy of libc++ (C++ library
+created by LLVM/Clang folks).  I hear 10.7's copy supports (some? all?) C++11
+library features, but I have not tested their version (I don't have 10.7, and
+in any case using it for releases would prevent the binary from running on
+10.6).  It might also work to build your own recent lib(std)c++ and link it
+into the binary, although it is problematic (in theory, and in practice if you
+are using system Boost) to have more than one C++ runtime in the same
+executable.
+
 ### packaging ###
 
 TODO: look into CPack
