@@ -117,6 +117,10 @@ into the binary, although it is problematic (in theory, and in practice if you
 are using system Boost) to have more than one C++ runtime in the same
 executable.
 
+Then `cpack -G DragNDrop` to create a DMG containing the .app (in a version
+that should start on other users' systems), a README, and
+an alias to /Applications for the user.
+
 ### packaging ###
 
 TODO: look into CPack
