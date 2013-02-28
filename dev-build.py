@@ -4,11 +4,10 @@ import os, sys, subprocess, re, shutil, hashlib
 
 try:
 	import multiprocessing
-	MAKE_PARALLEL_JOBS = multiprocessing.cpu_count() + 1
+	MAKE_PARALLEL_JOBS_DEFAULT = multiprocessing.cpu_count() + 1
 except (ImportError,NotImplementedError):
-	MAKE_PARALLEL_JOBS = 2
+	MAKE_PARALLEL_JOBS_DEFAULT = 2
 
-make_flags = ['-j'+str(MAKE_PARALLEL_JOBS)]
 
 ansi_grey = '\033[30m'
 ansi_red = '\033[31m'
@@ -55,6 +54,7 @@ def main():
 	make_args = []
 	making_lasercake = True
 	running_tests = True
+	make_jobs_flags = ['-j'+str(MAKE_PARALLEL_JOBS_DEFAULT)]
 	for arg in sys.argv[1:]:
 		if arg in ['-?', '-h', '--help', '-help']:
 			say(
@@ -63,6 +63,10 @@ def main():
 			sys.exit()
 		elif arg == 'no-test':
 			running_tests = False
+		elif arg == 'VERBOSE=1':
+			make_args.append(arg)
+		elif re.search(r'^-j[0-9]*$', arg):
+			make_jobs_flags = [arg]
 		else:
 			cmake_args.append(arg)
 		if arg == '-DBUILD_SELF_TESTS=OFF':
@@ -88,7 +92,7 @@ def main():
 		time_args = ['time', '-f', (ansi_magenta+'`make` took %E'+ansi_end)]
 	else:
 		time_args = ['time']
-	to_call_make = time_args + ['make'] + make_flags + make_args
+	to_call_make = time_args + ['make'] + make_jobs_flags + make_args
 	say_we_are_calling('   '.join(to_call_make))
 	make_status = subprocess.call(to_call_make)
 	if not time_has_f:
@@ -97,8 +101,8 @@ def main():
 	# somehow? Add to the cmakelists to write those?
 	# but with the -l's and all... hmm.
 	if make_status != 0:
-		# skip make_flags (-jN) to get just one file's error messages
-		# not mixed up with the others
+		# skip make_jobs_flags (-jN) to get just one file's error
+		# messages not mixed up with the others
 		to_call_make_again = ['make'] + make_args
 		say_we_are_calling('   '.join(to_call_make_again))
 		subprocess.call(to_call_make_again)
