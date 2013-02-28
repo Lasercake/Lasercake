@@ -216,8 +216,10 @@ message(STATUS "lasercake link flags: ${LASERCAKE_LINK_FLAGS_spaces}")
 message(STATUS "lasercake sources: ${LASERCAKE_SOURCES_pretty}")
 add_executable (lasercake WIN32 ${LASERCAKE_GLEW_SOURCES} ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC} ${LASERCAKE_RESOURCES_RCC})
 target_link_libraries(lasercake ${LASERCAKE_LINK_FLAGS})
-set_target_properties(lasercake PROPERTIES COMPILE_FLAGS "${OUR_CXX_FLAGS_spaces}")
-set_target_properties(lasercake PROPERTIES LINK_FLAGS "${OUR_LINK_FLAGS_spaces}")
+set_target_properties(lasercake PROPERTIES
+	COMPILE_FLAGS "${OUR_CXX_FLAGS_spaces}"
+	LINK_FLAGS "${OUR_LINK_FLAGS_spaces}"
+)
 
 install (TARGETS lasercake RUNTIME DESTINATION bin)
 
