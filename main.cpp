@@ -386,7 +386,15 @@ int debug_test_sim_avoiding_qt_and_trying_to_be_very_deterministic(config_struct
   return 0;
 }
 
-int main(int argc, char *argv[])
+bool str_prefixes(const char* prefix, const char* str) {
+  while(*prefix != '\0') {
+    if(*prefix != *str) { return false; }
+    ++prefix; ++str;
+  }
+  return true;
+}
+
+int main(int argc, char** argv)
 {
   try {
     std::locale::global(std::locale(""));
@@ -395,6 +403,24 @@ int main(int argc, char *argv[])
     LOG << "Can't find your default locale; not setting locale" << std::endl;
   }
   LOG << std::boolalpha;
+
+  // When starting Lasercake from an OS X bundle, OS X passes the command-line
+  // option -psn_0_349875  (the number varies).  So we explicitly ignore that
+  // option rather than misinterpret it as the short flags p, s, n, _, 0, etc.
+  // Since -_ isn't a flag, this won't interfere with any regular command-line
+  // usages.  TODO: should we move Qt's parsing up to here instead
+  // (QApplication qapp(argc, argv); and use qapp.arguments())?  But then we'd
+  // need to extract the arguments to pass to Boost Program Options
+  // (Qt doesn't yet have its own arg parser library); and -Q/--avoid-qt
+  // wouldn't quite work.  Should we instead complicate bundle creation with
+  // a wrapper shell script for the executable?  But Qt ought to receive the
+  // -psn_ argument so we can't just delete it there.
+  std::vector<std::string> args_sanitized;
+  for(int i = 1; i < argc; ++i) {
+    if(!str_prefixes("-psn_", argv[i])) {
+      args_sanitized.push_back(argv[i]);
+    }
+  }
 
   config_struct config;
 
@@ -426,7 +452,7 @@ int main(int argc, char *argv[])
     ;
 
     po::variables_map vm;
-    po::store(po::command_line_parser(argc, argv).
+    po::store(po::command_line_parser(args_sanitized).
               options(desc).positional(p).run(), vm);
     po::notify(vm);
 
