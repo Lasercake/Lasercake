@@ -5,6 +5,9 @@ project (Lasercake)
 set (Lasercake_VERSION_MAJOR 0)
 set (Lasercake_VERSION_MINOR 22)
 set (Lasercake_VERSION_PATCH 0)
+# TODO if in git, add part of the git hash to the version desc?
+# TODO is it useful to include the year in any version-related
+# strings?
 set (Lasercake_version_desc ${Lasercake_VERSION_MAJOR}.${Lasercake_VERSION_MINOR}.${Lasercake_VERSION_PATCH})
 
 
@@ -221,6 +224,28 @@ set_target_properties(lasercake PROPERTIES
 	LINK_FLAGS "${OUR_LINK_FLAGS_spaces}"
 	# On Windows, add WinMain() to make this a GUI program:
 	WIN32_EXECUTABLE ON
+	# On Mac, GUI programs are put into a directory called a "bundle"
+	# that behaves like a file to users (it contains an executable
+	# and metadata like an icon).
+	MACOSX_BUNDLE ON
+	# What is the difference between these version keys?
+	# Consult /usr/share/cmake-2.8/Modules/MacOSXBundleInfo.plist.in
+	# to get the Apple versions of these keys (we can copy that file
+	# and reference it in a MACOSX_BUNDLE_INFO_PLIST if we need to
+	# change the template).
+	MACOSX_BUNDLE_BUNDLE_VERSION "${Lasercake_version_desc}"
+	MACOSX_BUNDLE_SHORT_VERSION_STRING "${Lasercake_version_desc}"
+	#MACOSX_BUNDLE_LONG_VERSION_STRING "${Lasercake_version_desc}"
+	MACOSX_BUNDLE_GUI_IDENTIFIER "net.lasercake.Lasercake"
+	MACOSX_BUNDLE_BUNDLE_NAME "Lasercake"
+	MACOSX_BUNDLE_INFO_STRING "Lasercake ${Lasercake_version_desc}, a free/libre/open-source game, http://lasercake.net/"
+	# TODO: do we want to set <key>NSHighResolutionCapable</key> <true/> ?
+	# Probably once we ensure that displayed text scales sensibly in
+	# relation to window size.
+	# Why does the template set LSRequiresCarbon? Aren't we using a Qt
+	# build that is Cocoa-based?  Yet that setting doesn't seem to be
+	# causing any harm?
+	MACOSX_BUNDLE_COPYRIGHT "Free/libre/open-source AGPLv3 by Eli Dupree, Isaac Dupree, et al."
 )
 
 install (TARGETS lasercake RUNTIME DESTINATION bin)
@@ -230,8 +255,12 @@ if(BUILD_SELF_TESTS)
 	add_test(TestPasses lasercake --run-self-tests)
 endif()
 
+
+# This CPack stuff may or may not be functional.
 set (CPACK_INCLUDE_TOPLEVEL_DIRECTORY 1)
 set (CPACK_PACKAGE_VENDOR "re:calib - Eli Dupree and Isaac Dupree")
+# TODO: auto-convert these to HTML or RTF or at least a .txt extension
+# so they're opened in the right editors?
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: intro file shown by NSIS Windows installer, I think
 set (CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: a longer(?) readme shown by some installers
 set (CPACK_RESOURCE_FILE_WELCOME "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: what is the difference between all these readme-ish files?
@@ -247,7 +276,7 @@ set (CPACK_PACKAGE_VERSION_PATCH ${Lasercake_VERSION_PATCH})
 # set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
 set (CPACK_PACKAGE_INSTALL_DIRECTORY "Lasercake-${Lasercake_version_desc}")
 
-set (CPACK_BUNDLE_NAME "Lasercake")
+#set (CPACK_BUNDLE_NAME "Lasercake")
 
 #file(READ .gitignore gitignore_contents)
 #string(REPLACE "." "\\\\." gitignore_contents_regexified1 ${gitignore_contents})
