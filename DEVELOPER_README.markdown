@@ -91,6 +91,7 @@ Alternatively, you can run the profile-generating Lasercake with --no-threads.)
 -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-3.2
 -DOSX_TARGET_10_5=ON
 -DUSE_BOOST_CXX11_LIBS=ON
+[plus above flags]
 
 Compilers: Those paths are right if using Macports Clang.  If you have a
 new enough XCode, it should have a new enough Clang already. (I don't have the
