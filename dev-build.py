@@ -56,8 +56,6 @@ def main():
 	making_lasercake = True
 	running_tests = True
 	for arg in sys.argv[1:]:
-		m_cxx = re.search(r'^(?:CC|CXX)=(.*)$', arg)
-		m_cxxflags = re.search(r'^(?:C|CXX)FLAGS=(.*)$', arg)
 		if arg in ['-?', '-h', '--help', '-help']:
 			say(
 				"""Usage:\n./dev-build.py\n\t[CXX=g++-4.6|clang++|..]\n\t[CXXFLAGS='-Os -w']\n\t[args for cmake]\n\nCompiles in a build dir that depends on the flags you give,\nthen runs tests.\n"""
@@ -65,10 +63,6 @@ def main():
 			sys.exit()
 		elif arg == 'no-test':
 			running_tests = False
-		elif m_cxx:
-			cmake_args.append('-DCMAKE_CXX_COMPILER='+m_cxx.group(1))
-		elif m_cxxflags:
-			cmake_args.append('-DCMAKE_CXX_FLAGS='+m_cxxflags.group(1))
 		else:
 			cmake_args.append(arg)
 		if arg == '-DBUILD_SELF_TESTS=OFF':
