@@ -228,9 +228,9 @@ endif()
 
 set (CPACK_INCLUDE_TOPLEVEL_DIRECTORY 1)
 set (CPACK_PACKAGE_VENDOR "re:calib - Eli Dupree and Isaac Dupree")
-set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/principles.markdown") #TODO: intro file shown by NSIS Windows installer, I think
-set (CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/generate-boostbcp.py") #TODO: a longer(?) readme shown by some installers
-set (CPACK_RESOURCE_FILE_WELCOME "${CMAKE_SOURCE_DIR}/determinacy-debugging.txt") #TODO: what is the difference between all these readme-ish files?
+set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: intro file shown by NSIS Windows installer, I think
+set (CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: a longer(?) readme shown by some installers
+set (CPACK_RESOURCE_FILE_WELCOME "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: what is the difference between all these readme-ish files?
 #set (CPACK_MONOLITHIC_INSTALL 1) #since we just have one thing to package; do we need to say this?
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Lasercake is an open-world game about the environment")
 set (CPACK_PACKAGE_EXECUTABLES lasercake;Lasercake) #TODO name the executable Lasercake too maybe?
