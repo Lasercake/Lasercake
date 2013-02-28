@@ -549,7 +549,7 @@ public:
       column_memo_.insert(std::make_pair(vector3<lint64_t>(x,y,0), info));
       return info;
     }
-  std::unordered_map<vector3<lint64_t>, column_info> column_memo_;
+  unordered_map<vector3<lint64_t>, column_info> column_memo_;
 };
 
 
