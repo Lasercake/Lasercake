@@ -106,7 +106,7 @@ def main():
 	to_call_make = time_args + ['make'] + make_jobs_flags + make_args
 	say_we_are_calling('   '.join(to_call_make))
 	make_status = subprocess.call(to_call_make)
-	if not time_has_f:
+	if has_time and not time_has_f:
 		say(ansi_magenta+'  (time to run `make`).'+ansi_end+'\n')
 	# How to print the compiler & flags here? Can we get it from cmake
 	# somehow? Add to the cmakelists to write those?
