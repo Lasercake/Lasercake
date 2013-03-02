@@ -58,9 +58,9 @@ def main():
 	try:
 		status = subprocess.call(['time', '-f', '', 'true'])
 		time_has_f = (status == 0)
+		has_time = True
 	except OSError:
-		say(ansi_red+"Error: GNU-compatible 'time' not found; please install it."+ansi_end+'\n')
-		exit(1)
+		has_time = False
 	cmake_args = []
 	make_args = []
 	making_lasercake = True
@@ -97,7 +97,9 @@ def main():
 	say(ansi_cyan+'''  (^^ not escaped properly in these info messages - doin' it right in python)'''+ansi_end+'\n')
 	os.chdir(build_dir)
 	subprocess.check_call(to_call_cmake)
-	if time_has_f:
+	if not has_time:
+		time_args = []
+	elif time_has_f:
 		time_args = ['time', '-f', (ansi_magenta+'`make` took %E'+ansi_end)]
 	else:
 		time_args = ['time']
