@@ -32,6 +32,13 @@ using cxx11_utils_impl::forward;
 using cxx11_utils_impl::move;
 using boost::declval;
 
+// Some Boost headers do "using std::move;".
+// The below puts our impls in the std namespace accessible iff
+// there isn't anything already in std called 'move', 'forward'.
+namespace std {
+  using namespace cxx11_utils_impl;
+}
+
 #endif
 
 #endif
