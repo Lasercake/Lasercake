@@ -2,6 +2,10 @@
 #ifndef LASERCAKE_CXX11_UTILS_HPP__
 #define LASERCAKE_CXX11_UTILS_HPP__
 
+// This file is included by everything by a '-include' preprocessor
+// flag in order to make certain Boost headers work better.
+#ifdef __cplusplus
+
 #ifndef USE_BOOST_CXX11_LIBS
 #include <utility>
 using std::move;
@@ -38,6 +42,8 @@ using boost::declval;
 namespace std {
   using namespace cxx11_utils_impl;
 }
+
+#endif
 
 #endif
 
