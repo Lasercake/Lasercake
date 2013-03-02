@@ -195,8 +195,8 @@ else()
 	set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
 	set(SECURITY_FLAGS -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4)
 endif()
-set(OUR_CXX_FLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS})
-semicolons_to_spaces(OUR_CXX_FLAGS_spaces ${OUR_CXX_FLAGS})
+set(OUR_CFLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS})
+semicolons_to_spaces(OUR_CFLAGS_spaces ${OUR_CFLAGS})
 
 set(OUR_LINK_FLAGS
 	${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS}
@@ -229,7 +229,7 @@ message(STATUS "Lasercake sources: ${LASERCAKE_SOURCES_pretty}")
 add_executable (Lasercake ${LASERCAKE_GLEW_SOURCES} ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC} ${LASERCAKE_RESOURCES_RCC})
 target_link_libraries(Lasercake ${LASERCAKE_LINK_FLAGS})
 set_target_properties(Lasercake PROPERTIES
-	COMPILE_FLAGS "${OUR_CXX_FLAGS_spaces}"
+	COMPILE_FLAGS "${OUR_CFLAGS_spaces}"
 	LINK_FLAGS "${OUR_LINK_FLAGS_spaces}"
 
 	# On Windows, add WinMain() to make this a GUI program:
