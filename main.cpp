@@ -66,6 +66,8 @@
 
 #include "tests/test_main.hpp"
 
+#include "cmake_config.hpp"
+
 namespace /* anonymous */ {
 
 namespace chrono = boost::chrono;
@@ -433,6 +435,7 @@ int main(int argc, char** argv)
     po::options_description desc("Allowed options");
     desc.add_options()
       ("help,h", "produce help message")
+      ("version", "show version information")
       ("view-radius,v", po::value<uint32_t>()->default_value(120), "view radius, in tile_widths") //TODO - in meters?
       ("crazy-lasers,l", po::bool_switch(&config.crazy_lasers), "start with some lasers firing in lots of random directions")
       ("initially-drawing-debug-stuff,d", po::bool_switch(&config.initially_drawing_debug_stuff), "initially drawing debug stuff")
@@ -469,11 +472,20 @@ int main(int argc, char** argv)
       config.use_opengl_thread = false;
     }
     if(vm.count("help")) {
+      std::cout << "Lasercake " << LASERCAKE_VERSION_DESC << "\n\n";
       std::cout << desc << std::endl;
       std::cout << "Scenario names:";
       for(auto const& name : scenario_names()) {
         std::cout << "\n  " << name;
       }
+      std::cout << std::endl;
+      exit(0);
+    }
+    if(vm.count("version")) {
+      std::cout << "Lasercake " << LASERCAKE_VERSION_DESC << "\n";
+      // do the sizeof because gcc and clang disagree on `cc -m32 -dumpmachine`.
+      std::cout << "built on " << __DATE__ << " by " << LASERCAKE_COMPILER_DESC << "\n";
+      std::cout << "for " << LASERCAKE_TARGET_DESC << " with " << sizeof(void*) << "-byte pointers\n";
       std::cout << std::endl;
       exit(0);
     }

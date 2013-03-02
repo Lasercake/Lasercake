@@ -218,6 +218,20 @@ file (GLOB LASERCAKE_TEST_SOURCES tests/*.cpp)
 if(BUILD_SELF_TESTS)
 	set(LASERCAKE_SOURCES ${LASERCAKE_SOURCES} ${LASERCAKE_TEST_SOURCES})
 endif()
+
+# This will need to be different for non-GCCish compilers.
+# Why haven't I found a better way to dump this information
+# in any of the portable frameworks we use?
+separate_arguments(CMAKE_CXX_FLAGS_list UNIX_COMMAND "${CMAKE_CXX_FLAGS}")
+execute_process(COMMAND "${CMAKE_CXX_COMPILER}" ${OUR_CFLAGS} ${CMAKE_CXX_FLAGS_list} -dumpmachine OUTPUT_VARIABLE LASERCAKE_dumpmachine)
+execute_process(COMMAND "${CMAKE_CXX_COMPILER}" --version OUTPUT_VARIABLE LASERCAKE_compiler_version)
+string(REGEX REPLACE "\n.*" "" LASERCAKE_TARGET_DESC "${LASERCAKE_dumpmachine}")
+string(REGEX REPLACE "\n.*" "" LASERCAKE_COMPILER_DESC "${LASERCAKE_compiler_version}")
+set(LASERCAKE_VERSION_DESC "${Lasercake_version_desc}")
+configure_file(cmake_config.in.cpp cmake_config.cpp ESCAPE_QUOTES)
+list(REMOVE_ITEM LASERCAKE_SOURCES "${CMAKE_SOURCE_DIR}/cmake_config.in.cpp")
+list(APPEND LASERCAKE_SOURCES "${CMAKE_BINARY_DIR}/cmake_config.cpp")
+
 file (GLOB LASERCAKE_HEADERS *.hpp data_structures/*.hpp tests/*.hpp)
 qt4_wrap_cpp(LASERCAKE_MOC main.hpp)
 qt4_add_resources(LASERCAKE_RESOURCES_RCC fonts.qrc)
