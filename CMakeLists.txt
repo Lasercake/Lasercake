@@ -232,6 +232,10 @@ configure_file(cmake_config.in.cpp cmake_config.cpp ESCAPE_QUOTES)
 list(REMOVE_ITEM LASERCAKE_SOURCES "${CMAKE_SOURCE_DIR}/cmake_config.in.cpp")
 list(APPEND LASERCAKE_SOURCES "${CMAKE_BINARY_DIR}/cmake_config.cpp")
 
+if(WIN32)
+	set(LASERCAKE_WINDOWS_EXE_METADATA resources/windows.rc)
+endif()
+
 file (GLOB LASERCAKE_HEADERS *.hpp data_structures/*.hpp tests/*.hpp)
 qt4_wrap_cpp(LASERCAKE_MOC main.hpp)
 qt4_add_resources(LASERCAKE_RESOURCES_RCC fonts.qrc)
@@ -240,7 +244,7 @@ semicolons_to_spaces(LASERCAKE_LINK_FLAGS_spaces ${LASERCAKE_LINK_FLAGS})
 show_paths(LASERCAKE_SOURCES_pretty ${LASERCAKE_SOURCES})
 message(STATUS "Lasercake link flags: ${LASERCAKE_LINK_FLAGS_spaces}")
 message(STATUS "Lasercake sources: ${LASERCAKE_SOURCES_pretty}")
-add_executable (Lasercake ${LASERCAKE_GLEW_SOURCES} ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC} ${LASERCAKE_RESOURCES_RCC})
+add_executable (Lasercake ${LASERCAKE_GLEW_SOURCES} ${LASERCAKE_BOOST_SOURCES} ${LASERCAKE_SOURCES} ${LASERCAKE_MOC} ${LASERCAKE_RESOURCES_RCC} ${LASERCAKE_WINDOWS_EXE_METADATA})
 target_link_libraries(Lasercake ${LASERCAKE_LINK_FLAGS})
 set_target_properties(Lasercake PROPERTIES
 	COMPILE_FLAGS "${OUR_CFLAGS_spaces}"
@@ -264,6 +268,7 @@ set_target_properties(Lasercake PROPERTIES
 	MACOSX_BUNDLE_GUI_IDENTIFIER "net.lasercake.Lasercake"
 	MACOSX_BUNDLE_BUNDLE_NAME "Lasercake"
 	MACOSX_BUNDLE_INFO_STRING "Lasercake ${Lasercake_version_desc}, a free/libre/open-source game, http://lasercake.net/"
+	MACOSX_BUNDLE_ICON_FILE "resources/icon-multires.icns"
 	# OS X Finder "Get Info" seems to display the info string
 	# as "Version: ..." *or* the copyright as "Copyright: ...",
 	# not both, so specify the one with the friendlier prefix

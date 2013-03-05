@@ -1,0 +1,2 @@
+/* http://stackoverflow.com/questions/708238/how-do-i-add-an-icon-to-a-mingw-gcc-compiled-executable */
+id ICON "icon-multires.ico"
