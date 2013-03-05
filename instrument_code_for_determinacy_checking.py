@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# (Python >= 2.6 including >= 3)
 
 # Using regexps for parsing C++ is, of course, entirely a hack.
 # Configuration that you might want to change is in this file,

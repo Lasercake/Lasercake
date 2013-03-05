@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# (Python >= 2.6 including >= 3)
 docs = """
 Usage: ./dev-build.py [cmake args] [certain make args]
 

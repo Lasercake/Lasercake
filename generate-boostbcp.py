@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# (Python >= 2.6 including >= 3)
 print("""
 Usage: ./generate-boostbcp /path/to/boost/1.53.0/
     [ in top-level Lasercake source dir ]
