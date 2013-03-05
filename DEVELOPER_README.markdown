@@ -1,5 +1,12 @@
 
 
+Localization
+------------
+
+Currently we use Qt Linguist.
+(TODO: mark strings with tr(), and check that it works.)
+We could switch to gettext if you prefer.
+
 Fonts
 -----
 
@@ -120,6 +127,21 @@ executable.
 Then `cpack -G DragNDrop` to create a DMG containing the .app (in a version
 that should start on other users' systems), a README, and
 an alias to /Applications for the user.
+
+#### Linux
+
+sudo debootstrap --arch=i386 wheezy ./debootstrap-x86-wheezy http://ftp.us.debian.org/debian
+sudo debootstrap --arch=amd64 wheezy ./debootstrap-amd64-wheezy http://ftp.us.debian.org/debian
+# set up bind-mounts etc. for a functioning chroot
+# https://github.com/idupree/scripts/blob/master/superchroot
+sudo superchroot ./debootstrap-x86-wheezy
+aptitude update
+aptitude install build-essential libqt4-dev cmake git python
+OR
+aptitude update; aptitude full-upgrade
+For a user that's on your main system:
+addgroup --gid xxxx name; adduser --uid xxxx --gid xxxx name
+
 
 ### packaging ###
 
