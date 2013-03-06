@@ -267,7 +267,7 @@ set_target_properties(Lasercake PROPERTIES
 	#MACOSX_BUNDLE_LONG_VERSION_STRING "${Lasercake_version_desc}"
 	MACOSX_BUNDLE_GUI_IDENTIFIER "net.lasercake.Lasercake"
 	MACOSX_BUNDLE_BUNDLE_NAME "Lasercake"
-	MACOSX_BUNDLE_INFO_STRING "Lasercake ${Lasercake_version_desc}, a free/libre/open-source game, http://lasercake.net/"
+	MACOSX_BUNDLE_INFO_STRING "Lasercake ${Lasercake_version_desc}, a free/libre/open-source game, www.lasercake.net"
 	MACOSX_BUNDLE_ICON_FILE "icon-multires.icns"
 	# OS X Finder "Get Info" seems to display the info string
 	# as "Version: ..." *or* the copyright as "Copyright: ...",

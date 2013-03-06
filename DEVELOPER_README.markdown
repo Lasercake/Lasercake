@@ -105,6 +105,12 @@ cmake ../Lasercake-0.22-clean
 -DUSE_BOOST_CXX11_LIBS=ON
 [plus above flags]
 
+make -j3
+
+Then `cpack -G DragNDrop` to create a DMG containing the .app (in a version
+that should start on other users' systems), a ReadMe, and
+an alias to /Applications for the user.
+
 Compilers: Those paths are right if using Macports Clang.  If you have a
 new enough XCode, it should have a new enough Clang already. (I don't have the
 latest OS X to check.  Apple keep including snapshot Clang versions, so
@@ -129,10 +135,6 @@ in any case using it for releases would prevent the binary from running on
 into the binary, although it is problematic (in theory, and in practice if you
 are using system Boost) to have more than one C++ runtime in the same
 executable.
-
-Then `cpack -G DragNDrop` to create a DMG containing the .app (in a version
-that should start on other users' systems), a README, and
-an alias to /Applications for the user.
 
 #### Linux
 
