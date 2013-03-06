@@ -268,7 +268,7 @@ set_target_properties(Lasercake PROPERTIES
 	MACOSX_BUNDLE_GUI_IDENTIFIER "net.lasercake.Lasercake"
 	MACOSX_BUNDLE_BUNDLE_NAME "Lasercake"
 	MACOSX_BUNDLE_INFO_STRING "Lasercake ${Lasercake_version_desc}, a free/libre/open-source game, http://lasercake.net/"
-	MACOSX_BUNDLE_ICON_FILE "resources/icon-multires.icns"
+	MACOSX_BUNDLE_ICON_FILE "icon-multires.icns"
 	# OS X Finder "Get Info" seems to display the info string
 	# as "Version: ..." *or* the copyright as "Copyright: ...",
 	# not both, so specify the one with the friendlier prefix
@@ -284,8 +284,13 @@ set_target_properties(Lasercake PROPERTIES
 
 if(APPLE)
 	install (TARGETS Lasercake BUNDLE DESTINATION .)
+	# TODO find out why CMAKE_SOURCE_DIR isn't defined at install-time
+	# but it works okay to compute that $ at build time.  The way we're
+	# doing it smells fishy somehow.
 	install (CODE "
 		include(BundleUtilities)
+		file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/Lasercake.app/Contents/Resources\")
+		file(INSTALL \"${CMAKE_SOURCE_DIR}/resources/icon-multires.icns\" \"\${CMAKE_INSTALL_PREFIX}/Lasercake.app/Contents/Resources\")
 		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/Lasercake.app\" \"\" \"\")
 	")
 	install (FILES README.markdown DESTINATION . RENAME ReadMe.txt)
