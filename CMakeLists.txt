@@ -290,7 +290,7 @@ if(APPLE)
 	install (CODE "
 		include(BundleUtilities)
 		file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/Lasercake.app/Contents/Resources\")
-		file(INSTALL \"${CMAKE_SOURCE_DIR}/resources/icon-multires.icns\" \"\${CMAKE_INSTALL_PREFIX}/Lasercake.app/Contents/Resources\")
+		file(INSTALL \"${CMAKE_SOURCE_DIR}/resources/icon-multires.icns\" DESTINATION \"\${CMAKE_INSTALL_PREFIX}/Lasercake.app/Contents/Resources\")
 		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/Lasercake.app\" \"\" \"\")
 	")
 	install (FILES resources/ReadMe.rtf DESTINATION .)
