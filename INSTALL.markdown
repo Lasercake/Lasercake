@@ -47,27 +47,22 @@ To build Lasercake
 To build, run 'cmake .' then 'make' (or use your favorite CMake
 interface).  (If developing, using ./dev-build.py might
 float your boat better.)
-It will give you an executable 'lasercake'.
+It will give you an executable 'Lasercake'.
 Then you can run that and/or put it anywhere you like on
 your computer.
 
 These build instructions have been tested on:
 
-* Linux [Arch Linux as well as Debian Testing, x86_64, Feb 2013].
+* Linux [Arch Linux as well as Debian Testing, x86 and x86_64, Feb 2013].
 
 * Mac OS X 10.6
-      [using MacPorts qt4-mac and gcc47;
-      cmake -DCMAKE_C_COMPILER=gcc-mp-4.7 -DCMAKE_CXX_COMPILER=g++-mp-4.7
-      Run Lasercake and then click on it in the dock to bring the
-      window to the front... our Mac integration needs improvement!
-      2012-12-17: I'm getting crashes that I'm having trouble debugging.
-      2013-02-14: It's working better now, but perhaps it's because of
-        https://trac.macports.org/ticket/35770
-        also see
-          https://trac.macports.org/ticket/34288
-      ..newer versions in MacPorts apparently don't include the new libstdc++,
-      and so system C++11 library features on Mac reliably would require
-      a new system std lib, namely (so I hear) libc++ in OS X 10.7.
+      [using either qt-project.org Qt 4.8 or MacPorts qt4-mac,
+      and MacPorts clang-3.2 (which is in /opt/local/bin/);
+      cmake -DCMAKE_C_COMPILER=clang-mp-3.2 -DCMAKE_CXX_COMPILER=clang++-mp-3.2
+            -DUSE_BOOST_CXX11_LIBS=ON
+      If you have 10.7+ and a new enough XCode, you should only
+      need to install Qt and everything should "just work".  We don't
+      have this so we can't test it.  Let us know how you fare!
       ]
 
 * MinGW [Cross-compiling for Windows from Linux;

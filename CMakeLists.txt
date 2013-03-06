@@ -34,7 +34,7 @@ option (BUILD_SELF_TESTS "Build Lasercake's self-testing code component (recomme
 # These are merely shorthand for CMake options that I use for
 # releases on various systems. -Isaac
 option (LTO "Use link-time optimization (roughly halves the size of the binary)" OFF)
-option (OSX_TARGET_10_5 "OS X: make binary run on 10.5 even if building on later OS X" OFF)
+option (OSX_TARGET_10_5 "OS X: make binary run on 10.5 even if building on later OS X [TODO: find out why this does not make binaries that work on 10.5]" OFF)
 
 
 include (FindPkgConfig)

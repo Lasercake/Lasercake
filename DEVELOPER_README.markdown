@@ -94,9 +94,14 @@ Alternatively, you can run the profile-generating Lasercake with --no-threads.)
 
 #### Mac OS X
 
+git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22-clean
+mkdir Lasercake-0.22-build
+cd Lasercake-0.22-build
+cmake ../Lasercake-0.22-clean
 -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-3.2
 -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-3.2
--DOSX_TARGET_10_5=ON
+-DCMAKE_OSX_DEPLOYMENT_TARGET=10.5
+-DCMAKE_OSX_SYSROOT=/Developer/SDKs/MacOSX10.5.sdk
 -DUSE_BOOST_CXX11_LIBS=ON
 [plus above flags]
 
@@ -112,6 +117,7 @@ Apple are moving towards Clang so it's probably better to prefer Clang on Mac
 Targeting 10.5: it's valuable not to exclude too many users! If you have
 too new an OS X / XCode setup, you might not have the 10.5 SDK, or even 10.6.
 (A good fraction of OS X users are still on 10.6! -Isaac, Feb 2013)
+But does this actually make 10.5 work?  Our testing indicates otherwise.
 
 USE_BOOST_CXX11_LIBS: OS X before 10.7 uses GCC 4.2's libstdc++, which doesn't
 support any C++11 library features.  This flag makes us use equivalent Boost
@@ -141,11 +147,44 @@ OR
 aptitude update; aptitude full-upgrade
 For a user that's on your main system:
 addgroup --gid xxxx name; adduser --uid xxxx --gid xxxx name
+su - name
+git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22-clean
+mkdir Lasercake-0.22-build
+cd Lasercake-0.22-build
+cmake ../Lasercake-0.22-clean [plus above optimization flags]
+make -j3
+mkdir Lasercake-0.22-linux-[arch]-dynamic
+mv Lasercake Lasercake-0.22-linux-[arch]-dynamic
+# What is the best file format for Linux ReadMe:s?
+# Does the ReadMe contain any instruction to install Qt?
+cp ../Lasercake-0.22-clean/README.markdown Lasercake-0.22-linux-[arch]-dynamic
+tar -czf Lasercake-0.22-linux-[arch]-dynamic.tar.gz Lasercake-0.22-linux-[arch]-dynamic
 
 
-### packaging ###
+#### Windows (cross-compiled from Linux)
 
-TODO: look into CPack
+git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22-clean
+mkdir Lasercake-0.22-build-win32
+cd Lasercake-0.22-build-win32
+cmake ../Lasercake-0.22-clean
+  -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-ArchLinux-mingw32.cmake
+  [plus above optimization flags]
+make -j3
+mkdir Lasercake-0.22-win32
+mv Lasercake.exe Lasercake-0.22-win32
+cp /usr/i486-mingw32/{bin/{zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll,QtCore4.dll,QtGui4.dll,QtOpenGL4.dll}} Lasercake-0.22-win32
+cp ../Lasercake-0.22-clean/resources/ReadMe.rtf Lasercake-0.22-win32
+# apack is just a wrapper for archive/unarchive tools that has
+# a syntax consistent enough for me to know it
+apack Lasercake-0.22-win32.zip Lasercake-0.22-win32
+
+
+#### Source
+
+git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22
+tar -czf Lasercake-0.22-source.tar.gz Lasercake-0.22
+
+
 
 ### process ###
 
@@ -154,3 +193,4 @@ TODO: look into CPack
 3: If there are any problems, repeat starting at step 1
 4: Otherwise git tag and rebuild with the non -rc version number, upload that,
    update the website, etc.
+5. Update 0.22 to 0.23 to indicate dev version; even numbers are releases.
