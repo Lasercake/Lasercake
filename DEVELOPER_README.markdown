@@ -183,9 +183,19 @@ apack Lasercake-0.22-win32.zip Lasercake-0.22-win32
 
 #### Source
 
-git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22
-tar -czf Lasercake-0.22-source.tar.gz Lasercake-0.22
+git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22-source
 
+# TODO: figure something out regarding Windows line endings.
+apack Lasercake-0.22-source.zip Lasercake-0.22-source
+tar -czf Lasercake-0.22-source.tar.gz Lasercake-0.22-source
+tar -cJf Lasercake-0.22-source.tar.xz Lasercake-0.22-source
+
+cp -a Lasercake-0.22-source Lasercake-0.22-source-minimal
+rm -rf Lasercake-0.22-source-minimal/{.git,bundled-libs}
+
+apack Lasercake-0.22-source-minimal.zip Lasercake-0.22-source-minimal
+tar -czf Lasercake-0.22-source-minimal.tar.gz Lasercake-0.22-source-minimal
+tar -cJf Lasercake-0.22-source-minimal.tar.xz Lasercake-0.22-source-minimal
 
 
 ### process ###
