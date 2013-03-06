@@ -293,7 +293,7 @@ if(APPLE)
 		file(INSTALL \"${CMAKE_SOURCE_DIR}/resources/icon-multires.icns\" \"\${CMAKE_INSTALL_PREFIX}/Lasercake.app/Contents/Resources\")
 		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/Lasercake.app\" \"\" \"\")
 	")
-	install (FILES README.markdown DESTINATION . RENAME ReadMe.txt)
+	install (FILES resources/ReadMe.rtf DESTINATION .)
 endif()
 # Note: This only makes sense when doing out-of-tree builds;
 # otherwise it might try to include the build contents and any other
