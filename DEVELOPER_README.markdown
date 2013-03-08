@@ -94,10 +94,10 @@ Alternatively, you can run the profile-generating Lasercake with --no-threads.)
 
 #### Mac OS X
 
-git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22-clean
-mkdir Lasercake-0.22-build
-cd Lasercake-0.22-build
-cmake ../Lasercake-0.22-clean
+git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.23-clean
+mkdir Lasercake-0.23-build
+cd Lasercake-0.23-build
+cmake ../Lasercake-0.23-clean
 -DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-3.2
 -DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-3.2
 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.5
@@ -150,52 +150,52 @@ aptitude update; aptitude full-upgrade
 For a user that's on your main system:
 addgroup --gid xxxx name; adduser --uid xxxx --gid xxxx name
 su - name
-git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22-clean
-mkdir Lasercake-0.22-build
-cd Lasercake-0.22-build
-cmake ../Lasercake-0.22-clean [plus above optimization flags]
+git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.23-clean
+mkdir Lasercake-0.23-build
+cd Lasercake-0.23-build
+cmake ../Lasercake-0.23-clean [plus above optimization flags]
 make -j3
-mkdir Lasercake-0.22-linux-[arch]-dynamic
-mv Lasercake Lasercake-0.22-linux-[arch]-dynamic
+mkdir Lasercake-0.23-linux-[arch]-dynamic
+mv Lasercake Lasercake-0.23-linux-[arch]-dynamic
 # What is the best file format for Linux ReadMe:s?
 # Does the ReadMe contain any instruction to install Qt?
-cp ../Lasercake-0.22-clean/README.markdown Lasercake-0.22-linux-[arch]-dynamic
-tar -czf Lasercake-0.22-linux-[arch]-dynamic.tar.gz Lasercake-0.22-linux-[arch]-dynamic
+cp ../Lasercake-0.23-clean/README.markdown Lasercake-0.23-linux-[arch]-dynamic
+tar -czf Lasercake-0.23-linux-[arch]-dynamic.tar.gz Lasercake-0.23-linux-[arch]-dynamic
 
 
 #### Windows (cross-compiled from Linux)
 
-git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22-clean
-mkdir Lasercake-0.22-build-win32
-cd Lasercake-0.22-build-win32
-cmake ../Lasercake-0.22-clean
+git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.23-clean
+mkdir Lasercake-0.23-build-win32
+cd Lasercake-0.23-build-win32
+cmake ../Lasercake-0.23-clean
   -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-ArchLinux-mingw32.cmake
   [plus above optimization flags]
 make -j3
-mkdir Lasercake-0.22-win32
-mv Lasercake.exe Lasercake-0.22-win32
-cp /usr/i486-mingw32/{bin/{zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll,QtCore4.dll,QtGui4.dll,QtOpenGL4.dll}} Lasercake-0.22-win32
-cp ../Lasercake-0.22-clean/resources/ReadMe.rtf Lasercake-0.22-win32
+mkdir Lasercake-0.23-win32
+mv Lasercake.exe Lasercake-0.23-win32
+cp /usr/i486-mingw32/{bin/{zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll,QtCore4.dll,QtGui4.dll,QtOpenGL4.dll}} Lasercake-0.23-win32
+cp ../Lasercake-0.23-clean/resources/ReadMe.rtf Lasercake-0.23-win32
 # apack is just a wrapper for archive/unarchive tools that has
 # a syntax consistent enough for me to know it
-apack Lasercake-0.22-win32.zip Lasercake-0.22-win32
+apack Lasercake-0.23-win32.zip Lasercake-0.23-win32
 
 
 #### Source
 
-git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.22-source
+git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.23-source
 
 # TODO: figure something out regarding Windows line endings.
-apack Lasercake-0.22-source.zip Lasercake-0.22-source
-tar -czf Lasercake-0.22-source.tar.gz Lasercake-0.22-source
-tar -cJf Lasercake-0.22-source.tar.xz Lasercake-0.22-source
+apack Lasercake-0.23-source.zip Lasercake-0.23-source
+tar -czf Lasercake-0.23-source.tar.gz Lasercake-0.23-source
+tar -cJf Lasercake-0.23-source.tar.xz Lasercake-0.23-source
 
-cp -a Lasercake-0.22-source Lasercake-0.22-source-minimal
-rm -rf Lasercake-0.22-source-minimal/{.git,bundled-libs}
+cp -a Lasercake-0.23-source Lasercake-0.23-source-minimal
+rm -rf Lasercake-0.23-source-minimal/{.git,bundled-libs}
 
-apack Lasercake-0.22-source-minimal.zip Lasercake-0.22-source-minimal
-tar -czf Lasercake-0.22-source-minimal.tar.gz Lasercake-0.22-source-minimal
-tar -cJf Lasercake-0.22-source-minimal.tar.xz Lasercake-0.22-source-minimal
+apack Lasercake-0.23-source-minimal.zip Lasercake-0.23-source-minimal
+tar -czf Lasercake-0.23-source-minimal.tar.gz Lasercake-0.23-source-minimal
+tar -cJf Lasercake-0.23-source-minimal.tar.xz Lasercake-0.23-source-minimal
 
 
 ### process ###

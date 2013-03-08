@@ -2,8 +2,9 @@ cmake_minimum_required (VERSION 2.6)
 project (Lasercake)
 
 # TODO #define these and emit them on --help/--version.
+# Odd MINOR version means it's a development snapshot; even indicates a release.
 set (Lasercake_VERSION_MAJOR 0)
-set (Lasercake_VERSION_MINOR 22)
+set (Lasercake_VERSION_MINOR 23)
 set (Lasercake_VERSION_PATCH 0)
 # TODO if in git, add part of the git hash to the version desc?
 # TODO is it useful to include the year in any version-related
