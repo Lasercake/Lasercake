@@ -25,7 +25,7 @@ We want to make awesome things free to everyone. Anyone with an Internet connect
 
 The current project team is [Eli Dupree](http://www.elidupree.com/) and [Isaac Dupree](http://www.idupree.com/). We began this project in December 2011 as an experiment in simulating water physics, and it's only kept expanding since.
 
-We want your cool skills! The two of us could do this project on our own, but **it will be more awesome if you help us out.** There's a lot of different things that go into a big project like Lasercake – art, sustainable design, computer programming, geology, physics, sound design,  and many other things besides. If you want to help, any way is good to contact us: [email](mailto:lasercake@googlegroups.com), [Google Group](https://groups.google.com/d/forum/lasercake), [IRC](https://webchat.freenode.net/?channels=lasercake) or [GitHub](https://github.com/Lasercake/Lasercake/issues).
+We want your cool skills! The two of us could do this project on our own, but **it will be more awesome if you help us out.** There's a lot of different things that go into a big project like Lasercake – art, sustainable design, computer programming, geology, physics, sound design, gender studies, and many other things besides. If you want to help, any way is good to contact us: [email](mailto:lasercake@googlegroups.com), [Google Group](https://groups.google.com/d/forum/lasercake), [IRC](https://webchat.freenode.net/?channels=lasercake) or [GitHub](https://github.com/Lasercake/Lasercake/issues).
 
 
 Game instructions
