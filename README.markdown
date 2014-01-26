@@ -55,4 +55,4 @@ You need metal to build things. You start with some metal, but to get more, you 
 
 That's a pretty slow process. There's a lot of ways to do it faster. You can use lasers ("x") to disintegrate more rock at once. You can build more conveyors ("c") to move rubble automatically. You can build other robots ("b") to automatically dig for you. And you can build extra refineries ("v"), although there currently isn't any real advantage to using more than one.
 
-You can also deconstruct buildings and retreive their metal ("z" mode and click a nearby building), as long as you have enough room to store the extra metal.
+You can also deconstruct buildings and retrieve their metal ("z" mode and click a nearby building), as long as you have enough room to store the extra metal.
