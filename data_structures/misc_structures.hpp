@@ -199,7 +199,7 @@ public:
     static_assert(N <= info::max_length, "String literal too long for small_string.");
     static_assert(N > 0, "Non-null-terminated string literal.");
   }
-  constexpr char operator[](size_t i) {
+  constexpr char operator[](size_t i)const {
     return constexpr_require_and_return(i < info::data_len, "bounds overflow", buf_[i]);
   }
 
