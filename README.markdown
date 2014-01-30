@@ -67,7 +67,7 @@ Source code
 
 Lasercake uses Qt and OpenGL to create its user interface.  The simulation, however, does *not* use these.
 * `main.hpp` and `main.cpp` use Qt directly; `main.hpp` is processed with Qt's `moc` tool.
-* `fonts.qrc` is a Qt-formatted resource.
+* `fonts.qrc` is a Qt-formatted resource.  Additional resource files are in `resources/`.
 
 In order to access all OpenGL calls cross-platform, we use GLEW.  GLEW is compatible at runtime with Qt but their headers cannot both be included in the same source file.
 
@@ -112,6 +112,7 @@ The world is composed of "objects", which have positions measured in "fine dista
 
 * `tests/*` contains automated unit tests that are run by running `./Lasercake --run-self-tests`.
 * `*_visualizer/` are miscellaneous 3D visualizer mini-programs to help understand complicated simulation data structures.  (Unfortunately they currently require the SDL library and are not integrated with the main executable.)
+* `gdb-lasercake` and `callgrind-lasercake` are shorthands to debug or profile Lasercake.
 
 #### Logging
 
