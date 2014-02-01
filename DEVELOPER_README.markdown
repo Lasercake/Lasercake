@@ -181,9 +181,7 @@ mkdir Lasercake-0.23-win32
 mv Lasercake.exe Lasercake-0.23-win32
 cp /usr/i486-mingw32/{bin/{zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll,QtCore4.dll,QtGui4.dll,QtOpenGL4.dll}} Lasercake-0.23-win32
 cp ../Lasercake-0.23-clean/resources/ReadMe.rtf Lasercake-0.23-win32
-# apack is just a wrapper for archive/unarchive tools that has
-# a syntax consistent enough for me to know it
-apack Lasercake-0.23-win32.zip Lasercake-0.23-win32
+zip -r Lasercake-0.23-win32.zip Lasercake-0.23-win32
 
 
 #### Source
@@ -191,14 +189,14 @@ apack Lasercake-0.23-win32.zip Lasercake-0.23-win32
 git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.23-source
 
 # TODO: figure something out regarding Windows line endings.
-apack Lasercake-0.23-source.zip Lasercake-0.23-source
+zip -r Lasercake-0.23-source.zip Lasercake-0.23-source
 tar -czf Lasercake-0.23-source.tar.gz Lasercake-0.23-source
 tar -cJf Lasercake-0.23-source.tar.xz Lasercake-0.23-source
 
 cp -a Lasercake-0.23-source Lasercake-0.23-source-minimal
 rm -rf Lasercake-0.23-source-minimal/{.git,bundled-libs}
 
-apack Lasercake-0.23-source-minimal.zip Lasercake-0.23-source-minimal
+zip -r Lasercake-0.23-source-minimal.zip Lasercake-0.23-source-minimal
 tar -czf Lasercake-0.23-source-minimal.tar.gz Lasercake-0.23-source-minimal
 tar -cJf Lasercake-0.23-source-minimal.tar.xz Lasercake-0.23-source-minimal
 
