@@ -61,6 +61,11 @@ and see if it runs!
 Releasing
 ---------
 
+### scripts ###
+
+release-build.py is suitable for building for Linux and Windows.
+Notes and rationale are below.
+
 ### build flags ###
 
 #### LTO (link-time optimization)
