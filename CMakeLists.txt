@@ -30,6 +30,10 @@ option (USE_BOUNDS_CHECKED_INTS "Check for overflow of most int computations at 
 option (PARANOID "Turn on various code paranoia checks (slow)." OFF)
 option (_GLIBCXX_DEBUG "Defines _GLIBCXX_DEBUG iterator-validity debugging (slow)." OFF)
 option (BUILD_SELF_TESTS "Build Lasercake's self-testing code component (recommended)." ON)
+if (APPLE)
+option (OSX_BUNDLE "(Apple only) build .app bundle rather than just executable file; requires running make install (or cpack) afterwards to make the bundle work" OFF)
+option (OSX_BUNDLE_INSTALL_IN_PLACE "only relevant when OSX_BUNDLE is on; creates the working bundle in the build directory" ON)
+endif()
 
 # These are merely shorthand for CMake options that I use for
 # releases on various systems. -Isaac
@@ -252,7 +256,9 @@ set_target_properties(Lasercake PROPERTIES
 
 	# On Windows, add WinMain() to make this a GUI program:
 	WIN32_EXECUTABLE ON
-
+)
+if(OSX_BUNDLE)
+set_target_properties(Lasercake PROPERTIES
 	# On Mac, GUI programs are put into a directory called a "bundle"
 	# that behaves like a file to users (it contains an executable
 	# and metadata like an icon).
@@ -281,8 +287,6 @@ set_target_properties(Lasercake PROPERTIES
 	# build that is Cocoa-based?  Yet that setting doesn't seem to be
 	# causing any harm?
 )
-
-if(APPLE)
 	install (TARGETS Lasercake BUNDLE DESTINATION .)
 	# TODO find out why CMAKE_SOURCE_DIR isn't defined at install-time
 	# but it works okay to compute that $ at build time.  The way we're
@@ -294,7 +298,11 @@ if(APPLE)
 		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/Lasercake.app\" \"\" \"\")
 	")
 	install (FILES resources/ReadMe.rtf DESTINATION .)
+	if(OSX_BUNDLE_INSTALL_IN_PLACE)
+		SET(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "Prefix prepended to install directories" FORCE)
+	endif()
 endif()
+
 # Note: This only makes sense when doing out-of-tree builds;
 # otherwise it might try to include the build contents and any other
 # temporary files or uncommitted changes.
