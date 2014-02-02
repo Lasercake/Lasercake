@@ -12,7 +12,7 @@ for various flag/compiler combinations), runs Lasercake's self-tests,
 and if they're successful, copies Lasercake to the main directory.
 """
 
-import os, sys, subprocess, re, shutil, hashlib
+import os, os.path, sys, subprocess, re, shutil, hashlib, datetime
 
 try:
 	import multiprocessing
@@ -46,6 +46,34 @@ def say_we_are_calling(string):
 def hash_list(l):
 	hashes = (hashlib.sha256(arg.encode('utf8')).digest() for arg in l)
 	return hashlib.sha256(b''.join(hashes)).hexdigest()
+
+def replace_app(src, dst):
+	"""
+	Copies src to dst, replacing dst, even if dst is a running executable.
+	Complications this deals with:
+	On Windows, one can move but not remove or edit a running binary.
+	On Linux, one can move and unlink but not edit a running binary.
+	On Mac, if using .app bundles, the app is a directory rather than a file.
+	"""
+	old = None
+	if os.path.exists(dst):
+		unique_str = datetime.datetime.fromtimestamp(
+				os.stat(dst).st_mtime).isoformat()
+		path, basefile = os.path.split(dst)
+		base, ext = os.path.splitext(basefile)
+		old = os.path.join(path, base+'.'+unique_str+ext)
+		os.rename(dst, old)
+	if os.path.isdir(src):
+		shutil.copytree(src, dst, symlinks=True)
+	else:
+		shutil.copy2(src, dst)
+	if old != None:
+		if os.path.isdir(old):
+			shutil.rmtree(old)
+		else:
+			try: os.unlink(old)
+			except OSError:
+				say("Couldn't remove old (running?) executable "+os.path.basename(old))
 
 def main():
 	try: subprocess.call(['cmake', '--version'])
@@ -120,12 +148,19 @@ def main():
 		subprocess.call(to_call_make_again)
 		say(ansi_red+'build failed'+ansi_end+'\n')
 		exit(1)
-	is_windows_exe = False
-	if os.access('Lasercake', os.F_OK):
-		exe_name = 'Lasercake'
-	if os.access('Lasercake.exe', os.F_OK):
-		exe_name = 'Lasercake.exe'
+	is_windows_exe = is_apple_app = False
+	app_name = exe_name = None
+	if os.path.exists('Lasercake'):
+		app_name = exe_name = 'Lasercake'
+	if os.path.exists('Lasercake.exe'):
+		app_name = exe_name = 'Lasercake.exe'
 		is_windows_exe = True
+	if os.path.exists('Lasercake.app'):
+		app_name = 'Lasercake.app'
+		exe_name = 'Lasercake.app/Contents/MacOS/Lasercake'
+		is_apple_app = True
+		# The bundle isn't complete without calling `make install`
+		subprocess.check_call(['make', 'install'])
 	if exe_name == None:
 		say(ansi_red+"couldn't find Lasercake binary?!"+ansi_end+'\n')
 		exit(1)
@@ -139,8 +174,8 @@ def main():
 	else:
 		if running_tests:
 			say(ansi_cyan+'Testing...\n')
-			say_we_are_calling('./'+build_dir+'/Lasercake --run-self-tests')
-			test_status = subprocess.call(['./Lasercake', '--run-self-tests'])
+			say_we_are_calling('./'+build_dir+'/'+exe_name+' --run-self-tests')
+			test_status = subprocess.call(['./'+exe_name, '--run-self-tests'])
 			if test_status != 0:
 				say(ansi_red+'Tests failed.\n')
 				exit(test_status)
@@ -148,19 +183,10 @@ def main():
 		else:
 			say(ansi_yellow+'NOT RUNNING TESTS')
 		if making_lasercake:
-			say('; copying '+build_dir+'/Lasercake to ./Lasercake')
+			say('; copying '+build_dir+'/'+app_name+' to ./'+app_name)
 		say(ansi_end+'\n')
 		if making_lasercake:
-			# shutil.copy*() throws
-			#     'IOError: [Errno 26] Text file busy'
-			# when replacing running executables on Linux, rather
-			# than replacing them.  So we unlink the destination
-			# first.  Of course, this won't work with Windows
-			# filesystem semantics anyway but it will on
-			# Mac/Linux/BSD.
-			try: os.unlink('../../'+exe_name)
-			except OSError: pass
-			shutil.copy2(exe_name, '../../'+exe_name)
+			replace_app(app_name, '../../'+app_name)
 	exit()
 
 if __name__ == '__main__':
