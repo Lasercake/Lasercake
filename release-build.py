@@ -104,8 +104,9 @@ resultsdir = workdir+'/results'
 local_source_clone_dir = workdir+'/Lasercake-source'
 git_clone_from = optdict.get('--git',
                     'https://github.com/Lasercake/Lasercake.git')
-cmakeflags = ['-DLTO=ON']
 release_name = 'computed-in-prepare_workdir'
+def cmakeflags():
+    return ['-DLTO=ON', '-DPROGRAM_NAME='+release_name]
 mingw_ram_estimate = 900
 linux_ram_estimate = 300
 osx_ram_estimate = 400  #?
@@ -341,11 +342,11 @@ def build_for_mingw_bare(srcdir, release_dir_name, bits, fedora_mingw_dir):
     #        '-DCMAKE_EXE_LINKER_FLAGS=-static'
     # Also/alternative TODO: create an NSIS installer
     # (which might involve modifying CMakeLists.txt too).
-    cmd(['mingw{}-cmake'.format(bits), srcdir] + cmakeflags)
+    cmd(['mingw{}-cmake'.format(bits), srcdir] + cmakeflags())
     cmd(['make', '-j'+str(parallelism(mingw_ram_estimate))])
     shutil.rmtree(release_dir_name, ignore_errors=True)
     os.mkdir(release_dir_name)
-    os.rename('Lasercake.exe', '{}/{}.exe'
+    os.rename(release_name+'.exe', '{}/{}.exe'
               .format(release_dir_name, release_name))
     shutil.copy(srcdir+'/resources/ReadMe.rtf', release_dir_name)
     for dll in [
@@ -404,14 +405,13 @@ def build_for_osx_bare(srcdir, clang='/opt/local/bin/clang-mp-3.2'):
     Assumes the current directory is the directory to build in.
     """
     clangplusplus = re.sub(r'(clang)([^/]*)$', r'\1++\2', clang)
-    cmd(['cmake', srcdir] + cmakeflags + [
+    cmd(['cmake', srcdir] + cmakeflags() + [
         '-DCMAKE_C_COMPILER='+clang,
         '-DCMAKE_CXX_COMPILER='+clangplusplus,
         '-DCMAKE_OSX_DEPLOYMENT_TARGET=10.6',
         '-DCMAKE_OSX_SYSROOT=/Developer/SDKs/MacOSX10.6.sdk',
         '-DUSE_BOOST_CXX11_LIBS=ON',
-        '-DOSX_BUNDLE=ON',
-        '-DPROGRAM_NAME='+release_name
+        '-DOSX_BUNDLE=ON'
         ])
     cmd(['make', '-j'+str(parallelism(osx_ram_estimate))])
     cmd(['cpack', '-G', 'DragNDrop'])
@@ -426,11 +426,11 @@ def build_for_linux_bare(srcdir, release_dir_name):
 
     Assumes the current directory is the directory to build in.
     """
-    cmd(['cmake', srcdir] + cmakeflags)
+    cmd(['cmake', srcdir] + cmakeflags())
     cmd(['make', '-j'+str(parallelism(linux_ram_estimate))])
     shutil.rmtree(release_dir_name, ignore_errors=True)
     os.mkdir(release_dir_name)
-    os.rename('Lasercake', '{}/{}'.format(release_dir_name, release_name))
+    os.rename(release_name, '{}/{}'.format(release_dir_name, release_name))
     shutil.copy(srcdir+'/README.markdown', release_dir_name)
     cmd(['tar', '-czf', release_dir_name+'.tar.gz', release_dir_name])
 
