@@ -127,10 +127,28 @@ def cmd(args, **kwargs):
     log_cmd(args, **kwargs)
     return subprocess.check_call(args, **kwargs)
 
+# Python 2.6 doesn't have subprocess.check_output, so include an implementation
+# https://stackoverflow.com/questions/4814970/subprocess-check-output-doesnt-seem-to-exist-python-2-6-5
+if "check_output" in dir(subprocess):
+    check_output = subprocess.check_output
+else:
+    def check_output(*popenargs, **kwargs):
+        if 'stdout' in kwargs:
+            raise ValueError('stdout argument not allowed, it will be overridden.')
+        process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+        output, unused_err = process.communicate()
+        retcode = process.poll()
+        if retcode:
+            cmd = kwargs.get("args")
+            if cmd is None:
+                cmd = popenargs[0]
+            raise subprocess.CalledProcessError(retcode, cmd)
+        return output
+
 def cmdoutput(args, **kwargs):
     """ logs 'args', then forwards to subprocess.check_output """
     log_cmd(args, **kwargs)
-    return subprocess.check_output(args, **kwargs)
+    return check_output(args, **kwargs)
 
 def cmdoutputline(args, **kwargs):
     """ cmdoutput() minus a trailing \n, like shell "$()". """
