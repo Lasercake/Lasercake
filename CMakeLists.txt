@@ -3,8 +3,8 @@ project (Lasercake)
 
 # Odd MINOR version means it's a development snapshot; even indicates a release.
 set (Lasercake_VERSION_MAJOR 0)
-set (Lasercake_VERSION_MINOR 23)
-set (Lasercake_VERSION_PATCH 0)
+set (Lasercake_VERSION_MINOR 22)
+set (Lasercake_VERSION_PATCH 1)
 
 
 set (OPTIONS_DEFINES )
