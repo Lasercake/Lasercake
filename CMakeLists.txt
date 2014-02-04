@@ -34,6 +34,7 @@ if (APPLE)
 option (OSX_BUNDLE "(Apple only) build .app bundle rather than just executable file; requires running make install (or cpack) afterwards to make the bundle work" OFF)
 option (OSX_BUNDLE_INSTALL_IN_PLACE "only relevant when OSX_BUNDLE is on; creates the working bundle in the build directory" ON)
 endif()
+set (PROGRAM_NAME "Lasercake" CACHE STRING "User-visible program basename, e.g. Lasercake-0.22.2")
 
 # These are merely shorthand for CMake options that I use for
 # releases on various systems. -Isaac
@@ -254,6 +255,8 @@ set_target_properties(Lasercake PROPERTIES
 	COMPILE_FLAGS "${OUR_CFLAGS_spaces}"
 	LINK_FLAGS "${OUR_LINK_FLAGS_spaces}"
 
+	OUTPUT_NAME "${PROGRAM_NAME}"
+
 	# On Windows, add WinMain() to make this a GUI program:
 	WIN32_EXECUTABLE ON
 )
@@ -272,7 +275,7 @@ set_target_properties(Lasercake PROPERTIES
 	MACOSX_BUNDLE_SHORT_VERSION_STRING "${Lasercake_version_desc}"
 	#MACOSX_BUNDLE_LONG_VERSION_STRING "${Lasercake_version_desc}"
 	MACOSX_BUNDLE_GUI_IDENTIFIER "net.lasercake.Lasercake"
-	MACOSX_BUNDLE_BUNDLE_NAME "Lasercake"
+	MACOSX_BUNDLE_BUNDLE_NAME "${PROGRAM_NAME}"
 	MACOSX_BUNDLE_INFO_STRING "Lasercake ${Lasercake_version_desc}, a free/libre/open-source game, www.lasercake.net"
 	MACOSX_BUNDLE_ICON_FILE "icon-multires.icns"
 	# OS X Finder "Get Info" seems to display the info string
@@ -293,9 +296,9 @@ set_target_properties(Lasercake PROPERTIES
 	# doing it smells fishy somehow.
 	install (CODE "
 		include(BundleUtilities)
-		file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/Lasercake.app/Contents/Resources\")
-		file(INSTALL \"${CMAKE_SOURCE_DIR}/resources/icon-multires.icns\" DESTINATION \"\${CMAKE_INSTALL_PREFIX}/Lasercake.app/Contents/Resources\")
-		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/Lasercake.app\" \"\" \"\")
+		file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/${PROGRAM_NAME}.app/Contents/Resources\")
+		file(INSTALL \"${CMAKE_SOURCE_DIR}/resources/icon-multires.icns\" DESTINATION \"\${CMAKE_INSTALL_PREFIX}/${PROGRAM_NAME}.app/Contents/Resources\")
+		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${PROGRAM_NAME}.app\" \"\" \"\")
 	")
 	install (FILES resources/ReadMe.rtf DESTINATION .)
 	if(OSX_BUNDLE_INSTALL_IN_PLACE)
@@ -330,7 +333,7 @@ set (CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: a 
 set (CPACK_RESOURCE_FILE_WELCOME "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: what is the difference between all these readme-ish files?
 #set (CPACK_MONOLITHIC_INSTALL 1) #since we just have one thing to package; do we need to say this?
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Lasercake is an open-world game about the environment")
-set (CPACK_PACKAGE_EXECUTABLES Lasercake;Lasercake)
+set (CPACK_PACKAGE_EXECUTABLES "${PROGRAM_NAME};${PROGRAM_NAME}")
 # are these redundant/necessary?
 set (CPACK_PACKAGE_VERSION_MAJOR ${Lasercake_VERSION_MAJOR})
 set (CPACK_PACKAGE_VERSION_MINOR ${Lasercake_VERSION_MINOR})
@@ -338,7 +341,7 @@ set (CPACK_PACKAGE_VERSION_PATCH ${Lasercake_VERSION_PATCH})
 
 # why show a license; it's not required by law or custom with FOSS software
 # set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/COPYING.txt")
-set (CPACK_PACKAGE_INSTALL_DIRECTORY "Lasercake-${Lasercake_version_desc}")
+set (CPACK_PACKAGE_INSTALL_DIRECTORY "${PROGRAM_NAME}")
 
 #set (CPACK_BUNDLE_NAME "Lasercake")
 
