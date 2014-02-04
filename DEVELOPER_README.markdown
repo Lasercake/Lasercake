@@ -68,23 +68,29 @@ Releasing
 
 ### process ###
 
-1: Git tag a release candidate.
+1: Set Lasercake_VERSION_* to the correct numbers in CMakeLists.txt; commit.
+2: Git tag a release candidate.
 git tag -u 17062391 Lasercake-[version]-rcN -m'Lasercake-[version]-rcN'
 git push --tags
-2: Build binaries:
+3: Build binaries:
 On Fedora Linux,
 ./release-build.py --update-host-fedora --source --linux --mingw Lasercake-[version]-rcN
 On OS X 10.6,
 ./release-build.py --osx-bare Lasercake-[version]-rcN
-3: Upload the release candidate.
-4: Get the release candidate tested on several platforms.
-5: If there are any problems, repeat starting at step 1
-6: Otherwise:
-7: Update the minor version from odd to even (even minor == release).
-8: git tag and rebuild with this new non-rc version number,
-9: upload that, update the website, etc.
-10. Update the version number in git to the next odd number to indicate dev
-    version; even numbers are releases.
+4: Upload the release candidate:
+Add the release candidate to website-source/downloadable/
+for f in downloadable/Lasercake-[version]-rcN*; do gpg --detach-sign "$f"; done
+./build.py
+./upload.py
+5: Get the release candidate tested on several platforms.
+6: If there are any problems, repeat starting at step 2
+7: Otherwise:
+8: git tag and rebuild with new non-rc version number [steps 2-4]
+9: update website-source/src/{index.html,downloads.html} to point to
+the new version number + (downloads page) have the right megabytes
+[re-finish step 4]
+10. Update Lasercake_VERSION_* in git CMakeLists.txt to the next odd number
+to indicate dev version; even numbers are releases.
 
 ### notes and rationale ###
 
