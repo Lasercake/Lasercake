@@ -125,10 +125,12 @@ Clang 3.2 is new enough.)  Recent GCC from Macports probably works too, but
 Apple are moving towards Clang so it's probably better to prefer Clang on Mac
 (all else equal).
 
-Targeting 10.5: it's valuable not to exclude too many users! If you have
-too new an OS X / XCode setup, you might not have the 10.5 SDK, or even 10.6.
-(A good fraction of OS X users are still on 10.6! -Isaac, Feb 2013)
-But does this actually make 10.5 work?  Our testing indicates otherwise.
+We target 10.6 because a good fraction of OS X users are still on it.
+Qt has abandoned any official support 10.5.  Targeting 10.5 while
+building on 10.6 worked fine for everything except running on 10.5.
+Currently, we build on 10.6 anyway, so the attempt at explicitly targeting
+10.6 is moot.  If you have too new an OS X / XCode setup, you might not have
+the 10.6 SDK.
 
 USE_BOOST_CXX11_LIBS: OS X before 10.7 uses GCC 4.2's libstdc++, which doesn't
 support any C++11 library features.  This flag makes us use equivalent Boost

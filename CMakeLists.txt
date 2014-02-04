@@ -36,10 +36,9 @@ option (OSX_BUNDLE_INSTALL_IN_PLACE "only relevant when OSX_BUNDLE is on; create
 endif()
 set (PROGRAM_NAME "Lasercake" CACHE STRING "User-visible program basename, e.g. Lasercake-0.22.2")
 
-# These are merely shorthand for CMake options that I use for
-# releases on various systems. -Isaac
+# This is merely shorthand for some CMake / compiler options. -Isaac
 option (LTO "Use link-time optimization (roughly halves the size of the binary)" OFF)
-option (OSX_TARGET_10_5 "OS X: make binary run on 10.5 even if building on later OS X [TODO: find out why this does not make binaries that work on 10.5]" OFF)
+
 
 
 include (FindPkgConfig)
@@ -80,15 +79,6 @@ if (USE_BOOST_CXX11_LIBS OR NOT COMPILER_SUPPORTS_CXX11_STDLIB)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -DUSE_BOOST_CXX11_LIBS=1 -U__GXX_EXPERIMENTAL_CXX0X__ -include "${CMAKE_SOURCE_DIR}/cxx11/cxx11_utils.hpp")
 endif()
 set(CXX11_LIB_WRAPPERS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/bundled_libs/cxx11/")
-
-if (OSX_TARGET_10_5)
-	find_file(OSX_10_5_SDK MacOSX10.5.sdk /Developer/SDKs/)
-	if("${OSX_10_5_SDK}" STREQUAL "OSX_10_5_SDK-NOTFOUND")
-		message(FATAL_ERROR "You asked to target OS X 10.5 but we couldn't find the MacOSX 10.5 SDK.")
-	endif()
-	set(CMAKE_OSX_DEPLOYMENT_TARGET 10.5)
-	set(CMAKE_OSX_SYSROOT "${OSX_10_5_SDK}")
-endif()
 
 if (_GLIBCXX_DEBUG)
 	set (OPTIONS_DEFINES ${OPTIONS_DEFINES} -D_GLIBCXX_DEBUG)
