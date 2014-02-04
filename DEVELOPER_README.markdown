@@ -25,8 +25,10 @@ Cross-compiling
 
 Notes: from Linux to Windows via MinGW:
 
-This is what I have to do as of 2012-11-01 on Arch Linux,
-after installing several mingw32 packages:
+Fedora: install mingw{32,64}-{gcc,gcc-c++,qt}.
+  Use mingw32-cmake or mingw64-cmake instead of cmake.
+
+Arch Linux: After installing several mingw32 packages,
 
 - Extra CMake arguments:
     -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-ArchLinux-mingw32.cmake
@@ -41,17 +43,20 @@ after installing several mingw32 packages:
 
   (it does for me); ignore that warning, it's incorrect.
 
-- Then copy
+On any distro, then copy the necessary DLLs next to Lasercake.exe
+(the path for those dlls will depend on your distro)
+(Anyone: do you know whether you're supposed to do it this way,
+ or whether CMake or Windows or such has a better way to deal with
+ pulling in these DLLs?)
 /usr/i486-mingw32/{bin/{zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll,QtCore4.dll,QtGui4.dll,QtOpenGL4.dll}}
 or
 /usr/i686-w64-mingw32/{bin/{QtCore4.dll,QtGui4.dll,QtOpenGL4.dll,zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll}}
 or
 /usr/x86_64-w64-mingw32/{bin/{QtCore4.dll,QtGui4.dll,QtOpenGL4.dll,zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll}}
-next to lasercake.exe
-(the path for those dlls will depend on your distro)
-(Anyone: do you know whether you're supposed to do it this way,
- or whether CMake or Windows or such has a better way to deal with
- pulling in these DLLs?)
+or
+/usr/i686-w64-mingw32/sys-root/mingw/bin/{QtGui4.dll,QtCore4.dll,QtOpenGL4.dll,libstdc++-6.dll,zlib1.dll,libpng16-16.dll,libgcc_s_sjlj-1.dll}
+or
+/usr/x86_64-w64-mingw32/sys-root/mingw/bin/{QtGui4.dll,QtCore4.dll,QtOpenGL4.dll,libstdc++-6.dll,zlib1.dll,libpng16-16.dll,libgcc_s_seh-1.dll}
 
 Then run
 `wine lasercake.exe`
@@ -61,12 +66,27 @@ and see if it runs!
 Releasing
 ---------
 
-### scripts ###
+### process ###
 
-release-build.py is suitable for building for Linux and Windows.
-Notes and rationale are below.
+1: Git tag a release candidate.
+git tag -u 17062391 Lasercake-[version]-rcN -m'Lasercake-[version]-rcN'
+git push --tags
+2: Build binaries:
+On Fedora Linux,
+./release-build.py --update-host-fedora --source --linux --mingw Lasercake-[version]-rcN
+On OS X 10.6,
+./release-build.py --osx-bare Lasercake-[version]-rcN
+3: Upload the release candidate.
+4: Get the release candidate tested on several platforms.
+5: If there are any problems, repeat starting at step 1
+6: Otherwise:
+7: Update the minor version from odd to even (even minor == release).
+8: git tag and rebuild with this new non-rc version number,
+9: upload that, update the website, etc.
+10. Update the version number in git to the next odd number to indicate dev
+    version; even numbers are releases.
 
-### build flags ###
+### notes and rationale ###
 
 #### LTO (link-time optimization)
 
@@ -99,31 +119,18 @@ Alternatively, you can run the profile-generating Lasercake with --no-threads.)
 
 #### Mac OS X
 
-git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.23-clean
-mkdir Lasercake-0.23-build
-cd Lasercake-0.23-build
-cmake ../Lasercake-0.23-clean
--DCMAKE_C_COMPILER=/opt/local/bin/clang-mp-3.2
--DCMAKE_CXX_COMPILER=/opt/local/bin/clang++-mp-3.2
--DCMAKE_OSX_DEPLOYMENT_TARGET=10.5
--DCMAKE_OSX_SYSROOT=/Developer/SDKs/MacOSX10.5.sdk
--DUSE_BOOST_CXX11_LIBS=ON
-[plus above flags]
+Uses CPack DragNDrop to create a DMG containing the .app (in a version
+that should start on other users' systems), a ReadMe, and an
+alias to /Applications for the user.
 
-make -j3
-
-Then `cpack -G DragNDrop` to create a DMG containing the .app (in a version
-that should start on other users' systems), a ReadMe, and
-an alias to /Applications for the user.
-
-Compilers: Those paths are right if using Macports Clang.  If you have a
-new enough XCode, it should have a new enough Clang already. (I don't have the
-latest OS X to check.  Apple keep including snapshot Clang versions, so
-I don't know which one is the first to fix all the bugs that make Clang
-crash when compiling Lasercake.  Upstream Clang 3.1 is too old and upstream
-Clang 3.2 is new enough.)  Recent GCC from Macports probably works too, but
-Apple are moving towards Clang so it's probably better to prefer Clang on Mac
-(all else equal).
+Compilers: The paths in release-build.py are right if using Macports Clang.
+If you have a new enough XCode, it should have a new enough Clang already.
+(I don't have the latest OS X to check.  Apple keep including snapshot
+Clang versions, so I don't know which one is the first to fix all the bugs
+that make Clang crash when compiling Lasercake.  Upstream Clang 3.1 is
+too old and upstream Clang 3.2 is new enough.)  Recent GCC from Macports
+probably works too, but Apple are moving towards Clang so it's probably
+better to prefer Clang on Mac (all else equal).
 
 We target 10.6 because a good fraction of OS X users are still on it.
 Qt has abandoned any official support 10.5.  Targeting 10.5 while
@@ -145,74 +152,25 @@ executable.
 
 #### Linux
 
-sudo debootstrap --arch=i386 wheezy ./debootstrap-x86-wheezy http://ftp.us.debian.org/debian
-sudo debootstrap --arch=amd64 wheezy ./debootstrap-amd64-wheezy http://ftp.us.debian.org/debian
-# set up bind-mounts etc. for a functioning chroot
-# https://github.com/idupree/scripts/blob/master/superchroot
-sudo superchroot ./debootstrap-x86-wheezy
-aptitude update
-aptitude install build-essential libqt4-dev cmake git python
-OR
-aptitude update; aptitude full-upgrade
-For a user that's on your main system:
-addgroup --gid xxxx name; adduser --uid xxxx --gid xxxx name
-su - name
-git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.23-clean
-mkdir Lasercake-0.23-build
-cd Lasercake-0.23-build
-cmake ../Lasercake-0.23-clean [plus above optimization flags]
-make -j3
-mkdir Lasercake-0.23-linux-[arch]-dynamic
-mv Lasercake Lasercake-0.23-linux-[arch]-dynamic
-# What is the best file format for Linux ReadMe:s?
-# Does the ReadMe contain any instruction to install Qt?
-cp ../Lasercake-0.23-clean/README.markdown Lasercake-0.23-linux-[arch]-dynamic
-tar -czf Lasercake-0.23-linux-[arch]-dynamic.tar.gz Lasercake-0.23-linux-[arch]-dynamic
-
+What is the best file format for Linux ReadMe:s?
+Does the ReadMe contain any instruction to install Qt?
 
 #### Windows (cross-compiled from Linux)
 
-git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.23-clean
-mkdir Lasercake-0.23-build-win32
-cd Lasercake-0.23-build-win32
-cmake ../Lasercake-0.23-clean
-  -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-ArchLinux-mingw32.cmake
-  [plus above optimization flags]
-make -j3
-mkdir Lasercake-0.23-win32
-mv Lasercake.exe Lasercake-0.23-win32
-cp /usr/i486-mingw32/{bin/{zlib1.dll,libpng15-15.dll},lib/{libgcc_s_sjlj-1.dll,libstdc++-6.dll,QtCore4.dll,QtGui4.dll,QtOpenGL4.dll}} Lasercake-0.23-win32
-cp ../Lasercake-0.23-clean/resources/ReadMe.rtf Lasercake-0.23-win32
-zip -r Lasercake-0.23-win32.zip Lasercake-0.23-win32
+We use dynamic linking because I so far failed at getting Lasercake to
+cross-compile with static linking (using Fedora Linux).
 
+Currently we ship a .zip, but CMake can produce NSIS installers
+that might be worth using instead.
 
 #### Source
 
-git clone https://github.com/Lasercake/Lasercake.git Lasercake-0.23-source
+Full version: with .git/ and bundled_libs/ (which are similar sizes both
+much larger than the rest of the code)
 
-# TODO: figure something out regarding Windows line endings.
-zip -r Lasercake-0.23-source.zip Lasercake-0.23-source
-tar -czf Lasercake-0.23-source.tar.gz Lasercake-0.23-source
-tar -cJf Lasercake-0.23-source.tar.xz Lasercake-0.23-source
+Minimal version: without .git/ or bundled_libs/.  Suitable for Linux-distro
+packagers if the distro has a compatible Boost version.
 
-cp -a Lasercake-0.23-source Lasercake-0.23-source-minimal
-rm -rf Lasercake-0.23-source-minimal/{.git,bundled-libs}
-
-zip -r Lasercake-0.23-source-minimal.zip Lasercake-0.23-source-minimal
-tar -czf Lasercake-0.23-source-minimal.tar.gz Lasercake-0.23-source-minimal
-tar -cJf Lasercake-0.23-source-minimal.tar.xz Lasercake-0.23-source-minimal
-
-
-### process ###
-
-1: Git tag a release candidate.
-git tag -u 17062391 Lasercake-[version]-rcN -m'Lasercake-[version]-rcN'
-git push --tags
-2: Build binaries; upload them; get them tested on several platforms.
-3: If there are any problems, repeat starting at step 1
-4: Otherwise:
-5: Update the minor version from odd to even (even minor == release).
-6: git tag and rebuild with this new non-rc version number,
-7: upload that, update the website, etc.
-8. Update the version number in git to the next odd number to indicate dev
-   version; even numbers are releases.
+TODO: figure something out regarding Windows line endings for the .zip.
+Currently I do nothing special for the line endings and release using Linux,
+so they are presumably Unix-style LF line endings in all source releases.
