@@ -76,6 +76,7 @@ def replace_app(src, dst):
 				say("Couldn't remove old (running?) executable "+os.path.basename(old))
 
 def main():
+	os.chdir(os.path.dirname(os.path.join('.', __file__)))
 	try: subprocess.call(['cmake', '--version'])
 	except OSError:
 		say(ansi_red+"Error: 'cmake' not found; please install it."+ansi_end+'\n')
