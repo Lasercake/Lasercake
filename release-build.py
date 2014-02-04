@@ -37,6 +37,7 @@ def usage():
 
   --update-host-fedora    Uses `yum` to update and to install
                           this script's dependencies.
+  --source                Prepares Lasercake source code release.
   --mingw                 Builds Lasercake for 32 and 64 bit Windows.
   --linux                 Builds dynamically linked Lasercakes for
                           Linux x86 and x86_64.
@@ -84,7 +85,7 @@ standard_PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
 try:
     optlist, args = getopt.getopt(sys.argv[1:], '', [
-        'update-host-fedora', 'mingw', 'linux', 'osx-bare',
+        'update-host-fedora', 'source', 'mingw', 'linux', 'osx-bare',
         'git=', 'workdir=',
         'makeswap=', 'clean-distro-containers', 'no-clean-build-dirs'
     ])
@@ -294,10 +295,12 @@ def host_fedora_prepare():
     cmd(['yum', 'update'])
 
     # git is used to fetch Lasercake source and create git version names.
+    # zip, tar, gzip, and xz are used for source releases.
     # debootstrap is used to build binaries for Linux.
     # debootstrap requires perl, debian-keyring and gpg1 to work fully.
     cmd(['yum', 'install',
           'git',
+          'zip', 'tar', 'gzip', 'xz',
           'debootstrap', 'perl', 'debian-keyring', 'gnupg'])
 
 def prepare_workdir():
@@ -478,6 +481,32 @@ def build_for_osx():
         build_for_osx_bare(local_source_clone_dir)
         shutil.copy(release_name+'-OSX.dmg', resultsdir)
 
+def build_source():
+    """
+    Creates both zip and tarball both full and minimal
+    versions of the Lasercake source code.
+
+    TODO: figure something out regarding Windows line endings for the .zip.
+    """
+    with pushd(workdir):
+        release_dir_name = release_name+'-source'
+        shutil.rmtree(release_dir_name, ignore_errors=True)
+        shutil.copytree(local_source_clone_dir, release_dir_name)
+
+        cmd(['zip', '-r', resultsdir+'/'+release_dir_name+'.zip', release_dir_name])
+        cmd(['tar', '-czf', resultsdir+'/'+release_dir_name+'.tar.gz', release_dir_name])
+        cmd(['tar', '-cJf', resultsdir+'/'+release_dir_name+'.tar.xz', release_dir_name])
+
+        release_dir_name = release_name+'-source-minimal'
+        shutil.rmtree(release_dir_name, ignore_errors=True)
+        shutil.copytree(local_source_clone_dir, release_dir_name)
+        shutil.rmtree(release_dir_name+'/.git')
+        shutil.rmtree(release_dir_name+'/bundled_libs')
+
+        cmd(['zip', '-r', resultsdir+'/'+release_dir_name+'.zip', release_dir_name])
+        cmd(['tar', '-czf', resultsdir+'/'+release_dir_name+'.tar.gz', release_dir_name])
+        cmd(['tar', '-cJf', resultsdir+'/'+release_dir_name+'.tar.xz', release_dir_name])
+
 def main():
     if '--update-host-fedora' in optdict:
       host_fedora_prepare()
@@ -495,6 +524,8 @@ def main():
     # should we subtract their sizes, wasting the time to compute that?
 
     prepare_workdir()
+    if '--source' in optdict:
+        build_source()
     if '--mingw' in optdict:
         build_for_mingw()
     if '--linux' in optdict:
