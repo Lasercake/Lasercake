@@ -307,10 +307,19 @@ def host_fedora_prepare():
 def prepare_workdir():
     cmd(['mkdir', '-p', workdir, resultsdir])
 
-    if not os.path.exists(local_source_clone_dir):
+    git_cloned_from_file = workdir+'/git_cloned_from'
+    can_reuse_clone = os.path.exists(local_source_clone_dir)
+    if os.path.exists(git_cloned_from_file):
+        with open(git_cloned_from_file, 'r') as f:
+            if f.read() != git_clone_from:
+                can_reuse_clone = False
+    with open(git_cloned_from_file, 'w') as f:
+        f.write(git_clone_from)
+    if not can_reuse_clone:
+        shutil.rmtree(local_source_clone_dir, ignore_errors=True)
         cmd(['git', 'clone', git_clone_from, local_source_clone_dir])
     else:
-        cmd(['git', 'pull', git_clone_from], cwd=local_source_clone_dir)
+        cmd(['git', 'pull'], cwd=local_source_clone_dir)
     if tag != "git":
         cmd(['git', 'reset', '--hard', 'tags/'+tag],
                         cwd=local_source_clone_dir)
