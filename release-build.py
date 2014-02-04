@@ -40,11 +40,16 @@ def usage():
   --mingw                 Builds Lasercake for 32 and 64 bit Windows.
   --linux                 Builds dynamically linked Lasercakes for
                           Linux x86 and x86_64.
+  --osx-bare              Builds Lasercake for Mac OS X, but assumes
+                          you've already set up OS X with developer tools,
+                          cmake in PATH, clang 3.2 installed via MacPorts,
+                          and Qt 4.8.* installed from official qt-project.org
+                          library binaries.
 
-  --git=https://github.com/Lasercake/Lasercake.git
+  --git="https://github.com/Lasercake/Lasercake.git"
                           Change the default place to fetch Lasercake
                           source from. Passed to `git clone` or `git pull`.
-  --workdir=/root/Lasercake-build
+  --workdir="$HOME/Lasercake-build"
                           Change the default place to create build chroots
                           and put build results.
   --makeswap=[/root/swapfile]
@@ -76,11 +81,11 @@ def usage():
 """
 
 standard_PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
-os.putenv('PATH', standard_PATH)
 
 try:
     optlist, args = getopt.getopt(sys.argv[1:], '', [
-        'update-host-fedora', 'mingw', 'linux', 'git=', 'workdir=',
+        'update-host-fedora', 'mingw', 'linux', 'osx-bare',
+        'git=', 'workdir=',
         'makeswap=', 'clean-distro-containers', 'no-clean-build-dirs'
     ])
     optdict = dict(optlist)
@@ -92,7 +97,8 @@ except (getopt.GetoptError, ValueError):
     sys.stderr.write(usage())
     exit(1)
 
-workdir = optdict.get('--workdir', "/root/Lasercake-build")
+workdir = os.path.abspath(optdict.get('--workdir',
+                os.environ["HOME"]+"/Lasercake-build"))
 resultsdir = workdir+'/results'
 local_source_clone_dir = workdir+'/Lasercake-source'
 git_clone_from = optdict.get('--git',
@@ -101,6 +107,7 @@ cmakeflags = ['-DLTO=ON']
 release_name = 'computed-in-prepare_workdir'
 mingw_ram_estimate = 900
 linux_ram_estimate = 300
+osx_ram_estimate = 400  #?
 
 def log_cmd(args, **kwargs):
     """ helper for cmd* """
@@ -167,6 +174,8 @@ def replace_environ(new_env):
 def estimate_free_ram_megabytes():
     # /proc/meminfo is a series of sizes in kibibytes (2^10).
     # We return mebibytes (2^20).
+    if not os.path.exists('/proc/meminfo'):
+        return 1777  # guess
     with open('/proc/meminfo', 'r') as f:
         meminfo = f.read()
     kibibytes = sum(map(int,
@@ -373,6 +382,28 @@ def build_for_mingw():
         shutil.copy(root+chroot_build_dir+'/'+release_dir_name+'.zip',
                     resultsdir)
 
+def build_for_osx_bare(srcdir, clang='/opt/local/bin/clang-mp-3.2'):
+    """
+    Builds a Lasercake release based on srcdir.
+
+    Does not require root or install or download anything;
+    instead requires the environment to be prepared already.
+
+    Assumes the current directory is the directory to build in.
+    """
+    clangplusplus = re.sub(r'(clang)([^/]*)$', r'\1++\2', clang)
+    cmd(['cmake', srcdir] + cmakeflags + [
+        '-DCMAKE_C_COMPILER='+clang,
+        '-DCMAKE_CXX_COMPILER='+clangplusplus,
+        '-DCMAKE_OSX_DEPLOYMENT_TARGET=10.6',
+        '-DCMAKE_OSX_SYSROOT=/Developer/SDKs/MacOSX10.6.sdk',
+        '-DUSE_BOOST_CXX11_LIBS=ON',
+        '-DOSX_BUNDLE=ON',
+        '-DPROGRAM_NAME='+release_name
+        ])
+    cmd(['make', '-j'+str(parallelism(osx_ram_estimate))])
+    cmd(['cpack', '-G', 'DragNDrop'])
+
 def build_for_linux_bare(srcdir, release_dir_name):
     """
     Builds a Lasercake release based on srcdir targeting
@@ -424,6 +455,20 @@ def build_for_linux():
         shutil.copy(root+chroot_build_dir+'/'+release_dir_name+'.tar.gz',
                     resultsdir)
 
+def build_for_osx():
+    """
+    Not a proper function because it doesn't use a chroot we create
+    but still relies on its environment.
+    """
+    scratchdir = workdir+'/lasercake-build-osx'
+    if '--no-clean-build-dirs' not in optdict:
+        shutil.rmtree(scratchdir, ignore_errors=True)
+    if not os.path.isdir(scratchdir):
+        os.makedirs(scratchdir)
+    os.chdir(scratchdir)
+    build_for_osx_bare(local_source_clone_dir)
+    shutil.copy(release_name+'-OSX.dmg', resultsdir)
+
 def main():
     if '--update-host-fedora' in optdict:
       host_fedora_prepare()
@@ -434,6 +479,8 @@ def main():
         require_ram_megabytes(mingw_ram_estimate)
     if '--linux' in optdict:
         require_ram_megabytes(linux_ram_estimate)
+    if '--osx' in optdict:
+        require_ram_megabytes(osx_ram_estimate)
     # require_disk_megabytes(4000ish?)
     # but what if the chroot distro instances already exist:
     # should we subtract their sizes, wasting the time to compute that?
@@ -443,6 +490,8 @@ def main():
         build_for_mingw()
     if '--linux' in optdict:
         build_for_linux()
+    if '--osx-bare' in optdict:
+        build_for_osx()
     print()
     print("RESULTS OF THIS AND PAST RUNS:")
     print(resultsdir)
