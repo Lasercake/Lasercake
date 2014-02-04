@@ -68,6 +68,7 @@ Releasing
 
 ### process ###
 
+0: Update CHANGELOG.markdown
 1: Set Lasercake_VERSION_* to the correct numbers in CMakeLists.txt; commit.
 2: Git tag a release candidate.
 git tag -u 17062391 Lasercake-[version]-rcN -m'Lasercake-[version]-rcN'
@@ -89,7 +90,7 @@ for f in downloadable/Lasercake-[version]-rcN*; do gpg --detach-sign "$f"; done
 9: update website-source/src/{index.html,downloads.html} to point to
 the new version number + (downloads page) have the right megabytes
 [re-finish step 4]
-10. Update Lasercake_VERSION_* in git CMakeLists.txt to the next odd number
+10: Update Lasercake_VERSION_* in git CMakeLists.txt to the next odd number
 to indicate dev version; even numbers are releases.
 
 ### notes and rationale ###
