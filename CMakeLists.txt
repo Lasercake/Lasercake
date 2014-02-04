@@ -326,6 +326,9 @@ endif()
 # This CPack stuff may or may not be functional.
 set (CPACK_INCLUDE_TOPLEVEL_DIRECTORY 0)
 set (CPACK_PACKAGE_VENDOR "re:calib - Eli Dupree and Isaac Dupree")
+if (APPLE)
+set (CPACK_PACKAGE_FILE_NAME "${PROGRAM_NAME}-OSX")
+endif()
 # TODO: auto-convert these to HTML or RTF or at least a .txt extension
 # so they're opened in the right editors?
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.markdown") #TODO: intro file shown by NSIS Windows installer, I think
