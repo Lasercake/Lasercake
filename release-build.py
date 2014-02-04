@@ -109,6 +109,15 @@ mingw_ram_estimate = 900
 linux_ram_estimate = 300
 osx_ram_estimate = 400  #?
 
+class pushd(object):
+    def __init__(self, target):
+        self.target = target
+    def __enter__(self):
+        self.source = os.getcwd()
+        os.chdir(self.target)
+    def __exit__(self, type, value, traceback):
+        os.chdir(self.source)
+
 def log_cmd(args, **kwargs):
     """ helper for cmd* """
     if isinstance(args, str): args = [args]
@@ -465,9 +474,9 @@ def build_for_osx():
         shutil.rmtree(scratchdir, ignore_errors=True)
     if not os.path.isdir(scratchdir):
         os.makedirs(scratchdir)
-    os.chdir(scratchdir)
-    build_for_osx_bare(local_source_clone_dir)
-    shutil.copy(release_name+'-OSX.dmg', resultsdir)
+    with pushd(scratchdir):
+        build_for_osx_bare(local_source_clone_dir)
+        shutil.copy(release_name+'-OSX.dmg', resultsdir)
 
 def main():
     if '--update-host-fedora' in optdict:
