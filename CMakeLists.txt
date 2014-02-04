@@ -5,19 +5,6 @@ project (Lasercake)
 set (Lasercake_VERSION_MAJOR 0)
 set (Lasercake_VERSION_MINOR 23)
 set (Lasercake_VERSION_PATCH 0)
-# TODO if in git, add part of the git hash to the version desc?
-# TODO is it useful to include the year in any version-related
-# strings?
-# At the current stage in development we don't plan to make many
-# patchlevel releases compared to minor releases so it's nicer
-# not to include the final .0 in the version number.
-# While in development stages we should use odd-numbered MINOR numbers;
-# even for releases.
-if (Lasercake_VERSION_PATCH EQUAL 0)
-	set (Lasercake_version_desc ${Lasercake_VERSION_MAJOR}.${Lasercake_VERSION_MINOR})
-else()
-	set (Lasercake_version_desc ${Lasercake_VERSION_MAJOR}.${Lasercake_VERSION_MINOR}.${Lasercake_VERSION_PATCH})
-endif()
 
 
 set (OPTIONS_DEFINES )
@@ -39,6 +26,11 @@ set (PROGRAM_NAME "Lasercake" CACHE STRING "User-visible program basename, e.g. 
 # This is merely shorthand for some CMake / compiler options. -Isaac
 option (LTO "Use link-time optimization (roughly halves the size of the binary)" OFF)
 
+if (PROGRAM_NAME STREQUAL "Lasercake")
+	set (Lasercake_version_desc "${Lasercake_VERSION_MAJOR}.${Lasercake_VERSION_MINOR}.${Lasercake_VERSION_PATCH}")
+else()
+	string (REGEX REPLACE "^Lasercake-" "" Lasercake_version_desc "${PROGRAM_NAME}")
+endif()
 
 
 include (FindPkgConfig)
