@@ -270,15 +270,13 @@ def prepare_workdir():
     if not os.path.exists(local_source_clone_dir):
         cmd(['git', 'clone', git_clone_from, local_source_clone_dir])
     else:
-        cmd(['git', '--git-dir='+local_source_clone_dir+'/.git',
-                'pull', git_clone_from])
+        cmd(['git', 'pull', git_clone_from], cwd=local_source_clone_dir)
     if tag != "git":
-        cmd(['git', '--git-dir='+local_source_clone_dir+'/.git',
-                'reset', '--hard', 'tags/'+tag])
+        cmd(['git', 'reset', '--hard', 'tags/'+tag],
+                        cwd=local_source_clone_dir)
     global release_name
-    release_name = cmdoutputline(
-        ['git', '--git-dir='+local_source_clone_dir+'/.git',
-                 'describe'])
+    release_name = cmdoutputline(['git', 'describe'],
+                        cwd=local_source_clone_dir)
 
 def build_for_mingw_bare(srcdir, release_dir_name, bits, fedora_mingw_dir):
     """
