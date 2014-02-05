@@ -1,0 +1,13 @@
+language: cpp
+compiler:
+    - clang
+    - gcc
+install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -qq libqt4-dev libqt4-opengl-dev
+script:
+    - mkdir ci-build
+    - cd ci-build
+    - cmake ..
+    - make -j2
+    - ./Lasercake --run-self-tests
