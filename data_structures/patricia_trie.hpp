@@ -135,7 +135,7 @@ public:
     size_exponent_in_each_dimension_ = exp;
   }
 private:
-  // Friend patricia_trie so that it can be more paranoid about
+  // Friend patricia_trie so that it can be more careful about
   // exception-safety, specifically the order in which the data members
   // are changed in move-assignment.
   template<num_coordinates_type Dims2, typename Coord2, typename T, typename Traits>

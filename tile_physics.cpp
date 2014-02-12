@@ -1757,7 +1757,7 @@ void update_fluids_impl(state_t& state) {
         // Water has to 'settle' into groupability before deactivating
         goto fake_continue;
       }
-      // Be a little paranoid about making sure fluids obeys all the proper conditions of inactivity
+      // Be extra careful about making sure fluids obeys all the proper conditions of inactivity
       for (cardinal_direction dir = 0; dir < num_cardinal_directions; ++dir) {
         if (dir == zminus) {
           if ((fluid.blockage_amount_this_frame[dir] > min_convincing_speed * fixed_frame_lengths +

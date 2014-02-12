@@ -229,7 +229,8 @@ void collect_collisions(
   w.objects_exposed_to_collision().get_objects_overlapping(objects_this_could_collide_with, sweep_bounds);
   
   for (object_identifier other_id : objects_this_could_collide_with) {
-  /*LOG << "Warning: Doing paranoid checks, remove this;\n";
+  /*//This for-loop can replace the above one to do extra debugging-checks
+  LOG << "Extra caution;\n";
   for (auto const& p1 : moving_objects) {
     object_identifier other_id = p1.first;*/
     if (other_id != id) {
