@@ -670,7 +670,7 @@ void convex_polyhedron::init_other_info_from_vertices() {
       l.face_1 = first_four_faces[((q != 0) && (j != 0)) ? 0 : ((q != 1) && (j != 1)) ? 1 : 2];
       l.face_2 = first_four_faces[((q != 3) && (j != 3)) ? 3 : ((q != 2) && (j != 2)) ? 2 : 1];
       lines.push_back(l);
-      assert_if_ASSERT_EVERYTHING(vs[l.vert_1] != vs[l.vert_2]);
+      maybe_assert(vs[l.vert_1] != vs[l.vert_2]);
     }
   }
   
@@ -1567,7 +1567,7 @@ void convex_polygon::setup_cache_if_needed()const {
     ++cache_.amount_twisted;
     for (vect& v : cache_.adjusted_vertices) v = vect(v.y, v.z, v.x);
     
-    assert_if_ASSERT_EVERYTHING(cache_.amount_twisted <= 2);
+    maybe_assert(cache_.amount_twisted <= 2);
   }
   
   // In the formula Skew(T) = I + (z unit vector)*(a(t.x) + b(t.y)) ...

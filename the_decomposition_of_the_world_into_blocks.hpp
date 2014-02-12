@@ -171,9 +171,9 @@ inline tile_location::tile_location(
   the_decomposition_of_the_world_into_blocks_impl::worldblock_dimension_type idx,
   the_decomposition_of_the_world_into_blocks_impl::worldblock *wb
 ) : v_(v), idx_(idx), wb_(wb) {
-  assert_if_ASSERT_EVERYTHING(wb);
-  assert_if_ASSERT_EVERYTHING(wb->bounding_box().contains(v));
-  assert_if_ASSERT_EVERYTHING(idx == wb->get_idx(v));
+  maybe_assert(wb);
+  maybe_assert(wb->bounding_box().contains(v));
+  maybe_assert(idx == wb->get_idx(v));
 }
 namespace the_decomposition_of_the_world_into_blocks_impl {
   template<cardinal_direction Dir> bool next_to_boundary(vector3<tile_coordinate> const& coords);

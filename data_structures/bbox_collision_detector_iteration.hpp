@@ -135,7 +135,7 @@ public:
     }
     new_box.num_low_bits_ = total_low_bits;
     for (num_coordinates_type i = 0; i != NumDimensions; ++i) {
-      assert_if_ASSERT_EVERYTHING(
+      maybe_assert(
             (zb1.coords_[i] & ~math_::this_many_low_bits(dim_low_bits[i]))
         == (zb2.coords_[i] & ~math_::this_many_low_bits(dim_low_bits[i]))
       );

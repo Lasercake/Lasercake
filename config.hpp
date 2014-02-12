@@ -32,22 +32,22 @@
 #include <ostream>
 
 // Some asserts take too much runtime to turn on by default.
-// So write them "assert_if_ASSERT_EVERYTHING(x);"
-// Build with -DASSERT_EVERYTHING to turn them on.
-#ifdef ASSERT_EVERYTHING
-  // By not using parentheses (e.g. not "#define assert_if_ASSERT_EVERYTHING(x) assert(x)"),
+// So write them "maybe_assert(x);"
+// Build with -DCANNY=ON to turn them on.
+#ifdef CANNY
+  // By not using parentheses (e.g. not "#define maybe_assert(x) assert(x)"),
   // we prevent any additional unintended macro-expansion,
   // which in the case of assert would affect the string
   // that is printed when the assert fails.
-  #define assert_if_ASSERT_EVERYTHING assert
-  const bool assert_everything = true;
+  #define maybe_assert assert
+  const bool canny = true;
 #else
   // Make sure the code takes no runtime (the compiler will optimize it out)
   // but that it still compiles to a boolean expression (so that turning on
-  // ASSERT_EVERYTHING is sure to compile even if we didn't test with it on
+  // CANNY is sure to compile even if we didn't test with it on
   // recently).
-  #define assert_if_ASSERT_EVERYTHING(x) ((true) ? (void)0 : ((x) ? (void)0 : (void)0))
-  const bool assert_everything = false;
+  #define maybe_assert(x) ((true) ? (void)0 : ((x) ? (void)0 : (void)0))
+  const bool canny = false;
 #endif
 
 #ifndef LASERCAKE_BUILD_SYSTEM_DID_FEATURE_DETECTION

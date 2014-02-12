@@ -43,7 +43,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       parent_->leaf().worldblock_ = this;
     }
     //This was too slow to do for every worldblock:
-    //if(assert_everything) {
+    //if(canny) {
     //  w_->worldblock_trie_.debug_check_recursive();
     //}
   }
@@ -73,9 +73,9 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
       worldblock_dimension_type idx,
       worldblock_dimension_type local_x, worldblock_dimension_type local_y, worldblock_dimension_type local_z
   ) {
-    assert_if_ASSERT_EVERYTHING(t.is_interior());
-    assert_if_ASSERT_EVERYTHING(idx == local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor);
-    assert_if_ASSERT_EVERYTHING(&t == &wb->tiles_[idx]);
+    maybe_assert(t.is_interior());
+    maybe_assert(idx == local_x*worldblock_x_factor + local_y*worldblock_y_factor + local_z*worldblock_z_factor);
+    maybe_assert(&t == &wb->tiles_[idx]);
     t.set_interiorness(false);
     wb->count_of_non_interior_tiles_here_ += 1;
     const worldblock_dimension_type interleaved = interleave_worldblock_local_coords(local_x, local_y, local_z);
@@ -86,7 +86,7 @@ namespace the_decomposition_of_the_world_into_blocks_impl {
 
     if(only_put_non_interiory_blocks_in_the_trie && wb->count_of_non_interior_tiles_here_ == 1) {
       wb->w_->worldblock_trie_.insert(wb->global_position_ >> worldblock_dimension_exp, wb, 1);
-      if(assert_everything) {
+      if(canny) {
         wb->w_->worldblock_trie_.debug_check_recursive();
       }
     }

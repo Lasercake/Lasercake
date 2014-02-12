@@ -293,7 +293,7 @@ void replace_substance(
 }
 
 water_group_identifier get_water_group_id_by_grouped_tile(state_t const& state, tile_location const& loc) {
-  assert_if_ASSERT_EVERYTHING(loc.stuff_at().contents() == GROUPABLE_WATER);
+  maybe_assert(loc.stuff_at().contents() == GROUPABLE_WATER);
   {
     water_groups_by_location_t::const_iterator i = state.water_groups_by_surface_tile.find(loc);
     if (i != state.water_groups_by_surface_tile.end()) {
@@ -312,9 +312,9 @@ water_group_identifier get_water_group_id_by_grouped_tile(state_t const& state, 
   if (surface_loc.coords().y != loc.coords().y || surface_loc.coords().z != loc.coords().z) {
     return NO_WATER_GROUP;
   }
-  assert_if_ASSERT_EVERYTHING(surface_loc.stuff_at().contents() == GROUPABLE_WATER);
-  assert_if_ASSERT_EVERYTHING(surface_loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER);
-  assert_if_ASSERT_EVERYTHING(surface_loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
+  maybe_assert(surface_loc.stuff_at().contents() == GROUPABLE_WATER);
+  maybe_assert(surface_loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER);
+  maybe_assert(surface_loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
   return state.water_groups_by_surface_tile.find(surface_loc)->second;
 }
 persistent_water_group_info const& get_water_group_by_grouped_tile(state_t const& state, tile_location const& loc) {
@@ -512,7 +512,7 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
 
   // Check if we're already initialized, by trying the "jump to a surface tile" thing or just looking up our location.
   {
-    assert_if_ASSERT_EVERYTHING(loc.stuff_at().contents() == GROUPABLE_WATER);
+    maybe_assert(loc.stuff_at().contents() == GROUPABLE_WATER);
     if (state.water_groups_by_surface_tile.find(loc) != state.water_groups_by_surface_tile.end()) return;
 
     auto iter = state.groupable_water_volume_calipers.boundary_tiles_in_dimension.lower_bound(loc);
@@ -520,9 +520,9 @@ void initialize_water_group_from_tile_if_necessary(state_t& state, tile_location
       tile_location const& surface_loc = *iter;
       if (surface_loc.coords().y == loc.coords().y && surface_loc.coords().z == loc.coords().z) {
         if (surface_loc.get_neighbor<xminus>(CONTENTS_ONLY).stuff_at().contents() == GROUPABLE_WATER) {
-          assert_if_ASSERT_EVERYTHING(surface_loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
-          assert_if_ASSERT_EVERYTHING(state.water_groups_by_surface_tile.find(surface_loc) != state.water_groups_by_surface_tile.end());
-          assert_if_ASSERT_EVERYTHING(state.water_groups_by_surface_tile.find(surface_loc)->second != NO_WATER_GROUP);
+          maybe_assert(surface_loc.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
+          maybe_assert(state.water_groups_by_surface_tile.find(surface_loc) != state.water_groups_by_surface_tile.end());
+          maybe_assert(state.water_groups_by_surface_tile.find(surface_loc)->second != NO_WATER_GROUP);
           return;
         }
       }
@@ -627,10 +627,10 @@ void persistent_water_group_info::recompute_num_tiles_by_height_from_surface_til
         assert (surface_loc_iter != groupable_water_volume_calipers.boundary_tiles_in_dimension.end());
         tile_location const& end_tile = *surface_loc_iter;
 
-        assert_if_ASSERT_EVERYTHING(end_tile.coords().y == surface_loc.coords().y && end_tile.coords().z == surface_loc.coords().z);
-        assert_if_ASSERT_EVERYTHING(end_tile.coords().x > surface_loc.coords().x);
-        assert_if_ASSERT_EVERYTHING(surface_tiles.find(end_tile) != surface_tiles.end());
-        assert_if_ASSERT_EVERYTHING(end_tile.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
+        maybe_assert(end_tile.coords().y == surface_loc.coords().y && end_tile.coords().z == surface_loc.coords().z);
+        maybe_assert(end_tile.coords().x > surface_loc.coords().x);
+        maybe_assert(surface_tiles.find(end_tile) != surface_tiles.end());
+        maybe_assert(end_tile.get_neighbor<xplus>(CONTENTS_ONLY).stuff_at().contents() != GROUPABLE_WATER);
 
         num_tiles_by_height[surface_loc.coords().z] += 1 + end_tile.coords().x - surface_loc.coords().x;
       }
@@ -645,7 +645,7 @@ pressure persistent_water_group_info::get_pressure_at_height(tile_coordinate hei
   pressure current_pressure = 0;
   if (iter == pressure_caches.end()) {
     auto foo = num_tiles_by_height.rbegin();
-    assert_if_ASSERT_EVERYTHING(foo != num_tiles_by_height.rend());
+    maybe_assert(foo != num_tiles_by_height.rend());
     current_height = foo->first;
     if (height > current_height) return 0;
     pressure_caches.insert(pressure_caches_t::value_type(current_height, 0));
@@ -702,7 +702,7 @@ void suck_out_suckable_water(state_t& state,
     auto down_af_iter = active_fluids.find(downward_loc);
     active_fluid_tile_info here_info = ((here_af_iter == active_fluids.end()) ? active_fluid_tile_info() : here_af_iter->second);
     here_info.progress[zminus] -= progress_necessary(zminus); // The usual effect of moving downwards
-    assert_if_ASSERT_EVERYTHING(here_info.progress[zminus] >= 0);
+    maybe_assert(here_info.progress[zminus] >= 0);
     if (down_af_iter == active_fluids.end()) {
       active_fluids.insert(make_pair(downward_loc, here_info));
     }
@@ -803,20 +803,20 @@ water_group_identifier merge_water_groups(water_group_identifier id_1, water_gro
   }
   for (auto const& s : smaller_group.pushable_tiles_by_height.as_map()) {
     for (auto const& t : s.second) {
-      assert_if_ASSERT_EVERYTHING(t.stuff_at().contents() == AIR);
+      maybe_assert(t.stuff_at().contents() == AIR);
       larger_group.pushable_tiles_by_height.insert(t);
     }
   }
   for (auto const& p : smaller_group.num_tiles_by_height) {
     // Note: the [] operator default-constructs a zero if there's nothing there
-    assert_if_ASSERT_EVERYTHING(p.second > 0);
+    maybe_assert(p.second > 0);
     larger_group.num_tiles_by_height[p.first] += p.second;
   }
   for (auto const& l : smaller_group.surface_tiles) {
     unique_insert(larger_group.surface_tiles, l);
     auto foo = water_groups_by_surface_tile.find(l);
-    assert_if_ASSERT_EVERYTHING(foo != water_groups_by_surface_tile.end());
-    assert_if_ASSERT_EVERYTHING(foo->second == destroyed_group_id);
+    maybe_assert(foo != water_groups_by_surface_tile.end());
+    maybe_assert(foo->second == destroyed_group_id);
     foo->second = remaining_group_id;
   }
   
@@ -841,8 +841,8 @@ void replace_substance_impl(
   persistent_water_groups_t& persistent_water_groups = state.persistent_water_groups;
   water_groups_by_location_t& water_groups_by_surface_tile = state.water_groups_by_surface_tile;
 
-  //assert_if_ASSERT_EVERYTHING(loc.wb_->current_tile_realization_ == FULL_REALIZATION);
-  assert_if_ASSERT_EVERYTHING(loc.stuff_at().contents() == old_substance_type);
+  //maybe_assert(loc.wb_->current_tile_realization_ == FULL_REALIZATION);
+  maybe_assert(loc.stuff_at().contents() == old_substance_type);
   //check_pushable_tiles_sanity(state);
   
   array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc);
@@ -897,9 +897,9 @@ void replace_substance_impl(
     for (tile_location const& adj_loc : neighbors) {
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
         water_group_identifier group_id = get_water_group_id_by_grouped_tile(state, adj_loc);
-        assert_if_ASSERT_EVERYTHING(group_id != NO_WATER_GROUP);
+        maybe_assert(group_id != NO_WATER_GROUP);
         auto foo = persistent_water_groups.find(group_id);
-        assert_if_ASSERT_EVERYTHING(foo != persistent_water_groups.end());
+        maybe_assert(foo != persistent_water_groups.end());
         persistent_water_group_info& group = foo->second;
         group.pushable_tiles_by_height.erase(loc);
       }
@@ -922,9 +922,9 @@ void replace_substance_impl(
     //    (while we're still marked as water)
     // ==============================================================================
     water_group_id = get_water_group_id_by_grouped_tile(state, loc);
-    assert_if_ASSERT_EVERYTHING(water_group_id != NO_WATER_GROUP);
+    maybe_assert(water_group_id != NO_WATER_GROUP);
     auto iter = persistent_water_groups.find(water_group_id);
-    assert_if_ASSERT_EVERYTHING(iter != persistent_water_groups.end());
+    maybe_assert(iter != persistent_water_groups.end());
     water_group = &iter->second;
     //check_group_surface_tiles_cache_and_layer_size_caches(state, *water_group);
   }
@@ -1127,7 +1127,7 @@ void replace_substance_impl(
       if (adj_loc.stuff_at().contents() == GROUPABLE_WATER) {
         water_groups_by_location_t::const_iterator existing_marker_iter = water_groups_by_surface_tile.find(adj_loc);
         if (existing_marker_iter != water_groups_by_surface_tile.end()) {
-          assert_if_ASSERT_EVERYTHING(existing_marker_iter->second == water_group_id);
+          maybe_assert(existing_marker_iter->second == water_group_id);
         }
         else {
           if (water_group->surface_tiles.insert(adj_loc).second) {
@@ -1140,8 +1140,8 @@ void replace_substance_impl(
     water_group->suckable_tiles_by_height.erase(loc);
     
     auto iter = water_group->num_tiles_by_height.find(loc.coords().z);
-    assert_if_ASSERT_EVERYTHING(iter != water_group->num_tiles_by_height.end());
-    assert_if_ASSERT_EVERYTHING(iter->second > 0);
+    maybe_assert(iter != water_group->num_tiles_by_height.end());
+    maybe_assert(iter->second > 0);
     --iter->second;
     if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
     
@@ -1237,7 +1237,7 @@ void replace_substance_impl(
         inf.try_collect_loc(adj_loc, adj_loc);
       }
     }
-    assert_if_ASSERT_EVERYTHING(inf.disconnected_frontiers.size() >= 1);
+    maybe_assert(inf.disconnected_frontiers.size() >= 1);
     while(inf.disconnected_frontiers.size() > 1) {
       for (auto p = inf.disconnected_frontiers.begin(); p != inf.disconnected_frontiers.end(); ) {
         tile_location const& which_neighbor = p->first;
@@ -1257,8 +1257,8 @@ void replace_substance_impl(
           
           for (tile_location const& new_grouped_loc : inf.collected_locs_by_neighbor[which_neighbor]) {
             auto foo = water_groups_by_surface_tile.find(new_grouped_loc);
-            assert_if_ASSERT_EVERYTHING(foo != water_groups_by_surface_tile.end());
-            assert_if_ASSERT_EVERYTHING(foo->second == water_group_id);
+            maybe_assert(foo != water_groups_by_surface_tile.end());
+            maybe_assert(foo->second == water_group_id);
             foo->second = new_group_id;
             unique_insert(new_group.surface_tiles, new_grouped_loc);
             unique_erase(water_group->surface_tiles, new_grouped_loc);
@@ -1269,19 +1269,19 @@ void replace_substance_impl(
           new_group.recompute_num_tiles_by_height_from_surface_tiles(state);
           for (auto const& p : new_group.num_tiles_by_height) {
             auto iter = water_group->num_tiles_by_height.find(p.first);
-            assert_if_ASSERT_EVERYTHING(iter != water_group->num_tiles_by_height.end());
-            assert_if_ASSERT_EVERYTHING(iter->second > 0);
-            assert_if_ASSERT_EVERYTHING(iter->second >= p.second);
+            maybe_assert(iter != water_group->num_tiles_by_height.end());
+            maybe_assert(iter->second > 0);
+            maybe_assert(iter->second >= p.second);
             iter->second -= p.second;
             if (iter->second == 0) water_group->num_tiles_by_height.erase(iter);
-            assert_if_ASSERT_EVERYTHING(!water_group->num_tiles_by_height.empty());
+            maybe_assert(!water_group->num_tiles_by_height.empty());
           }
           water_group->pressure_caches.erase(water_group->pressure_caches.begin(), water_group->pressure_caches.upper_bound(new_group.num_tiles_by_height.rbegin()->first));
           
           unordered_set<tile_location> original_pushable_tiles_removed;
           for (auto const& ph : water_group->pushable_tiles_by_height.as_map()) {
             for(auto const& p : ph.second) {
-              assert_if_ASSERT_EVERYTHING(p.stuff_at().contents() == AIR);
+              maybe_assert(p.stuff_at().contents() == AIR);
               bool is_pushable_for_original_group = false;
               array<tile_location, num_cardinal_directions> p_neighbors = get_all_neighbors(p);
               for (tile_location const& adj_loc : p_neighbors) {
@@ -1292,7 +1292,7 @@ void replace_substance_impl(
                   }
                   else {
                     auto foo = persistent_water_groups.find(pushable_having_group_id);
-                    assert_if_ASSERT_EVERYTHING(foo != persistent_water_groups.end());
+                    maybe_assert(foo != persistent_water_groups.end());
                     foo->second.pushable_tiles_by_height.insert(p);
                   }
                 }
@@ -1309,7 +1309,7 @@ void replace_substance_impl(
         else if (!destroy_this_frontier) {
           tile_location search_loc = frontier.front();
           
-          if(assert_everything) {
+          if(canny) {
             water_groups_by_location_t::const_iterator iter = water_groups_by_surface_tile.find(search_loc);
             assert(iter != water_groups_by_surface_tile.end());
             assert(iter->second == water_group_id);
@@ -1337,11 +1337,11 @@ void replace_substance_impl(
         if (destroy_this_frontier) {
           // Hack - if we're merging the last two frontiers, just bail.
           if (inf.disconnected_frontiers.size() <= 2) goto doublebreak;
-          assert_if_ASSERT_EVERYTHING(inf.defunct_frontiers.find(which_neighbor) != inf.defunct_frontiers.end());
+          maybe_assert(inf.defunct_frontiers.find(which_neighbor) != inf.defunct_frontiers.end());
           inf.disconnected_frontiers.erase(p++);
         }
         else {
-          assert_if_ASSERT_EVERYTHING(inf.defunct_frontiers.find(which_neighbor) == inf.defunct_frontiers.end());
+          maybe_assert(inf.defunct_frontiers.find(which_neighbor) == inf.defunct_frontiers.end());
           ++p;
         }
       }
@@ -1407,7 +1407,7 @@ void update_fluids_impl(state_t& state) {
     tile_location const& loc = p.first;
     active_fluid_tile_info& fluid = p.second;
     tile const& t = loc.stuff_at();
-    assert_if_ASSERT_EVERYTHING(is_fluid(t.contents()));
+    maybe_assert(is_fluid(t.contents()));
     array<tile_location, num_cardinal_directions> neighbors = get_all_neighbors(loc);
     
     value_for_each_cardinal_direction<sub_tile_distance> new_progress(0);
@@ -1527,9 +1527,9 @@ void update_fluids_impl(state_t& state) {
         else progress_ref -= idle_progress_reduction_amount;
       }
       else {
-        assert_if_ASSERT_EVERYTHING(new_progress[dir] >= 0);
-        assert_if_ASSERT_EVERYTHING(progress_ref >= 0);
-        assert_if_ASSERT_EVERYTHING(progress_ref <= progress_necessary(dir));
+        maybe_assert(new_progress[dir] >= 0);
+        maybe_assert(progress_ref >= 0);
+        maybe_assert(progress_ref <= progress_necessary(dir));
         progress_ref += new_progress[dir];
         if (progress_ref > progress_necessary(dir)) {
           wanted_moves.insert(wanted_move(loc, dir, new_progress[dir] / fixed_frame_lengths, progress_ref - progress_necessary(dir)), state.rng);

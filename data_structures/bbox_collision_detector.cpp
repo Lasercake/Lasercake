@@ -207,10 +207,10 @@ struct ztree_ops {
       else {
         ztree_node_ptr new_tree(lasercake_nice_new<ztree_node>(zbox::smallest_joint_parent(tree->here, box)));
 
-        assert_if_ASSERT_EVERYTHING(new_tree->here.num_low_bits() > tree->here.num_low_bits());
-        assert_if_ASSERT_EVERYTHING(new_tree->here.subsumes(tree->here));
-        assert_if_ASSERT_EVERYTHING(new_tree->here.subsumes(box));
-        assert_if_ASSERT_EVERYTHING(box.subsumes(tree->here) || (tree->here.get_bit(new_tree->here.num_low_bits() - 1) != box.get_bit(new_tree->here.num_low_bits() - 1)));
+        maybe_assert(new_tree->here.num_low_bits() > tree->here.num_low_bits());
+        maybe_assert(new_tree->here.subsumes(tree->here));
+        maybe_assert(new_tree->here.subsumes(box));
+        maybe_assert(box.subsumes(tree->here) || (tree->here.get_bit(new_tree->here.num_low_bits() - 1) != box.get_bit(new_tree->here.num_low_bits() - 1)));
 
         if (tree->here.get_bit(new_tree->here.num_low_bits() - 1)) tree.swap(new_tree->child1);
         else                                                       tree.swap(new_tree->child0);

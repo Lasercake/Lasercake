@@ -177,7 +177,7 @@ void world::visit_collidable_tiles(Visitor&& visitor) {
                                 }
                                 {
                                   const tile_location tloc(global_loc, idx ^ idx_xor, wb);
-                                  assert_if_ASSERT_EVERYTHING(!tloc.stuff_at().is_interior());
+                                  maybe_assert(!tloc.stuff_at().is_interior());
                                   if(!visitor.collidable_tile(tloc)) {
                                     //LOG << "ONE~" << COUNT << ":count.\n";
                                     return;

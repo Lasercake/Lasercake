@@ -64,7 +64,7 @@ namespace laserbeam {
       const geom::optional_dimensionless_rational new_distance =
         geom::get_first_intersection(beam_, convert_to_fine_distance_units(tile_bbox));
       if(new_distance) {
-        assert_if_ASSERT_EVERYTHING(*new_distance >= latest_distance_);
+        maybe_assert(*new_distance >= latest_distance_);
         latest_distance_ = *new_distance;
         return indeterminate;
       }

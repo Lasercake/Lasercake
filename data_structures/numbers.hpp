@@ -807,8 +807,8 @@ inline uint32_t i64sqrt(uint64_t radicand)
 
 #ifdef DETECTED_uint128_t
   typedef DETECTED_uint128_t twice_t;
-  assert_if_ASSERT_EVERYTHING(full_t(lower_bound)*lower_bound <= radicand);
-  assert_if_ASSERT_EVERYTHING(twice_t(upper_bound)*upper_bound > radicand);
+  maybe_assert(full_t(lower_bound)*lower_bound <= radicand);
+  maybe_assert(twice_t(upper_bound)*upper_bound > radicand);
 #endif
 
   while(lower_bound < upper_bound - 1)
