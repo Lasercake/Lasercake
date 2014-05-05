@@ -77,6 +77,28 @@ typename boost::make_unsigned<Int>::type to_unsigned_type(Int i) {
 }
 
 
+// num_zero_bits must be less than the number of bits
+// in T to prevent undefined behavior.
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T n_low_zero_bits(ShiftT num_zero_bits) {
+  // left-shift (by a positive amount) of negative values
+  // is undefined behaviour, so we have to do those left shifts
+  // on unsigned types.
+  typedef typename boost::make_unsigned<T>::type UnsignedT;
+  return T(~UnsignedT(0) << num_zero_bits);
+}
+template<typename T, typename ShiftT>
+BOOST_FORCEINLINE constexpr T safer_n_low_zero_bits(ShiftT num_zero_bits) {
+  // left-shift (by a positive amount) of negative values
+  // is undefined behaviour, so we have to do those left shifts
+  // on unsigned types.
+  typedef typename boost::make_unsigned<T>::type UnsignedT;
+  return
+    std::numeric_limits<UnsignedT>::digits == num_zero_bits ?
+    T(0) :
+    T(~UnsignedT(0) << num_zero_bits);
+}
+
 // Zero divided by something is always zero.
 // Any other division result is always (before rounding)
 // positive or negative.
@@ -327,20 +349,20 @@ BOOST_FORCEINLINE constexpr T shift_right_impl2(
       T num, ShiftT shift,
       rounding_strategy<round_down, negative_mirrors_positive>) {
   return (num >> shift) +
-         ((num < 0) && (num != (num >> shift << shift)) ? T(1) : T(0));
+         ((num < 0) && (num != (num & n_low_zero_bits<T>(shift))) ? T(1) : T(0));
 }
 template<typename T, typename ShiftT>
 BOOST_FORCEINLINE constexpr T shift_right_impl2(
       T num, ShiftT shift,
       rounding_strategy<round_up, negative_continuous_with_positive>) {
-  return ((num >> shift) + ((num != (num >> shift << shift)) ? T(1) : T(0)));
+  return ((num >> shift) + ((num != (num & n_low_zero_bits<T>(shift))) ? T(1) : T(0)));
 }
 template<typename T, typename ShiftT>
 BOOST_FORCEINLINE constexpr T shift_right_impl2(
       T num, ShiftT shift,
       rounding_strategy<round_up, negative_mirrors_positive>) {
   return (num >> shift) +
-         ((num >= 0) && (num != (num >> shift << shift)) ? T(1) : T(0));
+         ((num >= 0) && (num != (num & n_low_zero_bits<T>(shift))) ? T(1) : T(0));
 }
 template<typename T, typename ShiftT,
   rounding_strategy_for_positive_numbers PosStrategy,
@@ -358,8 +380,8 @@ inline constexpr T shift_right_impl2(
   // We check whether shift is 0 to avoid shifting by -1 or giving
   // the wrong result.
   return (shift == ShiftT(0)) ? num : round_to_nearest_impl<false>(
-     /*left, divisor/2 equivalent*/ (~T(0) << (shift - ShiftT(1))),
-     /*right, remainder equivalent*/ num | (~T(0) << shift),
+     /*left, divisor/2 equivalent*/ n_low_zero_bits<T>(shift - ShiftT(1)),
+     /*right, remainder equivalent*/ num | n_low_zero_bits<T>(shift),
              (num >> shift), T(1), (num >= T(0)), strat);
 }
 
@@ -511,6 +533,7 @@ inline bool shift_value_is_safe_for_type(ShiftValueType const& shift_value) {
   return shift_value_is_safe_impl_1<ShiftedType>::impl(shift_value);
 }
 
+// TODO this only is safe for nonnegative 'a'.
 template<typename ShiftedType, typename ShiftValueType>
 inline ShiftedType safe_left_shift(ShiftedType const& a, ShiftValueType const& shift) {
   if (shift_value_is_safe_for_type<ShiftedType>(shift)) {

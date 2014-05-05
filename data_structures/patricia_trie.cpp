@@ -93,7 +93,7 @@ pow2_radix_patricia_trie_node<Dims, Coord, T, Traits>::insert(loc_type leaf_loc)
 
       // Compute shared coords here in case some Coord ops can throw.
       loc_type shared_loc_min;
-      const Coord mask = safe_left_shift(~Coord(0), shared_size_exponent);
+      const Coord mask = safer_n_low_zero_bits<Coord>(shared_size_exponent);
       for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
         shared_loc_min[dim] = node->min()[dim] & mask;
       }

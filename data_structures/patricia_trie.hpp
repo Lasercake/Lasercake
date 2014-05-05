@@ -96,7 +96,7 @@ public:
   num_bits_type size_exponent_in_each_dimension()const { return size_exponent_in_each_dimension_; }
 
   Coord min(num_coordinates_type dim)const { return min_[dim]; }
-  Coord size_minus_one(num_coordinates_type)const { return ~(safe_left_shift(~Coord(0), size_exponent_in_each_dimension_)); }
+  Coord size_minus_one(num_coordinates_type)const { return ~safer_n_low_zero_bits<Coord>(size_exponent_in_each_dimension_); }
   Coord size(num_coordinates_type)const { return safe_left_shift(Coord(1), size_exponent_in_each_dimension_); }
   Coord max(num_coordinates_type dim)const { return min_[dim] + size_minus_one(dim); }
   loc_type const& min()const { return min_; }
@@ -366,7 +366,7 @@ public:
       // Avoid left-shifting by an invalidly large amount.
       return true;
     }
-    const Coord mask = (~Coord(0) << rep::size_exponent_in_each_dimension());
+    const Coord mask = n_low_zero_bits<Coord>(rep::size_exponent_in_each_dimension());
     for (num_coordinates_type dim = 0; dim != dimensions; ++dim) {
       if ((rep::min()[dim] & mask) != (loc[dim] & mask)) { return false; }
     }

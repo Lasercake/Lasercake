@@ -143,7 +143,7 @@ void world::visit_collidable_tiles(Visitor&& visitor) {
             if(wb->non_interior_bitmap_large_scale_ & (uint64_t(0xff) << ll_scale_i)) {
               if(entirely_valid_as_of_tile_coordinate_bit == 0) { // && more than one of those bits was set
                 const int bit = 3;
-                const tribool is_here_interesting = visitor.look_here(bounding_cube(global_loc & (~0 << bit), bit));
+                const tribool is_here_interesting = visitor.look_here(bounding_cube(global_loc & n_low_zero_bits<int>(bit), bit));
                 if(!is_here_interesting) { goto continue_3; }
                 if(is_here_interesting) { entirely_valid_as_of_tile_coordinate_bit |= (1<<bit); }
               }
@@ -153,7 +153,7 @@ void world::visit_collidable_tiles(Visitor&& visitor) {
                   if(wb->non_interior_bitmap_small_scale_[large_scale_i]) {
                     if(entirely_valid_as_of_tile_coordinate_bit == 0) {
                       const int bit = 2;
-                      const tribool is_here_interesting = visitor.look_here(bounding_cube(global_loc & (~0 << bit), bit));
+                      const tribool is_here_interesting = visitor.look_here(bounding_cube(global_loc & n_low_zero_bits<int>(bit), bit));
                       if(!is_here_interesting) { goto continue_2; }
                       if(is_here_interesting) { entirely_valid_as_of_tile_coordinate_bit |= (1<<bit); }
                     }
@@ -163,7 +163,7 @@ void world::visit_collidable_tiles(Visitor&& visitor) {
                         if(wb->non_interior_bitmap_small_scale_[large_scale_i] & (uint64_t(0xff) << ss_scale_i)) {
                           if(entirely_valid_as_of_tile_coordinate_bit == 0) {
                             const int bit = 1;
-                            const tribool is_here_interesting = visitor.look_here(bounding_cube(global_loc & (~0 << bit), bit));
+                            const tribool is_here_interesting = visitor.look_here(bounding_cube(global_loc & n_low_zero_bits<int>(bit), bit));
                             if(!is_here_interesting) { goto continue_1; }
                             if(is_here_interesting) { entirely_valid_as_of_tile_coordinate_bit |= (1<<bit); }
                           }
