@@ -22,6 +22,9 @@ option (OSX_BUNDLE "(Apple only) build .app bundle rather than just executable f
 option (OSX_BUNDLE_INSTALL_IN_PLACE "only relevant when OSX_BUNDLE is on; creates the working bundle in the build directory" ON)
 endif()
 set (PROGRAM_NAME "Lasercake" CACHE STRING "User-visible program basename, e.g. Lasercake-0.22.2")
+# since CMAKE_CXX_FLAGS go before COMPILE_FLAGS and there's nothing we can
+# do about that(?), let the user override our COMPILE_FLAGS in a custom way:
+set (CFLAGS "" CACHE STRING "Extra C/C++ compiler flags that override CMakeLists.txt's defaults")
 
 # This is merely shorthand for some CMake / compiler options. -Isaac
 option (LTO "Use link-time optimization (roughly halves the size of the binary)" OFF)
@@ -182,7 +185,7 @@ else()
 	set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
 	set(SECURITY_FLAGS -fwrapv -D_FORTIFY_SOURCE=2 -fstack-protector --param=ssp-buffer-size=4)
 endif()
-set(OUR_CFLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS})
+set(OUR_CFLAGS ${OPT_FLAGS} ${WARNING_FLAGS} ${SECURITY_FLAGS} ${OPTIONS_DEFINES} ${ESSENTIAL_FLAGS} ${CFLAGS})
 semicolons_to_spaces(OUR_CFLAGS_spaces ${OUR_CFLAGS})
 
 set(OUR_LINK_FLAGS
